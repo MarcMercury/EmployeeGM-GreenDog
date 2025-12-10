@@ -603,6 +603,165 @@ export interface EmployeePaySetting {
 }
 
 // =====================================================
+// ROSTER MODULE TYPES (Module 1: Staff Directory)
+// =====================================================
+
+/**
+ * RosterCardProps - The complete data structure for a "Trading Card" in the Roster Grid
+ * Joins: employees → profiles, job_positions, departments, employee_skills
+ */
+export interface RosterCardProps {
+  // Core employee data (from employees table)
+  id: string                              // employees.id
+  employee_id: string                     // employees.id (alias for clarity)
+  profile_id: string | null               // employees.profile_id
+  first_name: string                      // employees.first_name
+  last_name: string                       // employees.last_name
+  preferred_name: string | null           // employees.preferred_name
+  email: string                           // profiles.email or employees.email_work
+  phone: string | null                    // employees.phone_mobile
+  hire_date: string | null                // employees.hire_date
+  employment_status: EmployeeStatus | string  // employees.employment_status
+  
+  // Profile data (from profiles join)
+  avatar_url: string | null               // profiles.avatar_url
+  bio: string | null                      // profiles.bio (for "back of card")
+  role: UserRole                          // profiles.role
+  
+  // Position data (from job_positions join)
+  position: {
+    id: string
+    title: string
+    is_manager: boolean
+  } | null
+  
+  // Department data (from departments join)
+  department: {
+    id: string
+    name: string
+    code: string | null
+  } | null
+  
+  // Location data (from locations join)
+  location: {
+    id: string
+    name: string
+    code: string | null
+  } | null
+  
+  // Skills data (from employee_skills join, sorted by level DESC)
+  top_skills: RosterSkillPill[]           // Top 3 highest-rated skills
+  all_skills: RosterSkillPill[]           // All skills for detail view
+  skill_stats: {
+    total: number
+    average_level: number
+    mastered_count: number                // level === 5
+  }
+  
+  // Calculated "Level" badge (gamification)
+  player_level: number                    // Calculated from points_log or skill aggregate
+  
+  // Status indicators
+  clock_status: 'clocked_in' | 'clocked_out' | 'unknown'
+  is_active: boolean
+  
+  // Certifications summary
+  certifications_count: number
+  certifications_expiring_soon: number    // Within 30 days
+}
+
+/**
+ * RosterSkillPill - Compact skill display for cards
+ */
+export interface RosterSkillPill {
+  id: string
+  skill_id: string
+  name: string
+  category: string
+  level: SkillLevel
+  certified_at: string | null
+}
+
+/**
+ * RosterDetailProps - Extended data for the slide-out drawer
+ */
+export interface RosterDetailProps extends RosterCardProps {
+  // Extended profile info
+  date_of_birth: string | null
+  notes_internal: string | null
+  manager: {
+    id: string
+    first_name: string
+    last_name: string
+    position_title: string | null
+  } | null
+  
+  // Certifications list
+  certifications: RosterCertification[]
+  
+  // Upcoming shifts
+  upcoming_shifts: RosterShift[]
+  
+  // Recent time punches
+  recent_punches: RosterTimePunch[]
+}
+
+/**
+ * RosterCertification - Certification display for detail view
+ */
+export interface RosterCertification {
+  id: string
+  name: string
+  certification_number: string | null
+  issued_date: string | null
+  expiration_date: string | null
+  status: 'pending' | 'active' | 'expired' | 'revoked' | 'renewal_pending'
+}
+
+/**
+ * RosterShift - Upcoming shift for operations tab
+ */
+export interface RosterShift {
+  id: string
+  date: string
+  start_time: string
+  end_time: string
+  location_name: string | null
+  role_name: string | null
+  status: ShiftStatus
+}
+
+/**
+ * RosterTimePunch - Recent clock activity
+ */
+export interface RosterTimePunch {
+  id: string
+  punch_type: 'in' | 'out'
+  punched_at: string
+  location_name: string | null
+}
+
+/**
+ * Department color mapping for badge styling
+ */
+export const DEPARTMENT_COLORS: Record<string, string> = {
+  'Surgery': '#E53935',
+  'Dentistry': '#1E88E5',
+  'Emergency': '#F57C00',
+  'General Practice': '#43A047',
+  'Radiology': '#8E24AA',
+  'Lab': '#00ACC1',
+  'Admin': '#6D4C41',
+  'Reception': '#EC407A',
+  'default': '#757575'
+}
+
+export function getDepartmentColor(departmentName: string | null | undefined): string {
+  if (!departmentName) return DEPARTMENT_COLORS.default
+  return DEPARTMENT_COLORS[departmentName] || DEPARTMENT_COLORS.default
+}
+
+// =====================================================
 // COMPOSITE TYPES FOR UI
 // =====================================================
 
