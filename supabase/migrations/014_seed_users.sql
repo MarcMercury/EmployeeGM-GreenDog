@@ -2,10 +2,12 @@
 -- SEED FILE: Create Auth Users and Profiles
 -- Run this in Supabase SQL Editor
 -- =====================================================
+-- Schema Note: profiles.auth_user_id links to auth.users.id
+-- profiles.id is auto-generated UUID (separate from auth user id)
+-- =====================================================
 
 -- =====================================================
--- STEP 1: Create Auth Users using Supabase's auth.users
--- NOTE: This uses Supabase's internal function to create users
+-- STEP 1: Create Auth Users
 -- =====================================================
 
 -- Create Marc Mercury (ADMIN)
@@ -75,11 +77,11 @@ VALUES (
 ON CONFLICT (email) DO NOTHING;
 
 -- =====================================================
--- STEP 2: Create Profiles (linked to auth.users)
+-- STEP 2: Create Profiles (using auth_user_id, not id)
 -- =====================================================
 
 -- Marc Mercury - ADMIN
-INSERT INTO profiles (id, email, first_name, last_name, role, created_at, updated_at)
+INSERT INTO profiles (auth_user_id, email, first_name, last_name, role, created_at, updated_at)
 SELECT 
   id,
   'Marc.H.Mercury@gmail.com',
@@ -90,14 +92,14 @@ SELECT
   NOW()
 FROM auth.users 
 WHERE email = 'Marc.H.Mercury@gmail.com'
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (auth_user_id) DO UPDATE SET
   role = 'admin',
   first_name = 'Marc',
   last_name = 'Mercury',
   updated_at = NOW();
 
 -- Crystal Barrom - USER (Employee level)
-INSERT INTO profiles (id, email, first_name, last_name, role, created_at, updated_at)
+INSERT INTO profiles (auth_user_id, email, first_name, last_name, role, created_at, updated_at)
 SELECT 
   id,
   'crystal.barrom@greendogdental.com',
@@ -108,14 +110,14 @@ SELECT
   NOW()
 FROM auth.users 
 WHERE email = 'crystal.barrom@greendogdental.com'
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (auth_user_id) DO UPDATE SET
   role = 'user',
   first_name = 'Crystal',
   last_name = 'Barrom',
   updated_at = NOW();
 
 -- =====================================================
--- STEP 3: Create identities (required for Supabase Auth)
+-- STEP 3: Create identities (required for Supabase Auth login)
 -- =====================================================
 
 INSERT INTO auth.identities (
@@ -142,35 +144,45 @@ WHERE email IN ('Marc.H.Mercury@gmail.com', 'crystal.barrom@greendogdental.com')
 ON CONFLICT (provider, provider_id) DO NOTHING;
 
 -- =====================================================
--- STEP 4: Link to Employees table (if records exist)
+-- STEP 4: Link Profiles to Employees table
 -- =====================================================
 
 UPDATE employees 
-SET profile_id = (SELECT id FROM auth.users WHERE email = 'Marc.H.Mercury@gmail.com')
-WHERE LOWER(first_name) = 'marc' AND LOWER(last_name) = 'mercury'
-  AND profile_id IS NULL;
+SET profile_id = p.id
+FROM profiles p
+JOIN auth.users u ON p.auth_user_id = u.id
+WHERE u.email = 'Marc.H.Mercury@gmail.com'
+  AND LOWER(employees.first_name) = 'marc' 
+  AND LOWER(employees.last_name) = 'mercury'
+  AND employees.profile_id IS NULL;
 
 UPDATE employees 
-SET profile_id = (SELECT id FROM auth.users WHERE email = 'crystal.barrom@greendogdental.com')
-WHERE LOWER(first_name) = 'crystal' AND LOWER(last_name) = 'barrom'
-  AND profile_id IS NULL;
+SET profile_id = p.id
+FROM profiles p
+JOIN auth.users u ON p.auth_user_id = u.id
+WHERE u.email = 'crystal.barrom@greendogdental.com'
+  AND LOWER(employees.first_name) = 'crystal' 
+  AND LOWER(employees.last_name) = 'barrom'
+  AND employees.profile_id IS NULL;
 
 -- =====================================================
 -- VERIFICATION
 -- =====================================================
 
 SELECT 
-  'AUTH USERS' as table_name,
+  'AUTH USERS' as source,
   email,
   created_at
 FROM auth.users 
 WHERE email IN ('Marc.H.Mercury@gmail.com', 'crystal.barrom@greendogdental.com');
 
 SELECT 
-  'PROFILES' as table_name,
-  email,
-  first_name,
-  last_name,
-  role
-FROM profiles 
+  'PROFILES' as source,
+  p.id,
+  p.email,
+  p.first_name,
+  p.last_name,
+  p.role,
+  p.auth_user_id
+FROM profiles p
 WHERE email IN ('Marc.H.Mercury@gmail.com', 'crystal.barrom@greendogdental.com');
