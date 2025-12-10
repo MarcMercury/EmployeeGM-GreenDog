@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useAuthStore } from './auth'
 
 // =====================================================
 // TYPES
@@ -132,9 +133,17 @@ interface AcademyState {
   currentLessons: TrainingLesson[]
   currentLessonIndex: number
   
+  // All data (for simpler component access)
+  lessons: TrainingLesson[]
+  enrollments: TrainingEnrollment[]
+  progress: TrainingProgress[]
+  quizzes: TrainingQuiz[]
+  quizAttempts: TrainingQuizAttempt[]
+  
   // Quiz state
   currentQuiz: TrainingQuiz | null
   currentQuestions: TrainingQuizQuestion[]
+  currentQuizQuestions: TrainingQuizQuestion[]
   quizAnswers: Record<string, string | string[]>
   quizStartTime: string | null
   lastAttempt: TrainingQuizAttempt | null
@@ -145,6 +154,7 @@ interface AcademyState {
   
   // UI state
   isLoading: boolean
+  loading: boolean // alias for isLoading
   error: string | null
 }
 
@@ -160,14 +170,21 @@ export const useAcademyStore = defineStore('academy', {
     currentCourse: null,
     currentLessons: [],
     currentLessonIndex: 0,
+    lessons: [],
+    enrollments: [],
+    progress: [],
+    quizzes: [],
+    quizAttempts: [],
     currentQuiz: null,
     currentQuestions: [],
+    currentQuizQuestions: [],
     quizAnswers: {},
     quizStartTime: null,
     lastAttempt: null,
     myEnrollments: [],
     myCertifications: [],
     isLoading: false,
+    loading: false,
     error: null
   }),
 
@@ -193,11 +210,20 @@ export const useAcademyStore = defineStore('academy', {
       return state.currentLessonIndex > 0
     },
 
-    // Calculate course progress
-    courseProgress: (state) => {
-      if (!state.currentLessons.length) return 0
-      const completed = state.currentLessons.filter(l => l.progress?.completed_at).length
-      return Math.round((completed / state.currentLessons.length) * 100)
+    // Calculate course progress - now a function getter for dynamic courseId
+    courseProgress: (state) => (courseId: string) => {
+      const courseLessons = state.lessons.filter(l => l.course_id === courseId)
+      if (!courseLessons.length) return 0
+      const completed = state.progress.filter(p => 
+        courseLessons.some(l => l.id === p.lesson_id) && p.completed_at
+      ).length
+      return Math.round((completed / courseLessons.length) * 100)
+    },
+
+    // Lesson progress getter
+    lessonProgress: (state) => (lessonId: string) => {
+      const prog = state.progress.find(p => p.lesson_id === lessonId)
+      return prog?.progress_percent || 0
     },
 
     // Lessons completed count
@@ -205,9 +231,9 @@ export const useAcademyStore = defineStore('academy', {
       return state.currentLessons.filter(l => l.progress?.completed_at).length
     },
 
-    // Get my assigned courses
-    assignedCourses: (state) => {
-      const enrolledIds = state.myEnrollments.map(e => e.course_id)
+    // Get my assigned courses (enrolled)
+    enrolledCourses: (state) => {
+      const enrolledIds = state.enrollments.map(e => e.course_id)
       return state.courses.filter(c => enrolledIds.includes(c.id))
     },
 
@@ -222,6 +248,22 @@ export const useAcademyStore = defineStore('academy', {
     // Get completed courses
     completedCourses: (state) => {
       return state.courses.filter(c => c.enrollment?.status === 'completed')
+    },
+
+    // Mandatory courses
+    mandatoryCourses: (state) => {
+      return state.courses.filter(c => c.is_required_for_role)
+    },
+
+    // Due courses count (enrollments with due_date approaching)
+    dueCoursesCount: (state) => {
+      const now = new Date()
+      const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      return state.enrollments.filter(e => {
+        if (!e.due_date || e.status === 'completed') return false
+        const dueDate = new Date(e.due_date)
+        return dueDate <= weekFromNow
+      }).length
     },
 
     // Check if all questions answered

@@ -1,9 +1,7 @@
 <template>
   <v-app-bar flat color="transparent" class="app-header">
-    <v-app-bar-nav-icon 
-      class="d-lg-none" 
-      @click="$emit('toggle-sidebar')"
-    />
+    <!-- Always show nav icon to toggle sidebar -->
+    <v-app-bar-nav-icon @click="$emit('toggle-sidebar')" />
 
     <v-toolbar-title class="d-none d-md-block">
       <slot name="title">
@@ -66,6 +64,17 @@
     <!-- Theme Toggle -->
     <v-btn icon class="mr-2" @click="toggleTheme">
       <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+    </v-btn>
+
+    <!-- Direct Sign Out Button (always visible) -->
+    <v-btn 
+      v-if="profile"
+      icon 
+      class="mr-2"
+      title="Sign Out"
+      @click="handleSignOut"
+    >
+      <v-icon>mdi-logout</v-icon>
     </v-btn>
 
     <!-- User Menu -->
