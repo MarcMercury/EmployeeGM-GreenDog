@@ -66,14 +66,20 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
+        console.log('[AuthStore] Making Supabase query...')
+        const startTime = Date.now()
+        
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('auth_user_id', authUserId)
           .single()
 
+        console.log('[AuthStore] Query completed in', Date.now() - startTime, 'ms')
+        console.log('[AuthStore] Response - data:', data, 'error:', error)
+
         if (error) {
-          console.error('[AuthStore] Profile fetch error:', error)
+          console.error('[AuthStore] Profile fetch error:', error.message, error.code, error.details)
           throw error
         }
         
