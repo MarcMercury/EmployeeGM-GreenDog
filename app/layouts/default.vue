@@ -1,23 +1,16 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
-const user = useSupabaseUser()
+const supabase = useSupabaseClient()
 
-// Fetch profile when user changes or on mount
-watch(user, async (newUser) => {
-  if (newUser && !authStore.profile) {
-    console.log('[Layout] User detected, fetching profile...')
-    await authStore.fetchProfile()
-    console.log('[Layout] Profile fetched:', authStore.profile)
-  }
-}, { immediate: true })
-
+// Fetch profile on mount using session directly
 onMounted(async () => {
-  if (user.value && !authStore.profile) {
-    console.log('[Layout] Mount: fetching profile for user', user.value.id)
-    await authStore.fetchProfile()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user && !authStore.profile) {
+    console.log('[Layout] Session found, fetching profile for:', session.user.email)
+    await authStore.fetchProfile(session.user.id)
   }
 })
 

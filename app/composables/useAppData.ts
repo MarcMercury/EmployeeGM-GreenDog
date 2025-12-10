@@ -124,12 +124,16 @@ export const useAppData = () => {
 
     try {
       // 1. IDENTITY CHECK: Who am I?
-      if (user.value) {
-        console.log('[useAppData] Fetching profile for user:', user.value.id)
+      // Get session directly to avoid race condition with useSupabaseUser()
+      const { data: { session } } = await client.auth.getSession()
+      const authUserId = session?.user?.id
+      
+      if (authUserId) {
+        console.log('[useAppData] Fetching profile for user:', authUserId)
         const { data: profile, error: profileError } = await client
           .from('profiles')
           .select('id, email, role, avatar_url, first_name, last_name, phone')
-          .eq('auth_user_id', user.value.id)
+          .eq('auth_user_id', authUserId)
           .single()
         
         console.log('[useAppData] Profile result:', profile, 'Error:', profileError)
@@ -141,7 +145,7 @@ export const useAppData = () => {
           console.log('[useAppData] isAdmin set to:', isAdmin.value)
         }
       } else {
-        console.log('[useAppData] No user, skipping profile fetch')
+        console.log('[useAppData] No session/user, skipping profile fetch')
       }
 
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed

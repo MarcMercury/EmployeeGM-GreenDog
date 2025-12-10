@@ -38,20 +38,25 @@ export const useAuthStore = defineStore('auth', {
       
       const user = useSupabaseUser()
       if (user.value && !this.profile) {
-        await this.fetchProfile()
+        await this.fetchProfile(user.value.id)
       }
       this.initialized = true
     },
 
-    async fetchProfile() {
+    async fetchProfile(userId?: string) {
       const supabase = useSupabaseClient()
       const user = useSupabaseUser()
+      
+      // Use passed userId or fall back to user.value.id
+      const authUserId = userId || user.value?.id
 
-      if (!user.value) {
+      if (!authUserId) {
+        console.log('[AuthStore] No user ID available, skipping profile fetch')
         this.profile = null
         return null
       }
 
+      console.log('[AuthStore] Fetching profile for auth_user_id:', authUserId)
       this.isLoading = true
       this.error = null
 
@@ -59,10 +64,15 @@ export const useAuthStore = defineStore('auth', {
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .eq('auth_user_id', user.value.id)
+          .eq('auth_user_id', authUserId)
           .single()
 
-        if (error) throw error
+        if (error) {
+          console.error('[AuthStore] Profile fetch error:', error)
+          throw error
+        }
+        
+        console.log('[AuthStore] Profile fetched successfully:', data)
         this.profile = data as Profile
         return this.profile
       } catch (err) {
