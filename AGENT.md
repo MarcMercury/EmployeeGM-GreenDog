@@ -5,6 +5,126 @@
 We are building a veterinary hospital management system ("Madden for Vets") for Green Dog Dental.
 Stack: Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth).
 
+---
+
+## 🚨 DEVELOPMENT STANDARDS (READ BEFORE ANY CHANGE)
+
+### Role: Full-Stack Expert
+
+You are operating as a **Senior Architect, Developer, UI/UX Expert, and Debugger** simultaneously. Before writing ANY code:
+
+1. **UNDERSTAND** the full context - read related files, check schema, trace data flow
+2. **PLAN** the complete solution - consider all edge cases, race conditions, error states
+3. **VERIFY** compatibility - check Nuxt 3 patterns, Supabase client access, Vue 3 Composition API
+4. **TEST** mentally - trace the code path from user action to database and back
+5. **VALIDATE** after changes - ensure no regressions, check for TypeScript errors
+
+### Critical Nuxt 3 + Supabase Patterns
+
+#### ❌ NEVER DO:
+```typescript
+// WRONG: Composables inside Pinia actions
+async fetchData() {
+  const supabase = useSupabaseClient() // FAILS - composable outside setup
+  const user = useSupabaseUser() // FAILS - ref may be undefined
+}
+```
+
+#### ✅ ALWAYS DO:
+```typescript
+// CORRECT: Access via nuxtApp in Pinia
+const getSupabase = () => useNuxtApp().$supabase
+
+// CORRECT: Get session directly, not via composable ref
+const { data: { session } } = await supabase.auth.getSession()
+const userId = session?.user?.id // Always defined if session exists
+```
+
+### Database Access Patterns
+
+#### Profile Lookup:
+```typescript
+// profiles.auth_user_id links to auth.users.id (NOT profiles.id)
+.eq('auth_user_id', userId)  // ✅ Correct
+.eq('id', userId)            // ❌ Wrong - different UUIDs
+```
+
+#### Employee Query with Relations:
+```typescript
+.from('employees')
+.select(`
+  id, first_name, last_name, email_work, hire_date,
+  profiles:profile_id ( id, avatar_url, role ),
+  job_positions:position_id ( id, title ),
+  departments:department_id ( id, name ),
+  employee_skills ( skill_id, level, is_goal, skill_library ( name, category ))
+`)
+```
+
+### State Management
+
+#### Global Data Layer: `useAppData()`
+- Uses `useState()` for SSR-safe singleton state
+- Fetches employees, skills, departments, positions, locations
+- Provides `currentUserProfile` and `isAdmin` for identity
+- Call `fetchGlobalData()` on app mount
+
+#### Auth Store Pattern:
+```typescript
+// Access Supabase safely in Pinia:
+const getSupabase = () => useNuxtApp().$supabase
+
+// Fetch profile with explicit userId (not composable ref):
+async fetchProfile(userId: string) {
+  const supabase = getSupabase()
+  const { data } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('auth_user_id', userId)
+    .single()
+}
+```
+
+### UI/UX Standards
+
+#### Personalization:
+- Use first name everywhere: "Good morning, Marc!"
+- Show role badge in sidebar: "⭐ Admin" or "Team Member"
+- Tailor page titles: "Marc's Stats", "Marc's Training"
+
+#### Tailwind Classes (Primary UI):
+- Use Tailwind for new components
+- Vuetify for complex components (dialogs, data tables)
+- Never mix inline styles with Tailwind
+
+#### Admin vs User Views:
+```vue
+<template v-if="isAdmin">
+  <!-- Admin-only content -->
+</template>
+```
+
+### Pre-Flight Checklist (Before Every Change)
+
+- [ ] Did I read the relevant store/composable code?
+- [ ] Did I check the database schema for correct column names?
+- [ ] Did I verify Supabase client access pattern (nuxtApp.$supabase)?
+- [ ] Did I handle loading, error, and empty states?
+- [ ] Did I use the correct foreign key relationship?
+- [ ] Will this work on first page load (no race conditions)?
+- [ ] Did I add console.log for debugging if complex?
+
+### Debugging Protocol
+
+When something doesn't work:
+1. **Check console** for errors (network, JS, Vue warnings)
+2. **Trace the data flow** - where does it break?
+3. **Verify Supabase** - run the query in SQL Editor
+4. **Check timing** - is data ready when component renders?
+5. **Validate schema** - are column names correct?
+
+---
+
 ### Design Philosophy
 
 - **"card" employee profile** as the central hub (portrait at top, stats below).
