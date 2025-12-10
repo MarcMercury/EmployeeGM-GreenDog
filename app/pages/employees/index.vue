@@ -1,39 +1,41 @@
 <template>
-  <div>
-    <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
+  <div class="employees-page">
+    <!-- Desktop-First Header with 12-col grid -->
+    <div class="page-header d-flex align-center justify-space-between mb-4">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Team</h1>
-        <p class="text-body-1 text-grey-darken-1">
-          {{ employees.length }} team members
+        <h1 class="text-h5 text-md-h4 font-weight-bold mb-1">Team Directory</h1>
+        <p class="text-body-2 text-grey-darken-1">
+          {{ filteredEmployees.length }} of {{ employees.length }} team members
         </p>
       </div>
       <v-btn
         v-if="isAdmin"
         color="primary"
         prepend-icon="mdi-plus"
+        size="default"
         @click="addEmployeeDialog = true"
       >
         Add Employee
       </v-btn>
     </div>
 
-    <!-- Filters -->
-    <v-card rounded="lg" class="mb-6">
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="4">
+    <!-- Desktop-First Filters (Dense Toolbar) -->
+    <v-card rounded="lg" class="mb-4 filter-card" elevation="1">
+      <v-card-text class="py-3">
+        <v-row dense align="center">
+          <v-col cols="12" sm="6" md="3" lg="3">
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
-              label="Search employees..."
+              placeholder="Search employees..."
               variant="outlined"
               density="compact"
               hide-details
               clearable
+              single-line
             />
           </v-col>
-          <v-col cols="12" md="3">
+          <v-col cols="6" sm="3" md="2" lg="2">
             <v-select
               v-model="filterRole"
               :items="roleOptions"
@@ -44,7 +46,7 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" md="3">
+          <v-col cols="6" sm="3" md="2" lg="2">
             <v-select
               v-model="filterDepartment"
               :items="departmentOptions"
@@ -55,31 +57,151 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" md="2">
-            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
-              <v-btn value="grid" icon="mdi-view-grid" />
-              <v-btn value="list" icon="mdi-view-list" />
+          <v-col cols="12" sm="12" md="3" lg="3" class="d-flex justify-end gap-2">
+            <!-- Desktop: Dense table view by default -->
+            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary" class="view-toggle">
+              <v-btn value="table" size="small">
+                <v-icon size="18">mdi-table</v-icon>
+                <span class="ml-1 d-none d-md-inline text-caption">Table</span>
+              </v-btn>
+              <v-btn value="grid" size="small">
+                <v-icon size="18">mdi-view-grid</v-icon>
+                <span class="ml-1 d-none d-md-inline text-caption">Cards</span>
+              </v-btn>
             </v-btn-toggle>
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              :loading="isLoading"
+              @click="refresh"
+            />
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-12">
+    <div v-if="isLoading && employees.length === 0" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" size="48" />
       <p class="text-grey mt-4">Loading team members...</p>
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredEmployees.length === 0" class="text-center py-12">
+    <div v-else-if="filteredEmployees.length === 0" class="text-center py-8">
       <v-icon size="64" color="grey-lighten-1">mdi-account-group</v-icon>
       <h3 class="text-h6 mt-4">No employees found</h3>
       <p class="text-grey">Try adjusting your search or filters</p>
     </div>
 
-    <!-- Grid View -->
-    <v-row v-else-if="viewMode === 'grid'">
+    <!-- DESKTOP-FIRST: Dense Data Table (default view) -->
+    <v-card v-else-if="viewMode === 'table'" rounded="lg" elevation="1" class="employee-table-card">
+      <v-data-table
+        :headers="tableHeaders"
+        :items="filteredEmployees"
+        :search="search"
+        :items-per-page="25"
+        :items-per-page-options="[10, 25, 50, 100]"
+        hover
+        density="comfortable"
+        class="employee-table desktop-dense-table"
+        @click:row="(_, { item }) => viewEmployee(item.id)"
+      >
+        <!-- Employee Name + Avatar -->
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-2 py-1">
+            <v-avatar size="32" :color="item.avatar_url ? undefined : 'primary'">
+              <v-img v-if="item.avatar_url" :src="item.avatar_url" />
+              <span v-else class="text-white text-caption font-weight-bold">
+                {{ item.initials }}
+              </span>
+            </v-avatar>
+            <div class="employee-name-cell">
+              <div class="font-weight-medium text-body-2">
+                {{ item.full_name }}
+              </div>
+              <div class="text-caption text-grey">{{ item.email }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Position + Department -->
+        <template #item.position="{ item }">
+          <div>
+            <div class="text-body-2">{{ item.position?.title || '—' }}</div>
+            <div v-if="item.department" class="text-caption text-grey">
+              {{ item.department.name }}
+            </div>
+          </div>
+        </template>
+
+        <!-- Hire Date + Tenure -->
+        <template #item.hire_date="{ item }">
+          <div v-if="item.hire_date">
+            <div class="text-body-2">{{ formatDate(item.hire_date) }}</div>
+            <div class="text-caption text-grey">{{ item.tenure_months }} mo</div>
+          </div>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <!-- Skills Summary -->
+        <template #item.skills="{ item }">
+          <div class="d-flex align-center gap-1">
+            <v-chip size="x-small" color="primary" variant="tonal">
+              {{ item.total_skills }} skills
+            </v-chip>
+            <v-chip v-if="item.avg_skill_level > 0" size="x-small" variant="outlined">
+              Avg {{ item.avg_skill_level }}
+            </v-chip>
+            <v-icon v-if="item.mentor_skills > 0" size="16" color="amber">mdi-star</v-icon>
+          </div>
+        </template>
+
+        <!-- Role Badge -->
+        <template #item.role="{ item }">
+          <v-chip 
+            :color="item.role === 'admin' ? 'purple' : 'blue'" 
+            size="x-small" 
+            variant="flat"
+          >
+            {{ item.role }}
+          </v-chip>
+        </template>
+
+        <!-- Status -->
+        <template #item.status="{ item }">
+          <v-chip 
+            :color="item.is_active ? 'success' : 'grey'" 
+            size="x-small" 
+            variant="flat"
+          >
+            {{ item.is_active ? 'Active' : 'Inactive' }}
+          </v-chip>
+        </template>
+
+        <!-- Actions -->
+        <template #item.actions="{ item }">
+          <div class="d-flex justify-end">
+            <v-btn
+              icon="mdi-eye"
+              size="x-small"
+              variant="text"
+              @click.stop="viewEmployee(item.id)"
+            />
+            <v-btn
+              v-if="isAdmin"
+              icon="mdi-pencil"
+              size="x-small"
+              variant="text"
+              @click.stop="editEmployee(item.id)"
+            />
+          </div>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- Mobile Card Grid View (fallback) -->
+    <v-row v-else class="card-grid">
       <v-col
         v-for="employee in filteredEmployees"
         :key="employee.id"
@@ -87,6 +209,7 @@
         sm="6"
         md="4"
         lg="3"
+        xl="2"
       >
         <EmployeeBaseballCard
           :profile="employee"
@@ -94,70 +217,6 @@
         />
       </v-col>
     </v-row>
-
-    <!-- List View -->
-    <v-card v-else rounded="lg">
-      <v-data-table
-        :headers="tableHeaders"
-        :items="filteredEmployees"
-        :search="search"
-        hover
-        class="employee-table"
-        @click:row="(_, { item }) => viewEmployee(item.id)"
-      >
-        <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3">
-            <v-avatar size="40" :color="item.avatar_url ? undefined : 'primary'">
-              <v-img v-if="item.avatar_url" :src="item.avatar_url" />
-              <span v-else class="text-white font-weight-bold">
-                {{ getInitials(item) }}
-              </span>
-            </v-avatar>
-            <div>
-              <div class="font-weight-medium">
-                {{ item.first_name }} {{ item.last_name }}
-              </div>
-              <div class="text-caption text-grey">{{ item.email }}</div>
-            </div>
-          </div>
-        </template>
-
-        <template #item.role="{ item }">
-          <v-chip :color="item.role === 'admin' ? 'purple' : 'blue'" size="small" variant="tonal">
-            {{ item.role }}
-          </v-chip>
-        </template>
-
-        <template #item.skills="{ item }">
-          <div class="d-flex align-center gap-1">
-            <span class="text-body-2">{{ item.employee_skills?.length || 0 }}</span>
-            <v-icon size="16" color="grey">mdi-star</v-icon>
-          </div>
-        </template>
-
-        <template #item.status="{ item }">
-          <v-chip :color="item.is_active ? 'success' : 'grey'" size="small" variant="flat">
-            {{ item.is_active ? 'Active' : 'Inactive' }}
-          </v-chip>
-        </template>
-
-        <template #item.actions="{ item }">
-          <v-btn
-            icon="mdi-eye"
-            size="small"
-            variant="text"
-            @click.stop="viewEmployee(item.id)"
-          />
-          <v-btn
-            v-if="isAdmin"
-            icon="mdi-pencil"
-            size="small"
-            variant="text"
-            @click.stop="editEmployee(item.id)"
-          />
-        </template>
-      </v-data-table>
-    </v-card>
 
     <!-- Add Employee Dialog -->
     <v-dialog v-model="addEmployeeDialog" max-width="600">
@@ -227,7 +286,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ProfileWithSkills } from '~/types/database.types'
+import type { HydratedEmployee } from '~/composables/useEmployeeData'
 
 definePageMeta({
   layout: 'default',
@@ -236,16 +295,23 @@ definePageMeta({
 
 const router = useRouter()
 const authStore = useAuthStore()
-const employeeStore = useEmployeeStore()
 const uiStore = useUIStore()
 
+// Use global employee data composable (hydration layer)
+const { 
+  employees, 
+  departments,
+  isLoading, 
+  refresh: refreshEmployeeData 
+} = useEmployeeData()
+
 const isAdmin = computed(() => authStore.isAdmin)
-const isLoading = computed(() => employeeStore.isLoading)
 
 const search = ref('')
 const filterRole = ref<string | null>(null)
 const filterDepartment = ref<string | null>(null)
-const viewMode = ref<'grid' | 'list'>('grid')
+// Desktop-first: Default to table view for high-density display
+const viewMode = ref<'table' | 'grid'>('table')
 
 const addEmployeeDialog = ref(false)
 const addFormRef = ref()
@@ -265,23 +331,23 @@ const roleOptions = [
   { title: 'User', value: 'user' }
 ]
 
-const departmentOptions = computed(() => {
-  // Will be populated from departments
-  return []
-})
+// Use departments from global hydration layer
+const departmentOptions = computed(() => 
+  departments.value.map(d => ({ title: d.name, value: d.id }))
+)
 
+// Desktop-first: More columns for dense information display
 const tableHeaders = [
-  { title: 'Employee', key: 'name', sortable: true },
-  { title: 'Position', key: 'position', sortable: true },
-  { title: 'Role', key: 'role', sortable: true },
-  { title: 'Skills', key: 'skills', sortable: false },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
+  { title: 'Employee', key: 'name', sortable: true, width: '220px' },
+  { title: 'Position', key: 'position', sortable: true, width: '180px' },
+  { title: 'Hire Date', key: 'hire_date', sortable: true, width: '120px' },
+  { title: 'Skills', key: 'skills', sortable: false, width: '150px' },
+  { title: 'Role', key: 'role', sortable: true, width: '80px' },
+  { title: 'Status', key: 'status', sortable: true, width: '80px' },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const, width: '80px' }
 ]
 
-const employees = computed(() => employeeStore.employees)
-
-const filteredEmployees = computed(() => {
+const filteredEmployees = computed((): HydratedEmployee[] => {
   let result = employees.value
 
   if (search.value) {
@@ -289,8 +355,9 @@ const filteredEmployees = computed(() => {
     result = result.filter(e =>
       e.first_name?.toLowerCase().includes(query) ||
       e.last_name?.toLowerCase().includes(query) ||
+      e.full_name.toLowerCase().includes(query) ||
       e.email.toLowerCase().includes(query) ||
-      e.position?.toLowerCase().includes(query)
+      e.position?.title?.toLowerCase().includes(query)
     )
   }
 
@@ -299,16 +366,18 @@ const filteredEmployees = computed(() => {
   }
 
   if (filterDepartment.value) {
-    result = result.filter(e => e.department_id === filterDepartment.value)
+    result = result.filter(e => e.department?.id === filterDepartment.value)
   }
 
   return result
 })
 
-function getInitials(employee: ProfileWithSkills): string {
-  const first = employee.first_name?.[0] || ''
-  const last = employee.last_name?.[0] || ''
-  return (first + last).toUpperCase() || employee.email[0].toUpperCase()
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: '2-digit' 
+  })
 }
 
 function viewEmployee(id: string) {
@@ -317,6 +386,10 @@ function viewEmployee(id: string) {
 
 function editEmployee(id: string) {
   router.push(`/employees/${id}/edit`)
+}
+
+async function refresh() {
+  await refreshEmployeeData()
 }
 
 async function createEmployee() {
@@ -334,7 +407,7 @@ async function createEmployee() {
     
     addEmployeeDialog.value = false
     uiStore.showSuccess('Employee created successfully')
-    await employeeStore.fetchEmployees()
+    await refreshEmployeeData()
     
     // Reset form
     Object.assign(newEmployee, {
@@ -351,18 +424,75 @@ async function createEmployee() {
     isSaving.value = false
   }
 }
-
-onMounted(() => {
-  employeeStore.fetchEmployees()
-})
 </script>
 
 <style scoped>
+.employees-page {
+  /* Desktop-first grid system */
+}
+
+/* Filter card - compact on desktop */
+.filter-card {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.v-theme--dark .filter-card {
+  background: rgba(30, 30, 40, 0.9);
+}
+
+/* Desktop-First: Dense Data Table Styling */
+.employee-table-card {
+  overflow: hidden;
+}
+
 .employee-table {
   cursor: pointer;
 }
 
-.employee-table :deep(tbody tr:hover) {
-  background-color: rgba(0, 0, 0, 0.02);
+.desktop-dense-table :deep(tbody tr) {
+  height: 48px; /* Dense row height */
+}
+
+.desktop-dense-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.04) !important;
+}
+
+.desktop-dense-table :deep(th) {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+.v-theme--dark .desktop-dense-table :deep(th) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.employee-name-cell {
+  min-width: 150px;
+}
+
+/* View toggle */
+.view-toggle {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Card grid for mobile fallback */
+.card-grid {
+  margin: -8px;
+}
+
+.card-grid > * {
+  padding: 8px;
+}
+
+/* Responsive: Show cards on mobile */
+@media (max-width: 959px) {
+  .employee-table-card {
+    display: none;
+  }
 }
 </style>

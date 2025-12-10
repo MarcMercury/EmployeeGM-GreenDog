@@ -50,6 +50,7 @@
           />
         </template>
         <v-list-item to="/employees" title="All Staff" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/employees?filter=admins" title="Admins" prepend-icon="mdi-shield-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>

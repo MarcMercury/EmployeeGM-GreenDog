@@ -145,6 +145,9 @@ const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
+// Global employee data hydration layer
+const { initialize: initializeEmployeeData } = useEmployeeData()
+
 // Reactive state - Desktop-first defaults
 const sidebarOpen = ref(true)
 const sidebarRail = ref(false)
@@ -162,11 +165,11 @@ const isAdmin = computed(() => authStore.isAdmin)
 const isMobile = computed(() => windowWidth.value < 960)
 const isTablet = computed(() => windowWidth.value >= 960 && windowWidth.value < 1280)
 
-// Calculate sidebar margin for main content - Desktop-first
+// Calculate sidebar margin for main content - Desktop-first (ml-64 = 256px)
 const sidebarMargin = computed(() => {
   if (isMobile.value) return '0px'
-  if (sidebarRail.value) return '72px' // Slightly wider rail for desktop
-  return '256px'
+  if (sidebarRail.value) return '72px' // Compact rail (w-18)
+  return '256px' // w-64 - Always push content next to sidebar
 })
 
 // Page metadata
@@ -302,6 +305,10 @@ onMounted(async () => {
     await authStore.fetchProfile()
   }
   
+  // Initialize global employee data hydration layer
+  // This fetches all employee data once and makes it available app-wide
+  await initializeEmployeeData()
+  
   // Window resize handler - Desktop-first
   const handleResize = () => {
     windowWidth.value = window.innerWidth
@@ -309,7 +316,7 @@ onMounted(async () => {
     if (windowWidth.value < 960) {
       sidebarOpen.value = false
     } else {
-      // Keep sidebar expanded on desktop
+      // Keep sidebar expanded on desktop - ALWAYS VISIBLE
       sidebarOpen.value = true
       sidebarRail.value = false
     }
@@ -344,7 +351,7 @@ watch(() => route.path, () => {
 .app-main {
   background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   min-height: 100vh;
-  transition: background 0.3s ease;
+  transition: margin-left 0.2s ease, background 0.3s ease;
 }
 
 .v-theme--dark .app-main {
@@ -352,8 +359,26 @@ watch(() => route.path, () => {
 }
 
 .page-container {
-  max-width: 1600px;
+  max-width: 1800px; /* Wider max-width for desktop-first */
   margin: 0 auto;
+}
+
+/* Desktop-First: High-density grid system */
+/* Mobile: Single column */
+/* Tablet: 6-column grid */
+/* Desktop: 12-column grid for complex layouts (3-col nav / 6-col content / 3-col details) */
+@media (min-width: 960px) {
+  .page-container {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page-container {
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+  }
 }
 
 /* Page Transitions */
@@ -419,5 +444,12 @@ watch(() => route.path, () => {
 .page-container::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 3px;
+}
+
+/* Desktop-first utility: ensure main content doesn't go behind sidebar */
+@media (min-width: 960px) {
+  .app-main {
+    margin-left: v-bind(sidebarMargin);
+  }
 }
 </style>
