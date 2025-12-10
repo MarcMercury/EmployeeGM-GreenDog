@@ -156,8 +156,8 @@
             </template>
 
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-eye" size="small" variant="text" />
-              <v-btn icon="mdi-pencil" size="small" variant="text" />
+              <v-btn icon="mdi-eye" size="small" variant="text" @click="viewLead(item)" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" @click="editLead(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -250,8 +250,73 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="addLeadDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="createLead">Add Lead</v-btn>
+          <v-btn variant="text" @click="closeLeadDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveLead">{{ editingLead ? 'Update' : 'Add Lead' }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- View Lead Dialog -->
+    <v-dialog v-model="viewLeadDialog" max-width="500">
+      <v-card v-if="selectedLead">
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-account</v-icon>
+          {{ selectedLead.name }}
+          <v-spacer />
+          <v-chip :color="getLeadStatusColor(selectedLead.status)" size="small" variant="tonal">
+            {{ selectedLead.status }}
+          </v-chip>
+        </v-card-title>
+        <v-card-text>
+          <v-list density="compact">
+            <v-list-item v-if="selectedLead.email">
+              <template #prepend>
+                <v-icon>mdi-email</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedLead.email }}</v-list-item-title>
+              <v-list-item-subtitle>Email</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item v-if="selectedLead.phone">
+              <template #prepend>
+                <v-icon>mdi-phone</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedLead.phone }}</v-list-item-title>
+              <v-list-item-subtitle>Phone</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item v-if="selectedLead.source">
+              <template #prepend>
+                <v-icon>mdi-source-branch</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedLead.source }}</v-list-item-title>
+              <v-list-item-subtitle>Source</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item v-if="selectedLead.notes">
+              <template #prepend>
+                <v-icon>mdi-note-text</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedLead.notes }}</v-list-item-title>
+              <v-list-item-subtitle>Notes</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+          
+          <v-divider class="my-3" />
+          
+          <div class="text-subtitle-2 mb-2">Update Status</div>
+          <v-chip-group v-model="selectedLead.status" mandatory @update:model-value="updateLeadStatus">
+            <v-chip value="new" color="info" variant="outlined">New</v-chip>
+            <v-chip value="contacted" color="warning" variant="outlined">Contacted</v-chip>
+            <v-chip value="qualified" color="primary" variant="outlined">Qualified</v-chip>
+            <v-chip value="converted" color="success" variant="outlined">Converted</v-chip>
+            <v-chip value="lost" color="error" variant="outlined">Lost</v-chip>
+          </v-chip-group>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" variant="text" @click="editLead(selectedLead)">
+            <v-icon start>mdi-pencil</v-icon>
+            Edit
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="viewLeadDialog = false">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -275,6 +340,9 @@ const leads = ref<Lead[]>([])
 
 const addCampaignDialog = ref(false)
 const addLeadDialog = ref(false)
+const viewLeadDialog = ref(false)
+const editingLead = ref<Lead | null>(null)
+const selectedLead = ref<Lead | null>(null)
 
 const campaignForm = reactive({
   name: '',
@@ -371,7 +439,29 @@ async function createCampaign() {
   }
 }
 
-async function createLead() {
+function viewLead(lead: Lead) {
+  selectedLead.value = { ...lead }
+  viewLeadDialog.value = true
+}
+
+function editLead(lead: Lead) {
+  editingLead.value = lead
+  leadForm.name = lead.name
+  leadForm.email = lead.email || ''
+  leadForm.phone = lead.phone || ''
+  leadForm.source = lead.source || ''
+  leadForm.notes = lead.notes || ''
+  viewLeadDialog.value = false
+  addLeadDialog.value = true
+}
+
+function closeLeadDialog() {
+  addLeadDialog.value = false
+  editingLead.value = null
+  Object.assign(leadForm, { name: '', email: '', phone: '', source: '', notes: '' })
+}
+
+async function saveLead() {
   if (!leadForm.name) {
     uiStore.showError('Lead name is required')
     return
@@ -379,27 +469,77 @@ async function createLead() {
 
   try {
     const supabase = useSupabaseClient()
-    const { data, error } = await supabase
-      .from('leads')
-      .insert({
-        name: leadForm.name,
-        email: leadForm.email || null,
-        phone: leadForm.phone || null,
-        source: leadForm.source || null,
-        notes: leadForm.notes || null
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-    leads.value.push(data as Lead)
-    addLeadDialog.value = false
-    uiStore.showSuccess('Lead added')
     
-    Object.assign(leadForm, { name: '', email: '', phone: '', source: '', notes: '' })
+    if (editingLead.value) {
+      // Update existing lead
+      const { error } = await supabase
+        .from('leads')
+        .update({
+          name: leadForm.name,
+          email: leadForm.email || null,
+          phone: leadForm.phone || null,
+          source: leadForm.source || null,
+          notes: leadForm.notes || null
+        })
+        .eq('id', editingLead.value.id)
+
+      if (error) throw error
+      
+      const idx = leads.value.findIndex(l => l.id === editingLead.value!.id)
+      if (idx !== -1) {
+        leads.value[idx] = { ...leads.value[idx], ...leadForm }
+      }
+      uiStore.showSuccess('Lead updated')
+    } else {
+      // Create new lead
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          name: leadForm.name,
+          email: leadForm.email || null,
+          phone: leadForm.phone || null,
+          source: leadForm.source || null,
+          notes: leadForm.notes || null
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      leads.value.push(data as Lead)
+      uiStore.showSuccess('Lead added')
+    }
+    
+    closeLeadDialog()
   } catch {
-    uiStore.showError('Failed to add lead')
+    uiStore.showError(editingLead.value ? 'Failed to update lead' : 'Failed to add lead')
   }
+}
+
+async function updateLeadStatus(newStatus: string) {
+  if (!selectedLead.value) return
+  
+  try {
+    const supabase = useSupabaseClient()
+    const { error } = await supabase
+      .from('leads')
+      .update({ status: newStatus })
+      .eq('id', selectedLead.value.id)
+    
+    if (error) throw error
+    
+    const idx = leads.value.findIndex(l => l.id === selectedLead.value!.id)
+    if (idx !== -1) {
+      leads.value[idx].status = newStatus
+    }
+    uiStore.showSuccess('Status updated')
+  } catch {
+    uiStore.showError('Failed to update status')
+  }
+}
+
+async function createLead() {
+  // Redirect to saveLead for backward compatibility
+  await saveLead()
 }
 
 onMounted(async () => {

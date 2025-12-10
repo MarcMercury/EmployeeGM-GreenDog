@@ -292,41 +292,231 @@
     </v-row>
 
     <!-- Quick Add Dialogs -->
-    <v-dialog v-model="showShiftDialog" max-width="400">
+    
+    <!-- Add Shift Dialog -->
+    <v-dialog v-model="showShiftDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title>Add Shift</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="primary" class="mr-2">mdi-calendar-plus</v-icon>
+          Quick Add Shift
+        </v-card-title>
         <v-card-text>
-          <p class="text-body-2 text-grey">Quick shift creation coming soon!</p>
+          <v-form ref="shiftFormRef" v-model="shiftFormValid">
+            <v-autocomplete
+              v-model="shiftForm.employee_id"
+              :items="employeeOptions"
+              item-title="name"
+              item-value="id"
+              label="Employee"
+              variant="outlined"
+              density="compact"
+              class="mb-3"
+              :rules="[v => !!v || 'Employee is required']"
+            />
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="shiftForm.date"
+                  label="Date"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Date is required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="shiftForm.shift_template_id"
+                  :items="shiftTemplates"
+                  item-title="name"
+                  item-value="id"
+                  label="Shift Template"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="shiftForm.start_time"
+                  label="Start Time"
+                  type="time"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Start time is required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="shiftForm.end_time"
+                  label="End Time"
+                  type="time"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'End time is required']"
+                />
+              </v-col>
+            </v-row>
+            <v-textarea
+              v-model="shiftForm.notes"
+              label="Notes (optional)"
+              variant="outlined"
+              density="compact"
+              rows="2"
+            />
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showShiftDialog = false">Close</v-btn>
+          <v-btn variant="text" @click="closeShiftDialog">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" :loading="savingShift" @click="saveQuickShift">
+            Create Shift
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="showEventDialog" max-width="400">
+    <!-- New Event Dialog -->
+    <v-dialog v-model="showEventDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title>New Event</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="secondary" class="mr-2">mdi-calendar-star</v-icon>
+          New Event
+        </v-card-title>
         <v-card-text>
-          <p class="text-body-2 text-grey">Event creation coming soon!</p>
+          <v-form ref="eventFormRef" v-model="eventFormValid">
+            <v-text-field
+              v-model="eventForm.name"
+              label="Event Name"
+              variant="outlined"
+              density="compact"
+              class="mb-3"
+              :rules="[v => !!v || 'Event name is required']"
+            />
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="eventForm.start_date"
+                  label="Start Date"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Start date is required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="eventForm.end_date"
+                  label="End Date"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+            <v-select
+              v-model="eventForm.event_type"
+              :items="['meeting', 'training', 'team_building', 'company_wide', 'other']"
+              label="Event Type"
+              variant="outlined"
+              density="compact"
+              class="mb-3"
+            />
+            <v-textarea
+              v-model="eventForm.description"
+              label="Description"
+              variant="outlined"
+              density="compact"
+              rows="3"
+            />
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showEventDialog = false">Close</v-btn>
+          <v-btn variant="text" @click="closeEventDialog">Cancel</v-btn>
+          <v-btn color="secondary" variant="flat" :loading="savingEvent" @click="saveQuickEvent">
+            Create Event
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="showIncidentDialog" max-width="400">
+    <!-- Log Incident Dialog -->
+    <v-dialog v-model="showIncidentDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title>Log Incident</v-card-title>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="warning" class="mr-2">mdi-alert-circle</v-icon>
+          Log Incident
+        </v-card-title>
         <v-card-text>
-          <p class="text-body-2 text-grey">Incident logging coming soon!</p>
+          <v-form ref="incidentFormRef" v-model="incidentFormValid">
+            <v-text-field
+              v-model="incidentForm.title"
+              label="Incident Title"
+              variant="outlined"
+              density="compact"
+              class="mb-3"
+              :rules="[v => !!v || 'Title is required']"
+            />
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="incidentForm.date"
+                  label="Date"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Date is required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="incidentForm.severity"
+                  :items="['low', 'medium', 'high', 'critical']"
+                  label="Severity"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Severity is required']"
+                />
+              </v-col>
+            </v-row>
+            <v-autocomplete
+              v-model="incidentForm.involved_employees"
+              :items="employeeOptions"
+              item-title="name"
+              item-value="id"
+              label="Involved Employees"
+              variant="outlined"
+              density="compact"
+              multiple
+              chips
+              closable-chips
+              class="mb-3"
+            />
+            <v-textarea
+              v-model="incidentForm.description"
+              label="Description"
+              variant="outlined"
+              density="compact"
+              rows="3"
+              :rules="[v => !!v || 'Description is required']"
+            />
+            <v-textarea
+              v-model="incidentForm.resolution"
+              label="Resolution / Action Taken"
+              variant="outlined"
+              density="compact"
+              rows="2"
+            />
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showIncidentDialog = false">Close</v-btn>
+          <v-btn variant="text" @click="closeIncidentDialog">Cancel</v-btn>
+          <v-btn color="warning" variant="flat" :loading="savingIncident" @click="saveQuickIncident">
+            Log Incident
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -339,6 +529,7 @@ definePageMeta({
   middleware: ['auth']
 })
 
+const supabase = useSupabaseClient()
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const dashboardStore = useDashboardStore()
@@ -360,17 +551,238 @@ const showShiftDialog = ref(false)
 const showEventDialog = ref(false)
 const showIncidentDialog = ref(false)
 
+// Form refs and validation
+const shiftFormRef = ref()
+const eventFormRef = ref()
+const incidentFormRef = ref()
+const shiftFormValid = ref(false)
+const eventFormValid = ref(false)
+const incidentFormValid = ref(false)
+
+// Loading states
+const savingShift = ref(false)
+const savingEvent = ref(false)
+const savingIncident = ref(false)
+
+// Form data
+const shiftForm = reactive({
+  employee_id: null as string | null,
+  date: new Date().toISOString().split('T')[0],
+  shift_template_id: null as string | null,
+  start_time: '09:00',
+  end_time: '17:30',
+  notes: ''
+})
+
+const eventForm = reactive({
+  name: '',
+  start_date: new Date().toISOString().split('T')[0],
+  end_date: '',
+  event_type: 'meeting',
+  description: ''
+})
+
+const incidentForm = reactive({
+  title: '',
+  date: new Date().toISOString().split('T')[0],
+  severity: 'low',
+  involved_employees: [] as string[],
+  description: '',
+  resolution: ''
+})
+
+// Options data
+const employeeOptions = ref<{ id: string; name: string }[]>([])
+const shiftTemplates = ref<{ id: string; name: string }[]>([])
+
+// Load options when dialogs open
+watch(showShiftDialog, async (val) => {
+  if (val && employeeOptions.value.length === 0) {
+    await loadEmployeeOptions()
+    await loadShiftTemplates()
+  }
+})
+
+watch(showEventDialog, async (val) => {
+  if (val) resetEventForm()
+})
+
+watch(showIncidentDialog, async (val) => {
+  if (val && employeeOptions.value.length === 0) {
+    await loadEmployeeOptions()
+  }
+})
+
+async function loadEmployeeOptions() {
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .eq('is_active', true)
+    .order('first_name')
+  
+  if (data) {
+    employeeOptions.value = data.map(e => ({
+      id: e.id,
+      name: `${e.first_name} ${e.last_name}`
+    }))
+  }
+}
+
+async function loadShiftTemplates() {
+  const { data } = await supabase
+    .from('shift_templates')
+    .select('id, name')
+    .order('name')
+  
+  if (data) {
+    shiftTemplates.value = data
+  }
+}
+
 // Quick action handlers
 function quickAddShift() {
+  resetShiftForm()
   showShiftDialog.value = true
 }
 
 function quickAddEvent() {
+  resetEventForm()
   showEventDialog.value = true
 }
 
 function quickLogIncident() {
+  resetIncidentForm()
   showIncidentDialog.value = true
+}
+
+// Reset form functions
+function resetShiftForm() {
+  shiftForm.employee_id = null
+  shiftForm.date = new Date().toISOString().split('T')[0]
+  shiftForm.shift_template_id = null
+  shiftForm.start_time = '09:00'
+  shiftForm.end_time = '17:30'
+  shiftForm.notes = ''
+}
+
+function resetEventForm() {
+  eventForm.name = ''
+  eventForm.start_date = new Date().toISOString().split('T')[0]
+  eventForm.end_date = ''
+  eventForm.event_type = 'meeting'
+  eventForm.description = ''
+}
+
+function resetIncidentForm() {
+  incidentForm.title = ''
+  incidentForm.date = new Date().toISOString().split('T')[0]
+  incidentForm.severity = 'low'
+  incidentForm.involved_employees = []
+  incidentForm.description = ''
+  incidentForm.resolution = ''
+}
+
+// Close dialogs
+function closeShiftDialog() {
+  showShiftDialog.value = false
+  resetShiftForm()
+}
+
+function closeEventDialog() {
+  showEventDialog.value = false
+  resetEventForm()
+}
+
+function closeIncidentDialog() {
+  showIncidentDialog.value = false
+  resetIncidentForm()
+}
+
+// Save functions
+async function saveQuickShift() {
+  if (shiftFormRef.value) {
+    const { valid } = await shiftFormRef.value.validate()
+    if (!valid) return
+  }
+  
+  savingShift.value = true
+  try {
+    const { error } = await supabase.from('schedules').insert({
+      employee_id: shiftForm.employee_id,
+      date: shiftForm.date,
+      shift_template_id: shiftForm.shift_template_id,
+      start_time: shiftForm.start_time,
+      end_time: shiftForm.end_time,
+      notes: shiftForm.notes || null,
+      status: 'scheduled',
+      created_by: authStore.profile?.id
+    })
+    
+    if (error) throw error
+    
+    closeShiftDialog()
+    // Refresh dashboard data
+    await dashboardStore.fetchDashboardData()
+  } catch (err) {
+    console.error('Error creating shift:', err)
+  } finally {
+    savingShift.value = false
+  }
+}
+
+async function saveQuickEvent() {
+  if (eventFormRef.value) {
+    const { valid } = await eventFormRef.value.validate()
+    if (!valid) return
+  }
+  
+  savingEvent.value = true
+  try {
+    const { error } = await supabase.from('events').insert({
+      name: eventForm.name,
+      start_date: eventForm.start_date,
+      end_date: eventForm.end_date || eventForm.start_date,
+      event_type: eventForm.event_type,
+      description: eventForm.description || null,
+      created_by: authStore.profile?.id
+    })
+    
+    if (error) throw error
+    
+    closeEventDialog()
+  } catch (err) {
+    console.error('Error creating event:', err)
+  } finally {
+    savingEvent.value = false
+  }
+}
+
+async function saveQuickIncident() {
+  if (incidentFormRef.value) {
+    const { valid } = await incidentFormRef.value.validate()
+    if (!valid) return
+  }
+  
+  savingIncident.value = true
+  try {
+    const { error } = await supabase.from('incidents').insert({
+      title: incidentForm.title,
+      incident_date: incidentForm.date,
+      severity: incidentForm.severity,
+      description: incidentForm.description,
+      resolution: incidentForm.resolution || null,
+      reported_by: authStore.profile?.id,
+      status: incidentForm.resolution ? 'resolved' : 'open'
+    })
+    
+    if (error) throw error
+    
+    closeIncidentDialog()
+  } catch (err) {
+    console.error('Error logging incident:', err)
+  } finally {
+    savingIncident.value = false
+  }
 }
 
 // Use real data from store

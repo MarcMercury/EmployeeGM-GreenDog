@@ -90,6 +90,23 @@
       </v-list-group>
       <v-list-item v-else to="/my-ops" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
 
+      <!-- Performance & Reviews Group -->
+      <v-list-group v-if="!rail" value="performance">
+        <template #activator="{ props }">
+          <v-list-item
+            v-bind="props"
+            prepend-icon="mdi-chart-timeline-variant"
+            title="Performance"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/goals" title="My Goals" prepend-icon="mdi-flag" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/reviews" title="Reviews" prepend-icon="mdi-clipboard-check" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/feedback" title="Feedback" prepend-icon="mdi-message-text" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else to="/goals" prepend-icon="mdi-chart-timeline-variant" title="Performance" rounded="lg" class="nav-item mb-1" />
+
       <!-- Growth Group (Admin Only) -->
       <template v-if="isAdmin">
         <v-list-group v-if="!rail" value="growth">

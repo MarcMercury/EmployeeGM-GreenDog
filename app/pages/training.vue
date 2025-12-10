@@ -171,8 +171,8 @@
               </v-chip>
             </template>
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-pencil" size="small" variant="text" />
-              <v-btn icon="mdi-delete" size="small" variant="text" color="error" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" @click="editCourse(item)" />
+              <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDeleteCourse(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -182,7 +182,7 @@
     <!-- Create Course Dialog -->
     <v-dialog v-model="createCourseDialog" max-width="600">
       <v-card>
-        <v-card-title>Create New Course</v-card-title>
+        <v-card-title>{{ editingCourse ? 'Edit Course' : 'Create New Course' }}</v-card-title>
         <v-card-text>
           <v-text-field
             v-model="courseForm.title"
@@ -231,8 +231,23 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="createCourseDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="createCourse">Create</v-btn>
+          <v-btn variant="text" @click="closeCourseDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveCourse">{{ editingCourse ? 'Update' : 'Create' }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="400">
+      <v-card>
+        <v-card-title class="text-error">Delete Course</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete "{{ courseToDelete?.title }}"? This action cannot be undone.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" @click="deleteCourse">Delete</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -258,6 +273,10 @@ const courses = ref<TrainingCourse[]>([])
 const myEnrollments = ref<(TrainingEnrollment & { course?: TrainingCourse; progress: number })[]>([])
 
 const createCourseDialog = ref(false)
+const deleteDialog = ref(false)
+const editingCourse = ref<TrainingCourse | null>(null)
+const courseToDelete = ref<TrainingCourse | null>(null)
+
 const courseForm = reactive({
   title: '',
   description: '',
@@ -307,7 +326,36 @@ async function enrollCourse(courseId: string) {
   uiStore.showInfo('Feature coming soon')
 }
 
-async function createCourse() {
+function editCourse(course: TrainingCourse) {
+  editingCourse.value = course
+  courseForm.title = course.title
+  courseForm.description = course.description || ''
+  courseForm.category = course.category || ''
+  courseForm.difficulty_level = course.difficulty_level || 'beginner'
+  courseForm.estimated_hours = course.estimated_hours
+  courseForm.is_required = course.is_required || false
+  createCourseDialog.value = true
+}
+
+function confirmDeleteCourse(course: TrainingCourse) {
+  courseToDelete.value = course
+  deleteDialog.value = true
+}
+
+function closeCourseDialog() {
+  createCourseDialog.value = false
+  editingCourse.value = null
+  Object.assign(courseForm, {
+    title: '',
+    description: '',
+    category: '',
+    difficulty_level: 'beginner',
+    estimated_hours: null,
+    is_required: false
+  })
+}
+
+async function saveCourse() {
   if (!courseForm.title) {
     uiStore.showError('Course title is required')
     return
@@ -315,36 +363,80 @@ async function createCourse() {
   
   try {
     const supabase = useSupabaseClient()
-    const { data, error } = await supabase
+    
+    if (editingCourse.value) {
+      // Update existing course
+      const { error } = await supabase
+        .from('training_courses')
+        .update({
+          title: courseForm.title,
+          description: courseForm.description || null,
+          category: courseForm.category || null,
+          difficulty_level: courseForm.difficulty_level,
+          estimated_hours: courseForm.estimated_hours,
+          is_required: courseForm.is_required
+        })
+        .eq('id', editingCourse.value.id)
+      
+      if (error) throw error
+      
+      // Update local list
+      const idx = courses.value.findIndex(c => c.id === editingCourse.value!.id)
+      if (idx !== -1) {
+        courses.value[idx] = { ...courses.value[idx], ...courseForm }
+      }
+      uiStore.showSuccess('Course updated')
+    } else {
+      // Create new course
+      const { data, error } = await supabase
+        .from('training_courses')
+        .insert({
+          title: courseForm.title,
+          description: courseForm.description || null,
+          category: courseForm.category || null,
+          difficulty_level: courseForm.difficulty_level,
+          estimated_hours: courseForm.estimated_hours,
+          is_required: courseForm.is_required,
+          created_by: authStore.profile?.id
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      courses.value.push(data as TrainingCourse)
+      uiStore.showSuccess('Course created')
+    }
+    
+    closeCourseDialog()
+  } catch {
+    uiStore.showError(editingCourse.value ? 'Failed to update course' : 'Failed to create course')
+  }
+}
+
+async function deleteCourse() {
+  if (!courseToDelete.value) return
+  
+  try {
+    const supabase = useSupabaseClient()
+    const { error } = await supabase
       .from('training_courses')
-      .insert({
-        title: courseForm.title,
-        description: courseForm.description || null,
-        category: courseForm.category || null,
-        difficulty_level: courseForm.difficulty_level,
-        estimated_hours: courseForm.estimated_hours,
-        is_required: courseForm.is_required,
-        created_by: authStore.profile?.id
-      })
-      .select()
-      .single()
+      .update({ is_active: false })
+      .eq('id', courseToDelete.value.id)
     
     if (error) throw error
-    courses.value.push(data as TrainingCourse)
-    createCourseDialog.value = false
-    uiStore.showSuccess('Course created')
     
-    Object.assign(courseForm, {
-      title: '',
-      description: '',
-      category: '',
-      difficulty_level: 'beginner',
-      estimated_hours: null,
-      is_required: false
-    })
+    courses.value = courses.value.filter(c => c.id !== courseToDelete.value!.id)
+    deleteDialog.value = false
+    courseToDelete.value = null
+    uiStore.showSuccess('Course deleted')
   } catch {
-    uiStore.showError('Failed to create course')
+    uiStore.showError('Failed to delete course')
   }
+}
+
+async function createCourse() {
+  // Redirect to saveCourse for backward compatibility
+  await saveCourse()
 }
 
 onMounted(async () => {
