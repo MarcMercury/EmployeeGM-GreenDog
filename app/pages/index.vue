@@ -274,7 +274,7 @@ const navigateTo = (path: string) => router.push(path)
               v-for="mentor in topMentors" 
               :key="mentor.id"
               class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition cursor-pointer"
-              @click="navigateTo(\`/employees/\${mentor.id}\`)"
+              @click="navigateTo('/employees/' + mentor.id)"
             >
               <div class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-bold">
                 {{ mentor.initials }}
@@ -307,7 +307,7 @@ const navigateTo = (path: string) => router.push(path)
             v-for="hire in recentHires" 
             :key="hire.id"
             class="flex-shrink-0 w-48 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-            @click="navigateTo(\`/employees/\${hire.id}\`)"
+            @click="navigateTo('/employees/' + hire.id)"
           >
             <div class="flex items-center gap-3 mb-2">
               <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-bold">
