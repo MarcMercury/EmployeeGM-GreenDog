@@ -71,19 +71,45 @@ export const useEmployeeStore = defineStore('employee', {
       this.error = null
 
       try {
+        // Fetch from employees table with all related data
         const { data, error } = await supabase
-          .from('profiles')
+          .from('employees')
           .select(`
             *,
+            profile:profiles!employees_profile_id_fkey (*),
+            department:departments (*),
+            position:job_positions (*),
+            location:locations (*),
             employee_skills (
               *,
-              skill:skills (*)
+              skill:skill_library (*)
             )
           `)
+          .eq('employment_status', 'active')
           .order('last_name')
 
         if (error) throw error
-        this.employees = data as ProfileWithSkills[]
+        
+        // Transform to ProfileWithSkills format for backward compatibility
+        this.employees = (data || []).map(emp => ({
+          id: emp.profile?.id || emp.id,
+          email: emp.profile?.email || emp.email_work || '',
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          role: emp.profile?.role || 'user',
+          avatar_url: emp.profile?.avatar_url || null,
+          phone: emp.phone_mobile || emp.phone_work || emp.profile?.phone || null,
+          is_active: emp.employment_status === 'active',
+          created_at: emp.created_at,
+          updated_at: emp.updated_at,
+          position: emp.position?.title || null,
+          department: emp.department,
+          location: emp.location,
+          hire_date: emp.hire_date,
+          employee_skills: emp.employee_skills || [],
+          // Keep raw employee data for reference
+          employee: emp
+        })) as ProfileWithSkills[]
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch employees'
         console.error('Error fetching employees:', err)
@@ -99,20 +125,46 @@ export const useEmployeeStore = defineStore('employee', {
       this.error = null
 
       try {
+        // Try to find employee by profile_id first
         const { data, error } = await supabase
-          .from('profiles')
+          .from('employees')
           .select(`
             *,
+            profile:profiles!employees_profile_id_fkey (*),
+            department:departments (*),
+            position:job_positions (*),
+            location:locations (*),
             employee_skills (
               *,
-              skill:skills (*)
+              skill:skill_library (*)
             )
           `)
-          .eq('id', id)
+          .eq('profile_id', id)
           .single()
 
         if (error) throw error
-        this.selectedEmployee = data as ProfileWithSkills
+        
+        // Transform to ProfileWithSkills format
+        const emp = data
+        this.selectedEmployee = {
+          id: emp.profile?.id || emp.id,
+          email: emp.profile?.email || emp.email_work || '',
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          role: emp.profile?.role || 'user',
+          avatar_url: emp.profile?.avatar_url || null,
+          phone: emp.phone_mobile || emp.phone_work || emp.profile?.phone || null,
+          is_active: emp.employment_status === 'active',
+          created_at: emp.created_at,
+          updated_at: emp.updated_at,
+          position: emp.position?.title || null,
+          department: emp.department,
+          location: emp.location,
+          hire_date: emp.hire_date,
+          employee_skills: emp.employee_skills || [],
+          employee: emp
+        } as ProfileWithSkills
+        
         return this.selectedEmployee
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch employee'
@@ -127,7 +179,7 @@ export const useEmployeeStore = defineStore('employee', {
       
       try {
         const { data, error } = await supabase
-          .from('skills')
+          .from('skill_library')
           .select('*')
           .eq('is_active', true)
           .order('category')

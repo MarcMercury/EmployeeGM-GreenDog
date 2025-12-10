@@ -22,13 +22,17 @@ export type ReferralTier = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 export interface Profile {
   id: string
+  auth_user_id?: string | null
   email: string
   first_name: string | null
   last_name: string | null
   role: UserRole
   avatar_url: string | null
-  bio: string | null
-  job_title: string | null
+  bio?: string | null
+  job_title?: string | null
+  phone?: string | null
+  is_active: boolean
+  last_login_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -142,6 +146,7 @@ export interface Skill {
   description: string | null
   max_level: number
   icon: string | null
+  is_active?: boolean
   created_at: string
   updated_at: string
 }
@@ -602,8 +607,34 @@ export interface EmployeePaySetting {
 // =====================================================
 
 export interface ProfileWithSkills extends Profile {
-  skills: UserSkillWithDetails[]
-  employee?: EmployeeWithProfile | null
+  // Skills can come as employee_skills from join
+  skills?: UserSkillWithDetails[]
+  employee_skills?: EmployeeSkillWithDetails[]
+  // Employee data from join
+  employee?: EmployeeWithDepartment | null
+  // Flattened fields for convenience (may come from employee join)
+  department?: Department | null
+  position?: JobPosition | string | null
+  location?: Location | null
+  hire_date?: string | null
+}
+
+export interface EmployeeSkillWithDetails {
+  id: string
+  profile_id?: string
+  employee_id?: string
+  skill_id: string
+  level: SkillLevel
+  notes?: string | null
+  created_at: string
+  updated_at: string
+  skill?: Skill | null
+}
+
+export interface EmployeeWithDepartment extends Employee {
+  department?: Department | null
+  position?: JobPosition | null
+  location?: Location | null
 }
 
 export interface DashboardStats {
