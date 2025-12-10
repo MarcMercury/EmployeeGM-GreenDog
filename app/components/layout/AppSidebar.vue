@@ -8,6 +8,7 @@
     :rail-width="80"
     color="grey-darken-4"
     class="app-sidebar"
+    :style="{ display: 'flex !important', visibility: 'visible !important' }"
   >
     <!-- Logo/Header -->
     <div class="sidebar-header pa-4">
@@ -192,41 +193,36 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 interface Props {
   modelValue: boolean
   rail: boolean
+  temporary: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: true,
+  rail: false,
+  temporary: false
+})
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'update:rail': [value: boolean]
 }>()
 
-// Local state for drawer
+// Local state for drawer - always true on desktop (permanent)
 const drawerOpen = computed({
-  get: () => props.modelValue,
+  get: () => {
+    // On desktop (permanent mode), always return true
+    if (!props.temporary) return true
+    return props.modelValue
+  },
   set: (val) => emit('update:modelValue', val)
 })
 
-// Desktop-first: mobile only below 960px
-const windowWidth = ref(1920)
-const isMobile = computed(() => windowWidth.value < 960)
-
-function handleResize() {
-  windowWidth.value = window.innerWidth
-}
-
-onMounted(() => {
-  windowWidth.value = window.innerWidth
-  window.addEventListener('resize', handleResize)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
+// Use prop for mobile detection (passed from parent for consistency)
+const isMobile = computed(() => props.temporary)
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -246,6 +242,18 @@ async function handleSignOut() {
 .app-sidebar {
   border: none !important;
   z-index: 1000 !important;
+  display: flex !important;
+  visibility: visible !important;
+}
+
+/* Ensure sidebar is visible on desktop */
+@media (min-width: 960px) {
+  .app-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    position: fixed !important;
+    height: 100vh !important;
+  }
 }
 
 .sidebar-header {

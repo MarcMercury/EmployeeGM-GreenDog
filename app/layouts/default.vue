@@ -1,12 +1,18 @@
 <template>
   <v-app :theme="isDark ? 'dark' : 'light'">
-    <!-- Premium Sidebar Navigation -->
-    <AppSidebar
-      v-model="sidebarOpen"
-      :rail="!isMobile && sidebarRail"
-      :temporary="isMobile"
-      @update:rail="sidebarRail = $event"
-    />
+    <!-- Premium Sidebar Navigation - Always visible on desktop -->
+    <ClientOnly>
+      <AppSidebar
+        v-model="sidebarOpen"
+        :rail="!isMobile && sidebarRail"
+        :temporary="isMobile"
+        @update:rail="sidebarRail = $event"
+      />
+      <template #fallback>
+        <!-- Placeholder during SSR to prevent layout shift -->
+        <div style="width: 280px; height: 100vh; background: #212121; position: fixed; left: 0; top: 0;"></div>
+      </template>
+    </ClientOnly>
     
     <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
       <!-- Premium App Bar -->
