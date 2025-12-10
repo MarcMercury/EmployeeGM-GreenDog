@@ -2,18 +2,11 @@
   <v-app :theme="isDark ? 'dark' : 'light'">
     <!-- Premium Sidebar Navigation - Always visible on desktop -->
     <AppSidebar
-      v-if="isClient"
       v-model="sidebarOpen"
       :rail="!isMobile && sidebarRail"
       :temporary="isMobile"
       @update:rail="sidebarRail = $event"
     />
-    <!-- SSR fallback sidebar placeholder -->
-    <div 
-      v-else 
-      class="ssr-sidebar-placeholder"
-      :style="{ width: '280px', height: '100vh', background: '#212121', position: 'fixed', left: 0, top: 0, zIndex: 1000 }"
-    ></div>
     
     <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
       <!-- Premium App Bar -->
@@ -151,9 +144,6 @@ const uiStore = useUIStore()
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-
-// Client-side rendering detection
-const isClient = ref(false)
 
 // Reactive state - Desktop-first defaults
 const sidebarOpen = ref(true)
@@ -304,9 +294,6 @@ function handleKeydown(e: KeyboardEvent) {
 
 // Lifecycle
 onMounted(async () => {
-  // Mark as client-side rendered
-  isClient.value = true
-  
   // Initialize window width
   windowWidth.value = window.innerWidth
   

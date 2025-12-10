@@ -7,7 +7,7 @@
       </div>
     </div>
 
-    <v-card class="login-card mx-auto" max-width="450" rounded="xl" elevation="24">
+    <v-card class="login-card mx-auto" max-width="520" rounded="xl" elevation="24">
       <!-- Glowing Header Section -->
       <div class="card-header text-center pa-8 pb-6">
         <!-- Animated Paw Logo -->
@@ -369,21 +369,33 @@ async function handleSubmit() {
   }
 }
 
-/* Typography */
+/* Typography - Desktop-first sizing */
 .main-title {
-  font-size: 1.75rem;
+  font-size: 2.25rem;
   font-weight: 800;
   color: white;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   line-height: 1.3;
 }
 
+@media (max-width: 960px) {
+  .main-title {
+    font-size: 1.75rem;
+  }
+}
+
 .title-accent {
   display: block;
-  font-size: 1.1rem;
+  font-size: 1.35rem;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
   letter-spacing: 0.5px;
+}
+
+@media (max-width: 960px) {
+  .title-accent {
+    font-size: 1.1rem;
+  }
 }
 
 .sub-header {
