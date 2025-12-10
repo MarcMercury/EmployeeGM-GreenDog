@@ -18,18 +18,16 @@ export default defineNuxtConfig({
   // Modules
   modules: [
     '@nuxtjs/supabase',
-    '@pinia/nuxt',
-    '@pinia-plugin-persistedstate/nuxt'
+    '@pinia/nuxt'
   ],
 
-  // Supabase configuration - handles auth automatically
+  // Supabase configuration
   supabase: {
-    redirect: true,
     redirectOptions: {
       login: '/auth/login',
       callback: '/auth/confirm',
       include: undefined,
-      exclude: ['/auth/*', '/auth/login', '/auth/register'],
+      exclude: ['/auth/*'],
       cookieRedirect: false
     }
   },

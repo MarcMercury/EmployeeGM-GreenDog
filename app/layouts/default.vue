@@ -1,111 +1,14 @@
 <template>
   <v-app :theme="isDark ? 'dark' : 'light'">
-    <!-- Sidebar Navigation -->
-    <v-navigation-drawer
+    <!-- Premium Sidebar Navigation -->
+    <AppSidebar
       v-model="sidebarOpen"
-      :rail="sidebarRail && !isMobile"
+      :rail="!isMobile && sidebarRail"
       :temporary="isMobile"
-      :permanent="!isMobile"
-      color="primary"
-      class="app-sidebar"
-      width="256"
-    >
-      <!-- Logo/Header -->
-      <div class="sidebar-header pa-4">
-        <div class="d-flex align-center gap-3">
-          <v-avatar color="white" size="40">
-            <v-icon color="primary" size="24">mdi-paw</v-icon>
-          </v-avatar>
-          <div v-if="!sidebarRail || isMobile" class="text-white">
-            <div class="text-subtitle-1 font-weight-bold">Employee GM</div>
-            <div class="text-caption opacity-70">Green Dog Dental</div>
-          </div>
-        </div>
-      </div>
-
-      <v-divider class="opacity-30" />
-
-      <!-- Navigation Items -->
-      <v-list nav density="comfortable" class="px-2 mt-2">
-        <v-list-item
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          :prepend-icon="item.icon"
-          :title="sidebarRail && !isMobile ? '' : item.title"
-          rounded="lg"
-          class="nav-item mb-1"
-          color="white"
-        >
-          <v-tooltip v-if="sidebarRail && !isMobile" activator="parent" location="end">
-            {{ item.title }}
-          </v-tooltip>
-        </v-list-item>
-      </v-list>
-
-      <template #append>
-        <v-divider class="opacity-30" />
-        
-        <!-- User Section -->
-        <div class="pa-4">
-          <v-list-item
-            v-if="profile"
-            class="pa-0 nav-item"
-            rounded="lg"
-            to="/profile"
-          >
-            <template #prepend>
-              <v-avatar size="36" color="white">
-                <v-img v-if="profile.avatar_url" :src="profile.avatar_url" />
-                <span v-else class="text-primary font-weight-bold text-body-2">{{ initials }}</span>
-              </v-avatar>
-            </template>
-            <v-list-item-title v-if="!sidebarRail || isMobile" class="text-white text-body-2">
-              {{ fullName }}
-            </v-list-item-title>
-            <v-list-item-subtitle v-if="!sidebarRail || isMobile" class="text-white opacity-70 text-caption">
-              {{ profile.role || 'Employee' }}
-            </v-list-item-subtitle>
-          </v-list-item>
-
-          <!-- Sign Out -->
-          <v-btn
-            v-if="!sidebarRail || isMobile"
-            variant="outlined"
-            color="white"
-            block
-            class="mt-3"
-            @click="handleSignOut"
-          >
-            <v-icon start>mdi-logout</v-icon>
-            Sign Out
-          </v-btn>
-          <v-btn
-            v-else
-            icon="mdi-logout"
-            variant="text"
-            color="white"
-            class="mt-2"
-            @click="handleSignOut"
-          >
-            <v-tooltip activator="parent" location="end">Sign Out</v-tooltip>
-          </v-btn>
-        </div>
-
-        <!-- Rail Toggle -->
-        <div class="pa-2 text-center" v-if="!isMobile">
-          <v-btn
-            :icon="sidebarRail ? 'mdi-chevron-right' : 'mdi-chevron-left'"
-            variant="text"
-            color="white"
-            size="small"
-            @click="sidebarRail = !sidebarRail"
-          />
-        </div>
-      </template>
-    </v-navigation-drawer>
+      @update:rail="sidebarRail = $event"
+    />
     
-    <v-main class="app-main">
+    <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
       <!-- Premium App Bar -->
       <AppHeader 
         :title="pageTitle"
@@ -226,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ToastNotification, NavItem } from '~/types'
+import type { ToastNotification } from '~/types'
 
 interface CommandAction {
   id: string
@@ -237,7 +140,6 @@ interface CommandAction {
   action: () => void
 }
 
-const supabase = useSupabaseClient()
 const uiStore = useUIStore()
 const authStore = useAuthStore()
 const route = useRoute()
@@ -248,34 +150,7 @@ const sidebarOpen = ref(true)
 const sidebarRail = ref(false)
 const commandPaletteOpen = ref(false)
 const commandSearch = ref('')
-const windowWidth = ref(1200)
-
-// Profile computed
-const profile = computed(() => authStore.profile)
-const fullName = computed(() => {
-  if (!profile.value) return 'User'
-  return `${profile.value.first_name || ''} ${profile.value.last_name || ''}`.trim() || profile.value.email
-})
-const initials = computed(() => {
-  if (!profile.value) return 'U'
-  const first = profile.value.first_name?.[0] || ''
-  const last = profile.value.last_name?.[0] || ''
-  return (first + last).toUpperCase() || profile.value.email[0].toUpperCase()
-})
-
-// Navigation items
-const navItems: NavItem[] = [
-  { title: 'Home', icon: 'mdi-home', to: '/' },
-  { title: 'Profile', icon: 'mdi-account-card', to: '/profile' },
-  { title: 'Team', icon: 'mdi-account-group', to: '/employees' },
-  { title: 'Schedule', icon: 'mdi-calendar', to: '/schedule' },
-  { title: 'Time Off', icon: 'mdi-calendar-remove', to: '/time-off' },
-  { title: 'Skills', icon: 'mdi-star-circle', to: '/skills' },
-  { title: 'Training', icon: 'mdi-school', to: '/training' },
-  { title: 'Marketing', icon: 'mdi-bullhorn', to: '/marketing' },
-  { title: 'Leads', icon: 'mdi-account-star', to: '/leads' },
-  { title: 'Settings', icon: 'mdi-cog', to: '/settings' }
-]
+const windowWidth = ref(1200) // Default for SSR
 
 // Computed properties
 const notifications = computed(() => uiStore.notifications)
@@ -284,6 +159,14 @@ const isDark = computed(() => uiStore.isDarkMode)
 const isAdmin = computed(() => authStore.isAdmin)
 
 const isMobile = computed(() => windowWidth.value < 768)
+const isTablet = computed(() => windowWidth.value >= 768 && windowWidth.value < 1024)
+
+// Calculate sidebar margin for main content
+const sidebarMargin = computed(() => {
+  if (isMobile.value) return '0px'
+  if (sidebarRail.value) return '56px'
+  return '256px'
+})
 
 // Page metadata
 const pageTitles: Record<string, { title: string; subtitle?: string }> = {
@@ -361,16 +244,6 @@ function toggleSidebar() {
     sidebarOpen.value = !sidebarOpen.value
   } else {
     sidebarRail.value = !sidebarRail.value
-  }
-}
-
-async function handleSignOut() {
-  try {
-    await supabase.auth.signOut()
-    authStore.$reset()
-    router.push('/auth/login')
-  } catch (error) {
-    console.error('Sign out error:', error)
   }
 }
 
@@ -470,30 +343,6 @@ watch(() => route.path, () => {
 
 .v-theme--dark .app-main {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-}
-
-/* Sidebar Styles */
-.app-sidebar {
-  border: none !important;
-}
-
-.sidebar-header {
-  min-height: 72px;
-  display: flex;
-  align-items: center;
-}
-
-.nav-item {
-  color: rgba(255, 255, 255, 0.85) !important;
-}
-
-.nav-item:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.nav-item.v-list-item--active {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: white !important;
 }
 
 .page-container {

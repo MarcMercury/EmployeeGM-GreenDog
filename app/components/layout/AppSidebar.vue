@@ -3,8 +3,7 @@
     :model-value="modelValue"
     @update:model-value="$emit('update:modelValue', $event)"
     :rail="rail"
-    :permanent="!temporary"
-    :temporary="temporary"
+    permanent
     color="primary"
     class="app-sidebar"
   >
@@ -30,13 +29,11 @@
         :key="item.to"
         :to="item.to"
         :prepend-icon="item.icon"
-        :title="rail ? '' : item.title"
+        :title="item.title"
         rounded="lg"
         class="nav-item mb-1"
         color="white"
-      >
-        <v-tooltip v-if="rail" activator="parent" location="end">{{ item.title }}</v-tooltip>
-      </v-list-item>
+      />
     </v-list>
 
     <template #append>
@@ -44,58 +41,36 @@
       
       <!-- User Section -->
       <div class="pa-4">
-        <!-- Loading state -->
-        <div v-if="isLoading" class="text-center py-2">
-          <v-progress-circular indeterminate color="white" size="24" />
-        </div>
-        
-        <!-- User profile -->
         <v-list-item
-          v-else-if="profile"
+          v-if="profile"
           class="pa-0 nav-item"
           rounded="lg"
-          :to="`/profile`"
+          :to="`/employees/${profile.id}`"
         >
           <template #prepend>
             <v-avatar size="36" color="white">
               <v-img v-if="profile.avatar_url" :src="profile.avatar_url" />
-              <span v-else class="text-primary font-weight-bold text-body-2">{{ initials }}</span>
+              <span v-else class="text-primary font-weight-bold">{{ initials }}</span>
             </v-avatar>
           </template>
           <v-list-item-title v-if="!rail" class="text-white text-body-2">
             {{ fullName }}
           </v-list-item-title>
           <v-list-item-subtitle v-if="!rail" class="text-white opacity-70 text-caption">
-            {{ profile.role || 'Employee' }}
+            {{ profile.role }}
           </v-list-item-subtitle>
         </v-list-item>
 
-        <!-- Sign Out Button -->
         <v-btn
           v-if="!rail"
           variant="outlined"
           color="white"
           block
           class="mt-3"
-          :loading="isSigningOut"
           @click="handleSignOut"
         >
           <v-icon start>mdi-logout</v-icon>
           Sign Out
-        </v-btn>
-        
-        <!-- Rail mode sign out -->
-        <v-btn
-          v-else
-          icon="mdi-logout"
-          variant="text"
-          color="white"
-          size="small"
-          class="mt-2"
-          @click="handleSignOut"
-        >
-          <v-icon>mdi-logout</v-icon>
-          <v-tooltip activator="parent" location="end">Sign Out</v-tooltip>
         </v-btn>
       </div>
 
@@ -107,11 +82,7 @@
           color="white"
           size="small"
           @click="$emit('update:rail', !rail)"
-        >
-          <v-tooltip activator="parent" location="end">
-            {{ rail ? 'Expand' : 'Collapse' }}
-          </v-tooltip>
-        </v-btn>
+        />
       </div>
     </template>
   </v-navigation-drawer>
@@ -123,38 +94,22 @@ import type { NavItem } from '~/types'
 interface Props {
   modelValue: boolean
   rail: boolean
-  temporary?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  temporary: false
-})
-
+defineProps<Props>()
 defineEmits<{
   'update:modelValue': [value: boolean]
   'update:rail': [value: boolean]
 }>()
 
-const supabase = useSupabaseClient()
 const authStore = useAuthStore()
 const router = useRouter()
 
-const isSigningOut = ref(false)
-const isLoading = computed(() => authStore.isLoading)
 const profile = computed(() => authStore.profile)
 const isAdmin = computed(() => authStore.isAdmin)
 
-const fullName = computed(() => {
-  if (!profile.value) return 'User'
-  return `${profile.value.first_name || ''} ${profile.value.last_name || ''}`.trim() || profile.value.email
-})
-
-const initials = computed(() => {
-  if (!profile.value) return 'U'
-  const first = profile.value.first_name?.[0] || ''
-  const last = profile.value.last_name?.[0] || ''
-  return (first + last).toUpperCase() || profile.value.email[0].toUpperCase()
-})
+const fullName = computed(() => authStore.fullName)
+const initials = computed(() => authStore.initials)
 
 const navItems: NavItem[] = [
   { title: 'Home', icon: 'mdi-home', to: '/' },
@@ -177,16 +132,8 @@ const filteredNavItems = computed(() => {
 })
 
 async function handleSignOut() {
-  isSigningOut.value = true
-  try {
-    await supabase.auth.signOut()
-    authStore.$reset()
-    await router.push('/auth/login')
-  } catch (error) {
-    console.error('Sign out error:', error)
-  } finally {
-    isSigningOut.value = false
-  }
+  await authStore.signOut()
+  router.push('/auth/login')
 }
 </script>
 
