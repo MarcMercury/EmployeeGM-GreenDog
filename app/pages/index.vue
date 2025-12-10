@@ -54,7 +54,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card h-100" variant="outlined">
           <v-card-text class="text-center pa-4">
             <v-icon size="32" color="success" class="mb-2">mdi-calendar-check</v-icon>
@@ -63,7 +63,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card h-100" variant="outlined">
           <v-card-text class="text-center pa-4">
             <v-icon size="32" color="warning" class="mb-2">mdi-clock-alert</v-icon>
@@ -72,7 +72,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card h-100" variant="outlined">
           <v-card-text class="text-center pa-4">
             <v-icon size="32" color="info" class="mb-2">mdi-account-supervisor</v-icon>

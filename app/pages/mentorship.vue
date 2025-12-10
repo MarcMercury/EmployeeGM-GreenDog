@@ -10,30 +10,30 @@
       </div>
     </div>
 
-    <!-- Stats Row -->
+    <!-- Stats Row - Desktop-first -->
     <v-row class="mb-6">
-      <v-col cols="6" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="text-center pa-4">
           <v-icon size="32" color="primary" class="mb-2">mdi-account-supervisor</v-icon>
           <div class="text-h5 font-weight-bold">{{ activeMentorships.length }}</div>
           <div class="text-caption text-grey">Active Mentorships</div>
         </v-card>
       </v-col>
-      <v-col cols="6" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="text-center pa-4">
           <v-icon size="32" color="warning" class="mb-2">mdi-inbox</v-icon>
           <div class="text-h5 font-weight-bold">{{ pendingCount }}</div>
           <div class="text-caption text-grey">Pending Requests</div>
         </v-card>
       </v-col>
-      <v-col cols="6" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="text-center pa-4">
           <v-icon size="32" color="success" class="mb-2">mdi-star</v-icon>
           <div class="text-h5 font-weight-bold">{{ mentorableSkillsCount }}</div>
           <div class="text-caption text-grey">Skills You Can Mentor</div>
         </v-card>
       </v-col>
-      <v-col cols="6" md="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card variant="outlined" class="text-center pa-4">
           <v-icon size="32" color="info" class="mb-2">mdi-target</v-icon>
           <div class="text-h5 font-weight-bold">{{ goalSkillsCount }}</div>
