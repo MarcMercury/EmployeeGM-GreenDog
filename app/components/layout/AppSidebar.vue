@@ -1,6 +1,6 @@
 <template>
   <v-navigation-drawer
-    v-model="drawerOpen"
+    :model-value="!isMobile || drawerOpen"
     :rail="rail && !isMobile"
     :temporary="isMobile"
     :permanent="!isMobile"
@@ -8,7 +8,7 @@
     :rail-width="80"
     color="grey-darken-4"
     class="app-sidebar"
-    :style="{ display: 'flex !important', visibility: 'visible !important' }"
+    @update:model-value="$emit('update:modelValue', $event)"
   >
     <!-- Logo/Header -->
     <div class="sidebar-header pa-4">
@@ -193,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -211,15 +211,8 @@ const emit = defineEmits<{
   'update:rail': [value: boolean]
 }>()
 
-// Local state for drawer - always true on desktop (permanent)
-const drawerOpen = computed({
-  get: () => {
-    // On desktop (permanent mode), always return true
-    if (!props.temporary) return true
-    return props.modelValue
-  },
-  set: (val) => emit('update:modelValue', val)
-})
+// Drawer state - use modelValue for mobile, always true for desktop
+const drawerOpen = computed(() => props.modelValue)
 
 // Use prop for mobile detection (passed from parent for consistency)
 const isMobile = computed(() => props.temporary)
@@ -241,18 +234,24 @@ async function handleSignOut() {
 <style scoped>
 .app-sidebar {
   border: none !important;
-  z-index: 1000 !important;
-  display: flex !important;
-  visibility: visible !important;
+  z-index: 1006 !important;
 }
 
-/* Ensure sidebar is visible on desktop */
+/* Force sidebar visible on desktop - override Vuetify hidden states */
 @media (min-width: 960px) {
   .app-sidebar {
     transform: translateX(0) !important;
     visibility: visible !important;
+    display: flex !important;
     position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
     height: 100vh !important;
+    width: 280px !important;
+  }
+  
+  .app-sidebar.v-navigation-drawer--rail {
+    width: 80px !important;
   }
 }
 

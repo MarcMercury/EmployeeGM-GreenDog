@@ -16,6 +16,16 @@ html, body {
   line-height: 1.5;
 }
 
+/* GLOBAL: Force sidebar visibility on desktop */
+@media (min-width: 960px) {
+  .v-navigation-drawer.app-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+    display: flex !important;
+    opacity: 1 !important;
+  }
+}
+
 /* Baseball Card Styles */
 .baseball-card {
   background: linear-gradient(145deg, #ffffff, #f0f0f0);
