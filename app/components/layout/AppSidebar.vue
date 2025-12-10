@@ -112,9 +112,9 @@ const fullName = computed(() => authStore.fullName)
 const initials = computed(() => authStore.initials)
 
 const navItems: NavItem[] = [
-  { title: 'Dashboard', icon: 'mdi-view-dashboard', to: '/' },
-  { title: 'My Profile', icon: 'mdi-account-card', to: '/profile' },
-  { title: 'Team', icon: 'mdi-account-group', to: '/employees' },
+  { title: 'Home', icon: 'mdi-home', to: '/' },
+  { title: 'Profile', icon: 'mdi-account-card', to: '/profile' },
+  { title: 'Directory', icon: 'mdi-account-group', to: '/employees' },
   { title: 'Schedule', icon: 'mdi-calendar', to: '/schedule' },
   { title: 'Time Off', icon: 'mdi-calendar-remove', to: '/time-off' },
   { title: 'Skills', icon: 'mdi-star-circle', to: '/skills' },
