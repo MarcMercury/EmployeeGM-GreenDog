@@ -83,6 +83,13 @@
       </v-col>
     </v-row>
 
+    <!-- Unified Action Center (Cross-Module Integration) -->
+    <v-row class="mb-6" v-if="isAdmin">
+      <v-col cols="12">
+        <ActionCenter />
+      </v-col>
+    </v-row>
+
     <!-- Main Widget Grid -->
     <v-row>
       <!-- Team Health Card -->
@@ -524,6 +531,8 @@
 </template>
 
 <script setup lang="ts">
+import ActionCenter from '~/components/dashboard/ActionCenter.vue'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']

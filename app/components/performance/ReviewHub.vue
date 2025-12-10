@@ -391,6 +391,14 @@
         </v-container>
       </v-card>
     </v-dialog>
+
+    <!-- Promotion Modal (Integration 1: Level Up Loop) -->
+    <PromotionModal
+      v-model="showPromotionModal"
+      :review-id="promotionReviewId"
+      @applied="handlePromotionApplied"
+      @skip="handlePromotionSkipped"
+    />
   </v-container>
 </template>
 
@@ -398,11 +406,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { usePerformanceStore, type PerformanceReview, type Feedback } from '~/stores/performance'
 import { useAuthStore } from '~/stores/auth'
+import { useIntegrationsStore } from '~/stores/integrations'
 import ReviewFormBuilder from './ReviewFormBuilder.vue'
 import FeedbackList from './FeedbackList.vue'
+import PromotionModal from './PromotionModal.vue'
 
 const performanceStore = usePerformanceStore()
 const authStore = useAuthStore()
+const integrationsStore = useIntegrationsStore()
 
 // State
 const activeTab = ref('my-reviews')
@@ -414,6 +425,10 @@ const signing = ref(false)
 const overallRating = ref(0)
 const summaryComment = ref('')
 const employeeFeedback = ref<Feedback[]>([])
+
+// Promotion modal state (Integration 1: Level Up Loop)
+const showPromotionModal = ref(false)
+const promotionReviewId = ref<string | null>(null)
 
 const employeeFormRef = ref<InstanceType<typeof ReviewFormBuilder> | null>(null)
 const managerFormRef = ref<InstanceType<typeof ReviewFormBuilder> | null>(null)
@@ -600,6 +615,26 @@ async function submitManagerReview() {
 async function signReview(role: 'employee' | 'manager') {
   if (!selectedReview.value) return
   
+  // Integration 1: Check promotion criteria when manager signs (finalizes) the review
+  if (role === 'manager' && selectedReview.value.employee_id) {
+    const criteria = await integrationsStore.checkPromotionCriteria(
+      selectedReview.value.id
+    )
+    
+    if (criteria?.meets_criteria) {
+      // Show promotion modal before signing
+      promotionReviewId.value = selectedReview.value.id
+      showPromotionModal.value = true
+      return
+    }
+  }
+  
+  await performSignReview(role)
+}
+
+async function performSignReview(role: 'employee' | 'manager') {
+  if (!selectedReview.value) return
+  
   signing.value = true
   try {
     await performanceStore.signReview(selectedReview.value.id, role)
@@ -615,6 +650,20 @@ async function signReview(role: 'employee' | 'manager') {
   } finally {
     signing.value = false
   }
+}
+
+async function handlePromotionApplied(result: { success: boolean }) {
+  showPromotionModal.value = false
+  if (result.success) {
+    // Sign the review after promotion is applied
+    await performSignReview('manager')
+  }
+}
+
+function handlePromotionSkipped() {
+  showPromotionModal.value = false
+  // Sign the review without promotion
+  performSignReview('manager')
 }
 
 // Lifecycle

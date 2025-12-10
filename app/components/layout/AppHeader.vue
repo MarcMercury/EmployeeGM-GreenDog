@@ -28,40 +28,8 @@
       @keyup.enter="$emit('search', searchQuery)"
     />
 
-    <!-- Notifications -->
-    <v-menu v-if="showNotifications">
-      <template #activator="{ props }">
-        <v-btn icon v-bind="props" class="mr-2">
-          <v-badge 
-            :content="notificationCount" 
-            :model-value="notificationCount > 0"
-            color="error"
-          >
-            <v-icon>mdi-bell</v-icon>
-          </v-badge>
-        </v-btn>
-      </template>
-      <v-card min-width="300">
-        <v-card-title class="text-subtitle-1">Notifications</v-card-title>
-        <v-divider />
-        <v-list v-if="notifications.length > 0">
-          <v-list-item 
-            v-for="notification in notifications" 
-            :key="notification.id"
-            :subtitle="notification.message"
-          >
-            <template #prepend>
-              <v-icon :color="getNotificationColor(notification.type)">
-                {{ getNotificationIcon(notification.type) }}
-              </v-icon>
-            </template>
-          </v-list-item>
-        </v-list>
-        <v-card-text v-else class="text-center text-grey">
-          No new notifications
-        </v-card-text>
-      </v-card>
-    </v-menu>
+    <!-- Notifications Popover (Unified Notification Center) -->
+    <NotificationsPopover v-if="showNotifications" />
 
     <!-- Theme Toggle -->
     <v-btn icon class="mr-2" @click="toggleTheme">
@@ -114,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ToastNotification } from '~/types'
+import NotificationsPopover from './NotificationsPopover.vue'
 
 interface Props {
   title?: string
@@ -147,31 +115,9 @@ const initials = computed(() => authStore.initials)
 const isAdmin = computed(() => authStore.isAdmin)
 
 const isDark = computed(() => uiStore.isDarkMode)
-const notifications = computed(() => uiStore.notifications)
-const notificationCount = computed(() => notifications.value.length)
 
 function toggleTheme() {
   uiStore.toggleTheme()
-}
-
-function getNotificationColor(type: ToastNotification['type']): string {
-  const colors = {
-    success: 'success',
-    error: 'error',
-    warning: 'warning',
-    info: 'info'
-  }
-  return colors[type]
-}
-
-function getNotificationIcon(type: ToastNotification['type']): string {
-  const icons = {
-    success: 'mdi-check-circle',
-    error: 'mdi-alert-circle',
-    warning: 'mdi-alert',
-    info: 'mdi-information'
-  }
-  return icons[type]
 }
 
 async function handleSignOut() {

@@ -199,16 +199,63 @@
       <!-- Actions Column -->
       <template #item.actions="{ item }">
         <div class="d-flex ga-1">
-          <v-btn
-            v-if="!item.is_approved"
-            color="success"
-            size="small"
-            variant="tonal"
-            @click="approveEntry(item.id)"
-            :loading="approvingId === item.id"
-          >
-            Approve
-          </v-btn>
+          <!-- Feedback dropdown on approve -->
+          <v-menu v-if="!item.is_approved" location="bottom end">
+            <template #activator="{ props }">
+              <v-btn
+                color="success"
+                size="small"
+                variant="tonal"
+                v-bind="props"
+                :loading="approvingId === item.id"
+              >
+                Approve
+                <v-icon end size="14">mdi-menu-down</v-icon>
+              </v-btn>
+            </template>
+            <v-list density="compact">
+              <v-list-item @click="approveEntry(item.id)">
+                <template #prepend>
+                  <v-icon size="18">mdi-check</v-icon>
+                </template>
+                <v-list-item-title>Approve Only</v-list-item-title>
+              </v-list-item>
+              <v-divider />
+              <v-list-item @click="approveWithFeedback(item, 'kudos')">
+                <template #prepend>
+                  <v-icon size="18" color="success">mdi-thumb-up</v-icon>
+                </template>
+                <v-list-item-title>
+                  <span class="text-success">Approve + Kudos</span>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  +10 XP for great work
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item @click="approveWithFeedback(item, 'incident')">
+                <template #prepend>
+                  <v-icon size="18" color="warning">mdi-flag</v-icon>
+                </template>
+                <v-list-item-title>
+                  <span class="text-warning">Approve + Flag Incident</span>
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  Log for review cycle
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+          
+          <!-- Already approved - show feedback badge if exists -->
+          <v-chip v-else-if="item.feedback_type" :color="item.feedback_type === 'kudos' ? 'success' : 'warning'" size="small" variant="tonal">
+            <v-icon start size="14">{{ item.feedback_type === 'kudos' ? 'mdi-thumb-up' : 'mdi-flag' }}</v-icon>
+            {{ item.feedback_type === 'kudos' ? 'Kudos' : 'Flagged' }}
+          </v-chip>
+          <v-chip v-else color="success" size="small" variant="tonal">
+            <v-icon start size="14">mdi-check</v-icon>
+            Approved
+          </v-chip>
+          
           <v-btn
             icon="mdi-pencil"
             size="x-small"
@@ -286,10 +333,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useOperationsStore, type TimeEntry, type Shift } from '~/stores/operations'
+import { useIntegrationsStore } from '~/stores/integrations'
 import { useUserStore } from '~/stores/user'
 
 // Stores
 const opsStore = useOperationsStore()
+const integrationsStore = useIntegrationsStore()
 const userStore = useUserStore()
 
 // State
@@ -429,6 +478,36 @@ async function approveAll() {
     console.error('Failed to bulk approve:', err)
   } finally {
     bulkApproving.value = false
+  }
+}
+
+async function approveWithFeedback(entry: TimeEntry, feedbackType: 'kudos' | 'incident') {
+  const approverId = userStore.currentEmployee?.id
+  if (!approverId || !entry.employee_id) return
+
+  approvingId.value = entry.id
+  try {
+    // 1. Approve the time entry
+    await opsStore.approveTimeEntry(entry.id, approverId)
+    
+    // 2. Add shift feedback (kudos or incident)
+    if (entry.shift_id) {
+      await integrationsStore.addShiftFeedback(
+        entry.shift_id,
+        entry.employee_id,
+        feedbackType
+      )
+    }
+    
+    // 3. Mark feedback type locally for UI display
+    const entryInList = entries.value.find(e => e.id === entry.id)
+    if (entryInList) {
+      (entryInList as any).feedback_type = feedbackType
+    }
+  } catch (err) {
+    console.error('Failed to approve with feedback:', err)
+  } finally {
+    approvingId.value = null
   }
 }
 

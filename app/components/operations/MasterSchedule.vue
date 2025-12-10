@@ -269,6 +269,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Training Intercept Dialog (Integration 2: Just-in-Time Training) -->
+    <TrainingInterceptDialog
+      v-model="showTrainingIntercept"
+      :employee-id="interceptEmployeeId"
+      :employee-name="interceptEmployeeName"
+      :missing-skills="interceptMissingSkills"
+      @training-assigned="handleTrainingAssigned"
+    />
   </v-card>
 </template>
 
@@ -277,6 +286,8 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useOperationsStore, type Shift } from '~/stores/operations'
 import { useEmployeeStore } from '~/stores/employee'
 import { useUserStore } from '~/stores/user'
+import { useIntegrationsStore } from '~/stores/integrations'
+import TrainingInterceptDialog from './TrainingInterceptDialog.vue'
 
 // Props
 const props = defineProps<{
@@ -287,6 +298,7 @@ const props = defineProps<{
 const opsStore = useOperationsStore()
 const employeeStore = useEmployeeStore()
 const userStore = useUserStore()
+const integrationsStore = useIntegrationsStore()
 
 // State
 const viewMode = ref<'day' | 'week'>('week')
@@ -301,6 +313,13 @@ const isPublishing = ref(false)
 const draggingShiftId = ref<string | null>(null)
 const showConflict = ref(false)
 const conflictMessage = ref('')
+
+// Training intercept state
+const showTrainingIntercept = ref(false)
+const interceptMissingSkills = ref<{ skill_id: string; skill_name: string; required_level: number; current_level: number | null; is_met: boolean; course_id?: string; course_title?: string }[]>([])
+const interceptEmployeeId = ref<string>('')
+const interceptEmployeeName = ref<string>('')
+const interceptShiftId = ref<string | null>(null)
 
 const shiftForm = ref({
   employee_id: null as string | null,
@@ -609,6 +628,32 @@ async function saveShift() {
   const { valid } = await shiftFormRef.value.validate()
   if (!valid) return
 
+  // Check skill qualifications before saving (Integration 2: Just-in-Time Training)
+  if (shiftForm.value.employee_id && shiftForm.value.department_id) {
+    const qualResult = await integrationsStore.checkShiftQualifications(
+      shiftForm.value.employee_id,
+      { department_id: shiftForm.value.department_id }
+    )
+    
+    if (!qualResult.qualified && qualResult.missing.length > 0) {
+      // Show training intercept dialog
+      interceptMissingSkills.value = qualResult.missing
+      interceptEmployeeId.value = shiftForm.value.employee_id
+      
+      // Get employee name
+      const employee = resources.value.find(r => r.id === shiftForm.value.employee_id)
+      interceptEmployeeName.value = employee?.name || 'Employee'
+      
+      interceptShiftId.value = editingShift.value?.id || null
+      showTrainingIntercept.value = true
+      return
+    }
+  }
+
+  await performSaveShift()
+}
+
+async function performSaveShift() {
   isSaving.value = true
 
   try {
@@ -644,6 +689,16 @@ async function saveShift() {
     showConflict.value = true
   } finally {
     isSaving.value = false
+  }
+}
+
+async function handleTrainingAssigned(result: { success: boolean; proceedWithShift: boolean }) {
+  // Training was assigned via the intercept dialog
+  showTrainingIntercept.value = false
+  
+  if (result.proceedWithShift) {
+    // Proceed to save the shift
+    await performSaveShift()
   }
 }
 
