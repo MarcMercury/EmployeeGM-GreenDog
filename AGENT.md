@@ -7,7 +7,7 @@ Stack: Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth).
 
 ### Design Philosophy
 
-- **"Baseball-card" employee profile** as the central hub (portrait at top, stats below).
+- **"card" employee profile** as the central hub (portrait at top, stats below).
 - **Skill ratings 0-5** (0 = Learner, 5 = Mentor).
 - **Mentorship automation**: Match learners to mentors automatically.
 - **Two roles only**: "admin" and "user".
@@ -106,11 +106,11 @@ Stack: Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth).
 - `achievements` - Achievement definitions
 - `employee_achievements` - Earned achievements
 - `leaderboards` - Ranking systems
-- `points_log` - Point tracking
+
 
 ## Key Features
 
-### Baseball Card Profile
+### Profile
 - Portrait photo at top
 - Key stats displayed prominently
 - Skills visualization with 0-5 ratings
