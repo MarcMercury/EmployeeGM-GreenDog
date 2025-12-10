@@ -73,6 +73,16 @@ export interface AppLocation {
   address: string | null
 }
 
+export interface AppUserProfile {
+  id: string
+  email: string
+  role: 'admin' | 'user'
+  avatar_url: string | null
+  first_name: string | null
+  last_name: string | null
+  phone: string | null
+}
+
 export const useAppData = () => {
   const user = useSupabaseUser()
   const client = useSupabaseClient()
@@ -86,6 +96,10 @@ export const useAppData = () => {
   const loading = useState<boolean>('appLoading', () => false)
   const initialized = useState<boolean>('appInitialized', () => false)
   const error = useState<string | null>('appError', () => null)
+
+  // Current user identity (the "God Mode" switch)
+  const currentUserProfile = useState<AppUserProfile | null>('currentUserProfile', () => null)
+  const isAdmin = useState<boolean>('isAdmin', () => false)
 
   /**
    * Fetch all global data in parallel
@@ -102,7 +116,22 @@ export const useAppData = () => {
     error.value = null
 
     try {
-      // Fetch all data in parallel for maximum speed
+      // 1. IDENTITY CHECK: Who am I?
+      if (user.value) {
+        const { data: profile } = await client
+          .from('profiles')
+          .select('id, email, role, avatar_url, first_name, last_name, phone')
+          .eq('id', user.value.id)
+          .single()
+        
+        if (profile) {
+          currentUserProfile.value = profile as AppUserProfile
+          // Check explicitly for 'admin' role
+          isAdmin.value = profile.role === 'admin'
+        }
+      }
+
+      // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
       const [empResult, skillResult, deptResult, posResult, locResult] = await Promise.all([
         // Employees with relations
         client
@@ -256,7 +285,7 @@ export const useAppData = () => {
       }
 
       initialized.value = true
-      console.log(`[AppData] Hydrated: ${employees.value.length} employees, ${skills.value.length} skills`)
+      console.log(`[AppData] Hydrated: ${employees.value.length} employees, ${skills.value.length} skills, isAdmin: ${isAdmin.value}`)
 
     } catch (e: any) {
       console.error('[AppData] Fetch Error:', e)
@@ -351,6 +380,10 @@ export const useAppData = () => {
     loading,
     initialized,
     error,
+
+    // Current User Identity
+    currentUserProfile,
+    isAdmin,
 
     // Actions
     fetchGlobalData,
