@@ -1,24 +1,21 @@
-export default defineNuxtRouteMiddleware(async (to) => {
-  // Skip on server to avoid hydration issues
-  if (import.meta.server) return
-  
+// Auth middleware - protects routes requiring authentication
+export default defineNuxtRouteMiddleware((to) => {
   const user = useSupabaseUser()
   
   // Public routes that don't require auth
-  const publicRoutes = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/confirm']
-  const isPublicRoute = publicRoutes.some(route => to.path.startsWith(route)) || to.path.startsWith('/auth/')
+  const publicPaths = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/confirm']
   
-  if (isPublicRoute) {
-    // If logged in and trying to access auth pages, redirect to home
+  // Check if current path is public
+  if (publicPaths.includes(to.path) || to.path.startsWith('/auth/')) {
+    // Redirect logged-in users away from auth pages
     if (user.value) {
-      return navigateTo('/', { replace: true })
+      return navigateTo('/')
     }
     return
   }
 
-  // All other routes require authentication
+  // Redirect unauthenticated users to login
   if (!user.value) {
-    console.log('No user found, redirecting to login')
-    return navigateTo('/auth/login', { replace: true })
+    return navigateTo('/auth/login')
   }
 })
