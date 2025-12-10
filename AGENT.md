@@ -32,12 +32,26 @@ async fetchData() {
 
 #### ✅ ALWAYS DO:
 ```typescript
-// CORRECT: Access via nuxtApp in Pinia
-const getSupabase = () => useNuxtApp().$supabase
+// CORRECT: Access via nuxtApp in Pinia (note: .client property!)
+const getSupabase = () => (useNuxtApp().$supabase as any)?.client
 
 // CORRECT: Get session directly, not via composable ref
 const { data: { session } } = await supabase.auth.getSession()
 const userId = session?.user?.id // Always defined if session exists
+```
+
+#### Plugin Ordering (Critical!):
+```typescript
+// @nuxtjs/supabase uses enforce: "pre" and provides { client }
+// Any plugin that needs supabase MUST declare dependency:
+export default defineNuxtPlugin({
+  name: 'auth',
+  dependsOn: ['supabase'],  // Ensures supabase plugin runs first!
+  async setup(nuxtApp) {
+    const supabase = (nuxtApp.$supabase as any)?.client
+    // Now safe to use...
+  }
+})
 ```
 
 ### Database Access Patterns
