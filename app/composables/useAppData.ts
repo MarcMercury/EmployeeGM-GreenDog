@@ -133,7 +133,7 @@ export const useAppData = () => {
 
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
       const [empResult, skillResult, deptResult, posResult, locResult] = await Promise.all([
-        // Employees with relations
+        // Employees with relations - SINGLE SOURCE OF TRUTH
         client
           .from('employees')
           .select(`
@@ -145,34 +145,18 @@ export const useAppData = () => {
             phone_mobile,
             hire_date,
             employment_status,
-            profile:profiles!employees_profile_id_fkey (
-              id,
-              avatar_url
-            ),
-            position:job_positions (
-              id,
-              title
-            ),
-            department:departments (
-              id,
-              name
-            ),
-            location:locations (
-              id,
-              name
-            ),
-            employee_skills (
-              skill_id,
-              level,
+            status,
+            profiles:profile_id ( id, avatar_url, role ),
+            job_positions:position_id ( id, title ),
+            departments:department_id ( id, name ),
+            locations:location_id ( id, name ),
+            employee_skills ( 
+              skill_id, 
+              level, 
               is_goal,
-              skill:skill_library (
-                id,
-                name,
-                category
-              )
+              skill_library ( id, name, category )
             )
           `)
-          .eq('employment_status', 'active')
           .order('last_name'),
 
         // Skill Library
@@ -217,27 +201,27 @@ export const useAppData = () => {
             last_name: lastName,
             full_name: `${firstName} ${lastName}`.trim(),
             email: emp.email_work || '',
-            avatar_url: emp.profile?.avatar_url || null,
+            avatar_url: emp.profiles?.avatar_url || null,
             phone: emp.phone_mobile || null,
             hire_date: emp.hire_date,
-            employment_status: emp.employment_status,
-            is_active: emp.employment_status === 'active',
-            position: emp.position ? {
-              id: emp.position.id,
-              title: emp.position.title
+            employment_status: emp.employment_status || emp.status || 'active',
+            is_active: (emp.employment_status || emp.status) === 'active',
+            position: emp.job_positions ? {
+              id: emp.job_positions.id,
+              title: emp.job_positions.title
             } : null,
-            department: emp.department ? {
-              id: emp.department.id,
-              name: emp.department.name
+            department: emp.departments ? {
+              id: emp.departments.id,
+              name: emp.departments.name
             } : null,
-            location: emp.location ? {
-              id: emp.location.id,
-              name: emp.location.name
+            location: emp.locations ? {
+              id: emp.locations.id,
+              name: emp.locations.name
             } : null,
             skills: (emp.employee_skills || []).map((es: any) => ({
               skill_id: es.skill_id,
-              skill_name: es.skill?.name || 'Unknown',
-              category: es.skill?.category || 'General',
+              skill_name: es.skill_library?.name || 'Unknown',
+              category: es.skill_library?.category || 'General',
               rating: es.level || 0,
               is_goal: es.is_goal || false
             })),

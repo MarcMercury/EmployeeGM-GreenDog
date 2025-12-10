@@ -1,11 +1,19 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+
 // Simple CSS-forced sidebar - no complex state management needed
 // NuxtLink handles active state automatically with 'active-class'
 const authStore = useAuthStore()
 const router = useRouter()
 
+// Initialize auth store on mount to fetch profile
+onMounted(async () => {
+  await authStore.initialize()
+})
+
 const profile = computed(() => authStore.profile)
 const isAdmin = computed(() => authStore.isAdmin)
+const firstName = computed(() => authStore.profile?.first_name || 'User')
 const initials = computed(() => authStore.initials || 'U')
 const fullName = computed(() => authStore.fullName || 'User')
 
@@ -160,8 +168,10 @@ async function handleSignOut() {
               {{ initials }}
             </div>
             <div class="text-sm">
-              <div class="font-medium text-white">{{ fullName }}</div>
-              <div class="text-xs text-slate-400">{{ isAdmin ? 'Admin' : 'Team Member' }}</div>
+              <div class="font-medium text-white">{{ firstName }}</div>
+              <div class="text-xs" :class="isAdmin ? 'text-amber-400 font-semibold' : 'text-slate-400'">
+                {{ isAdmin ? '⭐ Admin' : 'Team Member' }}
+              </div>
             </div>
           </NuxtLink>
           <button 
