@@ -9,9 +9,10 @@ interface AuthState {
 }
 
 // Helper to get supabase client safely in Pinia
+// @nuxtjs/supabase provides: { client } via provide("supabase", { client })
 const getSupabase = () => {
   const nuxtApp = useNuxtApp()
-  return nuxtApp.$supabase
+  return (nuxtApp.$supabase as { client: ReturnType<typeof import('@supabase/supabase-js').createClient> })?.client
 }
 
 export const useAuthStore = defineStore('auth', {
