@@ -1,11 +1,16 @@
 // Auth initialization plugin - runs on client only
-export default defineNuxtPlugin(async () => {
-  const supabase = useSupabaseClient()
+export default defineNuxtPlugin(async (nuxtApp) => {
+  const supabase = nuxtApp.$supabase as any
   const authStore = useAuthStore()
   const userStore = useUserStore()
 
+  if (!supabase) {
+    console.error('[AuthPlugin] Supabase client not available')
+    return
+  }
+
   // Watch for auth state changes
-  supabase.auth.onAuthStateChange(async (event, session) => {
+  supabase.auth.onAuthStateChange(async (event: string, session: any) => {
     console.log('[AuthPlugin] Auth state changed:', event, 'User:', session?.user?.email)
     
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {

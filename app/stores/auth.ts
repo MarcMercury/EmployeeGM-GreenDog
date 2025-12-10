@@ -8,6 +8,12 @@ interface AuthState {
   initialized: boolean
 }
 
+// Helper to get supabase client safely in Pinia
+const getSupabase = () => {
+  const nuxtApp = useNuxtApp()
+  return nuxtApp.$supabase
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     profile: null,
@@ -35,20 +41,18 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async initialize() {
       if (this.initialized) return
-      
-      const user = useSupabaseUser()
-      if (user.value && !this.profile) {
-        await this.fetchProfile(user.value.id)
-      }
       this.initialized = true
     },
 
     async fetchProfile(userId?: string) {
-      const supabase = useSupabaseClient()
-      const user = useSupabaseUser()
+      const supabase = getSupabase()
       
-      // Use passed userId or fall back to user.value.id
-      const authUserId = userId || user.value?.id
+      if (!supabase) {
+        console.error('[AuthStore] Supabase client not available')
+        return null
+      }
+
+      const authUserId = userId
 
       if (!authUserId) {
         console.log('[AuthStore] No user ID available, skipping profile fetch')
@@ -75,9 +79,9 @@ export const useAuthStore = defineStore('auth', {
         console.log('[AuthStore] Profile fetched successfully:', data)
         this.profile = data as Profile
         return this.profile
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Failed to fetch profile'
-        console.error('Error fetching profile:', err)
+      } catch (err: any) {
+        this.error = err?.message || 'Failed to fetch profile'
+        console.error('[AuthStore] Error:', err)
         return null
       } finally {
         this.isLoading = false
@@ -85,10 +89,10 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async updateProfile(updates: ProfileUpdate) {
-      const supabase = useSupabaseClient()
+      const supabase = getSupabase()
       
-      if (!this.profile) {
-        throw new Error('No profile to update')
+      if (!this.profile || !supabase) {
+        throw new Error('No profile to update or supabase not ready')
       }
 
       this.isLoading = true
@@ -108,30 +112,8 @@ export const useAuthStore = defineStore('auth', {
         if (error) throw error
         this.profile = data as Profile
         return data
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Failed to update profile'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    async signIn(email: string, password: string) {
-      const supabase = useSupabaseClient()
-      
-      this.isLoading = true
-      this.error = null
-
-      try {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        })
-
-        if (error) throw error
-        await this.fetchProfile()
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Sign in failed'
+      } catch (err: any) {
+        this.error = err?.message || 'Failed to update profile'
         throw err
       } finally {
         this.isLoading = false
@@ -139,46 +121,17 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async signOut() {
-      const supabase = useSupabaseClient()
+      const supabase = getSupabase()
+      if (!supabase) return
       
       this.isLoading = true
-      this.error = null
 
       try {
-        const { error } = await supabase.auth.signOut()
-        if (error) throw error
+        await supabase.auth.signOut()
         this.profile = null
+        this.initialized = false
       } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Sign out failed'
-        throw err
-      } finally {
-        this.isLoading = false
-      }
-    },
-
-    async signUp(email: string, password: string, firstName: string, lastName: string) {
-      const supabase = useSupabaseClient()
-      
-      this.isLoading = true
-      this.error = null
-
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              first_name: firstName,
-              last_name: lastName
-            }
-          }
-        })
-
-        if (error) throw error
-        return data
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Sign up failed'
-        throw err
+        console.error('Error signing out:', err)
       } finally {
         this.isLoading = false
       }
@@ -188,14 +141,19 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
     },
 
-    // Check if user has specific role
     hasRole(role: UserRole): boolean {
       return this.profile?.role === role
     },
 
-    // Check if user can perform admin actions
     canManage(): boolean {
       return this.isAdmin
+    },
+
+    $reset() {
+      this.profile = null
+      this.isLoading = false
+      this.error = null
+      this.initialized = false
     }
   }
 })
