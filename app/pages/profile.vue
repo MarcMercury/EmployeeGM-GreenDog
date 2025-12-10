@@ -191,7 +191,14 @@
 
     <!-- Success Snackbar -->
     <v-snackbar v-model="showSuccess" color="success" timeout="3000">
-      Profile updated successfully!
+      <v-icon class="mr-2">mdi-check-circle</v-icon>
+      Profile saved successfully!
+    </v-snackbar>
+
+    <!-- Error Snackbar -->
+    <v-snackbar v-model="showError" color="error" timeout="5000">
+      <v-icon class="mr-2">mdi-alert-circle</v-icon>
+      {{ errorMessage }}
     </v-snackbar>
   </div>
 </template>
@@ -208,6 +215,8 @@ const userStore = useUserStore()
 const editDialog = ref(false)
 const isSaving = ref(false)
 const showSuccess = ref(false)
+const showError = ref(false)
+const errorMessage = ref('')
 const editForm = ref()
 
 const editData = ref({
@@ -255,6 +264,8 @@ async function saveProfile() {
     closeEditDialog()
   } catch (err) {
     console.error('Failed to save profile:', err)
+    errorMessage.value = err instanceof Error ? err.message : 'Failed to save profile. Please try again.'
+    showError.value = true
   } finally {
     isSaving.value = false
   }
