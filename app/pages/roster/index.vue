@@ -1,588 +1,288 @@
+<script setup lang="ts">
+/**
+ * Team Roster Page
+ * Uses useAppData for global hydrated employee data
+ */
+definePageMeta({
+  middleware: ['auth']
+})
+
+// 1. Get our "Omni-Present" data
+const { employees, skills, loading } = useAppData()
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isAdmin)
+
+// 2. Local State for Filtering
+const searchQuery = ref('')
+const selectedDept = ref('All')
+const showAddDialog = ref(false)
+
+// 3. Computed: Filter the Master List
+const filteredEmployees = computed(() => {
+  if (!employees.value) return []
+  
+  return employees.value.filter(emp => {
+    // Search Logic (Name or Title)
+    const searchLower = searchQuery.value.toLowerCase()
+    const matchesSearch = 
+      emp.first_name?.toLowerCase().includes(searchLower) || 
+      emp.last_name?.toLowerCase().includes(searchLower) ||
+      emp.full_name?.toLowerCase().includes(searchLower) ||
+      emp.position?.title?.toLowerCase().includes(searchLower) ||
+      emp.email?.toLowerCase().includes(searchLower)
+
+    // Department Filter
+    const matchesDept = selectedDept.value === 'All' || emp.department?.name === selectedDept.value
+
+    return matchesSearch && matchesDept
+  })
+})
+
+// 4. Helper: Extract Unique Departments for the dropdown
+const departments = computed(() => {
+  const depts = new Set(employees.value.map(e => e.department?.name).filter(Boolean))
+  return ['All', ...Array.from(depts).sort()]
+})
+
+// 5. Helper: Get Top Skills (sorted by rating, top 2)
+const getTopSkills = (empSkills: typeof employees.value[0]['skills']) => {
+  if (!empSkills || empSkills.length === 0) return []
+  
+  // Sort by rating (5 first) and take top 2
+  return [...empSkills]
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 2)
+}
+
+// 6. Helper: Get status badge color
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-100 text-green-800'
+    case 'on_leave': return 'bg-amber-100 text-amber-800'
+    case 'terminated': return 'bg-red-100 text-red-800'
+    default: return 'bg-slate-100 text-slate-800'
+  }
+}
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'active': return 'Active'
+    case 'on_leave': return 'On Leave'
+    case 'terminated': return 'Inactive'
+    default: return status
+  }
+}
+
+// Navigation
+const router = useRouter()
+const viewProfile = (empId: string) => {
+  router.push(`/employees/${empId}`)
+}
+</script>
+
 <template>
-  <div class="roster-page">
+  <div class="space-y-6 p-6">
+    
     <!-- Page Header -->
-    <div class="roster-header d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
-      <div class="d-flex align-center gap-4">
-        <div>
-          <h1 class="text-h4 font-weight-bold mb-1">Team Directory</h1>
-          <p class="text-body-2 text-grey">
-            {{ activeEmployees.length }} active • {{ clockedInCount }} on shift
-          </p>
-        </div>
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Team Roster</h1>
+        <p class="text-sm text-slate-500">Manage your staff, view skills, and track status.</p>
       </div>
-      
-      <div class="d-flex align-center gap-2">
-        <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary" rounded="lg">
-          <v-btn value="cards" size="small">
-            <v-icon start>mdi-view-grid</v-icon>
-            Cards
-          </v-btn>
-          <v-btn value="table" size="small">
-            <v-icon start>mdi-table</v-icon>
-            Table
-          </v-btn>
-        </v-btn-toggle>
-        
-        <v-btn
+      <div class="flex gap-3">
+        <!-- Stats Card -->
+        <div class="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-center">
+          <div class="text-xs text-slate-400 uppercase font-bold tracking-wide">Total Staff</div>
+          <div class="text-xl font-bold text-slate-900">{{ employees.length }}</div>
+        </div>
+        <!-- Add Employee Button -->
+        <button 
           v-if="isAdmin"
-          color="primary"
-          prepend-icon="mdi-account-plus"
-          variant="elevated"
-          @click="addEmployeeDialog = true"
+          class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition shadow-sm"
+          @click="showAddDialog = true"
         >
-          Add Member
-        </v-btn>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Employee
+        </button>
       </div>
     </div>
 
     <!-- Filters Bar -->
-    <v-card class="filters-bar mb-6" flat>
-      <v-card-text class="pa-3">
-        <v-row dense align="center">
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              placeholder="Search by name, position, or skill..."
-              variant="solo-filled"
-              density="compact"
-              hide-details
-              clearable
-              bg-color="grey-lighten-4"
-              flat
-            />
-          </v-col>
-          <v-col cols="6" md="2">
-            <v-select
-              v-model="filterDepartment"
-              :items="departmentOptions"
-              label="Department"
-              variant="solo-filled"
-              density="compact"
-              hide-details
-              clearable
-              bg-color="grey-lighten-4"
-              flat
-            />
-          </v-col>
-          <v-col cols="6" md="2">
-            <v-select
-              v-model="filterPosition"
-              :items="positionOptions"
-              label="Position"
-              variant="solo-filled"
-              density="compact"
-              hide-details
-              clearable
-              bg-color="grey-lighten-4"
-              flat
-            />
-          </v-col>
-          <v-col cols="12" md="4" class="d-flex align-center gap-2 justify-end">
-            <v-chip-group v-model="filterQuick" class="flex-grow-0">
-              <v-chip filter value="clocked_in" size="small" color="success">
-                <v-icon start size="14">mdi-clock-check</v-icon>
-                On Shift
-              </v-chip>
-              <v-chip filter value="mentors" size="small" color="amber-darken-2">
-                <v-icon start size="14">mdi-star</v-icon>
-                Mentors
-              </v-chip>
-              <v-chip filter value="new" size="small" color="info">
-                <v-icon start size="14">mdi-account-plus</v-icon>
-                New
-              </v-chip>
-            </v-chip-group>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex-wrap">
+      <!-- Search -->
+      <div class="relative flex-1 min-w-[200px] max-w-md">
+        <svg class="absolute left-3 top-2.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input 
+          v-model="searchQuery"
+          type="text" 
+          placeholder="Search by name, role, or email..." 
+          class="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+      </div>
+      
+      <!-- Department Filter -->
+      <select 
+        v-model="selectedDept" 
+        class="px-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+      >
+        <option v-for="dept in departments" :key="dept" :value="dept">
+          {{ dept === 'All' ? 'All Departments' : dept }}
+        </option>
+      </select>
+
+      <!-- Results Count -->
+      <div class="text-sm text-slate-500 ml-auto">
+        Showing <span class="font-medium text-slate-700">{{ filteredEmployees.length }}</span> of {{ employees.length }}
+      </div>
+    </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-12">
-      <v-progress-circular indeterminate color="primary" size="48" />
-      <p class="text-grey mt-4">Loading roster...</p>
+    <div v-if="loading" class="flex items-center justify-center py-16">
+      <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      <span class="ml-3 text-slate-500">Loading roster...</span>
     </div>
 
-    <!-- Empty State -->
-    <div v-else-if="filteredEmployees.length === 0" class="text-center py-12">
-      <v-icon size="80" color="grey-lighten-2">mdi-account-group-outline</v-icon>
-      <h3 class="text-h6 mt-4 text-grey-darken-1">No team members found</h3>
-      <p class="text-body-2 text-grey">Adjust filters or add new team members</p>
-    </div>
-
-    <!-- Cards Grid View (Depth Chart Style) -->
-    <div v-else-if="viewMode === 'cards'" class="roster-grid">
-      <RosterRosterCard
-        v-for="employee in filteredEmployees"
-        :key="employee.id"
-        :employee="employee"
-        @click="openDrawer"
-      />
-    </div>
-
-    <!-- Table View -->
-    <v-card v-else flat>
-      <v-data-table
-        :headers="tableHeaders"
-        :items="filteredEmployees"
-        :search="search"
-        hover
-        class="roster-table"
-        @click:row="(_, { item }) => openDrawer(item)"
-      >
-        <template #item.name="{ item }">
-          <div class="d-flex align-center gap-3 py-2">
-            <div class="position-relative">
-              <v-avatar size="44" :color="item.avatar_url ? undefined : getDepartmentColor(item.department?.name)">
-                <v-img v-if="item.avatar_url" :src="item.avatar_url" />
-                <span v-else class="text-white font-weight-medium">
-                  {{ getInitials(item) }}
-                </span>
-              </v-avatar>
-              <div 
-                class="clock-indicator" 
-                :class="item.clock_status === 'clocked_in' ? 'clock-indicator--in' : 'clock-indicator--out'"
-              />
-            </div>
-            <div>
-              <div class="font-weight-medium">
-                {{ item.first_name }} {{ item.last_name }}
+    <!-- Data Table -->
+    <div v-else class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-slate-50 border-b border-slate-200">
+          <tr>
+            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Employee</th>
+            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role & Dept</th>
+            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Top Skills</th>
+            <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          
+          <tr 
+            v-for="emp in filteredEmployees" 
+            :key="emp.id" 
+            class="hover:bg-slate-50 transition-colors group cursor-pointer"
+            @click="viewProfile(emp.id)"
+          >
+            <!-- Employee Info -->
+            <td class="px-6 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm">
+                  <img 
+                    v-if="emp.avatar_url" 
+                    :src="emp.avatar_url" 
+                    :alt="emp.full_name"
+                    class="h-full w-full object-cover"
+                  >
+                  <div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-white">
+                    {{ emp.initials }}
+                  </div>
+                </div>
+                <div>
+                  <div class="text-sm font-medium text-slate-900">{{ emp.full_name }}</div>
+                  <div class="text-xs text-slate-500">{{ emp.email }}</div>
+                </div>
               </div>
-              <div class="text-caption text-grey">{{ item.email }}</div>
-            </div>
-          </div>
-        </template>
+            </td>
 
-        <template #item.position="{ item }">
-          <v-chip 
-            :color="getDepartmentColor(item.department?.name)" 
-            size="small"
-            variant="flat"
-          >
-            {{ item.position?.title || 'Unassigned' }}
-          </v-chip>
-        </template>
+            <!-- Role & Department -->
+            <td class="px-6 py-3 whitespace-nowrap">
+              <div class="text-sm text-slate-900">{{ emp.position?.title || 'Unassigned' }}</div>
+              <div class="text-xs text-slate-500">{{ emp.department?.name || 'General' }}</div>
+            </td>
 
-        <template #item.department="{ item }">
-          <span class="text-body-2">{{ item.department?.name || '-' }}</span>
-        </template>
+            <!-- Status Badge -->
+            <td class="px-6 py-3 whitespace-nowrap">
+              <span 
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                :class="getStatusColor(emp.employment_status)"
+              >
+                {{ getStatusLabel(emp.employment_status) }}
+              </span>
+            </td>
 
-        <template #item.skills="{ item }">
-          <div class="d-flex align-center gap-1">
-            <span class="font-weight-bold">{{ item.skill_stats.total }}</span>
-            <span class="text-caption text-grey">skills</span>
-            <v-chip 
-              v-if="item.skill_stats.mastered_count > 0" 
-              size="x-small" 
-              color="success" 
-              variant="tonal"
-              class="ml-1"
+            <!-- Top Skills -->
+            <td class="px-6 py-3">
+              <div class="flex gap-2 flex-wrap">
+                <span 
+                  v-for="skill in getTopSkills(emp.skills)" 
+                  :key="skill.skill_id"
+                  class="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-100 text-slate-700 border border-slate-200"
+                >
+                  {{ skill.skill_name }} 
+                  <span class="ml-1 text-amber-500 font-bold">★{{ skill.rating }}</span>
+                </span>
+                <span v-if="!emp.skills?.length" class="text-xs text-slate-400 italic">No skills rated</span>
+              </div>
+            </td>
+
+            <!-- Actions -->
+            <td class="px-6 py-3 whitespace-nowrap text-right">
+              <button 
+                class="text-slate-400 hover:text-blue-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                @click.stop="viewProfile(emp.id)"
+              >
+                View Profile →
+              </button>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+
+      <!-- Empty State -->
+      <div v-if="filteredEmployees.length === 0 && !loading" class="p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <h3 class="mt-4 text-sm font-medium text-slate-900">No employees found</h3>
+        <p class="mt-1 text-sm text-slate-500">Try adjusting your search or filter criteria.</p>
+        <button 
+          class="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline" 
+          @click="searchQuery = ''; selectedDept = 'All'"
+        >
+          Clear all filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Employee Dialog (placeholder for future) -->
+    <Teleport to="body">
+      <div 
+        v-if="showAddDialog" 
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @click.self="showAddDialog = false"
+      >
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
+          <h2 class="text-lg font-semibold text-slate-900 mb-4">Add New Employee</h2>
+          <p class="text-sm text-slate-500 mb-4">This feature is coming soon. You'll be able to add new team members directly from here.</p>
+          <div class="flex justify-end">
+            <button 
+              class="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
+              @click="showAddDialog = false"
             >
-              {{ item.skill_stats.mastered_count }} ★
-            </v-chip>
+              Close
+            </button>
           </div>
-        </template>
+        </div>
+      </div>
+    </Teleport>
 
-        <template #item.level="{ item }">
-          <div class="level-badge">
-            <span class="level-badge__number">{{ item.player_level }}</span>
-            <span class="level-badge__label">LVL</span>
-          </div>
-        </template>
-
-        <template #item.status="{ item }">
-          <v-chip 
-            :color="item.clock_status === 'clocked_in' ? 'success' : 'grey'" 
-            size="small" 
-            variant="flat"
-          >
-            {{ item.clock_status === 'clocked_in' ? 'On Shift' : 'Off' }}
-          </v-chip>
-        </template>
-
-        <template #item.actions="{ item }">
-          <v-btn
-            icon="mdi-chevron-right"
-            size="small"
-            variant="text"
-            @click.stop="openDrawer(item)"
-          />
-        </template>
-      </v-data-table>
-    </v-card>
-
-    <!-- Employee Detail Drawer -->
-    <RosterRosterDrawer
-      v-model="drawerOpen"
-      :employee="selectedEmployee"
-      @edit="editEmployee"
-      @message="messageEmployee"
-      @endorse="handleEndorse"
-    />
-
-    <!-- Add Employee Dialog -->
-    <v-dialog v-model="addEmployeeDialog" max-width="500">
-      <v-card>
-        <v-card-title class="d-flex justify-space-between align-center pa-4">
-          <span class="text-h6">Add Team Member</span>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="addEmployeeDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pa-4">
-          <v-form ref="addFormRef">
-            <v-row dense>
-              <v-col cols="6">
-                <v-text-field
-                  v-model="newEmployee.first_name"
-                  label="First Name"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-text-field
-                  v-model="newEmployee.last_name"
-                  label="Last Name"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newEmployee.email"
-                  label="Email"
-                  type="email"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required', v => /.+@.+/.test(v) || 'Invalid email']"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newEmployee.password"
-                  label="Initial Password"
-                  type="password"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required', v => v.length >= 6 || 'Min 6 characters']"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-select
-                  v-model="newEmployee.department_id"
-                  :items="departmentOptions"
-                  label="Department"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-select
-                  v-model="newEmployee.position_id"
-                  :items="positionOptions"
-                  label="Position"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                />
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="addEmployeeDialog = false">Cancel</v-btn>
-          <v-btn 
-            color="primary" 
-            variant="elevated" 
-            :loading="isSaving" 
-            @click="createEmployee"
-          >
-            Add Member
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Snackbar for notifications -->
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
-      {{ snackbar.message }}
-    </v-snackbar>
   </div>
 </template>
 
-<script setup lang="ts">
-import type { RosterCardProps } from '~/types/database.types'
-import { getDepartmentColor } from '~/types/database.types'
-
-definePageMeta({
-  layout: 'default',
-  middleware: 'auth'
-})
-
-const router = useRouter()
-const authStore = useAuthStore()
-const rosterStore = useRosterStore()
-const uiStore = useUIStore()
-
-// State
-const search = ref('')
-const viewMode = ref<'cards' | 'table'>('cards')
-const filterDepartment = ref<string | null>(null)
-const filterPosition = ref<string | null>(null)
-const filterQuick = ref<string | null>(null)
-const drawerOpen = ref(false)
-const selectedEmployee = ref<RosterCardProps | null>(null)
-const addEmployeeDialog = ref(false)
-const addFormRef = ref()
-const isSaving = ref(false)
-
-const snackbar = reactive({
-  show: false,
-  message: '',
-  color: 'success'
-})
-
-const newEmployee = reactive({
-  first_name: '',
-  last_name: '',
-  email: '',
-  password: '',
-  department_id: null as string | null,
-  position_id: null as string | null
-})
-
-// Computed
-const isAdmin = computed(() => authStore.isAdmin)
-const isLoading = computed(() => rosterStore.isLoading)
-const activeEmployees = computed(() => rosterStore.activeEmployees)
-const clockedInCount = computed(() => rosterStore.clockedInCount)
-
-const departmentOptions = computed(() => 
-  rosterStore.departments.map(d => ({ title: d.name, value: d.name }))
-)
-
-const positionOptions = computed(() => 
-  rosterStore.positions.map(p => ({ title: p.title, value: p.title }))
-)
-
-const tableHeaders = [
-  { title: 'Employee', key: 'name', sortable: true },
-  { title: 'Position', key: 'position', sortable: true },
-  { title: 'Department', key: 'department', sortable: true },
-  { title: 'Skills', key: 'skills', sortable: false },
-  { title: 'Level', key: 'level', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: '', key: 'actions', sortable: false, align: 'end' as const }
-]
-
-const filteredEmployees = computed(() => {
-  let result = rosterStore.employees
-
-  // Search filter
-  if (search.value) {
-    const query = search.value.toLowerCase()
-    result = result.filter(e =>
-      e.first_name?.toLowerCase().includes(query) ||
-      e.last_name?.toLowerCase().includes(query) ||
-      e.email.toLowerCase().includes(query) ||
-      e.position?.title?.toLowerCase().includes(query) ||
-      e.department?.name?.toLowerCase().includes(query) ||
-      e.all_skills.some(s => s.name.toLowerCase().includes(query))
-    )
-  }
-
-  // Department filter
-  if (filterDepartment.value) {
-    result = result.filter(e => e.department?.name === filterDepartment.value)
-  }
-
-  // Position filter
-  if (filterPosition.value) {
-    result = result.filter(e => e.position?.title === filterPosition.value)
-  }
-
-  // Quick filters
-  if (filterQuick.value === 'clocked_in') {
-    result = result.filter(e => e.clock_status === 'clocked_in')
-  } else if (filterQuick.value === 'mentors') {
-    result = result.filter(e => e.skill_stats.mastered_count > 0)
-  } else if (filterQuick.value === 'new') {
-    const threeMonthsAgo = new Date()
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-    result = result.filter(e => 
-      e.hire_date && new Date(e.hire_date) > threeMonthsAgo
-    )
-  }
-
-  return result
-})
-
-// Methods
-function getInitials(employee: RosterCardProps): string {
-  const first = employee.first_name?.[0] || ''
-  const last = employee.last_name?.[0] || ''
-  return (first + last).toUpperCase() || 'U'
-}
-
-async function openDrawer(employee: RosterCardProps) {
-  selectedEmployee.value = employee
-  drawerOpen.value = true
-  
-  // Fetch detailed data
-  try {
-    await rosterStore.fetchEmployeeDetail(employee.employee_id)
-    selectedEmployee.value = rosterStore.selectedEmployee
-  } catch (err) {
-    console.error('Error loading employee details:', err)
-  }
-}
-
-function editEmployee(employee: RosterCardProps) {
-  drawerOpen.value = false
-  router.push(`/employees/${employee.id}`)
-}
-
-function messageEmployee(employee: RosterCardProps) {
-  // TODO: Implement messaging
-  snackbar.message = `Messaging ${employee.first_name} - Coming soon!`
-  snackbar.color = 'info'
-  snackbar.show = true
-}
-
-async function handleEndorse(employee: RosterCardProps, skillId: string) {
-  try {
-    await rosterStore.endorseSkill(employee.employee_id, skillId)
-    snackbar.message = 'Skill endorsed successfully!'
-    snackbar.color = 'success'
-    snackbar.show = true
-  } catch (err) {
-    snackbar.message = 'Failed to endorse skill'
-    snackbar.color = 'error'
-    snackbar.show = true
-  }
-}
-
-async function createEmployee() {
-  const { valid } = await addFormRef.value.validate()
-  if (!valid) return
-
-  isSaving.value = true
-  try {
-    await authStore.signUp(
-      newEmployee.email,
-      newEmployee.password,
-      newEmployee.first_name,
-      newEmployee.last_name
-    )
-    
-    addEmployeeDialog.value = false
-    uiStore.showSuccess('Team member added successfully')
-    await rosterStore.fetchRoster()
-    
-    // Reset form
-    Object.assign(newEmployee, {
-      first_name: '',
-      last_name: '',
-      email: '',
-      password: '',
-      department_id: null,
-      position_id: null
-    })
-  } catch (error) {
-    uiStore.showError(error instanceof Error ? error.message : 'Failed to add team member')
-  } finally {
-    isSaving.value = false
-  }
-}
-
-// Lifecycle
-onMounted(() => {
-  rosterStore.fetchRoster()
-})
-</script>
-
 <style scoped>
-.roster-page {
-  max-width: 1600px;
-  margin: 0 auto;
+/* Smooth table row transitions */
+tbody tr {
+  transition: background-color 0.15s ease;
 }
 
-.filters-bar {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: white;
-}
-
-.roster-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-@media (min-width: 1200px) {
-  .roster-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (min-width: 1600px) {
-  .roster-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.roster-table {
-  cursor: pointer;
-}
-
-.roster-table :deep(tbody tr:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.04) !important;
-}
-
-.clock-indicator {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-.clock-indicator--in {
-  background: #4CAF50;
-}
-
-.clock-indicator--out {
-  background: #9E9E9E;
-}
-
-.level-badge {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  background: linear-gradient(135deg, #1a1a1a, #333);
-  border-radius: 8px;
-  padding: 4px 10px;
-  min-width: 44px;
-}
-
-.level-badge__number {
-  color: #FFD700;
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.level-badge__label {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
+/* Hover effect for action button */
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
 }
 </style>
