@@ -1,70 +1,400 @@
+<template>
+  <div class="roster-page">
+    <!-- Page Header -->
+    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-4">
+      <div>
+        <h1 class="text-h4 font-weight-bold mb-1">Team Roster</h1>
+        <p class="text-body-2 text-grey-darken-1">
+          {{ filteredEmployees.length }} of {{ employees.length }} team members
+        </p>
+      </div>
+      <v-btn
+        v-if="isAdmin"
+        color="primary"
+        prepend-icon="mdi-plus"
+        @click="showAddDialog = true"
+      >
+        Add Employee
+      </v-btn>
+    </div>
+
+    <!-- Filters Card -->
+    <v-card rounded="lg" class="mb-4" elevation="1">
+      <v-card-text class="py-3">
+        <v-row dense align="center">
+          <v-col cols="12" sm="6" md="4">
+            <v-text-field
+              v-model="searchQuery"
+              prepend-inner-icon="mdi-magnify"
+              placeholder="Search by name, role, email..."
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="6" sm="3" md="2">
+            <v-select
+              v-model="selectedDept"
+              :items="departments"
+              label="Department"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="6" sm="3" md="2">
+            <v-select
+              v-model="selectedStatus"
+              :items="statusOptions"
+              label="Status"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" md="4" class="d-flex justify-end gap-2">
+            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
+              <v-btn value="table" size="small">
+                <v-icon size="18">mdi-table</v-icon>
+              </v-btn>
+              <v-btn value="cards" size="small">
+                <v-icon size="18">mdi-view-grid</v-icon>
+              </v-btn>
+            </v-btn-toggle>
+            <v-btn
+              icon="mdi-refresh"
+              size="small"
+              variant="text"
+              :loading="loading"
+              @click="refreshData"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Loading State -->
+    <div v-if="loading && employees.length === 0" class="text-center py-12">
+      <v-progress-circular indeterminate color="primary" size="48" />
+      <p class="text-grey mt-4">Loading team members...</p>
+    </div>
+
+    <!-- Empty State -->
+    <v-card v-else-if="filteredEmployees.length === 0" rounded="lg" class="text-center pa-12">
+      <v-icon size="64" color="grey-lighten-1">mdi-account-group</v-icon>
+      <h3 class="text-h6 mt-4">No employees found</h3>
+      <p class="text-grey mb-4">Try adjusting your search or filters</p>
+      <v-btn variant="text" color="primary" @click="clearFilters">
+        Clear all filters
+      </v-btn>
+    </v-card>
+
+    <!-- Table View -->
+    <v-card v-else-if="viewMode === 'table'" rounded="lg" elevation="1">
+      <v-data-table
+        :headers="tableHeaders"
+        :items="filteredEmployees"
+        :items-per-page="25"
+        :items-per-page-options="[10, 25, 50, 100]"
+        hover
+        density="comfortable"
+        class="roster-table"
+        @click:row="(_, { item }) => viewEmployee(item.id)"
+      >
+        <!-- Employee Name + Avatar -->
+        <template #item.name="{ item }">
+          <div class="d-flex align-center gap-3 py-2">
+            <v-avatar size="40" :color="item.avatar_url ? undefined : 'primary'">
+              <v-img v-if="item.avatar_url" :src="item.avatar_url" />
+              <span v-else class="text-white font-weight-bold">{{ item.initials }}</span>
+            </v-avatar>
+            <div>
+              <div class="font-weight-medium">{{ item.full_name }}</div>
+              <div class="text-caption text-grey">{{ item.email }}</div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Position & Department -->
+        <template #item.position="{ item }">
+          <div>
+            <div class="text-body-2">{{ item.position?.title || '—' }}</div>
+            <div v-if="item.department" class="text-caption text-grey">
+              {{ item.department.name }}
+            </div>
+          </div>
+        </template>
+
+        <!-- Status -->
+        <template #item.status="{ item }">
+          <v-chip 
+            :color="getStatusColor(item.employment_status)" 
+            size="small" 
+            variant="flat"
+          >
+            {{ getStatusLabel(item.employment_status) }}
+          </v-chip>
+        </template>
+
+        <!-- Skills Summary -->
+        <template #item.skills="{ item }">
+          <div class="d-flex gap-1 flex-wrap">
+            <template v-if="item.skills && item.skills.length > 0">
+              <v-chip 
+                v-for="skill in getTopSkills(item.skills, 2)" 
+                :key="skill.skill_id"
+                size="x-small"
+                variant="tonal"
+                color="primary"
+              >
+                {{ skill.skill_name }}
+                <v-icon end size="12" color="amber">mdi-star</v-icon>
+                {{ skill.rating }}
+              </v-chip>
+              <v-chip v-if="item.skills.length > 2" size="x-small" variant="outlined">
+                +{{ item.skills.length - 2 }}
+              </v-chip>
+            </template>
+            <span v-else class="text-caption text-grey-lighten-1">No skills</span>
+          </div>
+        </template>
+
+        <!-- Location -->
+        <template #item.location="{ item }">
+          <span v-if="item.location" class="text-body-2">{{ item.location.name }}</span>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <!-- Actions -->
+        <template #item.actions="{ item }">
+          <div class="d-flex justify-end">
+            <v-btn
+              icon="mdi-eye"
+              size="x-small"
+              variant="text"
+              @click.stop="viewEmployee(item.id)"
+            />
+            <v-btn
+              v-if="isAdmin"
+              icon="mdi-pencil"
+              size="x-small"
+              variant="text"
+              @click.stop="editEmployee(item)"
+            />
+          </div>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- Card Grid View -->
+    <v-row v-else>
+      <v-col
+        v-for="emp in filteredEmployees"
+        :key="emp.id"
+        cols="12"
+        sm="6"
+        md="4"
+        lg="3"
+      >
+        <v-card 
+          rounded="lg" 
+          elevation="2" 
+          class="employee-card h-100"
+          @click="viewEmployee(emp.id)"
+        >
+          <v-card-text class="text-center pb-2">
+            <v-avatar size="72" :color="emp.avatar_url ? undefined : 'primary'" class="mb-3">
+              <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
+              <span v-else class="text-h5 text-white font-weight-bold">{{ emp.initials }}</span>
+            </v-avatar>
+            <h3 class="text-subtitle-1 font-weight-bold mb-1">{{ emp.full_name }}</h3>
+            <p class="text-caption text-grey mb-2">{{ emp.position?.title || 'Unassigned' }}</p>
+            <v-chip 
+              v-if="emp.department" 
+              size="x-small" 
+              variant="tonal"
+              color="secondary"
+            >
+              {{ emp.department.name }}
+            </v-chip>
+          </v-card-text>
+          <v-divider />
+          <v-card-text class="py-2">
+            <div class="d-flex justify-space-between align-center">
+              <v-chip 
+                :color="getStatusColor(emp.employment_status)" 
+                size="x-small" 
+                variant="flat"
+              >
+                {{ getStatusLabel(emp.employment_status) }}
+              </v-chip>
+              <span class="text-caption text-grey">
+                {{ emp.skills?.length || 0 }} skills
+              </span>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Add Employee Dialog -->
+    <v-dialog v-model="showAddDialog" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <span>Add New Employee</span>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="showAddDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-form ref="addFormRef">
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="newEmployee.first_name"
+                  label="First Name"
+                  :rules="[v => !!v || 'Required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="newEmployee.last_name"
+                  label="Last Name"
+                  :rules="[v => !!v || 'Required']"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="newEmployee.email"
+                  label="Email"
+                  type="email"
+                  :rules="[v => !!v || 'Required', v => /.+@.+/.test(v) || 'Invalid email']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="newEmployee.department_id"
+                  :items="departmentsList"
+                  item-title="name"
+                  item-value="id"
+                  label="Department"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="newEmployee.position_id"
+                  :items="positionsList"
+                  item-title="title"
+                  item-value="id"
+                  label="Position"
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showAddDialog = false">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" :loading="isSaving" @click="createEmployee">
+            Add Employee
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </div>
+</template>
+
 <script setup lang="ts">
-/**
- * Team Roster Page
- * Uses useAppData for global hydrated employee data
- */
 definePageMeta({
   middleware: ['auth']
 })
 
-// 1. Get our "Omni-Present" data
-const { employees, skills, loading } = useAppData()
+// Get global app data
+const { employees, departments: departmentsList, positions: positionsList, loading, fetchGlobalData } = useAppData()
 const authStore = useAuthStore()
+const router = useRouter()
+const uiStore = useUIStore()
+
 const isAdmin = computed(() => authStore.isAdmin)
 
-// 2. Local State for Filtering
+// Local state
 const searchQuery = ref('')
-const selectedDept = ref('All')
+const selectedDept = ref<string | null>(null)
+const selectedStatus = ref<string | null>(null)
+const viewMode = ref<'table' | 'cards'>('table')
 const showAddDialog = ref(false)
+const isSaving = ref(false)
+const addFormRef = ref()
 
-// 3. Computed: Filter the Master List
-const filteredEmployees = computed(() => {
-  if (!employees.value) return []
-  
-  return employees.value.filter(emp => {
-    // Search Logic (Name or Title)
-    const searchLower = searchQuery.value.toLowerCase()
-    const matchesSearch = 
-      emp.first_name?.toLowerCase().includes(searchLower) || 
-      emp.last_name?.toLowerCase().includes(searchLower) ||
-      emp.full_name?.toLowerCase().includes(searchLower) ||
-      emp.position?.title?.toLowerCase().includes(searchLower) ||
-      emp.email?.toLowerCase().includes(searchLower)
-
-    // Department Filter
-    const matchesDept = selectedDept.value === 'All' || emp.department?.name === selectedDept.value
-
-    return matchesSearch && matchesDept
-  })
+const newEmployee = reactive({
+  first_name: '',
+  last_name: '',
+  email: '',
+  department_id: null as string | null,
+  position_id: null as string | null
 })
 
-// 4. Helper: Extract Unique Departments for the dropdown
+// Table headers
+const tableHeaders = [
+  { title: 'Employee', key: 'name', sortable: true },
+  { title: 'Position', key: 'position', sortable: true },
+  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Skills', key: 'skills', sortable: false },
+  { title: 'Location', key: 'location', sortable: true },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const }
+]
+
+// Department filter options
 const departments = computed(() => {
   const depts = new Set(employees.value.map(e => e.department?.name).filter(Boolean))
   return ['All', ...Array.from(depts).sort()]
 })
 
-// 5. Helper: Get Top Skills (sorted by rating, top 2)
-const getTopSkills = (empSkills: typeof employees.value[0]['skills']) => {
-  if (!empSkills || empSkills.length === 0) return []
-  
-  // Sort by rating (5 first) and take top 2
-  return [...empSkills]
-    .sort((a, b) => b.rating - a.rating)
-    .slice(0, 2)
-}
+// Status options
+const statusOptions = ['active', 'on_leave', 'inactive', 'terminated']
 
-// 6. Helper: Get status badge color
-const getStatusColor = (status: string) => {
+// Filtered employees
+const filteredEmployees = computed(() => {
+  if (!employees.value) return []
+  
+  return employees.value.filter(emp => {
+    // Search filter
+    const searchLower = searchQuery.value?.toLowerCase() || ''
+    const matchesSearch = !searchQuery.value || 
+      emp.first_name?.toLowerCase().includes(searchLower) ||
+      emp.last_name?.toLowerCase().includes(searchLower) ||
+      emp.full_name?.toLowerCase().includes(searchLower) ||
+      emp.email?.toLowerCase().includes(searchLower) ||
+      emp.position?.title?.toLowerCase().includes(searchLower)
+    
+    // Department filter
+    const matchesDept = !selectedDept.value || 
+      selectedDept.value === 'All' || 
+      emp.department?.name === selectedDept.value
+    
+    // Status filter
+    const matchesStatus = !selectedStatus.value || 
+      emp.employment_status === selectedStatus.value
+    
+    return matchesSearch && matchesDept && matchesStatus
+  })
+})
+
+// Helpers
+function getStatusColor(status: string): string {
   switch (status) {
-    case 'active': return 'bg-green-100 text-green-800'
-    case 'on_leave': return 'bg-amber-100 text-amber-800'
-    case 'terminated': return 'bg-red-100 text-red-800'
-    default: return 'bg-slate-100 text-slate-800'
+    case 'active': return 'success'
+    case 'on_leave': return 'warning'
+    case 'terminated': return 'error'
+    default: return 'grey'
   }
 }
 
-const getStatusLabel = (status: string) => {
+function getStatusLabel(status: string): string {
   switch (status) {
     case 'active': return 'Active'
     case 'on_leave': return 'On Leave'
@@ -73,216 +403,97 @@ const getStatusLabel = (status: string) => {
   }
 }
 
-// Navigation
-const router = useRouter()
-const viewProfile = (empId: string) => {
-  router.push(`/employees/${empId}`)
+function getTopSkills(skills: any[], count = 2) {
+  if (!skills || skills.length === 0) return []
+  return [...skills].sort((a, b) => b.rating - a.rating).slice(0, count)
 }
+
+function clearFilters() {
+  searchQuery.value = ''
+  selectedDept.value = null
+  selectedStatus.value = null
+}
+
+function viewEmployee(id: string) {
+  router.push(`/employees/${id}`)
+}
+
+function editEmployee(emp: any) {
+  router.push(`/employees/${emp.id}`)
+}
+
+async function refreshData() {
+  await fetchGlobalData(true)
+}
+
+async function createEmployee() {
+  const { valid } = await addFormRef.value?.validate()
+  if (!valid) return
+  
+  isSaving.value = true
+  try {
+    const client = useSupabaseClient()
+    
+    const { error } = await client
+      .from('employees')
+      .insert({
+        first_name: newEmployee.first_name,
+        last_name: newEmployee.last_name,
+        email_work: newEmployee.email,
+        department_id: newEmployee.department_id,
+        position_id: newEmployee.position_id,
+        employment_status: 'active'
+      })
+    
+    if (error) throw error
+    
+    showAddDialog.value = false
+    uiStore.showSuccess('Employee added successfully')
+    await refreshData()
+    
+    // Reset form
+    Object.assign(newEmployee, {
+      first_name: '',
+      last_name: '',
+      email: '',
+      department_id: null,
+      position_id: null
+    })
+  } catch (error: any) {
+    uiStore.showError(error.message || 'Failed to create employee')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+// Initialize data on mount
+onMounted(async () => {
+  if (employees.value.length === 0) {
+    await fetchGlobalData()
+  }
+})
 </script>
 
-<template>
-  <div class="space-y-6 p-6">
-    
-    <!-- Page Header -->
-    <div class="flex items-center justify-between flex-wrap gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">Team Roster</h1>
-        <p class="text-sm text-slate-500">Manage your staff, view skills, and track status.</p>
-      </div>
-      <div class="flex gap-3">
-        <!-- Stats Card -->
-        <div class="px-4 py-2 bg-white border border-slate-200 rounded-lg shadow-sm text-center">
-          <div class="text-xs text-slate-400 uppercase font-bold tracking-wide">Total Staff</div>
-          <div class="text-xl font-bold text-slate-900">{{ employees.length }}</div>
-        </div>
-        <!-- Add Employee Button -->
-        <button 
-          v-if="isAdmin"
-          class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition shadow-sm"
-          @click="showAddDialog = true"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add Employee
-        </button>
-      </div>
-    </div>
-
-    <!-- Filters Bar -->
-    <div class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex-wrap">
-      <!-- Search -->
-      <div class="relative flex-1 min-w-[200px] max-w-md">
-        <svg class="absolute left-3 top-2.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input 
-          v-model="searchQuery"
-          type="text" 
-          placeholder="Search by name, role, or email..." 
-          class="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        >
-      </div>
-      
-      <!-- Department Filter -->
-      <select 
-        v-model="selectedDept" 
-        class="px-3 py-2 text-sm border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-      >
-        <option v-for="dept in departments" :key="dept" :value="dept">
-          {{ dept === 'All' ? 'All Departments' : dept }}
-        </option>
-      </select>
-
-      <!-- Results Count -->
-      <div class="text-sm text-slate-500 ml-auto">
-        Showing <span class="font-medium text-slate-700">{{ filteredEmployees.length }}</span> of {{ employees.length }}
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-16">
-      <div class="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-      <span class="ml-3 text-slate-500">Loading roster...</span>
-    </div>
-
-    <!-- Data Table -->
-    <div v-else class="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
-      <table class="w-full text-left border-collapse">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Employee</th>
-            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role & Dept</th>
-            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-            <th class="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Top Skills</th>
-            <th class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          
-          <tr 
-            v-for="emp in filteredEmployees" 
-            :key="emp.id" 
-            class="hover:bg-slate-50 transition-colors group cursor-pointer"
-            @click="viewProfile(emp.id)"
-          >
-            <!-- Employee Info -->
-            <td class="px-6 py-3 whitespace-nowrap">
-              <div class="flex items-center gap-3">
-                <div class="h-9 w-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 overflow-hidden flex-shrink-0 ring-2 ring-white shadow-sm">
-                  <img 
-                    v-if="emp.avatar_url" 
-                    :src="emp.avatar_url" 
-                    :alt="emp.full_name"
-                    class="h-full w-full object-cover"
-                  >
-                  <div v-else class="h-full w-full flex items-center justify-center text-xs font-bold text-white">
-                    {{ emp.initials }}
-                  </div>
-                </div>
-                <div>
-                  <div class="text-sm font-medium text-slate-900">{{ emp.full_name }}</div>
-                  <div class="text-xs text-slate-500">{{ emp.email }}</div>
-                </div>
-              </div>
-            </td>
-
-            <!-- Role & Department -->
-            <td class="px-6 py-3 whitespace-nowrap">
-              <div class="text-sm text-slate-900">{{ emp.position?.title || 'Unassigned' }}</div>
-              <div class="text-xs text-slate-500">{{ emp.department?.name || 'General' }}</div>
-            </td>
-
-            <!-- Status Badge -->
-            <td class="px-6 py-3 whitespace-nowrap">
-              <span 
-                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                :class="getStatusColor(emp.employment_status)"
-              >
-                {{ getStatusLabel(emp.employment_status) }}
-              </span>
-            </td>
-
-            <!-- Top Skills -->
-            <td class="px-6 py-3">
-              <div class="flex gap-2 flex-wrap">
-                <span 
-                  v-for="skill in getTopSkills(emp.skills)" 
-                  :key="skill.skill_id"
-                  class="inline-flex items-center px-2 py-1 rounded text-xs bg-slate-100 text-slate-700 border border-slate-200"
-                >
-                  {{ skill.skill_name }} 
-                  <span class="ml-1 text-amber-500 font-bold">★{{ skill.rating }}</span>
-                </span>
-                <span v-if="!emp.skills?.length" class="text-xs text-slate-400 italic">No skills rated</span>
-              </div>
-            </td>
-
-            <!-- Actions -->
-            <td class="px-6 py-3 whitespace-nowrap text-right">
-              <button 
-                class="text-slate-400 hover:text-blue-600 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                @click.stop="viewProfile(emp.id)"
-              >
-                View Profile →
-              </button>
-            </td>
-          </tr>
-
-        </tbody>
-      </table>
-
-      <!-- Empty State -->
-      <div v-if="filteredEmployees.length === 0 && !loading" class="p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <h3 class="mt-4 text-sm font-medium text-slate-900">No employees found</h3>
-        <p class="mt-1 text-sm text-slate-500">Try adjusting your search or filter criteria.</p>
-        <button 
-          class="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline" 
-          @click="searchQuery = ''; selectedDept = 'All'"
-        >
-          Clear all filters
-        </button>
-      </div>
-    </div>
-
-    <!-- Add Employee Dialog (placeholder for future) -->
-    <Teleport to="body">
-      <div 
-        v-if="showAddDialog" 
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-        @click.self="showAddDialog = false"
-      >
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
-          <h2 class="text-lg font-semibold text-slate-900 mb-4">Add New Employee</h2>
-          <p class="text-sm text-slate-500 mb-4">This feature is coming soon. You'll be able to add new team members directly from here.</p>
-          <div class="flex justify-end">
-            <button 
-              class="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition"
-              @click="showAddDialog = false"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-  </div>
-</template>
-
 <style scoped>
-/* Smooth table row transitions */
-tbody tr {
-  transition: background-color 0.15s ease;
+.roster-page {
+  min-height: 100%;
 }
 
-/* Hover effect for action button */
-.group:hover .group-hover\:opacity-100 {
-  opacity: 1;
+.roster-table {
+  cursor: pointer;
+}
+
+.roster-table :deep(tbody tr:hover) {
+  background-color: rgba(var(--v-theme-primary), 0.04) !important;
+}
+
+.employee-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.employee-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

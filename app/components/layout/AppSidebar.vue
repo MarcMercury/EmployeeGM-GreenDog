@@ -1,6 +1,6 @@
 <template>
   <v-navigation-drawer
-    v-model="drawerVisible"
+    :model-value="!isMobile || drawerOpen"
     :rail="rail && !isMobile"
     :temporary="isMobile"
     :permanent="!isMobile"
@@ -8,7 +8,7 @@
     :rail-width="80"
     color="grey-darken-4"
     class="app-sidebar"
-    @update:model-value="handleDrawerUpdate"
+    @update:model-value="$emit('update:modelValue', $event)"
   >
     <!-- Logo/Header -->
     <div class="sidebar-header pa-4">
@@ -25,42 +25,44 @@
 
     <v-divider class="border-opacity-10" />
 
-    <!-- Navigation Groups -->
-    <v-list nav density="comfortable" class="px-2 mt-2">
-      <!-- Dashboard -->
+    <!-- Navigation Groups - Collapsible -->
+    <v-list 
+      v-model:opened="openGroups" 
+      nav 
+      density="compact" 
+      class="px-2 mt-2"
+    >
+      <!-- Dashboard - Always visible -->
       <v-list-item
         to="/"
         prepend-icon="mdi-view-dashboard"
         title="Dashboard"
-        subtitle="Home Base"
         rounded="lg"
         class="nav-item mb-1"
-        :class="{ 'show-subtitle': !rail }"
       />
 
-      <!-- Roster Group -->
+      <!-- Roster Group - Collapsible -->
       <v-list-group v-if="!rail" value="roster">
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <v-list-item
-            v-bind="props"
-            prepend-icon="mdi-badge-account-horizontal"
+            v-bind="activatorProps"
+            prepend-icon="mdi-account-group"
             title="Roster"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/employees" title="All Staff" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/roster" title="All Staff" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/employees?filter=admins" title="Admins" prepend-icon="mdi-shield-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/employees" prepend-icon="mdi-badge-account-horizontal" title="Roster" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Roster" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Skill Engine Group -->
+      <!-- Skill Engine Group - Collapsible -->
       <v-list-group v-if="!rail" value="skills">
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <v-list-item
-            v-bind="props"
+            v-bind="activatorProps"
             prepend-icon="mdi-hexagon-multiple"
             title="Skill Engine"
             rounded="lg"
@@ -68,35 +70,34 @@
           />
         </template>
         <v-list-item to="/my-stats" title="My Stats" prepend-icon="mdi-chart-arc" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/mentorship" title="Mentorship Hub" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/mentorship" title="Mentorship" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/skills" title="Skill Library" prepend-icon="mdi-star-circle" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/my-stats" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Operations Group -->
+      <!-- Operations Group - Collapsible -->
       <v-list-group v-if="!rail" value="operations">
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <v-list-item
-            v-bind="props"
+            v-bind="activatorProps"
             prepend-icon="mdi-calendar-clock"
             title="Operations"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/my-ops" title="My Ops" prepend-icon="mdi-clock-check" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/ops" title="Ops Center" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/schedule" title="Schedule" prepend-icon="mdi-calendar" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/time-off" title="Time Off" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/training" title="Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/ops" title="Ops Center" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/my-ops" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/schedule" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Performance & Reviews Group -->
+      <!-- Performance Group - Collapsible -->
       <v-list-group v-if="!rail" value="performance">
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <v-list-item
-            v-bind="props"
+            v-bind="activatorProps"
             prepend-icon="mdi-chart-timeline-variant"
             title="Performance"
             rounded="lg"
@@ -109,29 +110,28 @@
       </v-list-group>
       <v-list-item v-else to="/goals" prepend-icon="mdi-chart-timeline-variant" title="Performance" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Growth Group (Admin Only) -->
-      <template v-if="isAdmin">
-        <v-list-group v-if="!rail" value="growth">
-          <template #activator="{ props }">
-            <v-list-item
-              v-bind="props"
-              prepend-icon="mdi-rocket-launch"
-              title="Growth"
-              rounded="lg"
-              class="nav-item"
-            />
-          </template>
-          <v-list-item to="/marketing" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-          <v-list-item to="/leads" title="Lead CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        </v-list-group>
-        <v-list-item v-else to="/marketing" prepend-icon="mdi-rocket-launch" title="Growth" rounded="lg" class="nav-item mb-1" />
-      </template>
+      <!-- Marketing & Growth Group - Admin Only, Collapsible -->
+      <v-list-group v-if="isAdmin && !rail" value="marketing">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-bullhorn"
+            title="Marketing"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/marketing" title="Campaigns" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/referrals" title="Referrals" prepend-icon="mdi-account-arrow-right" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else-if="isAdmin" to="/marketing" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>
       <v-divider class="border-opacity-10" />
       
-      <!-- Admin Settings (Admin Only) -->
+      <!-- Admin Settings -->
       <v-list v-if="isAdmin" nav density="compact" class="px-2">
         <v-list-item
           to="/settings"
@@ -157,10 +157,10 @@
             </v-avatar>
           </template>
           <template v-if="!rail">
-            <v-list-item-title class="text-white text-body-2">{{ firstName }}</v-list-item-title>
+            <v-list-item-title class="text-white text-body-2">{{ fullName }}</v-list-item-title>
             <v-list-item-subtitle class="text-grey text-caption">
-              <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat">Admin</v-chip>
-              <span v-else class="text-grey-lighten-1">Team Member</span>
+              <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat" class="mr-1">Admin</v-chip>
+              <span v-else>User</span>
             </v-list-item-subtitle>
           </template>
         </v-list-item>
@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -212,42 +212,12 @@ const emit = defineEmits<{
   'update:rail': [value: boolean]
 }>()
 
-// Use prop for mobile detection (passed from parent for consistency)
+// Track which groups are open - start with all collapsed to save space
+const openGroups = ref<string[]>([])
+
+// Drawer state
+const drawerOpen = computed(() => props.modelValue)
 const isMobile = computed(() => props.temporary)
-
-// Internal drawer state - always true on desktop
-const drawerVisible = ref(true)
-
-// Sync internal state with prop for mobile
-watch(() => props.modelValue, (newVal) => {
-  if (isMobile.value) {
-    drawerVisible.value = newVal
-  }
-}, { immediate: true })
-
-// Ensure drawer is always visible on desktop
-watch(isMobile, (mobile) => {
-  if (!mobile) {
-    drawerVisible.value = true
-  }
-}, { immediate: true })
-
-// On mount, ensure desktop sidebar is visible
-onMounted(() => {
-  if (!isMobile.value) {
-    drawerVisible.value = true
-  }
-})
-
-function handleDrawerUpdate(val: boolean) {
-  if (isMobile.value) {
-    emit('update:modelValue', val)
-  }
-  // On desktop, always keep visible
-  if (!isMobile.value && !val) {
-    drawerVisible.value = true
-  }
-}
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -255,7 +225,6 @@ const router = useRouter()
 const profile = computed(() => authStore.profile)
 const isAdmin = computed(() => authStore.isAdmin)
 const fullName = computed(() => authStore.fullName)
-const firstName = computed(() => authStore.profile?.first_name || 'User')
 const initials = computed(() => authStore.initials)
 
 async function handleSignOut() {
@@ -270,7 +239,7 @@ async function handleSignOut() {
   z-index: 1006 !important;
 }
 
-/* Force sidebar visible on desktop - override Vuetify hidden states */
+/* Force sidebar visible on desktop */
 @media (min-width: 960px) {
   .app-sidebar {
     transform: translateX(0) !important;
@@ -289,13 +258,14 @@ async function handleSignOut() {
 }
 
 .sidebar-header {
-  min-height: 72px;
+  min-height: 64px;
   display: flex;
   align-items: center;
 }
 
 .nav-item {
   color: rgba(255, 255, 255, 0.7) !important;
+  margin-bottom: 2px;
 }
 
 .nav-item:hover {
@@ -308,13 +278,21 @@ async function handleSignOut() {
   color: rgb(var(--v-theme-primary)) !important;
 }
 
-.nav-item .v-list-item-subtitle {
-  display: none;
+/* Compact group styling */
+:deep(.v-list-group__items) {
+  --indent-padding: 0px !important;
 }
 
-.nav-item.show-subtitle .v-list-item-subtitle {
-  display: block;
-  font-size: 0.7rem;
+:deep(.v-list-group__header) {
+  min-height: 40px !important;
+}
+
+/* Chevron icon styling for groups */
+:deep(.v-list-group__header .v-list-item__append) {
   opacity: 0.6;
+}
+
+:deep(.v-list-group--open > .v-list-group__header .v-list-item__append) {
+  opacity: 1;
 }
 </style>
