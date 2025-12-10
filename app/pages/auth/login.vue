@@ -154,30 +154,54 @@ function fillDemoCredentials() {
 }
 
 async function handleSubmit() {
+  // Reset error
+  error.value = ''
+  
+  // Validate form if ref exists
   if (formRef.value) {
     const { valid } = await formRef.value.validate()
-    if (!valid) return
+    if (!valid) {
+      error.value = 'Please fill in all fields correctly'
+      return
+    }
   }
 
+  // Check for empty fields
   if (!form.email || !form.password) {
     error.value = 'Please enter email and password'
     return
   }
 
   isLoading.value = true
-  error.value = ''
 
   try {
+    console.log('Attempting login with:', form.email)
+    
     const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: form.email,
+      email: form.email.trim(),
       password: form.password
     })
 
-    if (authError) throw authError
+    console.log('Auth response:', { data, authError })
 
-    if (data.user) {
+    if (authError) {
+      console.error('Auth error:', authError)
+      // Provide user-friendly error messages
+      if (authError.message.includes('Invalid login credentials')) {
+        error.value = 'Invalid email or password. Please check your credentials.'
+      } else if (authError.message.includes('Email not confirmed')) {
+        error.value = 'Please confirm your email before signing in.'
+      } else {
+        error.value = authError.message
+      }
+      return
+    }
+
+    if (data?.user) {
+      console.log('Login successful, redirecting...')
       const redirectTo = route.query.redirect as string || '/'
-      await router.push(redirectTo)
+      // Use window.location for a full page reload to ensure auth state is picked up
+      window.location.href = redirectTo
     }
   } catch (err: any) {
     console.error('Login error:', err)
