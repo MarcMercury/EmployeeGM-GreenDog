@@ -36,10 +36,10 @@
         </span>
       </v-avatar>
       
-      <!-- Level Badge (Madden Style) -->
+      <!-- Level Badge (Profile Level) -->
       <div class="roster-card__level">
         <span class="level-number">{{ employee.player_level || calculateLevel() }}</span>
-        <span class="level-label">OVR</span>
+        <span class="level-label">LVL</span>
       </div>
     </div>
     
@@ -60,7 +60,7 @@
         {{ employee.position?.title || 'Team Member' }}
       </v-chip>
       
-      <!-- Stats Row (Madden-style) -->
+      <!-- Stat Summary Row -->
       <div class="roster-card__stats">
         <div class="stat-item">
           <span class="stat-value">{{ employee.skill_stats?.total || 0 }}</span>

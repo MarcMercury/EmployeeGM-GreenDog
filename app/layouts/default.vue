@@ -8,7 +8,7 @@
       @update:rail="sidebarRail = $event"
     />
     
-    <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
+    <v-main class="app-main">
       <!-- Premium App Bar -->
       <AppHeader 
         :title="pageTitle"

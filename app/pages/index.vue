@@ -4,7 +4,7 @@
     <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">
-          The Locker Room
+          Command Center
         </h1>
         <p class="text-body-2 text-grey">
           {{ currentDate }} • Welcome back, {{ firstName }}
@@ -341,6 +341,7 @@ definePageMeta({
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const dashboardStore = useDashboardStore()
 
 const isAdmin = computed(() => authStore.isAdmin)
 const firstName = computed(() => authStore.profile?.first_name || 'there')
@@ -372,54 +373,32 @@ function quickLogIncident() {
   showIncidentDialog.value = true
 }
 
-// Mock data - will be replaced with real API calls
-const stats = ref({
-  totalStaff: 24,
-  onShiftToday: 8,
-  pendingRequests: 3,
-  activeMentorships: 5
-})
-
-const openShiftsCount = ref(2)
-
-const teamHealth = ref({
-  compliant: 21,
-  expired: 3,
-  percentage: 87
-})
-
-const pendingMentorships = ref([
-  { id: '1', learnerName: 'Sarah M.', skillName: 'IV Catheter', mentorName: 'Mike R.' },
-  { id: '2', learnerName: 'John D.', skillName: 'Dental Prophy', mentorName: 'Lisa T.' }
-])
-
-const growthStats = ref({
-  leadsThisWeek: 12,
-  weeklyGoal: 10,
-  conversionRate: 23,
-  upcomingEvents: 2
-})
-
-const upcomingShifts = ref([
-  { id: '1', date: 'Today', time: '8:00 AM - 4:00 PM', employee: { name: 'Sarah Miller', initials: 'SM' }, role: 'Vet Tech', location: 'Sherman Oaks' },
-  { id: '2', date: 'Today', time: '9:00 AM - 5:00 PM', employee: { name: 'John Davis', initials: 'JD' }, role: 'CSR', location: 'Venice' },
-  { id: '3', date: 'Today', time: '12:00 PM - 8:00 PM', employee: null, role: 'Vet Tech', location: 'The Valley' },
-  { id: '4', date: 'Tomorrow', time: '8:00 AM - 4:00 PM', employee: { name: 'Lisa Thompson', initials: 'LT' }, role: 'DVM', location: 'Sherman Oaks' },
-  { id: '5', date: 'Tomorrow', time: '10:00 AM - 6:00 PM', employee: null, role: 'Receptionist', location: 'Venice' }
-])
+// Use real data from store
+const stats = computed(() => dashboardStore.stats)
+const openShiftsCount = computed(() => dashboardStore.openShiftsCount)
+const teamHealth = computed(() => dashboardStore.teamHealth)
+const pendingMentorships = computed(() => dashboardStore.pendingMentorships)
+const growthStats = computed(() => dashboardStore.growthStats)
+const upcomingShifts = computed(() => dashboardStore.upcomingShifts)
 
 function formatShiftTime(shift: any) {
   return `${shift.date} ${shift.time.split(' - ')[0]}`
 }
 
-function approveMentorship(id: string) {
-  pendingMentorships.value = pendingMentorships.value.filter(m => m.id !== id)
+async function approveMentorship(id: string) {
+  try {
+    await dashboardStore.approveMentorship(id)
+  } catch (err) {
+    console.error('Error approving mentorship:', err)
+  }
 }
 
 // Fetch real data on mount
 onMounted(async () => {
-  await userStore.fetchUserData()
-  // TODO: Fetch real stats from API
+  await Promise.all([
+    userStore.fetchUserData(),
+    dashboardStore.fetchDashboardData()
+  ])
 })
 </script>
 

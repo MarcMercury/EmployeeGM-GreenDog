@@ -4,7 +4,7 @@
     <div class="roster-header d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
       <div class="d-flex align-center gap-4">
         <div>
-          <h1 class="text-h4 font-weight-bold mb-1">The Roster</h1>
+          <h1 class="text-h4 font-weight-bold mb-1">Team Directory</h1>
           <p class="text-body-2 text-grey">
             {{ activeEmployees.length }} active • {{ clockedInCount }} on shift
           </p>
@@ -187,7 +187,7 @@
         <template #item.level="{ item }">
           <div class="level-badge">
             <span class="level-badge__number">{{ item.player_level }}</span>
-            <span class="level-badge__label">OVR</span>
+            <span class="level-badge__label">LVL</span>
           </div>
         </template>
 

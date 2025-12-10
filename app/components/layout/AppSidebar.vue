@@ -29,7 +29,7 @@
         to="/"
         prepend-icon="mdi-view-dashboard"
         title="Dashboard"
-        subtitle="The Locker Room"
+        subtitle="Home Base"
         rounded="lg"
         class="nav-item mb-1"
         :class="{ 'show-subtitle': !rail }"
@@ -52,21 +52,22 @@
       </v-list-group>
       <v-list-item v-else to="/employees" prepend-icon="mdi-badge-account-horizontal" title="Roster" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Skill Matrix Group -->
+      <!-- Skill Engine Group -->
       <v-list-group v-if="!rail" value="skills">
         <template #activator="{ props }">
           <v-list-item
             v-bind="props"
             prepend-icon="mdi-hexagon-multiple"
-            title="Skill Matrix"
+            title="Skill Engine"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/skills" title="Skill Library" prepend-icon="mdi-star-circle" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/my-stats" title="My Stats" prepend-icon="mdi-chart-arc" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/mentorship" title="Mentorship Hub" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/skills" title="Skill Library" prepend-icon="mdi-star-circle" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/skills" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/my-stats" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
 
       <!-- Operations Group -->
       <v-list-group v-if="!rail" value="operations">
