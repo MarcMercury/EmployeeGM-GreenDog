@@ -1,9 +1,11 @@
 <template>
   <v-navigation-drawer
-    :model-value="modelValue"
-    @update:model-value="$emit('update:modelValue', $event)"
-    :rail="rail"
-    permanent
+    v-model="drawerOpen"
+    :rail="rail && !isMobile"
+    :temporary="isMobile"
+    :permanent="!isMobile"
+    :width="256"
+    :rail-width="72"
     color="grey-darken-4"
     class="app-sidebar"
   >
@@ -173,16 +175,41 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+
 interface Props {
   modelValue: boolean
   rail: boolean
 }
 
-defineProps<Props>()
-defineEmits<{
+const props = defineProps<Props>()
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'update:rail': [value: boolean]
 }>()
+
+// Local state for drawer
+const drawerOpen = computed({
+  get: () => props.modelValue,
+  set: (val) => emit('update:modelValue', val)
+})
+
+// Mobile detection
+const windowWidth = ref(1200)
+const isMobile = computed(() => windowWidth.value < 768)
+
+function handleResize() {
+  windowWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  windowWidth.value = window.innerWidth
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -201,6 +228,7 @@ async function handleSignOut() {
 <style scoped>
 .app-sidebar {
   border: none !important;
+  z-index: 1000 !important;
 }
 
 .sidebar-header {

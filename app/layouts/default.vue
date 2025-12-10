@@ -3,8 +3,7 @@
     <!-- Premium Sidebar Navigation -->
     <AppSidebar
       v-model="sidebarOpen"
-      :rail="!isMobile && sidebarRail"
-      :temporary="isMobile"
+      :rail="sidebarRail"
       @update:rail="sidebarRail = $event"
     />
     
@@ -161,13 +160,6 @@ const isAdmin = computed(() => authStore.isAdmin)
 const isMobile = computed(() => windowWidth.value < 768)
 const isTablet = computed(() => windowWidth.value >= 768 && windowWidth.value < 1024)
 
-// Calculate sidebar margin for main content
-const sidebarMargin = computed(() => {
-  if (isMobile.value) return '0px'
-  if (sidebarRail.value) return '56px'
-  return '256px'
-})
-
 // Page metadata
 const pageTitles: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Dashboard', subtitle: 'Welcome back!' },
@@ -304,21 +296,14 @@ onMounted(async () => {
   // Window resize handler
   const handleResize = () => {
     windowWidth.value = window.innerWidth
-    // Auto handle sidebar on mobile
-    if (windowWidth.value < 768) {
-      sidebarOpen.value = false
-    } else {
-      sidebarOpen.value = true
-    }
   }
   
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
   
-  // Initial setup
-  if (windowWidth.value < 768) {
-    sidebarOpen.value = false
-  }
+  // Sidebar is always open on desktop, controlled by rail for collapse
+  // On mobile, it's a temporary drawer
+  sidebarOpen.value = true
   
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
