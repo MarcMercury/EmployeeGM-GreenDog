@@ -1,4 +1,56 @@
 /* Employee GM - Main Styles */
+/* Premium Desktop-First Design System */
+
+/* CSS Variables for theming */
+:root {
+  /* Brand Colors - Green Dog Dental */
+  --gdd-primary: #2E7D32;
+  --gdd-primary-light: #4CAF50;
+  --gdd-primary-dark: #1B5E20;
+  --gdd-accent: #FF6F00;
+  --gdd-accent-light: #FFA000;
+  
+  /* Surface Colors - Light Mode */
+  --surface-bg: #F8FAFC;
+  --surface-card: #FFFFFF;
+  --surface-elevated: #FFFFFF;
+  --text-primary: #1E293B;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border-color: rgba(0, 0, 0, 0.08);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --gradient-warning: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Mode Variables */
+.v-theme--dark {
+  --surface-bg: #0F172A;
+  --surface-card: #1E293B;
+  --surface-elevated: #334155;
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+  --border-color: rgba(255, 255, 255, 0.08);
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.2);
+}
 
 /* Desktop-first responsive design */
 * {
@@ -6,14 +58,17 @@
 }
 
 html, body {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Inter', 'Roboto', system-ui, sans-serif;
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: #F5F5F5;
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
   /* Desktop-optimized font size */
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* GLOBAL: Force sidebar visibility on desktop */
@@ -298,4 +353,146 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Dark Mode Scrollbar */
+.v-theme--dark ::-webkit-scrollbar-track {
+  background: #1E293B;
+}
+
+.v-theme--dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.v-theme--dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748B;
+}
+
+/* Premium Card Styles */
+.premium-card {
+  background: var(--surface-card);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+.premium-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+/* Interactive Elements */
+.interactive-item {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.interactive-item:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+/* Emoji as Icons - Visual Delight */
+.emoji-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-icon-lg {
+  font-size: 2rem;
+}
+
+.emoji-icon-xl {
+  font-size: 2.5rem;
+}
+
+/* Status Indicators */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.active {
+  background: #22C55E;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+  animation: pulse-green 2s infinite;
+}
+
+.status-dot.warning {
+  background: #F59E0B;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.status-dot.error {
+  background: #EF4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card Hover Effects */
+.hover-lift {
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Notification Badge Animation */
+.notification-badge {
+  animation: badge-bounce 2s infinite;
+}
+
+@keyframes badge-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Focus Styles for Accessibility */
+.v-btn:focus-visible,
+.v-list-item:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+}
+
+/* Glass Morphism Effect for Dark Mode */
+.v-theme--dark .glass-card {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Smooth Page Transitions */
+.page-transition-enter-active,
+.page-transition-leave-active {
+  transition: all var(--transition-normal);
+}
+
+.page-transition-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-transition-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }

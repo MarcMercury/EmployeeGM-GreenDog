@@ -1,6 +1,6 @@
 <template>
   <v-navigation-drawer
-    :model-value="!isMobile || drawerOpen"
+    v-model="drawerVisible"
     :rail="rail && !isMobile"
     :temporary="isMobile"
     :permanent="!isMobile"
@@ -8,7 +8,7 @@
     :rail-width="80"
     color="grey-darken-4"
     class="app-sidebar"
-    @update:model-value="$emit('update:modelValue', $event)"
+    @update:model-value="handleDrawerUpdate"
   >
     <!-- Logo/Header -->
     <div class="sidebar-header pa-4">
@@ -194,7 +194,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 
 interface Props {
   modelValue: boolean
@@ -212,11 +212,42 @@ const emit = defineEmits<{
   'update:rail': [value: boolean]
 }>()
 
-// Drawer state - use modelValue for mobile, always true for desktop
-const drawerOpen = computed(() => props.modelValue)
-
 // Use prop for mobile detection (passed from parent for consistency)
 const isMobile = computed(() => props.temporary)
+
+// Internal drawer state - always true on desktop
+const drawerVisible = ref(true)
+
+// Sync internal state with prop for mobile
+watch(() => props.modelValue, (newVal) => {
+  if (isMobile.value) {
+    drawerVisible.value = newVal
+  }
+}, { immediate: true })
+
+// Ensure drawer is always visible on desktop
+watch(isMobile, (mobile) => {
+  if (!mobile) {
+    drawerVisible.value = true
+  }
+}, { immediate: true })
+
+// On mount, ensure desktop sidebar is visible
+onMounted(() => {
+  if (!isMobile.value) {
+    drawerVisible.value = true
+  }
+})
+
+function handleDrawerUpdate(val: boolean) {
+  if (isMobile.value) {
+    emit('update:modelValue', val)
+  }
+  // On desktop, always keep visible
+  if (!isMobile.value && !val) {
+    drawerVisible.value = true
+  }
+}
 
 const authStore = useAuthStore()
 const router = useRouter()

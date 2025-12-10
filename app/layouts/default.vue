@@ -297,8 +297,17 @@ function handleKeydown(e: KeyboardEvent) {
 
 // Lifecycle
 onMounted(async () => {
-  // Initialize window width
+  // Initialize window width immediately
   windowWidth.value = window.innerWidth
+  
+  // Immediately set sidebar state based on current window width
+  // Desktop-first: sidebar should be open on desktop
+  if (windowWidth.value >= 960) {
+    sidebarOpen.value = true
+    sidebarRail.value = false
+  } else {
+    sidebarOpen.value = false
+  }
   
   // Fetch profile if needed
   if (!authStore.profile) {
@@ -324,13 +333,6 @@ onMounted(async () => {
   
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
-  
-  // Initial setup - Desktop-first: keep sidebar open unless truly mobile
-  if (windowWidth.value < 960) {
-    sidebarOpen.value = false
-  } else {
-    sidebarOpen.value = true
-  }
   
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
