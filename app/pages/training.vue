@@ -149,66 +149,7 @@
 
       <!-- Catalog Tab -->
       <v-window-item value="catalog">
-        <v-row>
-          <v-col 
-            v-for="course in courses" 
-            :key="course.id" 
-            cols="12" 
-            md="6" 
-            lg="4"
-          >
-            <v-card rounded="lg">
-              <v-img
-                v-if="course.thumbnail_url"
-                :src="course.thumbnail_url"
-                height="150"
-                cover
-              />
-              <div v-else class="bg-secondary d-flex align-center justify-center" style="height: 150px">
-                <v-icon size="64" color="white">mdi-book-open</v-icon>
-              </div>
-              
-              <v-card-title class="d-flex align-center gap-2">
-                {{ course.title }}
-                <v-chip v-if="course.is_required" size="x-small" color="error">Required</v-chip>
-              </v-card-title>
-              <v-card-subtitle>{{ course.category }}</v-card-subtitle>
-              
-              <v-card-text>
-                <p class="text-body-2 mb-3">{{ course.description }}</p>
-                <div class="d-flex gap-4 text-caption text-grey">
-                  <span>
-                    <v-icon size="14">mdi-clock-outline</v-icon>
-                    {{ course.estimated_hours || '?' }} hrs
-                  </span>
-                  <span>
-                    <v-icon size="14">mdi-signal</v-icon>
-                    {{ course.difficulty_level || 'All levels' }}
-                  </span>
-                </div>
-              </v-card-text>
-              
-              <v-card-actions>
-                <v-btn 
-                  color="primary" 
-                  variant="tonal"
-                  :disabled="isEnrolled(course.id)"
-                  @click="enrollCourse(course.id)"
-                >
-                  {{ isEnrolled(course.id) ? 'Enrolled' : 'Enroll' }}
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </v-col>
-          
-          <v-col v-if="courses.length === 0" cols="12">
-            <v-card rounded="lg" class="text-center pa-8">
-              <v-icon size="64" color="grey-lighten-1">mdi-book-open-page-variant</v-icon>
-              <h3 class="text-h6 mt-4">No Courses Available</h3>
-              <p class="text-grey">Check back later for new training content</p>
-            </v-card>
-          </v-col>
-        </v-row>
+        <CourseCatalog />
       </v-window-item>
 
       <!-- Manage Courses Tab (Admin) -->
@@ -300,6 +241,7 @@
 
 <script setup lang="ts">
 import type { TrainingCourse, TrainingEnrollment } from '~/types/database.types'
+import CourseCatalog from '~/components/academy/CourseCatalog.vue'
 
 definePageMeta({
   layout: 'default',

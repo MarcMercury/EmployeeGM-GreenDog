@@ -846,9 +846,188 @@ export const useAcademyStore = defineStore('academy', {
       this.currentLessonIndex = 0
       this.currentQuiz = null
       this.currentQuestions = []
+      this.currentQuizQuestions = []
       this.quizAnswers = {}
       this.quizStartTime = null
       this.lastAttempt = null
+    },
+
+    // =====================================================
+    // SIMPLIFIED METHODS FOR COMPONENTS
+    // These auto-get the employee ID from auth store
+    // =====================================================
+
+    async fetchEnrollments() {
+      const authStore = useAuthStore()
+      if (!authStore.user?.id) return
+
+      const supabase = useSupabaseClient()
+      try {
+        const { data, error } = await supabase
+          .from('training_enrollments')
+          .select('*')
+          .eq('employee_id', authStore.user.id)
+          .order('enrolled_at', { ascending: false })
+
+        if (error) throw error
+        this.enrollments = data as TrainingEnrollment[]
+        this.myEnrollments = data as TrainingEnrollment[]
+      } catch (err) {
+        console.error('fetchEnrollments error:', err)
+      }
+    },
+
+    async fetchProgress() {
+      const authStore = useAuthStore()
+      if (!authStore.user?.id) return
+
+      const supabase = useSupabaseClient()
+      try {
+        const { data, error } = await supabase
+          .from('training_progress')
+          .select('*')
+          .eq('employee_id', authStore.user.id)
+
+        if (error) throw error
+        this.progress = data as TrainingProgress[]
+      } catch (err) {
+        console.error('fetchProgress error:', err)
+      }
+    },
+
+    async fetchLessonsForCourse(courseId: string) {
+      const supabase = useSupabaseClient()
+      this.loading = true
+      this.isLoading = true
+
+      try {
+        // Fetch course
+        const { data: course, error: courseError } = await supabase
+          .from('training_courses')
+          .select('*')
+          .eq('id', courseId)
+          .single()
+
+        if (courseError) throw courseError
+        this.currentCourse = course as TrainingCourse
+
+        // Fetch lessons
+        const { data: lessons, error: lessonsError } = await supabase
+          .from('training_lessons')
+          .select('*')
+          .eq('course_id', courseId)
+          .order('position')
+
+        if (lessonsError) throw lessonsError
+        
+        this.lessons = lessons as TrainingLesson[]
+        this.currentLessons = lessons as TrainingLesson[]
+      } catch (err) {
+        console.error('fetchLessonsForCourse error:', err)
+      } finally {
+        this.loading = false
+        this.isLoading = false
+      }
+    },
+
+    async fetchQuizzes(courseId?: string) {
+      const supabase = useSupabaseClient()
+
+      try {
+        let query = supabase
+          .from('training_quizzes')
+          .select('*')
+
+        if (courseId) {
+          query = query.eq('course_id', courseId)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+        this.quizzes = data as TrainingQuiz[]
+      } catch (err) {
+        console.error('fetchQuizzes error:', err)
+      }
+    },
+
+    // Simplified enroll method (auto-gets employee)
+    async enrollInCourseSimple(courseId: string) {
+      const authStore = useAuthStore()
+      if (!authStore.user?.id) throw new Error('Not authenticated')
+      
+      return this.enrollInCourse(authStore.user.id, courseId)
+    },
+
+    // Simplified complete lesson (auto-gets employee)
+    async completeLesson(lessonId: string) {
+      const authStore = useAuthStore()
+      if (!authStore.user?.id) throw new Error('Not authenticated')
+      
+      await this.markLessonComplete(authStore.user.id, lessonId)
+      
+      // Update local progress
+      const existing = this.progress.find(p => p.lesson_id === lessonId)
+      if (existing) {
+        existing.completed_at = new Date().toISOString()
+        existing.progress_percent = 100
+      } else {
+        this.progress.push({
+          id: crypto.randomUUID(),
+          employee_id: authStore.user.id,
+          lesson_id: lessonId,
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          progress_percent: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+      }
+    },
+
+    // Set current lesson (for classroom)
+    setCurrentLesson(lesson: TrainingLesson | null) {
+      if (lesson) {
+        const index = this.currentLessons.findIndex(l => l.id === lesson.id)
+        if (index >= 0) {
+          this.currentLessonIndex = index
+        }
+      }
+    },
+
+    // Start quiz (load quiz data)
+    async startQuiz(quizId: string) {
+      await this.loadQuiz(quizId)
+      this.currentQuizQuestions = this.currentQuestions
+    },
+
+    // Submit quiz with answers (simplified)
+    async submitQuizAnswers(quizId: string, answers: Record<string, any>): Promise<{ score: number; passed: boolean; certificationAwarded?: boolean }> {
+      const authStore = useAuthStore()
+      if (!authStore.user?.id) throw new Error('Not authenticated')
+      if (!this.currentQuiz) throw new Error('No quiz loaded')
+
+      this.quizAnswers = answers
+      const attempt = await this.submitQuiz(authStore.user.id)
+
+      // Check if certification should be awarded
+      let certificationAwarded = false
+      if (attempt.passed && this.currentQuiz.course_id) {
+        // Check if course is now complete
+        const courseProgress = this.courseProgress(this.currentQuiz.course_id)
+        if (courseProgress === 100) {
+          certificationAwarded = true
+        }
+      }
+
+      // Store attempt
+      this.quizAttempts.push(attempt)
+
+      return {
+        score: attempt.score || 0,
+        passed: attempt.passed || false,
+        certificationAwarded
+      }
     }
   }
 })

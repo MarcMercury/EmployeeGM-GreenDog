@@ -43,9 +43,9 @@
       </template>
     </v-alert>
 
-    <!-- Stats Overview Row -->
+    <!-- Stats Overview Row - Desktop-first: 4 columns -->
     <v-row class="mb-6">
-      <v-col cols="6" sm="3">
+      <v-col cols="12" sm="6" md="3">
         <v-card class="stat-card h-100" variant="outlined">
           <v-card-text class="text-center pa-4">
             <v-icon size="32" color="primary" class="mb-2">mdi-account-group</v-icon>

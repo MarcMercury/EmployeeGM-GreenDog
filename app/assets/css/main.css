@@ -1,6 +1,6 @@
 /* Employee GM - Main Styles */
 
-/* Mobile-first responsive design */
+/* Desktop-first responsive design */
 * {
   box-sizing: border-box;
 }
@@ -11,6 +11,9 @@ html, body {
   padding: 0;
   min-height: 100vh;
   background-color: #F5F5F5;
+  /* Desktop-optimized font size */
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 /* Baseball Card Styles */
@@ -130,17 +133,17 @@ html, body {
   color: white;
 }
 
-/* Stats Grid */
+/* Stats Grid - Desktop-first */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  padding: 24px;
 }
 
 .stat-item {
   text-align: center;
-  padding: 12px;
+  padding: 16px 20px;
   background: rgba(46, 125, 50, 0.05);
   border-radius: 12px;
   transition: background 0.2s ease;
@@ -151,31 +154,47 @@ html, body {
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #2E7D32;
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 4px;
 }
 
-/* Mobile Touch-Friendly */
+/* Tablet adjustments */
+@media (max-width: 1280px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Mobile adjustments - only for small screens */
+@media (max-width: 960px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    padding: 16px;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+}
+
 @media (max-width: 600px) {
   .baseball-card {
     margin: 8px;
     border-radius: 12px;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* Larger touch targets */
+  /* Larger touch targets on mobile only */
   .v-btn {
     min-height: 48px !important;
   }

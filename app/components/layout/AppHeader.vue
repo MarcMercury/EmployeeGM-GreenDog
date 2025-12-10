@@ -1,28 +1,30 @@
 <template>
-  <v-app-bar flat color="transparent" class="app-header">
-    <!-- Always show nav icon to toggle sidebar -->
+  <v-app-bar flat color="transparent" class="app-header" height="64">
+    <!-- Sidebar toggle for rail mode -->
     <v-app-bar-nav-icon @click="$emit('toggle-sidebar')" />
 
-    <v-toolbar-title class="d-none d-md-block">
+    <!-- Title - always visible on desktop -->
+    <v-toolbar-title class="text-h6 font-weight-medium">
       <slot name="title">
         {{ title }}
       </slot>
+      <span v-if="subtitle" class="text-caption text-grey ml-2 d-none d-lg-inline">{{ subtitle }}</span>
     </v-toolbar-title>
 
     <v-spacer />
 
-    <!-- Search -->
+    <!-- Search - wider on desktop -->
     <v-text-field
       v-if="showSearch"
       v-model="searchQuery"
-      placeholder="Search..."
+      placeholder="Search employees, skills, schedules..."
       prepend-inner-icon="mdi-magnify"
-      variant="solo"
+      variant="outlined"
       density="compact"
       hide-details
       single-line
       class="search-field mr-4"
-      style="max-width: 300px;"
+      style="max-width: 400px; min-width: 280px;"
       @keyup.enter="$emit('search', searchQuery)"
     />
 
@@ -116,12 +118,14 @@ import type { ToastNotification } from '~/types'
 
 interface Props {
   title?: string
+  subtitle?: string
   showSearch?: boolean
   showNotifications?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
   title: '',
+  subtitle: '',
   showSearch: true,
   showNotifications: true
 })

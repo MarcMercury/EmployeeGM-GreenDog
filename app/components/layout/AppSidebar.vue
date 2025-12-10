@@ -4,8 +4,8 @@
     :rail="rail && !isMobile"
     :temporary="isMobile"
     :permanent="!isMobile"
-    :width="256"
-    :rail-width="72"
+    :width="280"
+    :rail-width="80"
     color="grey-darken-4"
     class="app-sidebar"
   >
@@ -194,9 +194,9 @@ const drawerOpen = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-// Mobile detection
-const windowWidth = ref(1200)
-const isMobile = computed(() => windowWidth.value < 768)
+// Desktop-first: mobile only below 960px
+const windowWidth = ref(1920)
+const isMobile = computed(() => windowWidth.value < 960)
 
 function handleResize() {
   windowWidth.value = window.innerWidth

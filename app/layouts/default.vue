@@ -3,11 +3,12 @@
     <!-- Premium Sidebar Navigation -->
     <AppSidebar
       v-model="sidebarOpen"
-      :rail="sidebarRail"
+      :rail="!isMobile && sidebarRail"
+      :temporary="isMobile"
       @update:rail="sidebarRail = $event"
     />
     
-    <v-main class="app-main">
+    <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
       <!-- Premium App Bar -->
       <AppHeader 
         :title="pageTitle"
@@ -144,12 +145,12 @@ const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
-// Reactive state
+// Reactive state - Desktop-first defaults
 const sidebarOpen = ref(true)
 const sidebarRail = ref(false)
 const commandPaletteOpen = ref(false)
 const commandSearch = ref('')
-const windowWidth = ref(1200) // Default for SSR
+const windowWidth = ref(1920) // Desktop-first default for SSR
 
 // Computed properties
 const notifications = computed(() => uiStore.notifications)
@@ -157,8 +158,16 @@ const isPageLoading = computed(() => uiStore.isPageLoading)
 const isDark = computed(() => uiStore.isDarkMode)
 const isAdmin = computed(() => authStore.isAdmin)
 
-const isMobile = computed(() => windowWidth.value < 768)
-const isTablet = computed(() => windowWidth.value >= 768 && windowWidth.value < 1024)
+// Desktop-first breakpoints: only treat as mobile below 960px
+const isMobile = computed(() => windowWidth.value < 960)
+const isTablet = computed(() => windowWidth.value >= 960 && windowWidth.value < 1280)
+
+// Calculate sidebar margin for main content - Desktop-first
+const sidebarMargin = computed(() => {
+  if (isMobile.value) return '0px'
+  if (sidebarRail.value) return '72px' // Slightly wider rail for desktop
+  return '256px'
+})
 
 // Page metadata
 const pageTitles: Record<string, { title: string; subtitle?: string }> = {
@@ -293,17 +302,28 @@ onMounted(async () => {
     await authStore.fetchProfile()
   }
   
-  // Window resize handler
+  // Window resize handler - Desktop-first
   const handleResize = () => {
     windowWidth.value = window.innerWidth
+    // Only collapse sidebar on truly mobile devices (< 960px)
+    if (windowWidth.value < 960) {
+      sidebarOpen.value = false
+    } else {
+      // Keep sidebar expanded on desktop
+      sidebarOpen.value = true
+      sidebarRail.value = false
+    }
   }
   
   window.addEventListener('resize', handleResize)
   window.addEventListener('keydown', handleKeydown)
   
-  // Sidebar is always open on desktop, controlled by rail for collapse
-  // On mobile, it's a temporary drawer
-  sidebarOpen.value = true
+  // Initial setup - Desktop-first: keep sidebar open unless truly mobile
+  if (windowWidth.value < 960) {
+    sidebarOpen.value = false
+  } else {
+    sidebarOpen.value = true
+  }
   
   onUnmounted(() => {
     window.removeEventListener('resize', handleResize)
@@ -312,8 +332,9 @@ onMounted(async () => {
 })
 
 // Watch for route changes to close mobile drawer
+// Only close sidebar on route change if on mobile
 watch(() => route.path, () => {
-  if (isMobile.value) {
+  if (isMobile.value && windowWidth.value < 960) {
     sidebarOpen.value = false
   }
 })

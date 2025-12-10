@@ -495,7 +495,7 @@ async function submitQuiz() {
   
   submitting.value = true
   try {
-    const result = await academyStore.submitQuiz(props.quizId, answers.value)
+    const result = await academyStore.submitQuizAnswers(props.quizId, answers.value)
     
     score.value = result.score
     passed.value = result.passed

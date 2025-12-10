@@ -407,7 +407,7 @@ function getCategoryIcon(category: string): string {
 async function handleEnroll(course: any) {
   enrollingId.value = course.id
   try {
-    await academyStore.enrollInCourse(course.id)
+    await academyStore.enrollInCourseSimple(course.id)
   } finally {
     enrollingId.value = null
   }
