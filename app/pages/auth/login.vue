@@ -131,6 +131,15 @@ const supabase = useSupabaseClient()
 const router = useRouter()
 const route = useRoute()
 
+// Check if already logged in and redirect
+onMounted(async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user) {
+    console.log('[Login] Already logged in, redirecting to dashboard')
+    await navigateTo('/', { replace: true })
+  }
+})
+
 const formRef = ref()
 const formValid = ref(false)
 const showPassword = ref(false)
