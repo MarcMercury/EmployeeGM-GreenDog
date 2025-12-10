@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Training Center</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">{{ firstName }}'s Training</h1>
         <p class="text-body-1 text-grey-darken-1">
           Develop your skills and track your progress
         </p>
@@ -267,6 +267,7 @@ const authStore = useAuthStore()
 const uiStore = useUIStore()
 
 const isAdmin = computed(() => authStore.isAdmin)
+const firstName = computed(() => authStore.profile?.first_name || 'My')
 
 const tab = ref('my-training')
 const courses = ref<TrainingCourse[]>([])

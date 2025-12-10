@@ -157,10 +157,10 @@
             </v-avatar>
           </template>
           <template v-if="!rail">
-            <v-list-item-title class="text-white text-body-2">{{ fullName }}</v-list-item-title>
+            <v-list-item-title class="text-white text-body-2">{{ firstName }}</v-list-item-title>
             <v-list-item-subtitle class="text-grey text-caption">
-              <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat" class="mr-1">Admin</v-chip>
-              <span v-else>User</span>
+              <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat">Admin</v-chip>
+              <span v-else class="text-grey-lighten-1">Team Member</span>
             </v-list-item-subtitle>
           </template>
         </v-list-item>
@@ -255,6 +255,7 @@ const router = useRouter()
 const profile = computed(() => authStore.profile)
 const isAdmin = computed(() => authStore.isAdmin)
 const fullName = computed(() => authStore.fullName)
+const firstName = computed(() => authStore.profile?.first_name || 'User')
 const initials = computed(() => authStore.initials)
 
 async function handleSignOut() {

@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold">My Goals</h1>
+        <h1 class="text-h4 font-weight-bold">{{ firstName }}'s Goals</h1>
         <p class="text-body-2 text-grey">Track your OKRs and objectives</p>
       </div>
       <v-btn color="primary" prepend-icon="mdi-plus" @click="showCreateDialog = true">
@@ -235,6 +235,10 @@ import { usePerformanceStore, type Goal } from '~/stores/performance'
 import GoalProgressModal from './GoalProgressModal.vue'
 
 const performanceStore = usePerformanceStore()
+const authStore = useAuthStore()
+
+// Personalization
+const firstName = computed(() => authStore.profile?.first_name || 'My')
 
 // State
 const activeTab = ref('active')

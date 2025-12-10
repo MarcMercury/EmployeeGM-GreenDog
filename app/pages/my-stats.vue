@@ -3,7 +3,7 @@
     <!-- Page Header -->
     <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-4">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">My Stats</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">{{ firstName }}'s Stats</h1>
         <p class="text-body-2 text-grey">
           Track your skills, find mentors, and earn achievements
         </p>
@@ -309,6 +309,9 @@ definePageMeta({
 
 const skillEngineStore = useSkillEngineStore()
 const authStore = useAuthStore()
+
+// Personalization
+const firstName = computed(() => authStore.profile?.first_name || 'My')
 
 // State
 const showAddSkillDialog = ref(false)
