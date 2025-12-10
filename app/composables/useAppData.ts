@@ -121,7 +121,7 @@ export const useAppData = () => {
         const { data: profile } = await client
           .from('profiles')
           .select('id, email, role, avatar_url, first_name, last_name, phone')
-          .eq('id', user.value.id)
+          .eq('auth_user_id', user.value.id)
           .single()
         
         if (profile) {
