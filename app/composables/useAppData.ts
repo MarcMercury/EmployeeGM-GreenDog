@@ -107,28 +107,41 @@ export const useAppData = () => {
    */
   const fetchGlobalData = async (force = false) => {
     // Skip if already initialized (unless forced)
-    if (!force && initialized.value) return
+    if (!force && initialized.value) {
+      console.log('[useAppData] Already initialized, skipping fetch')
+      return
+    }
 
     // Skip if already loading
-    if (loading.value) return
+    if (loading.value) {
+      console.log('[useAppData] Already loading, skipping fetch')
+      return
+    }
 
+    console.log('[useAppData] Starting data fetch...')
     loading.value = true
     error.value = null
 
     try {
       // 1. IDENTITY CHECK: Who am I?
       if (user.value) {
-        const { data: profile } = await client
+        console.log('[useAppData] Fetching profile for user:', user.value.id)
+        const { data: profile, error: profileError } = await client
           .from('profiles')
           .select('id, email, role, avatar_url, first_name, last_name, phone')
           .eq('auth_user_id', user.value.id)
           .single()
         
+        console.log('[useAppData] Profile result:', profile, 'Error:', profileError)
+        
         if (profile) {
           currentUserProfile.value = profile as AppUserProfile
           // Check explicitly for 'admin' role
           isAdmin.value = profile.role === 'admin'
+          console.log('[useAppData] isAdmin set to:', isAdmin.value)
         }
+      } else {
+        console.log('[useAppData] No user, skipping profile fetch')
       }
 
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
@@ -183,6 +196,10 @@ export const useAppData = () => {
           .select('id, name, address')
           .order('name')
       ])
+
+      console.log('[useAppData] Employees raw result:', empResult.data?.length || 0, 'Error:', empResult.error)
+      console.log('[useAppData] Skills result:', skillResult.data?.length || 0)
+      console.log('[useAppData] Departments result:', deptResult.data?.length || 0)
 
       // Process Employees
       if (empResult.data) {

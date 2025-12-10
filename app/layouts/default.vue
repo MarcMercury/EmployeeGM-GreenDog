@@ -1,21 +1,34 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 
-// Simple CSS-forced sidebar - no complex state management needed
-// NuxtLink handles active state automatically with 'active-class'
 const authStore = useAuthStore()
 const router = useRouter()
+const user = useSupabaseUser()
 
-// Initialize auth store on mount to fetch profile
+// Fetch profile when user changes or on mount
+watch(user, async (newUser) => {
+  if (newUser && !authStore.profile) {
+    console.log('[Layout] User detected, fetching profile...')
+    await authStore.fetchProfile()
+    console.log('[Layout] Profile fetched:', authStore.profile)
+  }
+}, { immediate: true })
+
 onMounted(async () => {
-  await authStore.initialize()
+  if (user.value && !authStore.profile) {
+    console.log('[Layout] Mount: fetching profile for user', user.value.id)
+    await authStore.fetchProfile()
+  }
 })
 
 const profile = computed(() => authStore.profile)
-const isAdmin = computed(() => authStore.isAdmin)
+const isAdmin = computed(() => authStore.profile?.role === 'admin')
 const firstName = computed(() => authStore.profile?.first_name || 'User')
-const initials = computed(() => authStore.initials || 'U')
-const fullName = computed(() => authStore.fullName || 'User')
+const initials = computed(() => {
+  const p = authStore.profile
+  if (!p) return 'U'
+  return `${p.first_name?.[0] || ''}${p.last_name?.[0] || ''}`.toUpperCase() || 'U'
+})
 
 async function handleSignOut() {
   await authStore.signOut()

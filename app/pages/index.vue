@@ -8,7 +8,16 @@ definePageMeta({
 })
 
 // Get global hydrated data
-const { employees, skills, departments, loading, isAdmin, currentUserProfile } = useAppData()
+const { employees, skills, departments, loading, isAdmin, currentUserProfile, fetchGlobalData } = useAppData()
+
+// Fetch data on mount
+onMounted(async () => {
+  console.log('[Dashboard] Fetching global data...')
+  await fetchGlobalData()
+  console.log('[Dashboard] Employees loaded:', employees.value.length)
+  console.log('[Dashboard] isAdmin:', isAdmin.value)
+  console.log('[Dashboard] currentUserProfile:', currentUserProfile.value)
+})
 
 // Greeting based on time of day
 const greeting = computed(() => {
