@@ -1,0 +1,177 @@
+import { defineStore } from 'pinia'
+import type { Profile, ProfileUpdate, UserRole } from '~/types/database.types'
+
+interface AuthState {
+  profile: Profile | null
+  isLoading: boolean
+  error: string | null
+}
+
+export const useAuthStore = defineStore('auth', {
+  state: (): AuthState => ({
+    profile: null,
+    isLoading: false,
+    error: null
+  }),
+
+  getters: {
+    isAuthenticated: (state) => !!state.profile,
+    isAdmin: (state) => state.profile?.role === 'admin',
+    isUser: (state) => state.profile?.role === 'user',
+    fullName: (state) => {
+      if (!state.profile) return ''
+      return `${state.profile.first_name} ${state.profile.last_name}`.trim() || state.profile.email
+    },
+    initials: (state) => {
+      if (!state.profile) return ''
+      const first = state.profile.first_name?.[0] || ''
+      const last = state.profile.last_name?.[0] || ''
+      return (first + last).toUpperCase() || state.profile.email[0].toUpperCase()
+    }
+  },
+
+  actions: {
+    async fetchProfile() {
+      const supabase = useSupabaseClient()
+      const user = useSupabaseUser()
+
+      if (!user.value) {
+        this.profile = null
+        return
+      }
+
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.value.id)
+          .single()
+
+        if (error) throw error
+        this.profile = data as Profile
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to fetch profile'
+        console.error('Error fetching profile:', err)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async updateProfile(updates: ProfileUpdate) {
+      const supabase = useSupabaseClient()
+      
+      if (!this.profile) {
+        throw new Error('No profile to update')
+      }
+
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', this.profile.id)
+          .select()
+          .single()
+
+        if (error) throw error
+        this.profile = data as Profile
+        return data
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Failed to update profile'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async signIn(email: string, password: string) {
+      const supabase = useSupabaseClient()
+      
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        })
+
+        if (error) throw error
+        await this.fetchProfile()
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Sign in failed'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async signOut() {
+      const supabase = useSupabaseClient()
+      
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+        this.profile = null
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Sign out failed'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async signUp(email: string, password: string, firstName: string, lastName: string) {
+      const supabase = useSupabaseClient()
+      
+      this.isLoading = true
+      this.error = null
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              first_name: firstName,
+              last_name: lastName
+            }
+          }
+        })
+
+        if (error) throw error
+        return data
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Sign up failed'
+        throw err
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    clearError() {
+      this.error = null
+    },
+
+    // Check if user has specific role
+    hasRole(role: UserRole): boolean {
+      return this.profile?.role === role
+    },
+
+    // Check if user can perform admin actions
+    canManage(): boolean {
+      return this.isAdmin
+    }
+  }
+})

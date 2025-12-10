@@ -1,0 +1,272 @@
+/* Employee GM - Main Styles */
+
+/* Mobile-first responsive design */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background-color: #F5F5F5;
+}
+
+/* Baseball Card Styles */
+.baseball-card {
+  background: linear-gradient(145deg, #ffffff, #f0f0f0);
+  border-radius: 16px;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.baseball-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.15),
+    0 3px 6px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.baseball-card-header {
+  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  position: relative;
+}
+
+.baseball-card-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #FF6F00, #FFA000, #FF6F00);
+}
+
+/* Skill Rating Styles */
+.skill-rating {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.skill-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  transition: all 0.2s ease;
+}
+
+.skill-dot.filled {
+  background-color: currentColor;
+}
+
+.skill-dot.learning {
+  color: #FF9800;
+}
+
+.skill-dot.competent {
+  color: #2196F3;
+}
+
+.skill-dot.mentor {
+  color: #4CAF50;
+}
+
+/* Skill Level Badges */
+.skill-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.skill-badge.learning {
+  background-color: rgba(255, 152, 0, 0.15);
+  color: #E65100;
+}
+
+.skill-badge.competent {
+  background-color: rgba(33, 150, 243, 0.15);
+  color: #1565C0;
+}
+
+.skill-badge.mentor {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #2E7D32;
+}
+
+/* Role Badges */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.role-badge.admin {
+  background: linear-gradient(135deg, #7B1FA2, #4A148C);
+  color: white;
+}
+
+.role-badge.user {
+  background: linear-gradient(135deg, #1976D2, #0D47A1);
+  color: white;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 12px;
+  background: rgba(46, 125, 50, 0.05);
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.stat-item:hover {
+  background: rgba(46, 125, 50, 0.1);
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2E7D32;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+}
+
+/* Mobile Touch-Friendly */
+@media (max-width: 600px) {
+  .baseball-card {
+    margin: 8px;
+    border-radius: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Larger touch targets */
+  .v-btn {
+    min-height: 48px !important;
+  }
+
+  .v-list-item {
+    min-height: 56px !important;
+  }
+}
+
+/* Schedule Calendar Styles */
+.schedule-day {
+  border-radius: 8px;
+  padding: 8px;
+  margin: 4px;
+  min-height: 60px;
+  transition: all 0.2s ease;
+}
+
+.schedule-day.today {
+  background: rgba(46, 125, 50, 0.1);
+  border: 2px solid #2E7D32;
+}
+
+.schedule-day.scheduled {
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.schedule-day.off {
+  background: rgba(158, 158, 158, 0.1);
+}
+
+/* Animation Classes */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
