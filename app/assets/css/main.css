@@ -1,6 +1,11 @@
 /* Employee GM - Main Styles */
 /* Premium Desktop-First Design System */
 
+/* Tailwind CSS Base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* CSS Variables for theming */
 :root {
   /* Brand Colors - Green Dog Dental */

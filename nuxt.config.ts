@@ -18,7 +18,8 @@ export default defineNuxtConfig({
   // Modules
   modules: [
     '@nuxtjs/supabase',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxtjs/tailwindcss'
   ],
 
   // Supabase configuration

@@ -1,457 +1,194 @@
-<template>
-  <v-app :theme="isDark ? 'dark' : 'light'">
-    <!-- Premium Sidebar Navigation - Always visible on desktop -->
-    <AppSidebar
-      v-model="sidebarOpen"
-      :rail="!isMobile && sidebarRail"
-      :temporary="isMobile"
-      @update:rail="sidebarRail = $event"
-    />
-    
-    <v-main class="app-main" :style="{ marginLeft: sidebarMargin }">
-      <!-- Premium App Bar -->
-      <AppHeader 
-        :title="pageTitle"
-        :subtitle="pageSubtitle"
-        @toggle-sidebar="toggleSidebar"
-      />
-      
-      <!-- Page Content with Transitions -->
-      <v-container fluid class="page-container pa-4 pa-md-6 pa-lg-8">
-        <!-- Breadcrumbs -->
-        <v-breadcrumbs 
-          v-if="breadcrumbs.length > 1" 
-          :items="breadcrumbs"
-          class="px-0 pt-0 pb-4"
-        >
-          <template #divider>
-            <v-icon size="small">mdi-chevron-right</v-icon>
-          </template>
-        </v-breadcrumbs>
-
-        <!-- Page Transition Wrapper -->
-        <Transition name="page" mode="out-in">
-          <div :key="route.path">
-            <slot />
-          </div>
-        </Transition>
-      </v-container>
-
-      <!-- Floating Action Button (for quick actions) -->
-      <v-fab
-        v-if="showFab"
-        icon="mdi-plus"
-        color="primary"
-        location="bottom end"
-        size="large"
-        class="fab-button"
-        @click="handleFabClick"
-      />
-    </v-main>
-
-    <!-- Global Snackbar Notifications -->
-    <v-snackbar
-      v-for="notification in notifications"
-      :key="notification.id"
-      :model-value="true"
-      :color="notification.type"
-      :timeout="notification.timeout"
-      location="bottom right"
-      multi-line
-      class="premium-snackbar"
-      @update:model-value="removeNotification(notification.id)"
-    >
-      <div class="d-flex align-center">
-        <v-icon class="mr-2">{{ getNotificationIcon(notification.type) }}</v-icon>
-        {{ notification.message }}
-      </div>
-      <template #actions>
-        <v-btn
-          variant="text"
-          icon="mdi-close"
-          size="small"
-          @click="removeNotification(notification.id)"
-        />
-      </template>
-    </v-snackbar>
-
-    <!-- Premium Page Loading Overlay -->
-    <v-overlay
-      :model-value="isPageLoading"
-      class="align-center justify-center loading-overlay"
-      persistent
-      scrim="rgba(0,0,0,0.7)"
-    >
-      <div class="text-center">
-        <v-progress-circular
-          color="primary"
-          indeterminate
-          size="64"
-          width="4"
-        />
-        <p class="text-white mt-4 text-body-1">Loading...</p>
-      </div>
-    </v-overlay>
-
-    <!-- Command Palette (Ctrl/Cmd + K) -->
-    <v-dialog v-model="commandPaletteOpen" max-width="600" class="command-palette">
-      <v-card>
-        <v-text-field
-          v-model="commandSearch"
-          placeholder="Type a command or search..."
-          prepend-inner-icon="mdi-magnify"
-          variant="solo"
-          hide-details
-          autofocus
-          class="command-input"
-        />
-        <v-divider />
-        <v-list density="compact" max-height="400" class="py-0">
-          <v-list-subheader>Quick Actions</v-list-subheader>
-          <v-list-item
-            v-for="action in filteredCommands"
-            :key="action.id"
-            :prepend-icon="action.icon"
-            :title="action.title"
-            :subtitle="action.subtitle"
-            @click="executeCommand(action)"
-          >
-            <template #append>
-              <v-chip v-if="action.shortcut" size="x-small" variant="outlined">
-                {{ action.shortcut }}
-              </v-chip>
-            </template>
-          </v-list-item>
-        </v-list>
-      </v-card>
-    </v-dialog>
-  </v-app>
-</template>
-
 <script setup lang="ts">
-import type { ToastNotification } from '~/types'
-
-interface CommandAction {
-  id: string
-  title: string
-  subtitle?: string
-  icon: string
-  shortcut?: string
-  action: () => void
-}
-
-const uiStore = useUIStore()
+// Simple CSS-forced sidebar - no complex state management needed
+// NuxtLink handles active state automatically with 'active-class'
 const authStore = useAuthStore()
-const route = useRoute()
 const router = useRouter()
 
-// Global employee data hydration layer
-const { initialize: initializeEmployeeData } = useEmployeeData()
-
-// Reactive state - Desktop-first defaults
-const sidebarOpen = ref(true)
-const sidebarRail = ref(false)
-const commandPaletteOpen = ref(false)
-const commandSearch = ref('')
-const windowWidth = ref(1920) // Desktop-first default for SSR
-
-// Computed properties
-const notifications = computed(() => uiStore.notifications)
-const isPageLoading = computed(() => uiStore.isPageLoading)
-const isDark = computed(() => uiStore.isDarkMode)
+const profile = computed(() => authStore.profile)
 const isAdmin = computed(() => authStore.isAdmin)
+const initials = computed(() => authStore.initials || 'U')
+const fullName = computed(() => authStore.fullName || 'User')
 
-// Desktop-first breakpoints: only treat as mobile below 960px
-const isMobile = computed(() => windowWidth.value < 960)
-const isTablet = computed(() => windowWidth.value >= 960 && windowWidth.value < 1280)
-
-// Calculate sidebar margin for main content - Desktop-first (ml-64 = 256px)
-const sidebarMargin = computed(() => {
-  if (isMobile.value) return '0px'
-  if (sidebarRail.value) return '72px' // Compact rail (w-18)
-  return '256px' // w-64 - Always push content next to sidebar
-})
-
-// Page metadata
-const pageTitles: Record<string, { title: string; subtitle?: string }> = {
-  '/': { title: 'Dashboard', subtitle: 'Welcome back!' },
-  '/profile': { title: 'My Profile', subtitle: 'View and edit your information' },
-  '/employees': { title: 'Team Directory', subtitle: 'Browse all team members' },
-  '/schedule': { title: 'Schedule', subtitle: 'Manage work schedules' },
-  '/time-off': { title: 'Time Off', subtitle: 'Request and manage time off' },
-  '/skills': { title: 'Skills & Growth', subtitle: 'Track your professional development' },
-  '/training': { title: 'Training', subtitle: 'Courses and certifications' },
-  '/marketing': { title: 'Marketing', subtitle: 'Campaigns and outreach' },
-  '/leads': { title: 'Leads', subtitle: 'Manage potential clients' },
-  '/settings': { title: 'Admin Settings', subtitle: 'System configuration' }
+async function handleSignOut() {
+  await authStore.signOut()
+  router.push('/auth/login')
 }
-
-const pageTitle = computed(() => {
-  const basePath = '/' + route.path.split('/')[1]
-  return pageTitles[basePath]?.title || pageTitles[route.path]?.title || 'Employee GM'
-})
-
-const pageSubtitle = computed(() => {
-  const basePath = '/' + route.path.split('/')[1]
-  return pageTitles[basePath]?.subtitle || pageTitles[route.path]?.subtitle || ''
-})
-
-// Breadcrumbs
-const breadcrumbs = computed(() => {
-  const crumbs = [{ title: 'Home', to: '/' }]
-  const pathParts = route.path.split('/').filter(Boolean)
-  
-  let currentPath = ''
-  pathParts.forEach((part, index) => {
-    currentPath += '/' + part
-    const isLast = index === pathParts.length - 1
-    const title = part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ')
-    crumbs.push({
-      title,
-      to: isLast ? undefined : currentPath,
-      disabled: isLast
-    })
-  })
-  
-  return crumbs
-})
-
-// Show FAB based on current page
-const showFab = computed(() => {
-  const fabPages = ['/employees', '/schedule', '/leads', '/marketing']
-  return fabPages.includes(route.path) && isAdmin.value
-})
-
-// Command palette actions
-const commandActions: CommandAction[] = [
-  { id: 'home', title: 'Go to Dashboard', icon: 'mdi-home', shortcut: 'G H', action: () => router.push('/') },
-  { id: 'profile', title: 'My Profile', icon: 'mdi-account', shortcut: 'G P', action: () => router.push('/profile') },
-  { id: 'team', title: 'Team Directory', icon: 'mdi-account-group', shortcut: 'G T', action: () => router.push('/employees') },
-  { id: 'schedule', title: 'Schedule', icon: 'mdi-calendar', shortcut: 'G S', action: () => router.push('/schedule') },
-  { id: 'skills', title: 'Skills & Growth', icon: 'mdi-star-circle', action: () => router.push('/skills') },
-  { id: 'theme', title: 'Toggle Theme', subtitle: 'Switch between light and dark mode', icon: 'mdi-theme-light-dark', shortcut: 'Ctrl T', action: () => uiStore.toggleTheme() },
-  { id: 'signout', title: 'Sign Out', icon: 'mdi-logout', action: () => authStore.signOut().then(() => router.push('/auth/login')) }
-]
-
-const filteredCommands = computed(() => {
-  if (!commandSearch.value) return commandActions
-  const search = commandSearch.value.toLowerCase()
-  return commandActions.filter(cmd => 
-    cmd.title.toLowerCase().includes(search) || 
-    cmd.subtitle?.toLowerCase().includes(search)
-  )
-})
-
-// Methods
-function toggleSidebar() {
-  if (isMobile.value) {
-    sidebarOpen.value = !sidebarOpen.value
-  } else {
-    sidebarRail.value = !sidebarRail.value
-  }
-}
-
-function removeNotification(id: string) {
-  uiStore.removeNotification(id)
-}
-
-function getNotificationIcon(type: ToastNotification['type']): string {
-  const icons: Record<string, string> = {
-    success: 'mdi-check-circle',
-    error: 'mdi-alert-circle',
-    warning: 'mdi-alert',
-    info: 'mdi-information'
-  }
-  return icons[type]
-}
-
-function handleFabClick() {
-  // Context-aware FAB action
-  const actions: Record<string, () => void> = {
-    '/employees': () => router.push('/employees/new'),
-    '/schedule': () => uiStore.showInfo('Create new schedule (coming soon)'),
-    '/leads': () => uiStore.showInfo('Add new lead (coming soon)'),
-    '/marketing': () => uiStore.showInfo('Create campaign (coming soon)')
-  }
-  actions[route.path]?.()
-}
-
-function executeCommand(action: CommandAction) {
-  commandPaletteOpen.value = false
-  commandSearch.value = ''
-  action.action()
-}
-
-// Keyboard shortcuts
-function handleKeydown(e: KeyboardEvent) {
-  // Cmd/Ctrl + K for command palette
-  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-    e.preventDefault()
-    commandPaletteOpen.value = true
-  }
-  // Escape to close command palette
-  if (e.key === 'Escape' && commandPaletteOpen.value) {
-    commandPaletteOpen.value = false
-  }
-}
-
-// Lifecycle
-onMounted(async () => {
-  // Initialize window width immediately
-  windowWidth.value = window.innerWidth
-  
-  // Immediately set sidebar state based on current window width
-  // Desktop-first: sidebar should be open on desktop
-  if (windowWidth.value >= 960) {
-    sidebarOpen.value = true
-    sidebarRail.value = false
-  } else {
-    sidebarOpen.value = false
-  }
-  
-  // Fetch profile if needed
-  if (!authStore.profile) {
-    await authStore.fetchProfile()
-  }
-  
-  // Initialize global employee data hydration layer
-  // This fetches all employee data once and makes it available app-wide
-  await initializeEmployeeData()
-  
-  // Window resize handler - Desktop-first
-  const handleResize = () => {
-    windowWidth.value = window.innerWidth
-    // Only collapse sidebar on truly mobile devices (< 960px)
-    if (windowWidth.value < 960) {
-      sidebarOpen.value = false
-    } else {
-      // Keep sidebar expanded on desktop - ALWAYS VISIBLE
-      sidebarOpen.value = true
-      sidebarRail.value = false
-    }
-  }
-  
-  window.addEventListener('resize', handleResize)
-  window.addEventListener('keydown', handleKeydown)
-  
-  onUnmounted(() => {
-    window.removeEventListener('resize', handleResize)
-    window.removeEventListener('keydown', handleKeydown)
-  })
-})
-
-// Watch for route changes to close mobile drawer
-// Only close sidebar on route change if on mobile
-watch(() => route.path, () => {
-  if (isMobile.value && windowWidth.value < 960) {
-    sidebarOpen.value = false
-  }
-})
 </script>
 
+<template>
+  <div class="min-h-screen bg-gray-50">
+    
+    <!-- Fixed Sidebar - Always visible on desktop via CSS -->
+    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white border-r border-slate-800 flex flex-col">
+      
+      <!-- Logo Header -->
+      <div class="flex h-16 items-center px-6 bg-slate-950 shrink-0">
+        <span class="text-xl font-bold tracking-tight text-white">🐾 TeamOS</span>
+      </div>
+
+      <!-- Navigation - Scrollable if needed -->
+      <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+        
+        <!-- Dashboard -->
+        <NuxtLink to="/" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          Dashboard
+        </NuxtLink>
+
+        <!-- Section: People & Skills -->
+        <div class="pt-5 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          👥 People & Skills
+        </div>
+
+        <NuxtLink to="/employees" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Roster
+        </NuxtLink>
+
+        <NuxtLink to="/my-stats" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          My Stats
+        </NuxtLink>
+
+        <NuxtLink to="/mentorship" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Mentorship
+        </NuxtLink>
+
+        <!-- Section: Operations -->
+        <div class="pt-5 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          📅 Operations
+        </div>
+
+        <NuxtLink to="/schedule" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          Schedule
+        </NuxtLink>
+
+        <NuxtLink to="/time-off" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+          Time Off
+        </NuxtLink>
+
+        <NuxtLink to="/my-ops" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          My Ops
+        </NuxtLink>
+
+        <!-- Section: Growth -->
+        <div class="pt-5 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          🎓 Growth
+        </div>
+
+        <NuxtLink to="/training" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Training
+        </NuxtLink>
+
+        <NuxtLink to="/goals" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Goals
+        </NuxtLink>
+
+        <NuxtLink to="/reviews" 
+          class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          active-class="!bg-blue-600 !text-white shadow-md">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          Reviews
+        </NuxtLink>
+
+        <!-- Admin Section -->
+        <template v-if="isAdmin">
+          <div class="pt-5 pb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            ⚙️ Admin
+          </div>
+
+          <NuxtLink to="/ops" 
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            active-class="!bg-blue-600 !text-white shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Ops Center
+          </NuxtLink>
+
+          <NuxtLink to="/skills" 
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            active-class="!bg-blue-600 !text-white shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Skill Library
+          </NuxtLink>
+
+          <NuxtLink to="/org-chart" 
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            active-class="!bg-blue-600 !text-white shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="6" x="8" y="2" rx="1"/><rect width="6" height="6" x="2" y="14" rx="1"/><rect width="6" height="6" x="16" y="14" rx="1"/><path d="M12 8v4"/><path d="M12 12h6v2"/><path d="M12 12H6v2"/></svg>
+            Org Chart
+          </NuxtLink>
+
+          <NuxtLink to="/settings" 
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            active-class="!bg-blue-600 !text-white shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Settings
+          </NuxtLink>
+        </template>
+
+      </nav>
+
+      <!-- User Profile Footer -->
+      <div class="shrink-0 border-t border-slate-800 bg-slate-900 p-4">
+        <div class="flex items-center justify-between">
+          <NuxtLink to="/profile" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <div class="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">
+              {{ initials }}
+            </div>
+            <div class="text-sm">
+              <div class="font-medium text-white">{{ fullName }}</div>
+              <div class="text-xs text-slate-400">{{ isAdmin ? 'Admin' : 'Team Member' }}</div>
+            </div>
+          </NuxtLink>
+          <button 
+            @click="handleSignOut"
+            class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            title="Sign Out"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="ml-64 min-h-screen bg-gray-50">
+      <div class="p-6 lg:p-8">
+        <slot />
+      </div>
+    </main>
+
+  </div>
+</template>
+
 <style scoped>
-.app-main {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  min-height: 100vh;
-  transition: margin-left 0.2s ease, background 0.3s ease;
-}
-
-.v-theme--dark .app-main {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-}
-
-.page-container {
-  max-width: 1800px; /* Wider max-width for desktop-first */
-  margin: 0 auto;
-}
-
-/* Desktop-First: High-density grid system */
-/* Mobile: Single column */
-/* Tablet: 6-column grid */
-/* Desktop: 12-column grid for complex layouts (3-col nav / 6-col content / 3-col details) */
-@media (min-width: 960px) {
-  .page-container {
-    padding-left: 24px !important;
-    padding-right: 24px !important;
-  }
-}
-
-@media (min-width: 1280px) {
-  .page-container {
-    padding-left: 32px !important;
-    padding-right: 32px !important;
-  }
-}
-
-/* Page Transitions */
-.page-enter-active,
-.page-leave-active {
-  transition: all 0.25s ease-out;
-}
-
-.page-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.page-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-/* FAB Button */
-.fab-button {
-  position: fixed !important;
-  bottom: 24px;
-  right: 24px;
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-/* Premium Snackbar */
-.premium-snackbar :deep(.v-snackbar__wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-}
-
-/* Loading Overlay */
-.loading-overlay :deep(.v-overlay__content) {
-  backdrop-filter: blur(4px);
-}
-
-/* Command Palette */
-.command-palette :deep(.v-card) {
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.command-input :deep(.v-field) {
-  border-radius: 0;
-}
-
-/* Smooth scrollbar */
-.page-container {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-.page-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.page-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.page-container::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 3px;
-}
-
-/* Desktop-first utility: ensure main content doesn't go behind sidebar */
-@media (min-width: 960px) {
-  .app-main {
-    margin-left: v-bind(sidebarMargin);
-  }
+/* Ensure active states work with NuxtLink */
+.router-link-active:not(.router-link-exact-active) {
+  /* For nested routes, only highlight if exact match */
 }
 </style>
