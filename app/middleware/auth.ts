@@ -1,16 +1,24 @@
-export default defineNuxtRouteMiddleware(async (to) => {
+// Auth middleware - protects routes that require authentication
+export default defineNuxtRouteMiddleware((to) => {
+  // Only run on client side
+  if (import.meta.server) {
+    return
+  }
+  
   const user = useSupabaseUser()
   
-  // Allow access to auth pages
-  if (to.path.startsWith('/auth')) {
-    // If already logged in, redirect to home
+  // Public routes that don't require auth
+  const isAuthRoute = to.path.startsWith('/auth')
+  
+  if (isAuthRoute) {
+    // If logged in and trying to access auth pages, redirect to home
     if (user.value) {
       return navigateTo('/')
     }
     return
   }
 
-  // Require authentication for all other pages
+  // All other routes require authentication
   if (!user.value) {
     return navigateTo('/auth/login')
   }

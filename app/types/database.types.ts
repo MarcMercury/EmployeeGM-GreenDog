@@ -22,35 +22,52 @@ export type ReferralTier = 'bronze' | 'silver' | 'gold' | 'platinum'
 
 export interface Profile {
   id: string
+  auth_user_id?: string | null
   email: string
   first_name: string | null
   last_name: string | null
+  phone?: string | null
   role: UserRole
   avatar_url: string | null
-  bio: string | null
-  job_title: string | null
+  bio?: string | null
+  job_title?: string | null
+  is_active?: boolean
+  last_login_at?: string | null
   created_at: string
   updated_at: string
+  // Relations
+  department?: Department | null
+  department_id?: string | null
+  position?: JobPosition | null
+  position_id?: string | null
+  location?: Location | null
+  location_id?: string | null
+  hire_date?: string | null
 }
 
 export interface ProfileInsert {
-  id: string
+  id?: string
+  auth_user_id?: string | null
   email: string
   first_name?: string | null
   last_name?: string | null
+  phone?: string | null
   role?: UserRole
   avatar_url?: string | null
   bio?: string | null
   job_title?: string | null
+  is_active?: boolean
 }
 
 export interface ProfileUpdate {
   first_name?: string | null
   last_name?: string | null
+  phone?: string | null
   avatar_url?: string | null
   bio?: string | null
   job_title?: string | null
   role?: UserRole
+  is_active?: boolean
 }
 
 export interface CompanySetting {

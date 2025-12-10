@@ -5,13 +5,15 @@ interface AuthState {
   profile: Profile | null
   isLoading: boolean
   error: string | null
+  initialized: boolean
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     profile: null,
     isLoading: false,
-    error: null
+    error: null,
+    initialized: false
   }),
 
   getters: {
@@ -20,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
     isUser: (state) => state.profile?.role === 'user',
     fullName: (state) => {
       if (!state.profile) return ''
-      return `${state.profile.first_name} ${state.profile.last_name}`.trim() || state.profile.email
+      return `${state.profile.first_name || ''} ${state.profile.last_name || ''}`.trim() || state.profile.email
     },
     initials: (state) => {
       if (!state.profile) return ''
@@ -31,13 +33,23 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    async initialize() {
+      if (this.initialized) return
+      
+      const user = useSupabaseUser()
+      if (user.value && !this.profile) {
+        await this.fetchProfile()
+      }
+      this.initialized = true
+    },
+
     async fetchProfile() {
       const supabase = useSupabaseClient()
       const user = useSupabaseUser()
 
       if (!user.value) {
         this.profile = null
-        return
+        return null
       }
 
       this.isLoading = true
@@ -52,9 +64,11 @@ export const useAuthStore = defineStore('auth', {
 
         if (error) throw error
         this.profile = data as Profile
+        return this.profile
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch profile'
         console.error('Error fetching profile:', err)
+        return null
       } finally {
         this.isLoading = false
       }

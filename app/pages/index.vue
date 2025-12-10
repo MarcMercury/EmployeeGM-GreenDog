@@ -260,7 +260,7 @@ import type { ShiftType, ProfileWithSkills, Schedule, TimeOffRequest } from '~/t
 
 definePageMeta({
   layout: 'default',
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
 const authStore = useAuthStore()
