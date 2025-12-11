@@ -81,18 +81,37 @@
       </v-card-text>
     </v-card>
 
-    <!-- Loading State -->
-    <div v-if="isLoading && employees.length === 0" class="text-center py-8">
-      <v-progress-circular indeterminate color="primary" size="48" />
-      <p class="text-grey mt-4">Loading team members...</p>
-    </div>
+    <!-- Skeleton Loading State (Never show spinners!) -->
+    <UiSkeletonTable
+      v-if="isLoading && employees.length === 0"
+      :rows="8"
+      :columns="3"
+      :show-header="false"
+      :show-filters="false"
+    />
 
-    <!-- Empty State -->
-    <div v-else-if="filteredEmployees.length === 0" class="text-center py-8">
-      <v-icon size="64" color="grey-lighten-1">mdi-account-group</v-icon>
-      <h3 class="text-h6 mt-4">No employees found</h3>
-      <p class="text-grey">Try adjusting your search or filters</p>
-    </div>
+    <!-- Empty State - No Employees at All -->
+    <UiEmptyState
+      v-else-if="employees.length === 0"
+      type="employees"
+      title="No team members yet"
+      description="Start building your team by adding your first employee."
+      action-text="Add Your First Employee"
+      action-icon="mdi-account-plus"
+      @action="addEmployeeDialog = true"
+    />
+
+    <!-- Empty State - No Results from Filter -->
+    <UiEmptyState
+      v-else-if="filteredEmployees.length === 0"
+      type="search"
+      title="No matches found"
+      description="Try adjusting your search terms or clearing filters."
+      action-text="Clear Filters"
+      action-icon="mdi-filter-remove"
+      action-variant="outlined"
+      @action="clearFilters"
+    />
 
     <!-- DESKTOP-FIRST: Dense Data Table (default view) -->
     <v-card v-else-if="viewMode === 'table'" rounded="lg" elevation="1" class="employee-table-card">
@@ -107,22 +126,26 @@
         class="employee-table desktop-dense-table"
         @click:row="(_, { item }) => viewEmployee(item.id)"
       >
-        <!-- Employee Name + Avatar -->
+        <!-- Employee Name + Avatar with Hover Card -->
         <template #item.name="{ item }">
-          <div class="d-flex align-center gap-2 py-1">
-            <v-avatar size="32" :color="item.avatar_url ? undefined : 'primary'">
-              <v-img v-if="item.avatar_url" :src="item.avatar_url" />
-              <span v-else class="text-white text-caption font-weight-bold">
-                {{ item.initials }}
-              </span>
-            </v-avatar>
-            <div class="employee-name-cell">
-              <div class="font-weight-medium text-body-2">
-                {{ item.full_name }}
+          <EmployeeHoverCard :employee="item">
+            <template #default="{ props }">
+              <div class="d-flex align-center gap-2 py-1 hoverable-row" v-bind="props">
+                <v-avatar size="32" :color="item.avatar_url ? undefined : 'primary'">
+                  <v-img v-if="item.avatar_url" :src="item.avatar_url" />
+                  <span v-else class="text-white text-caption font-weight-bold">
+                    {{ item.initials }}
+                  </span>
+                </v-avatar>
+                <div class="employee-name-cell">
+                  <div class="font-weight-medium text-body-2">
+                    {{ item.full_name }}
+                  </div>
+                  <div class="text-caption text-grey">{{ item.email }}</div>
+                </div>
               </div>
-              <div class="text-caption text-grey">{{ item.email }}</div>
-            </div>
-          </div>
+            </template>
+          </EmployeeHoverCard>
         </template>
 
         <!-- Position + Department -->
@@ -388,6 +411,12 @@ function editEmployee(id: string) {
   router.push(`/employees/${id}/edit`)
 }
 
+function clearFilters() {
+  search.value = ''
+  filterRole.value = null
+  filterDepartment.value = null
+}
+
 async function refresh() {
   await refreshEmployeeData()
 }
@@ -472,6 +501,19 @@ async function createEmployee() {
 
 .employee-name-cell {
   min-width: 150px;
+}
+
+/* Hoverable employee name - indicates interactivity */
+.hoverable-row {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  transition: background-color 0.15s ease;
+}
+
+.hoverable-row:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08);
 }
 
 /* View toggle */

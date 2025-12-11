@@ -17,6 +17,55 @@
       </v-btn>
     </div>
 
+    <!-- Skeleton Loading State -->
+    <template v-if="loading">
+      <v-row class="mb-6">
+        <v-col v-for="i in 6" :key="i" cols="12" sm="6" md="4" lg="2">
+          <v-card rounded="lg" class="skeleton-card">
+            <v-card-text>
+              <div class="skeleton-pulse mb-2" style="width: 60%; height: 12px; border-radius: 4px;"></div>
+              <div class="skeleton-pulse" style="width: 50px; height: 32px; border-radius: 4px;"></div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+      <v-row>
+        <v-col cols="12" md="6">
+          <v-card rounded="lg" class="h-100">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 120px; height: 20px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text>
+              <div v-for="j in 3" :key="j" class="d-flex align-center gap-3 mb-3">
+                <div class="skeleton-pulse" style="width: 40px; height: 40px; border-radius: 50%;"></div>
+                <div class="flex-grow-1">
+                  <div class="skeleton-pulse mb-1" style="width: 70%; height: 14px; border-radius: 4px;"></div>
+                  <div class="skeleton-pulse" style="width: 50%; height: 12px; border-radius: 4px;"></div>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-card rounded="lg" class="h-100">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 160px; height: 20px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text>
+              <div v-for="j in 3" :key="j" class="d-flex align-center gap-3 mb-3">
+                <div class="skeleton-pulse" style="width: 40px; height: 40px; border-radius: 50%;"></div>
+                <div class="flex-grow-1">
+                  <div class="skeleton-pulse" style="width: 100%; height: 8px; border-radius: 4px;"></div>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
+
+    <!-- Loaded Content -->
+    <template v-else>
     <!-- Pipeline Funnel Stats -->
     <v-row class="mb-6">
       <v-col v-for="stat in pipelineStats" :key="stat.status" cols="12" sm="6" md="4" lg="2">
@@ -166,6 +215,7 @@
         </v-list-item>
       </v-list>
     </v-card>
+    </template>
   </div>
 </template>
 
@@ -307,5 +357,40 @@ onMounted(() => {
 .cursor-pointer:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Skeleton Loading Animation */
+.skeleton-card {
+  background: rgba(var(--v-theme-surface-variant), 0.2);
+}
+
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-surface-variant), 0.3) 0%,
+    rgba(var(--v-theme-surface-variant), 0.5) 50%,
+    rgba(var(--v-theme-surface-variant), 0.3) 100%
+  );
+  background-size: 200% 100%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.v-theme--dark .skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
 }
 </style>

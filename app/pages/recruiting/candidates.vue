@@ -345,11 +345,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <!-- Snackbar -->
-    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
-      {{ snackbarText }}
-    </v-snackbar>
   </div>
 </template>
 
@@ -386,6 +381,8 @@ interface Skill {
 
 const client = useSupabaseClient()
 const route = useRoute()
+const toast = useToast()
+const confetti = useConfetti()
 
 // State
 const candidates = ref<Candidate[]>([])
@@ -401,11 +398,6 @@ const statusFilter = ref<string | null>(null)
 const detailTab = ref('bio')
 const addDialog = ref(false)
 const addFormValid = ref(false)
-
-// Snackbar
-const snackbar = ref(false)
-const snackbarText = ref('')
-const snackbarColor = ref('success')
 
 const newCandidate = reactive({
   first_name: '',
@@ -460,11 +452,7 @@ const getStatusColor = (status: string) => {
 
 const formatStatus = (status: string) => status.charAt(0).toUpperCase() + status.slice(1)
 
-const showNotification = (message: string, color = 'success') => {
-  snackbarText.value = message
-  snackbarColor.value = color
-  snackbar.value = true
-}
+// Use global toast composable instead of local snackbar
 
 const selectCandidate = async (candidate: Candidate) => {
   selectedCandidate.value = candidate
@@ -514,22 +502,32 @@ const updateSkillRating = async (skillId: string, rating: number) => {
     }
   } catch (error) {
     console.error('Error updating skill:', error)
-    showNotification('Failed to update skill rating', 'error')
+    toast.error('Failed to update skill rating')
   }
 }
 
 const updateStatus = async (status: string) => {
   if (!selectedCandidate.value) return
 
+  // Optimistic UI: Update local state IMMEDIATELY
+  const previousStatus = selectedCandidate.value.status
+  selectedCandidate.value.status = status
+  const idx = candidates.value.findIndex(c => c.id === selectedCandidate.value?.id)
+  if (idx !== -1) candidates.value[idx].status = status
+
+  // 🎉 HIRED! Trigger celebration confetti!
+  if (status === 'hired') {
+    confetti.hire()
+    toast.success(`🎉 ${selectedCandidate.value.first_name} has been hired!`)
+  }
+
   try {
-    await client
+    const { error } = await client
       .from('candidates')
       .update({ status })
       .eq('id', selectedCandidate.value.id)
 
-    selectedCandidate.value.status = status
-    const idx = candidates.value.findIndex(c => c.id === selectedCandidate.value?.id)
-    if (idx !== -1) candidates.value[idx].status = status
+    if (error) throw error
 
     // Create onboarding checklist when moving to offer
     if (status === 'offer') {
@@ -543,12 +541,16 @@ const updateStatus = async (status: string) => {
           uniform_ordered: false,
           email_created: false
         })
+      toast.info('Onboarding checklist created')
+    } else if (status !== 'hired') {
+      toast.success(`Candidate moved to ${formatStatus(status)}`)
     }
-
-    showNotification(`Candidate moved to ${formatStatus(status)}`)
   } catch (error) {
+    // REVERT on error (Optimistic UI rollback)
     console.error('Error updating status:', error)
-    showNotification('Failed to update status', 'error')
+    selectedCandidate.value.status = previousStatus
+    if (idx !== -1) candidates.value[idx].status = previousStatus
+    toast.error('Failed to update status. Changes reverted.')
   }
 }
 
@@ -600,11 +602,11 @@ const saveCandidate = async () => {
 
     candidates.value.unshift(data)
     addDialog.value = false
-    showNotification('Candidate added successfully')
+    toast.success('Candidate added successfully')
     selectCandidate(data)
   } catch (error) {
     console.error('Error adding candidate:', error)
-    showNotification('Failed to add candidate', 'error')
+    toast.error('Failed to add candidate')
   } finally {
     saving.value = false
   }

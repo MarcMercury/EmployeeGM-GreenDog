@@ -20,10 +20,63 @@
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="text-center py-12">
-      <v-progress-circular indeterminate color="primary" size="48" />
-      <p class="text-grey mt-4">Loading your stats...</p>
+    <!-- Skeleton Loading State (Never show spinners!) -->
+    <div v-if="isLoading">
+      <v-row>
+        <!-- Left Column Skeleton -->
+        <v-col cols="12" lg="5">
+          <!-- Radar Chart Skeleton -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 120px; height: 24px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text class="d-flex justify-center">
+              <div class="skeleton-pulse" style="width: 280px; height: 280px; border-radius: 50%;"></div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Level Skeleton -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 150px; height: 24px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text>
+              <div class="skeleton-pulse mb-3" style="width: 100%; height: 60px; border-radius: 8px;"></div>
+              <div class="skeleton-pulse" style="width: 100%; height: 12px; border-radius: 6px;"></div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Trophy Skeleton -->
+          <v-card variant="outlined">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 100px; height: 24px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text>
+              <div class="d-flex gap-2">
+                <div v-for="i in 6" :key="i" class="skeleton-pulse" style="width: 40px; height: 40px; border-radius: 8px;"></div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+
+        <!-- Right Column Skeleton -->
+        <v-col cols="12" lg="7">
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title>
+              <div class="skeleton-pulse" style="width: 100px; height: 24px; border-radius: 4px;"></div>
+            </v-card-title>
+            <v-card-text>
+              <div v-for="i in 5" :key="i" class="d-flex align-center gap-3 mb-3">
+                <div class="skeleton-pulse" style="width: 40px; height: 40px; border-radius: 8px;"></div>
+                <div class="flex-grow-1">
+                  <div class="skeleton-pulse mb-1" style="width: 60%; height: 16px; border-radius: 4px;"></div>
+                  <div class="skeleton-pulse" style="width: 100%; height: 8px; border-radius: 4px;"></div>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
     </div>
 
     <template v-else>
@@ -498,5 +551,36 @@ onMounted(async () => {
 
 .w-100 {
   width: 100%;
+}
+
+/* Skeleton Loading Animation */
+.skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-surface-variant), 0.3) 0%,
+    rgba(var(--v-theme-surface-variant), 0.5) 50%,
+    rgba(var(--v-theme-surface-variant), 0.3) 100%
+  );
+  background-size: 200% 100%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.v-theme--dark .skeleton-pulse {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
 }
 </style>
