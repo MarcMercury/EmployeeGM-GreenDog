@@ -176,6 +176,71 @@
             </v-card-text>
           </v-card>
 
+          <!-- My Goals -->
+          <v-card rounded="lg" class="mb-4">
+            <v-card-title class="d-flex align-center justify-space-between">
+              <div class="d-flex align-center">
+                <v-icon color="primary" class="mr-2">mdi-target</v-icon>
+                My Goals
+              </div>
+              <v-btn color="primary" variant="text" size="small" @click="showGoalDialog = true">
+                <v-icon start size="small">mdi-plus</v-icon>
+                Add Goal
+              </v-btn>
+            </v-card-title>
+            <v-card-text>
+              <div v-if="goalsLoading" class="d-flex justify-center py-4">
+                <v-progress-circular indeterminate color="primary" size="24" />
+              </div>
+              <div v-else-if="myGoals.length === 0" class="text-center py-6">
+                <v-icon size="48" color="grey-lighten-2">mdi-flag-outline</v-icon>
+                <p class="text-body-2 text-grey mt-3">No goals set yet</p>
+                <v-btn color="primary" variant="tonal" class="mt-2" @click="showGoalDialog = true">
+                  Create Your First Goal
+                </v-btn>
+              </div>
+              <v-list v-else density="compact" class="bg-transparent">
+                <v-list-item
+                  v-for="goal in myGoals"
+                  :key="goal.id"
+                  class="px-0"
+                >
+                  <template #prepend>
+                    <v-checkbox-btn
+                      :model-value="goal.completed"
+                      color="success"
+                      @update:model-value="toggleGoalComplete(goal)"
+                    />
+                  </template>
+                  <v-list-item-title 
+                    class="text-body-2"
+                    :class="{ 'text-decoration-line-through text-grey': goal.completed }"
+                  >
+                    {{ goal.title }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    <v-chip :color="getGoalCategoryColor(goal.category)" size="x-small" variant="tonal">
+                      {{ goal.category }}
+                    </v-chip>
+                    <span v-if="goal.target_date" class="ml-2 text-grey">
+                      Due: {{ formatDate(goal.target_date) }}
+                    </span>
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-progress-circular
+                      :model-value="goal.progress"
+                      :color="goal.completed ? 'success' : 'primary'"
+                      size="30"
+                      width="3"
+                    >
+                      <span class="text-caption">{{ goal.progress }}%</span>
+                    </v-progress-circular>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+
           <!-- My Skills Summary -->
           <v-card rounded="lg">
             <v-card-title class="d-flex align-center justify-space-between">
@@ -183,8 +248,8 @@
                 <v-icon color="success" class="mr-2">mdi-format-list-bulleted</v-icon>
                 My Skills
               </div>
-              <v-btn color="primary" variant="text" to="/skills" size="small">
-                Manage Skills
+              <v-btn color="primary" variant="text" to="/my-skills" size="small">
+                View All Skills
               </v-btn>
             </v-card-title>
             <v-card-text>
@@ -303,6 +368,62 @@
       <v-icon class="mr-2">mdi-alert-circle</v-icon>
       {{ errorMessage }}
     </v-snackbar>
+
+    <!-- Goal Dialog -->
+    <v-dialog v-model="showGoalDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-target</v-icon>
+          {{ editingGoal ? 'Edit Goal' : 'Add New Goal' }}
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="goalForm.title"
+            label="Goal Title *"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-textarea
+            v-model="goalForm.description"
+            label="Description"
+            variant="outlined"
+            rows="2"
+            class="mb-3"
+          />
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="goalForm.category"
+                :items="goalCategories"
+                label="Category"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="goalForm.target_date"
+                label="Target Date"
+                type="date"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+          <v-slider
+            v-model="goalForm.progress"
+            label="Progress"
+            :max="100"
+            :step="10"
+            thumb-label
+            class="mt-2"
+          />
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="closeGoalDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveGoal" :loading="savingGoal">Save Goal</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -325,6 +446,22 @@ const errorMessage = ref('')
 const editForm = ref()
 const mySkills = ref<any[]>([])
 const skillsLoading = ref(true)
+
+// Goals state
+const myGoals = ref<any[]>([])
+const goalsLoading = ref(true)
+const showGoalDialog = ref(false)
+const editingGoal = ref<any>(null)
+const savingGoal = ref(false)
+const goalCategories = ['Professional Development', 'Skills', 'Certification', 'Leadership', 'Personal', 'Team', 'Other']
+
+const goalForm = ref({
+  title: '',
+  description: '',
+  category: 'Professional Development',
+  target_date: '',
+  progress: 0
+})
 
 const editData = ref({
   preferred_name: '',
@@ -415,7 +552,7 @@ async function saveProfile() {
 // Fetch user data on mount
 onMounted(async () => {
   await userStore.fetchUserData()
-  await fetchMySkills()
+  await Promise.all([fetchMySkills(), fetchMyGoals()])
 })
 
 async function fetchMySkills() {
@@ -447,6 +584,134 @@ async function fetchMySkills() {
     console.error('Error fetching skills:', err)
   } finally {
     skillsLoading.value = false
+  }
+}
+
+async function fetchMyGoals() {
+  goalsLoading.value = true
+  try {
+    const employeeId = userStore.employee?.id
+    if (!employeeId) {
+      // Use sample goals if no employee ID
+      myGoals.value = []
+      return
+    }
+    
+    const { data, error } = await client
+      .from('employee_goals')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      // Table might not exist yet, use empty array
+      console.log('Goals table not available:', error.message)
+      myGoals.value = []
+      return
+    }
+    
+    myGoals.value = data || []
+  } catch (err) {
+    console.error('Error fetching goals:', err)
+    myGoals.value = []
+  } finally {
+    goalsLoading.value = false
+  }
+}
+
+function getGoalCategoryColor(category: string) {
+  const colors: Record<string, string> = {
+    'Professional Development': 'primary',
+    'Skills': 'success',
+    'Certification': 'warning',
+    'Leadership': 'purple',
+    'Personal': 'info',
+    'Team': 'teal',
+    'Other': 'grey'
+  }
+  return colors[category] || 'grey'
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function closeGoalDialog() {
+  showGoalDialog.value = false
+  editingGoal.value = null
+  goalForm.value = {
+    title: '',
+    description: '',
+    category: 'Professional Development',
+    target_date: '',
+    progress: 0
+  }
+}
+
+async function saveGoal() {
+  if (!goalForm.value.title) {
+    toast.error('Please enter a goal title')
+    return
+  }
+  
+  savingGoal.value = true
+  try {
+    const employeeId = userStore.employee?.id
+    if (!employeeId) throw new Error('No employee ID')
+    
+    const goalData = {
+      employee_id: employeeId,
+      title: goalForm.value.title,
+      description: goalForm.value.description,
+      category: goalForm.value.category,
+      target_date: goalForm.value.target_date || null,
+      progress: goalForm.value.progress,
+      completed: goalForm.value.progress >= 100
+    }
+    
+    if (editingGoal.value) {
+      const { error } = await client
+        .from('employee_goals')
+        .update(goalData)
+        .eq('id', editingGoal.value.id)
+      
+      if (error) throw error
+    } else {
+      const { error } = await client
+        .from('employee_goals')
+        .insert(goalData)
+      
+      if (error) throw error
+    }
+    
+    await fetchMyGoals()
+    closeGoalDialog()
+    toast.success('Goal saved successfully')
+  } catch (err) {
+    console.error('Error saving goal:', err)
+    toast.error('Failed to save goal. Goals table may not exist yet.')
+  } finally {
+    savingGoal.value = false
+  }
+}
+
+async function toggleGoalComplete(goal: any) {
+  try {
+    const newCompleted = !goal.completed
+    const { error } = await client
+      .from('employee_goals')
+      .update({ 
+        completed: newCompleted,
+        progress: newCompleted ? 100 : goal.progress
+      })
+      .eq('id', goal.id)
+    
+    if (error) throw error
+    
+    goal.completed = newCompleted
+    if (newCompleted) goal.progress = 100
+  } catch (err) {
+    console.error('Error updating goal:', err)
   }
 }
 </script>
