@@ -38,8 +38,7 @@
         <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
           <v-text-field
             v-model="form.email"
-            :label="form.email ? '' : 'Email Address'"
-            placeholder="Email Address"
+            label="Email Address"
             type="email"
             prepend-inner-icon="mdi-email-outline"
             :rules="[rules.required, rules.email]"
@@ -48,14 +47,12 @@
             color="primary"
             class="mb-4 custom-input"
             bg-color="rgba(46,125,50,0.05)"
-            persistent-placeholder
             @keyup.enter="handleSubmit"
           />
 
           <v-text-field
             v-model="form.password"
-            :label="form.password ? '' : 'Password'"
-            placeholder="Password"
+            label="Password"
             :type="showPassword ? 'text' : 'password'"
             prepend-inner-icon="mdi-lock-outline"
             :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
@@ -65,7 +62,6 @@
             color="primary"
             class="mb-4 custom-input"
             bg-color="rgba(46,125,50,0.05)"
-            persistent-placeholder
             @click:append-inner="showPassword = !showPassword"
             @keyup.enter="handleSubmit"
           />
@@ -82,13 +78,14 @@
           </v-alert>
 
           <v-btn
-            type="submit"
+            type="button"
             color="primary"
             size="x-large"
             block
             :loading="isLoading"
-            :disabled="isLoading"
+            :disabled="isLoading || !form.email || !form.password"
             class="login-btn mb-4"
+            @click="handleSubmit"
           >
             <v-icon start>mdi-login-variant</v-icon>
             Sign In
@@ -131,9 +128,29 @@ definePageMeta({
 })
 
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
 const router = useRouter()
 const route = useRoute()
+
+// Check if already logged in and redirect IMMEDIATELY
+const checkAndRedirect = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      console.log('[Login] Already logged in, forcing redirect to dashboard')
+      // Use window.location for guaranteed redirect
+      window.location.replace('/')
+      return true
+    }
+  } catch (e) {
+    console.error('[Login] Error checking session:', e)
+  }
+  return false
+}
+
+// Check immediately on mount
+onMounted(async () => {
+  await checkAndRedirect()
+})
 
 const formRef = ref()
 const formValid = ref(false)
@@ -144,36 +161,6 @@ const error = ref('')
 const form = reactive({
   email: '',
   password: ''
-})
-
-// Watch for user state changes and redirect if logged in
-watch(user, (newUser) => {
-  if (newUser) {
-    console.log('[Login] User detected via watch, redirecting to dashboard')
-    const redirectTo = (route.query.redirect as string) || '/'
-    window.location.href = redirectTo // Force hard redirect
-  }
-}, { immediate: true })
-
-// Also check on mount in case watch misses it
-onMounted(async () => {
-  // Give Supabase a moment to hydrate the session
-  await new Promise(resolve => setTimeout(resolve, 100))
-  
-  if (user.value) {
-    console.log('[Login] Already logged in on mount, redirecting...')
-    const redirectTo = (route.query.redirect as string) || '/'
-    window.location.href = redirectTo // Force hard redirect
-    return
-  }
-  
-  // Double-check with Supabase directly
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session) {
-    console.log('[Login] Session found via getSession, redirecting...')
-    const redirectTo = (route.query.redirect as string) || '/'
-    window.location.href = redirectTo // Force hard redirect
-  }
 })
 
 const rules = {
@@ -245,18 +232,13 @@ async function handleSubmit() {
       console.log('[Login] Session expires:', data.session.expires_at)
       
       // Brief delay to ensure session is stored
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 200))
       
       const redirectTo = (route.query.redirect as string) || '/'
-      console.log('[Login] Redirecting to:', redirectTo)
+      console.log('[Login] Forcing redirect to:', redirectTo)
       
-      // Use navigateTo for SPA navigation, fallback to window.location
-      try {
-        await navigateTo(redirectTo, { replace: true })
-      } catch (navError) {
-        console.log('[Login] navigateTo failed, using window.location')
-        window.location.href = redirectTo
-      }
+      // ALWAYS use window.location.replace for guaranteed redirect
+      window.location.replace(redirectTo)
     } else {
       console.error('[Login] No session or user in response')
       error.value = 'Authentication succeeded but no session was created'
