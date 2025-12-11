@@ -135,16 +135,14 @@ const route = useRoute()
 // Track if we're redirecting to show loading state
 const isRedirecting = ref(false)
 
-// Check if already logged in and redirect IMMEDIATELY
+// Check if already logged in - but don't redirect here, let plugin handle it
 const checkAndRedirect = async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) {
-      console.log('[Login] Already logged in, forcing redirect to dashboard')
+      console.log('[Login] Already logged in, plugin should handle redirect')
       isRedirecting.value = true
-      // Use window.location for guaranteed redirect
-      window.location.href = '/'
-      return true
+      // Don't redirect here - the auth.client.ts plugin handles it
     }
   } catch (e) {
     console.error('[Login] Error checking session:', e)
@@ -155,9 +153,9 @@ const checkAndRedirect = async () => {
 // Watch for user changes (Supabase auth state)
 watch(user, (newUser) => {
   if (newUser && !isRedirecting.value) {
-    console.log('[Login] User state changed, redirecting...')
+    console.log('[Login] User state changed, showing redirect state...')
     isRedirecting.value = true
-    window.location.href = '/'
+    // Don't redirect here - the auth.client.ts plugin handles it
   }
 }, { immediate: true })
 

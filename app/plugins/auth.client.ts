@@ -18,12 +18,22 @@ export default defineNuxtPlugin({
 
     console.log('[AuthPlugin] Initializing auth...')
 
-    // Helper to redirect away from login page
-    const redirectFromLogin = () => {
-      if (window.location.pathname.startsWith('/auth/')) {
-        console.log('[AuthPlugin] On auth page while logged in, redirecting to dashboard...')
-        window.location.href = '/'
+    // Prevent redirect loops - check if we're already redirecting
+    const isRedirecting = sessionStorage.getItem('auth_redirecting')
+    if (isRedirecting) {
+      console.log('[AuthPlugin] Already redirecting, clearing flag')
+      sessionStorage.removeItem('auth_redirecting')
+    }
+
+    // Helper to safely redirect (prevents loops)
+    const safeRedirect = (to: string) => {
+      if (sessionStorage.getItem('auth_redirecting')) {
+        console.log('[AuthPlugin] Redirect already in progress, skipping')
+        return
       }
+      console.log('[AuthPlugin] Redirecting to:', to)
+      sessionStorage.setItem('auth_redirecting', 'true')
+      window.location.href = to
     }
 
     // Watch for auth state changes
@@ -31,11 +41,11 @@ export default defineNuxtPlugin({
       console.log('[AuthPlugin] Auth state changed:', event, 'User:', session?.user?.email)
       
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
-        // IMMEDIATELY redirect if on auth page - don't wait for profile fetches
-        if (window.location.pathname.startsWith('/auth/')) {
-          console.log('[AuthPlugin] Logged in on auth page, redirecting NOW...')
-          window.location.href = '/'
-          return // Stop processing, we're redirecting
+        // Redirect if on auth page - but only if not already redirecting
+        if (window.location.pathname.startsWith('/auth/') && !sessionStorage.getItem('auth_redirecting')) {
+          console.log('[AuthPlugin] Logged in on auth page, redirecting...')
+          safeRedirect('/')
+          return
         }
         
         console.log('[AuthPlugin] Fetching profile for user ID:', session.user.id)
@@ -53,11 +63,11 @@ export default defineNuxtPlugin({
     if (session?.user) {
       console.log('[AuthPlugin] Existing session found for:', session.user.email)
       
-      // IMMEDIATELY redirect if on auth page
-      if (window.location.pathname.startsWith('/auth/')) {
-        console.log('[AuthPlugin] Already logged in on auth page, redirecting NOW...')
-        window.location.href = '/'
-        return // Stop plugin execution, we're redirecting
+      // Redirect if on auth page - but only if not already redirecting
+      if (window.location.pathname.startsWith('/auth/') && !sessionStorage.getItem('auth_redirecting')) {
+        console.log('[AuthPlugin] Already logged in on auth page, redirecting...')
+        safeRedirect('/')
+        return
       }
       
       if (!authStore.profile) {
