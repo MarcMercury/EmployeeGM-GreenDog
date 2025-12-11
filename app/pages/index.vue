@@ -172,195 +172,241 @@ const navigateTo = (path: string) => router.push(path)
     </div>
 
     <template v-else>
-      <!-- Stats Grid -->
+      <!-- Stats Grid - Glassmorphism Cards -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <!-- Total Staff -->
-        <div 
-          class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+        <UiGlassCard 
+          variant="light" 
+          :tilt-intensity="8"
+          class="cursor-pointer"
           @click="navigateTo('/roster')"
         >
-          <div class="flex items-center justify-between">
-            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-xl">👥</div>
-            <span v-if="stats.newHires > 0" class="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-              +{{ stats.newHires }} new
-            </span>
+          <div class="p-4">
+            <div class="flex items-center justify-between">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-2xl shadow-lg">
+                👥
+              </div>
+              <span v-if="stats.newHires > 0" class="text-xs font-bold text-green-600 bg-green-100 px-2.5 py-1 rounded-full animate-pulse">
+                +{{ stats.newHires }}
+              </span>
+            </div>
+            <div class="mt-4">
+              <div class="text-3xl font-bold text-gradient">{{ stats.totalStaff }}</div>
+              <div class="text-sm text-slate-500 font-medium">Total Staff</div>
+            </div>
           </div>
-          <div class="mt-3">
-            <div class="text-2xl font-bold text-slate-900">{{ stats.totalStaff }}</div>
-            <div class="text-sm text-slate-500">Total Staff</div>
-          </div>
-        </div>
+        </UiGlassCard>
 
         <!-- Avg Skill Level -->
-        <div 
-          class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+        <UiGlassCard 
+          variant="light" 
+          :tilt-intensity="8"
+          class="cursor-pointer"
           @click="navigateTo('/skills')"
         >
-          <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center text-xl">⭐</div>
-          <div class="mt-3">
-            <div class="text-2xl font-bold text-slate-900">{{ stats.avgSkillLevel }}</div>
-            <div class="text-sm text-slate-500">Avg Skill Level</div>
+          <div class="p-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">
+              ⭐
+            </div>
+            <div class="mt-4">
+              <div class="text-3xl font-bold text-gradient">{{ stats.avgSkillLevel }}</div>
+              <div class="text-sm text-slate-500 font-medium">Avg Skill Level</div>
+            </div>
           </div>
-        </div>
+        </UiGlassCard>
 
         <!-- Mentors -->
-        <div 
-          class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+        <UiGlassCard 
+          variant="light" 
+          :tilt-intensity="8"
+          class="cursor-pointer"
           @click="navigateTo('/mentorship')"
         >
-          <div class="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center text-xl">🏅</div>
-          <div class="mt-3">
-            <div class="text-2xl font-bold text-slate-900">{{ stats.mentorCount }}</div>
-            <div class="text-sm text-slate-500">Active Mentors</div>
+          <div class="p-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl shadow-lg">
+              🏅
+            </div>
+            <div class="mt-4">
+              <div class="text-3xl font-bold text-gradient-gold">{{ stats.mentorCount }}</div>
+              <div class="text-sm text-slate-500 font-medium">Active Mentors</div>
+            </div>
           </div>
-        </div>
+        </UiGlassCard>
 
         <!-- Skill Library -->
-        <div 
-          class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+        <UiGlassCard 
+          variant="light" 
+          :tilt-intensity="8"
+          class="cursor-pointer"
           @click="navigateTo('/skills')"
         >
-          <div class="w-10 h-10 rounded-lg bg-teal-100 flex items-center justify-center text-xl">📚</div>
-          <div class="mt-3">
-            <div class="text-2xl font-bold text-slate-900">{{ stats.skillLibraryCount }}</div>
-            <div class="text-sm text-slate-500">Skills in Library</div>
+          <div class="p-4">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-2xl shadow-lg">
+              📚
+            </div>
+            <div class="mt-4">
+              <div class="text-3xl font-bold text-gradient">{{ stats.skillLibraryCount }}</div>
+              <div class="text-sm text-slate-500 font-medium">Skills in Library</div>
+            </div>
           </div>
-        </div>
+        </UiGlassCard>
       </div>
 
       <!-- Main Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- Quick Links -->
-        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <h2 class="text-lg font-semibold text-slate-900 mb-4">Quick Access</h2>
-          <div class="grid grid-cols-3 gap-3">
-            <NuxtLink 
-              v-for="link in quickLinks" 
-              :key="link.href"
-              :to="link.href"
-              class="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-slate-50 transition text-center group"
-            >
-              <div :class="['w-10 h-10 rounded-lg flex items-center justify-center text-xl', link.color]">
-                {{ link.icon }}
-              </div>
-              <span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">{{ link.label }}</span>
-            </NuxtLink>
+        <UiGlassCard variant="light" :hover="false" :glow="false">
+          <div class="p-5">
+            <h2 class="text-lg font-semibold text-slate-900 mb-4">Quick Access</h2>
+            <div class="grid grid-cols-3 gap-3">
+              <NuxtLink 
+                v-for="link in quickLinks" 
+                :key="link.href"
+                :to="link.href"
+                class="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/50 transition text-center group hover-lift"
+              >
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-xl shadow-sm group-hover:shadow-md transition">
+                  {{ link.icon }}
+                </div>
+                <span class="text-xs font-medium text-slate-600 group-hover:text-slate-900">{{ link.label }}</span>
+              </NuxtLink>
+            </div>
           </div>
-        </div>
+        </UiGlassCard>
 
         <!-- Top Departments -->
-        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-900">Departments</h2>
-            <span class="text-xs text-slate-400">{{ stats.departmentCount }} total</span>
-          </div>
-          <div class="space-y-3">
-            <div 
-              v-for="dept in topDepartments" 
-              :key="dept.name"
-              class="flex items-center justify-between"
-            >
-              <span class="text-sm text-slate-700">{{ dept.name }}</span>
-              <span class="text-sm font-medium text-slate-900 bg-slate-100 px-2 py-0.5 rounded">
-                {{ dept.count }} staff
-              </span>
+        <UiGlassCard variant="light" :hover="false" :glow="false">
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-slate-900">Departments</h2>
+              <span class="text-xs text-slate-400 bg-slate-100 px-2 py-1 rounded-full">{{ stats.departmentCount }} total</span>
             </div>
-            <div v-if="topDepartments.length === 0" class="text-sm text-slate-400 italic text-center py-4">
-              No department data
+            <div class="space-y-3">
+              <div 
+                v-for="(dept, index) in topDepartments" 
+                :key="dept.name"
+                class="flex items-center justify-between p-2 rounded-lg hover:bg-white/50 transition"
+              >
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-xs font-bold">
+                    {{ index + 1 }}
+                  </span>
+                  <span class="text-sm text-slate-700 font-medium">{{ dept.name }}</span>
+                </div>
+                <span class="text-sm font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-full">
+                  {{ dept.count }}
+                </span>
+              </div>
+              <div v-if="topDepartments.length === 0" class="text-sm text-slate-400 italic text-center py-4">
+                No department data
+              </div>
             </div>
           </div>
-        </div>
+        </UiGlassCard>
 
         <!-- Top Mentors -->
-        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <UiGlassCard variant="light" :hover="false" :glow="false">
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-slate-900">🏅 Top Mentors</h2>
+              <NuxtLink to="/mentorship" class="text-xs text-green-600 hover:text-green-700 font-medium">View all →</NuxtLink>
+            </div>
+            <div class="space-y-2">
+              <div 
+                v-for="mentor in topMentors" 
+                :key="mentor.id"
+                class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/50 transition cursor-pointer group"
+                @click="navigateTo('/employees/' + mentor.id)"
+              >
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg transition">
+                  {{ mentor.initials }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-semibold text-slate-900 truncate">{{ mentor.full_name }}</div>
+                  <div class="text-xs text-slate-500">{{ mentor.position?.title || 'Team Member' }}</div>
+                </div>
+                <div class="text-xs font-bold text-amber-600 bg-amber-100 px-2.5 py-1 rounded-full shadow-sm">
+                  {{ mentor.mentorSkillCount }} ★5
+                </div>
+              </div>
+              <div v-if="topMentors.length === 0" class="text-sm text-slate-400 italic text-center py-4">
+                No mentors yet
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Hires - with shimmer effect -->
+      <UiGlassCard variant="light" :hover="false" :glow="false" shimmer>
+        <div class="p-5">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-900">🏅 Top Mentors</h2>
-            <NuxtLink to="/mentorship" class="text-xs text-blue-600 hover:underline">View all</NuxtLink>
+            <h2 class="text-lg font-semibold text-slate-900">🆕 Recent Hires</h2>
+            <span class="text-xs text-slate-400 bg-green-100 text-green-700 px-2 py-1 rounded-full">Last 3 months</span>
           </div>
-          <div class="space-y-3">
-            <div 
-              v-for="mentor in topMentors" 
-              :key="mentor.id"
-              class="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition cursor-pointer"
-              @click="navigateTo('/employees/' + mentor.id)"
+          
+          <div v-if="recentHires.length > 0" class="flex gap-4 overflow-x-auto pb-2">
+            <UiGlassCard 
+              v-for="hire in recentHires" 
+              :key="hire.id"
+              variant="primary"
+              :tilt-intensity="12"
+              class="flex-shrink-0 w-52 cursor-pointer"
+              @click="navigateTo('/employees/' + hire.id)"
             >
-              <div class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-bold">
-                {{ mentor.initials }}
+              <div class="p-4">
+                <div class="flex items-center gap-3 mb-3">
+                  <div class="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold shadow-lg">
+                    {{ hire.initials }}
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-bold text-slate-900 truncate">{{ hire.full_name }}</div>
+                    <div class="text-xs text-slate-500">{{ hire.position?.title || 'Team Member' }}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-green-600 font-medium">
+                  <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  Started {{ new Date(hire.hire_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
+                </div>
               </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-slate-900 truncate">{{ mentor.full_name }}</div>
-                <div class="text-xs text-slate-500">{{ mentor.position?.title || 'Team Member' }}</div>
-              </div>
-              <div class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                {{ mentor.mentorSkillCount }} ★5
-              </div>
-            </div>
-            <div v-if="topMentors.length === 0" class="text-sm text-slate-400 italic text-center py-4">
-              No mentors yet
-            </div>
+            </UiGlassCard>
+          </div>
+          
+          <div v-else class="text-sm text-slate-400 italic text-center py-6">
+            No recent hires in the last 3 months
           </div>
         </div>
+      </UiGlassCard>
 
-      </div>
-
-      <!-- Recent Hires -->
-      <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-slate-900">🆕 Recent Hires</h2>
-          <span class="text-xs text-slate-400">Last 3 months</span>
-        </div>
-        
-        <div v-if="recentHires.length > 0" class="flex gap-4 overflow-x-auto pb-2">
-          <div 
-            v-for="hire in recentHires" 
-            :key="hire.id"
-            class="flex-shrink-0 w-48 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-            @click="navigateTo('/employees/' + hire.id)"
-          >
-            <div class="flex items-center gap-3 mb-2">
-              <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-bold">
-                {{ hire.initials }}
+      <!-- Admin Section - Premium Dark Glass -->
+      <UiGlassCard v-if="isAdmin" variant="dark" :tilt-intensity="5">
+        <div class="p-6 bg-gradient-to-r from-slate-900/80 to-slate-800/80 rounded-2xl">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🔐</span>
+                <h2 class="text-xl font-bold text-white">Admin Panel</h2>
               </div>
-              <div class="flex-1 min-w-0">
-                <div class="text-sm font-medium text-slate-900 truncate">{{ hire.full_name }}</div>
-              </div>
+              <p class="text-sm text-slate-400 mt-1">Manage your organization settings and data</p>
             </div>
-            <div class="text-xs text-slate-500">{{ hire.position?.title || 'Team Member' }}</div>
-            <div class="text-xs text-slate-400 mt-1">
-              Started {{ new Date(hire.hire_date!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
+            <div class="flex gap-3">
+              <NuxtLink 
+                to="/settings"
+                class="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition border border-white/10 hover:border-white/20"
+              >
+                ⚙️ Settings
+              </NuxtLink>
+              <NuxtLink 
+                to="/growth/leads"
+                class="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-semibold rounded-xl transition shadow-lg shadow-green-500/25"
+              >
+                📈 Growth Hub
+              </NuxtLink>
             </div>
           </div>
         </div>
-        
-        <div v-else class="text-sm text-slate-400 italic text-center py-6">
-          No recent hires in the last 3 months
-        </div>
-      </div>
-
-      <!-- Admin Section -->
-      <div v-if="isAdmin" class="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl p-5 shadow-lg">
-        <div class="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h2 class="text-lg font-semibold text-white">🔐 Admin Panel</h2>
-            <p class="text-sm text-slate-400 mt-1">Manage your organization settings and data</p>
-          </div>
-          <div class="flex gap-2">
-            <NuxtLink 
-              to="/settings"
-              class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition"
-            >
-              ⚙️ Settings
-            </NuxtLink>
-            <NuxtLink 
-              to="/leads"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
-            >
-              📈 Leads & Marketing
-            </NuxtLink>
-          </div>
-        </div>
-      </div>
+      </UiGlassCard>
     </template>
 
   </div>
