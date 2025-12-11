@@ -53,7 +53,6 @@
           />
         </template>
         <v-list-item to="/roster" title="All Staff" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Roster" rounded="lg" class="nav-item mb-1" />
 
@@ -68,14 +67,14 @@
             class="nav-item"
           />
         </template>
+        <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/my-stats" title="My Stats" prepend-icon="mdi-chart-arc" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/mentorship" title="Mentorship" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/growth/matrix" title="Skill Matrix" prepend-icon="mdi-grid" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/growth/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/my-stats" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/profile" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
 
       <!-- Operations Group - Collapsible -->
       <v-list-group v-if="!rail" value="operations">
@@ -108,7 +107,6 @@
         </template>
         <v-list-item to="/goals" title="My Goals" prepend-icon="mdi-flag" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/reviews" title="Reviews" prepend-icon="mdi-clipboard-check" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/feedback" title="Feedback" prepend-icon="mdi-message-text" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/goals" prepend-icon="mdi-chart-timeline-variant" title="Performance" rounded="lg" class="nav-item mb-1" />
 
@@ -129,7 +127,7 @@
       </v-list-group>
       <v-list-item v-else-if="isAdmin" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Growth Group - Admin Only -->
+      <!-- Growth Group (Marketing) - Admin Only -->
       <v-list-group v-if="isAdmin && !rail" value="growth">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -142,7 +140,7 @@
         </template>
         <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/partners" title="Referral Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/growth/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="isAdmin" to="/growth/events" prepend-icon="mdi-rocket-launch" title="Growth" rounded="lg" class="nav-item mb-1" />
     </v-list>
