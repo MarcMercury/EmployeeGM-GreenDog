@@ -69,9 +69,11 @@
           />
         </template>
         <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/my-stats" title="My Stats" prepend-icon="mdi-chart-arc" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/mentorship" title="Mentorship" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/skills" title="Skill Library" prepend-icon="mdi-star-circle" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/growth/matrix" title="Skill Matrix" prepend-icon="mdi-grid" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/growth/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/my-stats" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
 
@@ -121,7 +123,7 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/recruiting" title="Dashboard" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/recruiting" title="Pipeline" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/recruiting/candidates" title="Candidates" prepend-icon="mdi-account-multiple-plus" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/recruiting/onboarding" title="Onboarding" prepend-icon="mdi-clipboard-check-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
