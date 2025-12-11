@@ -17,6 +17,7 @@
     "@vee-validate/nuxt": "^4.15.1",
     "@vee-validate/zod": "^4.15.1",
     "canvas-confetti": "^1.9.4",
+    "date-fns": "^4.1.0",
     "marked": "^17.0.1",
     "nuxt": "^4.2.1",
     "pinia": "^2.3.1",

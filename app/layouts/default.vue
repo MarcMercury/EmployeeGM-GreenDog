@@ -44,8 +44,19 @@ const initials = computed(() => {
 })
 
 async function handleSignOut() {
-  await authStore.signOut()
-  router.push('/auth/login')
+  console.log('[Layout] Signing out...')
+  try {
+    // Sign out directly via supabase client
+    await supabase.auth.signOut()
+    // Clear store state
+    authStore.$reset()
+    // Full page navigation to clear all state
+    window.location.href = '/auth/login'
+  } catch (e) {
+    console.error('[Layout] Sign out error:', e)
+    // Force redirect anyway
+    window.location.href = '/auth/login'
+  }
 }
 </script>
 
@@ -122,6 +133,11 @@ async function handleSignOut() {
               <NuxtLink to="/schedule" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">📆</div>
                 Schedule
+              </NuxtLink>
+              <NuxtLink v-if="isAdmin" to="/schedule/builder" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">🛠️</div>
+                Schedule Builder
+                <span class="ml-auto text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Admin</span>
               </NuxtLink>
               <NuxtLink to="/time-off" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-sky-500/20">🏖️</div>
