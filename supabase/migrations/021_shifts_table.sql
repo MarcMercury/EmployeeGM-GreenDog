@@ -1,41 +1,33 @@
 -- =============================================
--- Migration: Create Shifts Table for Schedule Builder
+-- Migration: Update Shifts Table for Schedule Builder
+-- Note: shifts table already exists in 006_full_schema.sql
+-- This migration adds missing columns and RLS policies
 -- =============================================
 
--- Shifts table for schedule management
-CREATE TABLE IF NOT EXISTS public.shifts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Timing
-  start_time TIMESTAMPTZ NOT NULL,
-  end_time TIMESTAMPTZ NOT NULL,
-  
-  -- Location
-  location_id UUID REFERENCES public.locations(id) ON DELETE CASCADE,
-  
-  -- Assignment
-  assigned_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
-  role_required TEXT, -- e.g., 'vet', 'technician', 'receptionist'
-  
-  -- Status
-  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'filled', 'closed_clinic')),
-  is_published BOOLEAN DEFAULT false,
-  
-  -- Audit
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+-- Add missing columns to existing shifts table
+ALTER TABLE public.shifts 
+  ADD COLUMN IF NOT EXISTS role_required TEXT,
+  ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT false;
 
--- Index for efficient week queries
-CREATE INDEX IF NOT EXISTS idx_shifts_start_time ON public.shifts(start_time);
-CREATE INDEX IF NOT EXISTS idx_shifts_location_id ON public.shifts(location_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_assigned_employee ON public.shifts(assigned_employee_id);
+-- Update status check constraint to include 'closed_clinic'
+-- First drop the old constraint, then add new one
+ALTER TABLE public.shifts DROP CONSTRAINT IF EXISTS shifts_status_check;
+ALTER TABLE public.shifts ADD CONSTRAINT shifts_status_check 
+  CHECK (status IN ('draft', 'published', 'completed', 'missed', 'cancelled', 'open', 'filled', 'closed_clinic'));
 
--- Enable RLS
-ALTER TABLE public.shifts ENABLE ROW LEVEL SECURITY;
+-- Additional index for is_published
+CREATE INDEX IF NOT EXISTS idx_shifts_published ON public.shifts(is_published);
 
--- Policies
+-- =============================================
+-- RLS Policies for Schedule Builder
+-- =============================================
+
+-- Drop existing policies if any (to avoid conflicts)
+DROP POLICY IF EXISTS "Authenticated users can view published shifts" ON public.shifts;
+DROP POLICY IF EXISTS "Admins can view all shifts" ON public.shifts;
+DROP POLICY IF EXISTS "Admins can create shifts" ON public.shifts;
+DROP POLICY IF EXISTS "Admins can update shifts" ON public.shifts;
+DROP POLICY IF EXISTS "Admins can delete shifts" ON public.shifts;
 
 -- All authenticated users can view published shifts
 CREATE POLICY "Authenticated users can view published shifts"
@@ -50,8 +42,13 @@ CREATE POLICY "Admins can view all shifts"
   USING (
     EXISTS (
       SELECT 1 FROM public.employees 
-      WHERE employees.auth_user_id = auth.uid() 
-      AND employees.role = 'admin'
+      WHERE employees.profile_id IN (
+        SELECT id FROM public.profiles WHERE auth_user_id = auth.uid()
+      )
+      AND EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE auth_user_id = auth.uid() AND role = 'admin'
+      )
     )
   );
 
@@ -60,9 +57,8 @@ CREATE POLICY "Admins can create shifts"
   ON public.shifts FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM public.employees 
-      WHERE employees.auth_user_id = auth.uid() 
-      AND employees.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE auth_user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -71,9 +67,8 @@ CREATE POLICY "Admins can update shifts"
   ON public.shifts FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM public.employees 
-      WHERE employees.auth_user_id = auth.uid() 
-      AND employees.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE auth_user_id = auth.uid() AND role = 'admin'
     )
   );
 
@@ -82,66 +77,52 @@ CREATE POLICY "Admins can delete shifts"
   ON public.shifts FOR DELETE
   USING (
     EXISTS (
-      SELECT 1 FROM public.employees 
-      WHERE employees.auth_user_id = auth.uid() 
-      AND employees.role = 'admin'
+      SELECT 1 FROM public.profiles 
+      WHERE auth_user_id = auth.uid() AND role = 'admin'
     )
   );
 
--- Trigger to update updated_at
-CREATE OR REPLACE FUNCTION update_shift_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER shifts_updated_at
-  BEFORE UPDATE ON public.shifts
-  FOR EACH ROW
-  EXECUTE FUNCTION update_shift_updated_at();
-
 -- =============================================
--- Seed some sample shifts for testing
+-- Seed sample shifts for testing (current week)
 -- =============================================
-
--- Note: Run these after you have locations in the database
--- This creates shifts for the current week
-
 DO $$
 DECLARE
   loc_id UUID;
-  current_date DATE := CURRENT_DATE;
-  week_start DATE := date_trunc('week', current_date)::DATE;
+  week_start DATE := date_trunc('week', CURRENT_DATE)::DATE;
   i INTEGER;
 BEGIN
   -- Get first location
   SELECT id INTO loc_id FROM public.locations LIMIT 1;
   
   IF loc_id IS NOT NULL THEN
-    -- Create shifts for each day of the week
-    FOR i IN 0..6 LOOP
-      -- Morning shift (8am - 12pm)
-      INSERT INTO public.shifts (start_time, end_time, location_id, status)
-      VALUES (
-        (week_start + i) + INTERVAL '8 hours',
-        (week_start + i) + INTERVAL '12 hours',
-        loc_id,
-        'open'
-      );
+    -- Create shifts for each day of the week (if none exist)
+    IF NOT EXISTS (SELECT 1 FROM public.shifts WHERE start_at >= week_start) THEN
+      FOR i IN 0..6 LOOP
+        -- Morning shift (8am - 12pm)
+        INSERT INTO public.shifts (start_at, end_at, location_id, status, is_open_shift)
+        VALUES (
+          (week_start + i) + INTERVAL '8 hours',
+          (week_start + i) + INTERVAL '12 hours',
+          loc_id,
+          'draft',
+          true
+        );
+        
+        -- Afternoon shift (1pm - 5pm)
+        INSERT INTO public.shifts (start_at, end_at, location_id, status, is_open_shift)
+        VALUES (
+          (week_start + i) + INTERVAL '13 hours',
+          (week_start + i) + INTERVAL '17 hours',
+          loc_id,
+          'draft',
+          true
+        );
+      END LOOP;
       
-      -- Afternoon shift (1pm - 5pm)
-      INSERT INTO public.shifts (start_time, end_time, location_id, status)
-      VALUES (
-        (week_start + i) + INTERVAL '13 hours',
-        (week_start + i) + INTERVAL '17 hours',
-        loc_id,
-        'open'
-      );
-    END LOOP;
-    
-    RAISE NOTICE 'Created 14 sample shifts for the current week';
+      RAISE NOTICE 'Created 14 sample shifts for the current week';
+    ELSE
+      RAISE NOTICE 'Shifts already exist for this week - skipping seed';
+    END IF;
   ELSE
     RAISE NOTICE 'No locations found - skipping shift seeding';
   END IF;

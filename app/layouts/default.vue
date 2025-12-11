@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-
 const authStore = useAuthStore()
-const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData } = useAppData()
-const router = useRouter()
+const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData, initialized } = useAppData()
 const supabase = useSupabaseClient()
 
 // Collapsible section states
@@ -20,12 +17,11 @@ const toggleSection = (section: keyof typeof sections.value) => {
   sections.value[section] = !sections.value[section]
 }
 
-// Fetch profile AND global data on mount
-onMounted(async () => {
+// Only fetch data once using callOnce to prevent hydration issues
+await callOnce(async () => {
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.user) {
-    console.log('[Layout] Session found, fetching profile for:', session.user.email)
-    // Fetch both auth profile AND global app data
+    console.log('[Layout] Session found, fetching data for:', session.user.email)
     await Promise.all([
       authStore.fetchProfile(session.user.id),
       fetchGlobalData()
@@ -46,15 +42,11 @@ const initials = computed(() => {
 async function handleSignOut() {
   console.log('[Layout] Signing out...')
   try {
-    // Sign out directly via supabase client
     await supabase.auth.signOut()
-    // Clear store state
     authStore.$reset()
-    // Full page navigation to clear all state
     window.location.href = '/auth/login'
   } catch (e) {
     console.error('[Layout] Sign out error:', e)
-    // Force redirect anyway
     window.location.href = '/auth/login'
   }
 }

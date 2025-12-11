@@ -3,6 +3,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
+  // Disable SSR for debugging - fixes hydration issues
+  ssr: false,
+
   // CSS
   css: [
     'vuetify/styles',

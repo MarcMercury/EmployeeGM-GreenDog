@@ -41,7 +41,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
       return this.draftShifts.some((draft, i) => {
         const db = this.dbShifts.find(s => s.id === draft.id)
         if (!db) return true
-        return draft.assigned_employee_id !== db.assigned_employee_id ||
+        return draft.employee_id !== db.employee_id ||
                draft.status !== db.status
       })
     },
@@ -52,9 +52,11 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     shiftsByDate(): Record<string, ScheduleShift[]> {
       const grouped: Record<string, ScheduleShift[]> = {}
       this.draftShifts.forEach(shift => {
-        const date = shift.start_time.split('T')[0]
-        if (!grouped[date]) grouped[date] = []
-        grouped[date].push(shift)
+        const date = shift.start_at?.split('T')[0]
+        if (date) {
+          if (!grouped[date]) grouped[date] = []
+          grouped[date].push(shift)
+        }
       })
       return grouped
     },
@@ -65,8 +67,11 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     shiftsByLocation(): Record<string, ScheduleShift[]> {
       const grouped: Record<string, ScheduleShift[]> = {}
       this.draftShifts.forEach(shift => {
-        if (!grouped[shift.location_id]) grouped[shift.location_id] = []
-        grouped[shift.location_id].push(shift)
+        if (shift.location_id) {
+          const key = shift.location_id
+          if (!grouped[key]) grouped[key] = []
+          grouped[key]!.push(shift)
+        }
       })
       return grouped
     },
@@ -76,10 +81,10 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      */
     totalHoursScheduled(): number {
       return this.draftShifts
-        .filter(s => s.assigned_employee_id)
+        .filter(s => s.employee_id)
         .reduce((acc, s) => {
-          const start = new Date(s.start_time)
-          const end = new Date(s.end_time)
+          const start = new Date(s.start_at)
+          const end = new Date(s.end_at)
           return acc + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
         }, 0)
     },
@@ -89,8 +94,8 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      */
     shiftStats(): { filled: number; open: number; closed: number } {
       return {
-        filled: this.draftShifts.filter(s => s.status === 'filled').length,
-        open: this.draftShifts.filter(s => s.status === 'open').length,
+        filled: this.draftShifts.filter(s => s.employee_id != null).length,
+        open: this.draftShifts.filter(s => s.employee_id == null && s.status !== 'closed_clinic').length,
         closed: this.draftShifts.filter(s => s.status === 'closed_clinic').length
       }
     }
@@ -114,31 +119,33 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
           .from('shifts')
           .select(`
             id,
-            start_time,
-            end_time,
+            start_at,
+            end_at,
             location_id,
-            assigned_employee_id,
+            employee_id,
             role_required,
             status,
             is_published,
+            is_open_shift,
             locations:location_id ( name )
           `)
-          .gte('start_time', weekStart.toISOString())
-          .lt('start_time', weekEnd.toISOString())
-          .order('start_time')
+          .gte('start_at', weekStart.toISOString())
+          .lt('start_at', weekEnd.toISOString())
+          .order('start_at')
 
         if (error) throw error
 
         const shifts: ScheduleShift[] = (data || []).map((s: any) => ({
           id: s.id,
-          start_time: s.start_time,
-          end_time: s.end_time,
+          start_at: s.start_at,
+          end_at: s.end_at,
           location_id: s.location_id,
           location_name: s.locations?.name,
-          assigned_employee_id: s.assigned_employee_id,
+          employee_id: s.employee_id,
           role_required: s.role_required,
-          status: s.status || 'open',
-          is_published: s.is_published || false
+          status: s.status || 'draft',
+          is_published: s.is_published || false,
+          is_open_shift: s.is_open_shift || false
         }))
 
         // Store both draft and db versions
@@ -159,8 +166,8 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     assignEmployee(shiftId: string, employeeId: string | null) {
       const shift = this.draftShifts.find(s => s.id === shiftId)
       if (shift) {
-        shift.assigned_employee_id = employeeId
-        shift.status = employeeId ? 'filled' : 'open'
+        shift.employee_id = employeeId
+        shift.status = employeeId ? 'published' : 'draft'
       }
     },
 
@@ -176,9 +183,9 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      */
     closeLocation(locationId: string, date: string) {
       this.draftShifts
-        .filter(s => s.location_id === locationId && s.start_time.startsWith(date))
+        .filter(s => s.location_id === locationId && s.start_at.startsWith(date))
         .forEach(s => {
-          s.assigned_employee_id = null
+          s.employee_id = null
           s.status = 'closed_clinic'
         })
     },
@@ -188,9 +195,9 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      */
     reopenLocation(locationId: string, date: string) {
       this.draftShifts
-        .filter(s => s.location_id === locationId && s.start_time.startsWith(date))
+        .filter(s => s.location_id === locationId && s.start_at.startsWith(date))
         .forEach(s => {
-          s.status = 'open'
+          s.status = 'draft'
         })
     },
 
@@ -214,16 +221,17 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         const changedShifts = this.draftShifts.filter(draft => {
           const db = this.dbShifts.find(s => s.id === draft.id)
           if (!db) return true
-          return draft.assigned_employee_id !== db.assigned_employee_id ||
+          return draft.employee_id !== db.employee_id ||
                  draft.status !== db.status
         })
 
         // Batch update
         for (const shift of changedShifts) {
-          const { error } = await client
-            .from('shifts')
+          // Note: Using type assertion until Supabase types are regenerated
+          const { error } = await (client
+            .from('shifts') as ReturnType<typeof client.from>)
             .update({
-              assigned_employee_id: shift.assigned_employee_id,
+              employee_id: shift.employee_id,
               status: shift.status,
               updated_at: new Date().toISOString()
             })
@@ -261,11 +269,12 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         const weekEnd = new Date(this.selectedWeekStart)
         weekEnd.setDate(weekEnd.getDate() + 7)
 
-        const { error } = await client
-          .from('shifts')
-          .update({ is_published: true })
-          .gte('start_time', this.selectedWeekStart)
-          .lt('start_time', weekEnd.toISOString())
+        // Note: Using type assertion until Supabase types are regenerated
+        const { error } = await (client
+          .from('shifts') as ReturnType<typeof client.from>)
+          .update({ is_published: true, status: 'published' })
+          .gte('start_at', this.selectedWeekStart)
+          .lt('start_at', weekEnd.toISOString())
 
         if (error) throw error
 

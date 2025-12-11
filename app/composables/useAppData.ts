@@ -144,7 +144,7 @@ export const useAppData = () => {
         if (profile) {
           currentUserProfile.value = profile as AppUserProfile
           // Check explicitly for 'admin' role
-          isAdmin.value = profile.role === 'admin'
+          isAdmin.value = (profile as any).role === 'admin'
           console.log('[useAppData] isAdmin set to:', isAdmin.value)
         }
       } else {
@@ -303,7 +303,7 @@ export const useAppData = () => {
             if (!skillsByEmployee[es.employee_id]) {
               skillsByEmployee[es.employee_id] = []
             }
-            skillsByEmployee[es.employee_id].push({
+            skillsByEmployee[es.employee_id]!.push({
               skill_id: es.skill_id,
               skill_name: es.skill_library?.name || 'Unknown',
               category: es.skill_library?.category || 'General',

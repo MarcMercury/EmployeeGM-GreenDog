@@ -76,16 +76,16 @@ const handleDrop = async (shift: any, e: DragEvent) => {
 
   // Validate assignment
   const validation = validateAssignment(
-    shift,
     employee,
+    shift,
     scheduleStore.draftShifts
   )
 
-  if (validation.isValid) {
+  if (validation.valid) {
     scheduleStore.assignEmployee(shift.id, draggedEmployeeId.value)
   } else {
     // Show warning but allow override for warnings
-    if (validation.severity === 'warning') {
+    if (validation.type === 'warning') {
       scheduleStore.assignEmployee(shift.id, draggedEmployeeId.value)
     }
     // Block if error
@@ -120,60 +120,75 @@ const handlePublish = async () => {
 
 // Employee hours for the week
 const getHoursForEmployee = (employeeId: string) => {
-  const weekEnd = endOfWeek(currentWeekStart.value, { weekStartsOn: 1 })
-  return getEmployeeHours(employeeId, currentWeekStart.value, weekEnd, scheduleStore.draftShifts)
+  return getEmployeeHours(employeeId, scheduleStore.draftShifts)
 }
 </script>
 
 <template>
   <div class="schedule-builder">
-    <!-- Header -->
-    <div class="builder-header">
-      <div class="header-left">
-        <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
-        <v-chip color="primary" variant="flat" size="small" class="ml-2">
-          Admin Only
-        </v-chip>
-      </div>
-
-      <div class="header-center">
-        <v-btn icon="mdi-chevron-left" variant="text" @click="previousWeek" />
-        <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">
-          Today
-        </v-btn>
-        <span class="week-range">
-          {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
-        </span>
-        <v-btn icon="mdi-chevron-right" variant="text" @click="nextWeek" />
-      </div>
-
-      <div class="header-right">
-        <v-chip variant="outlined" size="small" class="mr-2">
-          <v-icon start size="small">mdi-account-check</v-icon>
-          {{ scheduleStore.shiftStats.filled }} Filled
-        </v-chip>
-        <v-chip variant="outlined" size="small" color="warning" class="mr-2">
-          <v-icon start size="small">mdi-account-clock</v-icon>
-          {{ scheduleStore.shiftStats.open }} Open
-        </v-chip>
-      </div>
+    <!-- Loading State -->
+    <div v-if="scheduleStore.isLoading" class="d-flex justify-center align-center py-12">
+      <v-progress-circular indeterminate color="primary" />
+      <span class="ml-3">Loading schedule...</span>
     </div>
 
-    <!-- Main content: Resource Bench + Grid -->
-    <div class="builder-content">
-      <!-- Resource Bench (Left sidebar) -->
-      <div class="resource-bench">
-        <div class="bench-header">
-          <h3 class="text-subtitle-1 font-weight-medium">Team Roster</h3>
-          <v-text-field
-            density="compact"
-            variant="outlined"
-            placeholder="Filter..."
-            prepend-inner-icon="mdi-magnify"
-            hide-details
-            class="mt-2"
-          />
+    <!-- Error State -->
+    <v-alert v-else-if="scheduleStore.error" type="error" class="ma-4">
+      {{ scheduleStore.error }}
+      <v-btn variant="text" size="small" @click="scheduleStore.loadWeek(currentWeekStart)">
+        Retry
+      </v-btn>
+    </v-alert>
+
+    <!-- Main Content -->
+    <template v-else>
+      <!-- Header -->
+      <div class="builder-header">
+        <div class="header-left">
+          <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
+          <v-chip color="primary" variant="flat" size="small" class="ml-2">
+            Admin Only
+          </v-chip>
         </div>
+
+        <div class="header-center">
+          <v-btn icon="mdi-chevron-left" variant="text" @click="previousWeek" />
+          <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">
+            Today
+          </v-btn>
+          <span class="week-range">
+            {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+          </span>
+          <v-btn icon="mdi-chevron-right" variant="text" @click="nextWeek" />
+        </div>
+
+        <div class="header-right">
+          <v-chip variant="outlined" size="small" class="mr-2">
+            <v-icon start size="small">mdi-account-check</v-icon>
+            {{ scheduleStore.shiftStats.filled }} Filled
+          </v-chip>
+          <v-chip variant="outlined" size="small" color="warning" class="mr-2">
+            <v-icon start size="small">mdi-account-clock</v-icon>
+            {{ scheduleStore.shiftStats.open }} Open
+          </v-chip>
+        </div>
+      </div>
+
+      <!-- Main content: Resource Bench + Grid -->
+      <div class="builder-content">
+        <!-- Resource Bench (Left sidebar) -->
+        <div class="resource-bench">
+          <div class="bench-header">
+            <h3 class="text-subtitle-1 font-weight-medium">Team Roster</h3>
+            <v-text-field
+              density="compact"
+              variant="outlined"
+              placeholder="Filter..."
+              prepend-inner-icon="mdi-magnify"
+              hide-details
+              class="mt-2"
+            />
+          </div>
 
         <div class="bench-employees">
           <div
@@ -184,7 +199,7 @@ const getHoursForEmployee = (employeeId: string) => {
             @dragstart="handleDragStart(emp.id)"
             @dragend="handleDragEnd"
           >
-            <v-avatar size="36" :color="emp.avatar_color || 'primary'" class="mr-3">
+            <v-avatar size="36" color="primary" class="mr-3">
               <span class="text-white text-caption">
                 {{ emp.first_name?.charAt(0) }}{{ emp.last_name?.charAt(0) }}
               </span>
@@ -194,7 +209,7 @@ const getHoursForEmployee = (employeeId: string) => {
                 {{ emp.first_name }} {{ emp.last_name }}
               </div>
               <div class="text-caption text-grey">
-                {{ emp.job_positions?.title || 'Employee' }}
+                {{ emp.position?.title || 'Employee' }}
               </div>
             </div>
             <div class="employee-hours">
@@ -233,32 +248,32 @@ const getHoursForEmployee = (employeeId: string) => {
               :key="shift.id"
               class="shift-slot"
               :class="{
-                'is-filled': shift.status === 'filled',
-                'is-open': shift.status === 'open',
+                'is-filled': shift.employee_id != null,
+                'is-open': shift.employee_id == null && shift.status !== 'closed_clinic',
                 'is-closed': shift.status === 'closed_clinic',
                 'drag-over': dragOverSlotId === shift.id,
-                [getValidationClass(validateAssignment(shift, employees.find(e => e.id === draggedEmployeeId), scheduleStore.draftShifts))]: draggedEmployeeId
+                [getValidationClass(draggedEmployeeId ? validateAssignment(employees.find(e => e.id === draggedEmployeeId)!, shift, scheduleStore.draftShifts) : null)]: draggedEmployeeId
               }"
               @dragover="handleDragOver(shift.id, $event)"
               @dragleave="dragOverSlotId = null"
               @drop="handleDrop(shift, $event)"
             >
               <div class="shift-time">
-                {{ format(new Date(shift.start_time), 'h:mm a') }} - 
-                {{ format(new Date(shift.end_time), 'h:mm a') }}
+                {{ format(new Date(shift.start_at), 'h:mm a') }} - 
+                {{ format(new Date(shift.end_at), 'h:mm a') }}
               </div>
               <div class="shift-location text-caption">
                 {{ shift.location_name || 'Location' }}
               </div>
 
               <!-- Assigned employee -->
-              <div v-if="shift.assigned_employee_id" class="assigned-employee">
+              <div v-if="shift.employee_id" class="assigned-employee">
                 <v-chip
                   size="small"
                   closable
                   @click:close="scheduleStore.unassignEmployee(shift.id)"
                 >
-                  {{ employees.find(e => e.id === shift.assigned_employee_id)?.first_name }}
+                  {{ employees.find(e => e.id === shift.employee_id)?.first_name }}
                 </v-chip>
               </div>
 
@@ -367,6 +382,7 @@ const getHoursForEmployee = (employeeId: string) => {
         </v-card-actions>
       </v-card>
     </v-dialog>
+    </template>
   </div>
 </template>
 

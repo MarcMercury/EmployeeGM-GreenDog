@@ -7,14 +7,15 @@ import { differenceInMinutes } from 'date-fns'
 // --- Types ---
 export interface ScheduleShift {
   id: string
-  start_time: string // ISO String
-  end_time: string   // ISO String
+  start_at: string // ISO String (DB column name)
+  end_at: string   // ISO String (DB column name)
   location_id: string
   location_name?: string
-  assigned_employee_id: string | null
+  employee_id: string | null // DB uses employee_id not assigned_employee_id
   role_required?: string
-  status: 'open' | 'filled' | 'closed_clinic'
+  status: 'draft' | 'published' | 'completed' | 'missed' | 'cancelled' | 'open' | 'filled' | 'closed_clinic'
   is_published: boolean
+  is_open_shift: boolean
 }
 
 export interface ScheduleEmployee {
@@ -62,19 +63,19 @@ export const useScheduleRules = () => {
     }
 
     // 2. CRITICAL: The "Cloning" Rule (Double Booking)
-    const targetStart = new Date(targetShift.start_time)
-    const targetEnd = new Date(targetShift.end_time)
+    const targetStart = new Date(targetShift.start_at)
+    const targetEnd = new Date(targetShift.end_at)
 
     const conflictingShift = allShifts.find(s => {
       // Skip the target shift itself
       if (s.id === targetShift.id) return false
       
       // Only check shifts assigned to THIS employee
-      if (s.assigned_employee_id !== employee.id) return false
+      if (s.employee_id !== employee.id) return false
 
       // Check Time Overlap: (StartA < EndB) and (EndA > StartB)
-      const sStart = new Date(s.start_time)
-      const sEnd = new Date(s.end_time)
+      const sStart = new Date(s.start_at)
+      const sEnd = new Date(s.end_at)
       const isOverlapping = (targetStart < sEnd) && (targetEnd > sStart)
 
       return isOverlapping
@@ -103,8 +104,8 @@ export const useScheduleRules = () => {
 
     // 4. WARNING: Overtime / Fatigue Rule
     const dailyMinutes = allShifts
-      .filter(s => s.assigned_employee_id === employee.id && isSameDay(new Date(s.start_time), targetStart))
-      .reduce((acc, s) => acc + differenceInMinutes(new Date(s.end_time), new Date(s.start_time)), 0)
+      .filter(s => s.employee_id === employee.id && isSameDay(new Date(s.start_at), targetStart))
+      .reduce((acc, s) => acc + differenceInMinutes(new Date(s.end_at), new Date(s.start_at)), 0)
     
     const newShiftDuration = differenceInMinutes(targetEnd, targetStart)
     
@@ -135,7 +136,8 @@ export const useScheduleRules = () => {
   /**
    * Get validation class for visual feedback
    */
-  const getValidationClass = (result: ValidationResult): string => {
+  const getValidationClass = (result: ValidationResult | null): string => {
+    if (!result) return ''
     switch (result.type) {
       case 'error': return 'border-red-500 bg-red-50'
       case 'warning': return 'border-amber-500 bg-amber-50'
@@ -163,8 +165,8 @@ export const useScheduleRules = () => {
    */
   const getEmployeeHours = (employeeId: string, shifts: ScheduleShift[]): number => {
     return shifts
-      .filter(s => s.assigned_employee_id === employeeId)
-      .reduce((acc, s) => acc + calculateHours(s.start_time, s.end_time), 0)
+      .filter(s => s.employee_id === employeeId)
+      .reduce((acc, s) => acc + calculateHours(s.start_at, s.end_at), 0)
   }
 
   return {

@@ -1,15 +1,46 @@
 import { defineStore } from 'pinia'
-import type { 
-  Schedule, 
-  ScheduleInsert,
-  TimeOffRequest,
-  TimeOffRequestInsert,
-  TimeOffStatus
-} from '~/types/database.types'
+
+// Types that match actual database schema
+interface Schedule {
+  id: string
+  profile_id: string | null
+  employee_id: string | null
+  date: string
+  shift_type: 'morning' | 'afternoon' | 'evening' | 'full-day' | 'off' | 'on-call'
+  start_time: string | null
+  end_time: string | null
+  location_id: string | null
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show'
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface TimeOffRequest {
+  id: string
+  employee_id: string
+  profile_id: string | null
+  time_off_type_id: string
+  start_date: string
+  end_date: string
+  duration_hours: number | null
+  status: 'pending' | 'approved' | 'denied' | 'cancelled'
+  reason: string | null
+  requested_at: string
+  approved_by_employee_id: string | null
+  approved_at: string | null
+  manager_comment: string | null
+  created_at: string
+  updated_at: string
+}
+
+type TimeOffStatus = 'pending' | 'approved' | 'denied' | 'cancelled'
 
 interface ScheduleState {
   schedules: Schedule[]
   timeOffRequests: TimeOffRequest[]
+  timeOffTypes: { id: string; name: string; code: string }[]
   selectedDate: string
   viewMode: 'day' | 'week' | 'month'
   isLoading: boolean
@@ -20,6 +51,7 @@ export const useScheduleStore = defineStore('schedule', {
   state: (): ScheduleState => ({
     schedules: [],
     timeOffRequests: [],
+    timeOffTypes: [],
     selectedDate: new Date().toISOString().split('T')[0],
     viewMode: 'week',
     isLoading: false,
@@ -54,7 +86,9 @@ export const useScheduleStore = defineStore('schedule', {
         dates.push(d.toISOString().split('T')[0])
       }
       return dates
-    }
+    },
+
+    defaultTimeOffType: (state) => state.timeOffTypes[0]?.id
   },
 
   actions: {
@@ -79,12 +113,28 @@ export const useScheduleStore = defineStore('schedule', {
         const { data, error } = await query.order('date')
 
         if (error) throw error
-        this.schedules = data as Schedule[]
+        this.schedules = (data || []) as Schedule[]
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch schedules'
         console.error('Error fetching schedules:', err)
       } finally {
         this.isLoading = false
+      }
+    },
+
+    async fetchTimeOffTypes() {
+      const supabase = useSupabaseClient()
+      
+      try {
+        const { data, error } = await supabase
+          .from('time_off_types')
+          .select('id, name, code')
+          .order('name')
+
+        if (error) throw error
+        this.timeOffTypes = data || []
+      } catch (err) {
+        console.error('Error fetching time off types:', err)
       }
     },
 
@@ -105,7 +155,7 @@ export const useScheduleStore = defineStore('schedule', {
         const { data, error } = await query.order('start_date')
 
         if (error) throw error
-        this.timeOffRequests = data as TimeOffRequest[]
+        this.timeOffRequests = (data || []) as TimeOffRequest[]
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch time off requests'
       } finally {
@@ -113,13 +163,13 @@ export const useScheduleStore = defineStore('schedule', {
       }
     },
 
-    async createSchedule(schedule: ScheduleInsert) {
+    async createSchedule(schedule: Partial<Schedule>) {
       const supabase = useSupabaseClient()
       
       try {
         const { data, error } = await supabase
           .from('schedules')
-          .insert(schedule)
+          .insert(schedule as any)
           .select()
           .single()
 
@@ -141,7 +191,7 @@ export const useScheduleStore = defineStore('schedule', {
           .update({
             ...updates,
             updated_at: new Date().toISOString()
-          })
+          } as any)
           .eq('id', id)
           .select()
           .single()
@@ -176,13 +226,38 @@ export const useScheduleStore = defineStore('schedule', {
       }
     },
 
-    async requestTimeOff(request: TimeOffRequestInsert) {
+    async requestTimeOff(request: {
+      employee_id?: string
+      profile_id?: string
+      start_date: string
+      end_date: string
+      reason?: string
+    }) {
       const supabase = useSupabaseClient()
       
       try {
+        // Get default time off type if not loaded
+        if (this.timeOffTypes.length === 0) {
+          await this.fetchTimeOffTypes()
+        }
+
+        const timeOffTypeId = this.timeOffTypes[0]?.id
+        if (!timeOffTypeId) {
+          throw new Error('No time off types configured')
+        }
+
         const { data, error } = await supabase
           .from('time_off_requests')
-          .insert(request)
+          .insert({
+            employee_id: request.employee_id,
+            profile_id: request.profile_id,
+            time_off_type_id: timeOffTypeId,
+            start_date: request.start_date,
+            end_date: request.end_date,
+            reason: request.reason,
+            status: 'pending',
+            requested_at: new Date().toISOString()
+          } as any)
           .select()
           .single()
 
@@ -195,20 +270,27 @@ export const useScheduleStore = defineStore('schedule', {
       }
     },
 
-    async reviewTimeOff(id: string, status: TimeOffStatus, notes?: string) {
+    async reviewTimeOff(id: string, status: 'approved' | 'denied', notes?: string) {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
       
       try {
+        // Get current user's employee record
+        const { data: empData } = await supabase
+          .from('employees')
+          .select('id')
+          .eq('profile_id', authStore.profile?.id)
+          .single()
+
         const { data, error } = await supabase
           .from('time_off_requests')
           .update({
             status,
-            reviewed_by: authStore.profile?.id,
-            reviewed_at: new Date().toISOString(),
-            review_notes: notes,
+            approved_by_employee_id: empData?.id,
+            approved_at: new Date().toISOString(),
+            manager_comment: notes,
             updated_at: new Date().toISOString()
-          })
+          } as any)
           .eq('id', id)
           .select()
           .single()

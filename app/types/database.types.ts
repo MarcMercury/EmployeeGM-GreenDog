@@ -4,8 +4,8 @@
 export type UserRole = 'admin' | 'user'
 export type SkillLevel = 0 | 1 | 2 | 3 | 4 | 5
 export type EmployeeStatus = 'active' | 'inactive' | 'terminated' | 'on_leave'
-export type ShiftStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
-export type TimeOffStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
+export type ShiftStatus = 'draft' | 'published' | 'completed' | 'missed' | 'cancelled'
+export type TimeOffStatus = 'pending' | 'approved' | 'denied' | 'cancelled'
 export type MentorshipStatus = 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled'
 export type TrainingStatus = 'enrolled' | 'in_progress' | 'completed' | 'failed' | 'dropped'
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost'
@@ -303,14 +303,21 @@ export interface Location {
   updated_at: string
 }
 
+export type ShiftType = 'morning' | 'afternoon' | 'evening' | 'full-day' | 'off' | 'on-call'
+export type ScheduleStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show'
+
 export interface Schedule {
   id: string
-  location_id: string
+  profile_id: string | null
+  employee_id: string | null
   date: string
-  status: 'draft' | 'published' | 'archived'
-  published_at: string | null
-  published_by: string | null
+  shift_type: ShiftType | null
+  start_time: string | null
+  end_time: string | null
+  location_id: string | null
+  status: ScheduleStatus
   notes: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
 }
@@ -328,14 +335,16 @@ export interface ShiftTemplate {
 
 export interface Shift {
   id: string
-  schedule_id: string
+  schedule_id: string | null
   employee_id: string | null
   template_id: string | null
-  start_time: string
-  end_time: string
+  start_at: string
+  end_at: string
   break_duration: number
   status: ShiftStatus
   notes: string | null
+  role_required: string | null
+  is_published: boolean
   created_at: string
   updated_at: string
 }
@@ -401,21 +410,22 @@ export interface TimeOffType {
 export interface TimeOffRequest {
   id: string
   employee_id: string
-  type_id: string
+  time_off_type_id: string
   start_date: string
   end_date: string
   total_days: number
   status: TimeOffStatus
   reason: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  reviewer_notes: string | null
+  approved_by_employee_id: string | null
+  approved_at: string | null
+  manager_comment: string | null
+  profile_id?: string | null
   created_at: string
   updated_at: string
 }
 
 export interface TimeOffRequestWithType extends TimeOffRequest {
-  type: TimeOffType
+  time_off_type: TimeOffType
 }
 
 // =====================================================

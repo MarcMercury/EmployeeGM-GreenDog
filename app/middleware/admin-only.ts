@@ -3,17 +3,24 @@
  * Blocks non-admin users from accessing protected routes
  */
 export default defineNuxtRouteMiddleware(async (to) => {
-  const { isAdmin, currentUserProfile, fetchGlobalData } = useAppData()
-  const toast = useToast()
+  const supabase = useSupabaseClient()
   
-  // Ensure data is loaded
-  if (!currentUserProfile.value) {
-    await fetchGlobalData()
+  // Get session directly
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session?.user) {
+    return navigateTo('/auth/login')
   }
   
-  // Check admin status
-  if (!isAdmin.value) {
-    toast.error('Unauthorized: Admin access required')
+  // Check admin role from database directly
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', session.user.id)
+    .single()
+  
+  if (profile?.role !== 'admin') {
+    console.warn('[Middleware] Non-admin attempted to access:', to.path)
     return navigateTo('/')
   }
 })

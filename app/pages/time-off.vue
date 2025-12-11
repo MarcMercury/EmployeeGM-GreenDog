@@ -53,7 +53,7 @@
           </template>
 
           <v-list-item-title class="font-weight-bold mb-1">
-            {{ getEmployeeName(request.profile_id) }}
+            {{ getEmployeeName(request.employee_id) }}
           </v-list-item-title>
           
           <v-list-item-subtitle>
@@ -90,8 +90,8 @@
                 />
               </div>
 
-              <div v-if="request.reviewed_at" class="text-caption text-grey">
-                Reviewed {{ formatDate(request.reviewed_at) }}
+              <div v-if="request.approved_at" class="text-caption text-grey">
+                Reviewed {{ formatDate(request.approved_at) }}
               </div>
             </div>
           </template>
@@ -144,17 +144,16 @@
 </template>
 
 <script setup lang="ts">
-import type { TimeOffRequest, TimeOffStatus } from '~/types/database.types'
-
 definePageMeta({
   layout: 'default',
   middleware: 'auth'
 })
 
 const authStore = useAuthStore()
-const employeeStore = useEmployeeStore()
+const { employees } = useAppData()
 const scheduleStore = useScheduleStore()
 const uiStore = useUIStore()
+const supabase = useSupabaseClient()
 
 const isAdmin = computed(() => authStore.isAdmin)
 const firstName = computed(() => authStore.profile?.first_name || 'My')
@@ -169,6 +168,25 @@ const form = reactive({
   reason: ''
 })
 
+// Get current user's employee record
+const currentEmployee = ref<{ id: string } | null>(null)
+onMounted(async () => {
+  // Fetch current user's employee record
+  if (authStore.profile?.id) {
+    const { data } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('profile_id', authStore.profile.id)
+      .single()
+    currentEmployee.value = data
+  }
+
+  await Promise.all([
+    scheduleStore.fetchTimeOffRequests(),
+    scheduleStore.fetchTimeOffTypes()
+  ])
+})
+
 const allRequests = computed(() => scheduleStore.timeOffRequests)
 const pendingRequests = computed(() => allRequests.value.filter(r => r.status === 'pending'))
 
@@ -176,7 +194,10 @@ const filteredRequests = computed(() => {
   // Non-admins only see their own requests
   let requests = isAdmin.value 
     ? allRequests.value 
-    : allRequests.value.filter(r => r.profile_id === authStore.profile?.id)
+    : allRequests.value.filter(r => 
+        r.profile_id === authStore.profile?.id || 
+        r.employee_id === currentEmployee.value?.id
+      )
 
   if (isAdmin.value) {
     switch (tab.value) {
@@ -197,16 +218,9 @@ const filteredRequests = computed(() => {
   )
 })
 
-const employeeNames = computed(() => {
-  const names: Record<string, string> = {}
-  employeeStore.employees.forEach(e => {
-    names[e.id] = `${e.first_name} ${e.last_name}`.trim() || e.email
-  })
-  return names
-})
-
-function getEmployeeName(profileId: string): string {
-  return employeeNames.value[profileId] || 'Unknown'
+function getEmployeeName(employeeId: string): string {
+  const emp = employees.value.find(e => e.id === employeeId)
+  return emp ? `${emp.first_name} ${emp.last_name}` : 'Unknown'
 }
 
 function formatDate(date: string): string {
@@ -217,28 +231,30 @@ function formatDate(date: string): string {
   })
 }
 
-function getDaysCount(request: TimeOffRequest): number {
+function getDaysCount(request: any): number {
   const start = new Date(request.start_date)
   const end = new Date(request.end_date)
   return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
-function getStatusColor(status: TimeOffStatus): string {
-  const colors: Record<TimeOffStatus, string> = {
+function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
     pending: 'warning',
     approved: 'success',
-    denied: 'error'
+    denied: 'error',
+    cancelled: 'grey'
   }
-  return colors[status]
+  return colors[status] || 'grey'
 }
 
-function getStatusIcon(status: TimeOffStatus): string {
-  const icons: Record<TimeOffStatus, string> = {
+function getStatusIcon(status: string): string {
+  const icons: Record<string, string> = {
     pending: 'mdi-clock-outline',
     approved: 'mdi-check',
-    denied: 'mdi-close'
+    denied: 'mdi-close',
+    cancelled: 'mdi-cancel'
   }
-  return icons[status]
+  return icons[status] || 'mdi-help'
 }
 
 async function submitRequest() {
@@ -247,7 +263,8 @@ async function submitRequest() {
 
   try {
     await scheduleStore.requestTimeOff({
-      profile_id: authStore.profile!.id,
+      employee_id: currentEmployee.value?.id,
+      profile_id: authStore.profile?.id,
       start_date: form.start_date,
       end_date: form.end_date,
       reason: form.reason || undefined
@@ -263,7 +280,7 @@ async function submitRequest() {
   }
 }
 
-async function reviewRequest(id: string, status: TimeOffStatus) {
+async function reviewRequest(id: string, status: 'approved' | 'denied') {
   try {
     await scheduleStore.reviewTimeOff(id, status)
     uiStore.showSuccess(`Request ${status}`)
@@ -271,11 +288,4 @@ async function reviewRequest(id: string, status: TimeOffStatus) {
     uiStore.showError('Failed to review request')
   }
 }
-
-onMounted(async () => {
-  await Promise.all([
-    employeeStore.fetchEmployees(),
-    scheduleStore.fetchTimeOffRequests()
-  ])
-})
 </script>
