@@ -332,10 +332,10 @@ const navigateTo = (path: string) => router.push(path)
               </div>
               <div v-if="topMentors.length === 0" class="text-sm text-slate-400 italic text-center py-4">
                 No mentors yet
+              </div>
             </div>
           </div>
-        </div>
-
+        </UiGlassCard>
       </div>
 
       <!-- Recent Hires - with shimmer effect -->

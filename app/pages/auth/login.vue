@@ -83,7 +83,7 @@
             size="x-large"
             block
             :loading="isLoading"
-            :disabled="isLoading"
+            :disabled="isLoading || !form.email || !form.password"
             class="login-btn mb-4"
             @click="handleSubmit"
           >
@@ -128,8 +128,18 @@ definePageMeta({
 })
 
 const supabase = useSupabaseClient()
+const router = useRouter()
+const route = useRoute()
 
-// Simple state
+// Check if already logged in and redirect
+onMounted(async () => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user) {
+    console.log('[Login] Already logged in, redirecting to dashboard')
+    await navigateTo('/', { replace: true })
+  }
+})
+
 const formRef = ref()
 const formValid = ref(false)
 const showPassword = ref(false)
@@ -153,14 +163,29 @@ function fillDemoCredentials() {
 }
 
 async function handleSubmit() {
+  // Reset error
   error.value = ''
   
+  // Check for empty fields first
   if (!form.email || !form.password) {
     error.value = 'Please enter email and password'
     return
   }
 
+  // Validate email format
+  if (!/.+@.+\..+/.test(form.email)) {
+    error.value = 'Please enter a valid email address'
+    return
+  }
+
+  // Validate password length
+  if (form.password.length < 6) {
+    error.value = 'Password must be at least 6 characters'
+    return
+  }
+
   isLoading.value = true
+  console.log('[Login] Starting authentication for:', form.email)
 
   try {
     const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -168,9 +193,21 @@ async function handleSubmit() {
       password: form.password
     })
 
+    console.log('[Login] Auth response received:', { 
+      hasUser: !!data?.user, 
+      hasSession: !!data?.session,
+      error: authError?.message 
+    })
+
     if (authError) {
+      console.error('[Login] Auth error:', authError)
+      // Provide user-friendly error messages
       if (authError.message.includes('Invalid login credentials')) {
-        error.value = 'Invalid email or password.'
+        error.value = 'Invalid email or password. Please check your credentials.'
+      } else if (authError.message.includes('Email not confirmed')) {
+        error.value = 'Please confirm your email before signing in.'
+      } else if (authError.message.includes('User not found')) {
+        error.value = 'No account found with this email address.'
       } else {
         error.value = authError.message || 'Authentication failed'
       }
@@ -178,15 +215,31 @@ async function handleSubmit() {
       return
     }
 
-    if (data?.session) {
-      // Simple redirect - just go to home
-      window.location.href = '/'
+    if (data?.session && data?.user) {
+      console.log('[Login] Login successful! User:', data.user.email)
+      console.log('[Login] Session expires:', data.session.expires_at)
+      
+      // Brief delay to ensure session is stored
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      const redirectTo = (route.query.redirect as string) || '/'
+      console.log('[Login] Redirecting to:', redirectTo)
+      
+      // Use navigateTo for SPA navigation, fallback to window.location
+      try {
+        await navigateTo(redirectTo, { replace: true })
+      } catch (navError) {
+        console.log('[Login] navigateTo failed, using window.location')
+        window.location.href = redirectTo
+      }
     } else {
-      error.value = 'Login failed. Please try again.'
+      console.error('[Login] No session or user in response')
+      error.value = 'Authentication succeeded but no session was created'
       isLoading.value = false
     }
   } catch (err: any) {
-    error.value = 'An unexpected error occurred.'
+    console.error('[Login] Unexpected error:', err)
+    error.value = err?.message || 'An unexpected error occurred. Please try again.'
     isLoading.value = false
   }
 }
