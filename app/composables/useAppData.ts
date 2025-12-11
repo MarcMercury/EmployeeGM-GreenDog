@@ -101,6 +101,9 @@ export const useAppData = () => {
   const currentUserProfile = useState<AppUserProfile | null>('currentUserProfile', () => null)
   const isAdmin = useState<boolean>('isAdmin', () => false)
 
+  // Realtime subscription state
+  const realtimeSubscribed = useState<boolean>('realtimeSubscribed', () => false)
+
   /**
    * Fetch all global data in parallel
    * Called once on app mount
@@ -305,6 +308,97 @@ export const useAppData = () => {
    */
   const refresh = () => fetchGlobalData(true)
 
+  /**
+   * Subscribe to Realtime changes on employees and marketing_leads
+   * Automatically refreshes data when changes are detected
+   */
+  const subscribeToRealtime = () => {
+    if (realtimeSubscribed.value) {
+      console.log('[useAppData] Already subscribed to realtime')
+      return
+    }
+
+    console.log('[useAppData] Setting up realtime subscriptions...')
+
+    // Subscribe to employees table changes
+    const employeesChannel = client
+      .channel('employees-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'employees' },
+        (payload) => {
+          console.log('[Realtime] Employee change:', payload.eventType, payload.new)
+          // Refresh employees on any change
+          refresh()
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Employees subscription status:', status)
+      })
+
+    // Subscribe to marketing_leads table changes
+    const leadsChannel = client
+      .channel('leads-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'marketing_leads' },
+        (payload) => {
+          console.log('[Realtime] Marketing lead change:', payload.eventType, payload.new)
+          // Emit event for components to handle
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('realtime:lead-change', { 
+              detail: payload 
+            }))
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Leads subscription status:', status)
+      })
+
+    // Subscribe to recruiting_candidates table changes  
+    const candidatesChannel = client
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recruiting_candidates' },
+        (payload) => {
+          console.log('[Realtime] Candidate change:', payload.eventType, payload.new)
+          // Emit event for components to handle
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('realtime:candidate-change', { 
+              detail: payload 
+            }))
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Candidates subscription status:', status)
+      })
+
+    realtimeSubscribed.value = true
+    console.log('[useAppData] Realtime subscriptions active')
+
+    // Return cleanup function
+    return () => {
+      console.log('[useAppData] Cleaning up realtime subscriptions')
+      client.removeChannel(employeesChannel)
+      client.removeChannel(leadsChannel)
+      client.removeChannel(candidatesChannel)
+      realtimeSubscribed.value = false
+    }
+  }
+
+  /**
+   * Unsubscribe from all realtime channels
+   */
+  const unsubscribeFromRealtime = () => {
+    if (!realtimeSubscribed.value) return
+    client.removeAllChannels()
+    realtimeSubscribed.value = false
+    console.log('[useAppData] Unsubscribed from realtime')
+  }
+
   // === HELPER METHODS ===
 
   /**
@@ -389,6 +483,11 @@ export const useAppData = () => {
     // Current User Identity
     currentUserProfile,
     isAdmin,
+
+    // Realtime
+    realtimeSubscribed,
+    subscribeToRealtime,
+    unsubscribeFromRealtime,
 
     // Actions
     fetchGlobalData,

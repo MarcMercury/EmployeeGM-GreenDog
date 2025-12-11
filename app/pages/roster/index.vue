@@ -83,14 +83,25 @@
     </div>
 
     <!-- Empty State -->
-    <v-card v-else-if="filteredEmployees.length === 0" rounded="lg" class="text-center pa-12">
-      <v-icon size="64" color="grey-lighten-1">mdi-account-group</v-icon>
-      <h3 class="text-h6 mt-4">No employees found</h3>
-      <p class="text-grey mb-4">Try adjusting your search or filters</p>
-      <v-btn variant="text" color="primary" @click="clearFilters">
-        Clear all filters
-      </v-btn>
-    </v-card>
+    <UiEmptyState
+      v-else-if="filteredEmployees.length === 0 && searchQuery"
+      type="search"
+      title="No matches found"
+      :description="`No employees match '${searchQuery}'`"
+      actionLabel="Clear filters"
+      @action="clearFilters"
+      class="my-8"
+    />
+
+    <UiEmptyState
+      v-else-if="filteredEmployees.length === 0"
+      type="employees"
+      title="No employees found"
+      description="Try adjusting your filters or add a new team member"
+      :actionLabel="isAdmin ? 'Add Employee' : undefined"
+      @action="showAddDialog = true"
+      class="my-8"
+    />
 
     <!-- Table View -->
     <v-card v-else-if="viewMode === 'table'" rounded="lg" elevation="1">

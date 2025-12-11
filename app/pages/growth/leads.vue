@@ -163,12 +163,24 @@
         </template>
 
         <template #no-data>
-          <div class="text-center py-12">
-            <v-icon size="64" color="grey-lighten-1">mdi-account-star</v-icon>
-            <h3 class="text-h6 mt-4">No leads yet</h3>
-            <p class="text-grey mb-4">Add your first lead to get started</p>
-            <v-btn color="primary" @click="openAddDialog">Add Lead</v-btn>
-          </div>
+          <UiEmptyState
+            v-if="search || eventFilter || statusFilter"
+            type="search"
+            title="No matches found"
+            description="Try adjusting your search or filters"
+            actionLabel="Clear filters"
+            @action="search = ''; eventFilter = null; statusFilter = null"
+            class="py-8"
+          />
+          <UiEmptyState
+            v-else
+            type="candidates"
+            title="No leads yet"
+            description="Start growing your pipeline by adding your first lead"
+            actionLabel="Add Lead"
+            @action="openAddDialog"
+            class="py-8"
+          />
         </template>
       </v-data-table>
     </v-card>

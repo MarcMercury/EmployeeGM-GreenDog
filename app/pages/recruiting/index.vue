@@ -244,6 +244,7 @@ interface Candidate {
 }
 
 const client = useSupabaseClient()
+const toast = useToast()
 
 // State
 const candidates = ref<Candidate[]>([])
@@ -339,6 +340,7 @@ const fetchCandidates = async () => {
     candidates.value = data || []
   } catch (error) {
     console.error('Error fetching candidates:', error)
+    toast.error('Failed to load candidates. Please refresh the page.')
   } finally {
     loading.value = false
   }

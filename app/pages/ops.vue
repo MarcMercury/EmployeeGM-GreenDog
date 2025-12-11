@@ -177,6 +177,7 @@ definePageMeta({
 const opsStore = useOperationsStore()
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const toast = useToast()
 
 // State
 const activeTab = ref<'schedule' | 'timesheet' | 'requests'>('schedule')
@@ -229,6 +230,7 @@ async function reviewTimeOff(requestId: string, status: 'approved' | 'denied') {
     await opsStore.reviewTimeOffRequest(requestId, status, approverId)
   } catch (err) {
     console.error('Failed to review time off:', err)
+    toast.error('Failed to review time off request. Please try again.')
   }
 }
 
@@ -240,6 +242,7 @@ async function resolveShiftChange(changeId: string, approved: boolean) {
     await opsStore.resolveShiftChange(changeId, approved, managerId)
   } catch (err) {
     console.error('Failed to resolve shift change:', err)
+    toast.error('Failed to resolve shift change. Please try again.')
   }
 }
 

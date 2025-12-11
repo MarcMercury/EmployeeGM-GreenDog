@@ -18,8 +18,20 @@ export default defineNuxtConfig({
   // Modules
   modules: [
     '@nuxtjs/supabase',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@vee-validate/nuxt'
   ],
+
+  // VeeValidate configuration
+  veeValidate: {
+    autoImports: true,
+    componentNames: {
+      Form: 'VeeForm',
+      Field: 'VeeField',
+      FieldArray: 'VeeFieldArray',
+      ErrorMessage: 'VeeErrorMessage'
+    }
+  },
 
   // Supabase configuration
   supabase: {

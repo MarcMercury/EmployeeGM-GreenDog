@@ -168,6 +168,7 @@ definePageMeta({
 const opsStore = useOperationsStore()
 const userStore = useUserStore()
 const employeeStore = useEmployeeStore()
+const toast = useToast()
 
 // State
 const swapDialog = ref(false)
@@ -281,6 +282,7 @@ async function submitSwapRequest() {
     showSuccess.value = true
   } catch (err) {
     console.error('Failed to submit swap request:', err)
+    toast.error('Failed to submit swap request. Please try again.')
   } finally {
     isSubmittingChange.value = false
   }
@@ -302,6 +304,7 @@ async function submitDropRequest() {
     showSuccess.value = true
   } catch (err) {
     console.error('Failed to submit drop request:', err)
+    toast.error('Failed to submit drop request. Please try again.')
   } finally {
     isSubmittingChange.value = false
   }

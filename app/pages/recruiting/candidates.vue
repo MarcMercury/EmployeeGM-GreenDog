@@ -70,10 +70,24 @@
               </template>
             </v-list-item>
 
-            <v-list-item v-if="filteredCandidates.length === 0 && !loading">
-              <v-list-item-title class="text-center text-grey py-8">
-                No candidates found
-              </v-list-item-title>
+            <v-list-item v-if="filteredCandidates.length === 0 && !loading && search">
+              <UiEmptyState
+                type="search"
+                title="No matches found"
+                :description="`No candidates match '${search}'`"
+                class="py-6"
+              />
+            </v-list-item>
+
+            <v-list-item v-else-if="filteredCandidates.length === 0 && !loading">
+              <UiEmptyState
+                type="candidates"
+                title="No candidates yet"
+                description="Start building your talent pipeline"
+                actionLabel="Add Candidate"
+                @action="openAddDialog"
+                class="py-6"
+              />
             </v-list-item>
           </v-list>
         </v-card>

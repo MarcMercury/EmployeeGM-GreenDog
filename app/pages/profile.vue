@@ -210,6 +210,7 @@ definePageMeta({
 })
 
 const userStore = useUserStore()
+const toast = useToast()
 
 // Edit dialog state
 const editDialog = ref(false)
@@ -264,6 +265,7 @@ async function saveProfile() {
     closeEditDialog()
   } catch (err) {
     console.error('Failed to save profile:', err)
+    toast.error('Failed to save profile. Please try again.')
     errorMessage.value = err instanceof Error ? err.message : 'Failed to save profile. Please try again.'
     showError.value = true
   } finally {
