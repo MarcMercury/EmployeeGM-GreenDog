@@ -256,26 +256,27 @@ async function handleSignOut() {
 
         <!-- User Profile Footer -->
         <div class="shrink-0 border-t border-slate-800/50 bg-slate-950/50 backdrop-blur p-4">
-          <div class="flex items-center justify-between">
-            <NuxtLink to="/profile" class="flex items-center gap-3 hover:opacity-80 transition-opacity group">
-              <div class="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-sm font-bold shadow-lg group-hover:shadow-green-500/25 transition-shadow">
-                {{ initials }}
+          <!-- User Info -->
+          <NuxtLink to="/profile" class="flex items-center gap-3 hover:opacity-80 transition-opacity group mb-3">
+            <div class="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-sm font-bold shadow-lg group-hover:shadow-green-500/25 transition-shadow">
+              {{ initials }}
+            </div>
+            <div class="text-sm flex-1">
+              <div class="font-medium text-white">{{ firstName }}</div>
+              <div class="text-xs" :class="isAdmin ? 'text-amber-400 font-semibold' : 'text-slate-400'">
+                {{ isAdmin ? '⭐ Admin' : 'Team Member' }}
               </div>
-              <div class="text-sm">
-                <div class="font-medium text-white">{{ firstName }}</div>
-                <div class="text-xs" :class="isAdmin ? 'text-amber-400 font-semibold' : 'text-slate-400'">
-                  {{ isAdmin ? '⭐ Admin' : 'Team Member' }}
-                </div>
-              </div>
-            </NuxtLink>
-            <button 
-              @click="handleSignOut"
-              class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-all hover:scale-110"
-              title="Sign Out"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-            </button>
-          </div>
+            </div>
+          </NuxtLink>
+          
+          <!-- Logout Button - Prominent -->
+          <button 
+            @click="handleSignOut"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg transition-all font-medium text-sm border border-red-500/20 hover:border-red-500/30"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+            Log Out
+          </button>
         </div>
 
       </aside>
