@@ -441,10 +441,10 @@ const documentCategories = [
 
 // Computed
 const employeeLevel = computed(() => {
-  // Calculate level from skills or points
+  // Calculate level from skills
   const skillCount = employee.value?.skills?.length || 0
-  const avgRating = employee.value?.skills?.reduce((sum: number, s: any) => sum + (s.rating || 0), 0) / (skillCount || 1)
-  return Math.max(1, Math.floor(avgRating))
+  const avgLevel = employee.value?.skills?.reduce((sum: number, s: any) => sum + (s.level || 0), 0) / (skillCount || 1)
+  return Math.max(1, Math.floor(avgLevel))
 })
 
 const skillCategories = computed(() => {
@@ -459,13 +459,13 @@ const skillCategories = computed(() => {
       categoryMap.set(cat, { total: 0, count: 0 })
     }
     const current = categoryMap.get(cat)!
-    current.total += skill.rating || 0
+    current.total += skill.level || 0
     current.count++
   })
   
   return Array.from(categoryMap.entries()).map(([name, data]) => ({
     category: name,
-    value: data.total / data.count, // Average rating (1-5 scale)
+    value: data.total / data.count, // Average level (1-5 scale)
     fullMark: 5
   }))
 })
@@ -574,8 +574,7 @@ async function fetchEmployee() {
         location:locations(id, name),
         skills:employee_skills(
           id,
-          rating,
-          is_goal,
+          level,
           skill_id,
           skill:skill_library(id, name, category)
         )

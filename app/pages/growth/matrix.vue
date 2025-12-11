@@ -427,7 +427,7 @@ const fetchSkills = async () => {
     // Get employee counts for each skill
     const { data: skillStats } = await client
       .from('employee_skills')
-      .select('skill_id, skill_level')
+      .select('skill_id, level')
     
     const statsMap: Record<string, { count: number; total: number }> = {}
     skillStats?.forEach(stat => {
@@ -435,7 +435,7 @@ const fetchSkills = async () => {
         statsMap[stat.skill_id] = { count: 0, total: 0 }
       }
       statsMap[stat.skill_id].count++
-      statsMap[stat.skill_id].total += stat.skill_level
+      statsMap[stat.skill_id].total += stat.level
     })
     
     skills.value = (data || []).map(skill => ({

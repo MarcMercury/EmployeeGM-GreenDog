@@ -99,7 +99,7 @@
                   <div class="d-flex align-center justify-space-between flex-grow-1 pr-4">
                     <span>{{ skill.skill_library?.name || 'Unknown' }}</span>
                     <v-rating
-                      :model-value="skill.skill_level"
+                      :model-value="skill.level"
                       readonly
                       density="compact"
                       size="small"
@@ -117,11 +117,11 @@
                       Last updated: {{ formatDate(skill.updated_at || skill.created_at) }}
                     </span>
                     <v-chip 
-                      :color="getLevelColor(skill.skill_level)" 
+                      :color="getLevelColor(skill.level)" 
                       size="x-small"
                       variant="flat"
                     >
-                      {{ getLevelLabel(skill.skill_level) }}
+                      {{ getLevelLabel(skill.level) }}
                     </v-chip>
                   </div>
                 </v-expansion-panel-text>
@@ -179,7 +179,7 @@ definePageMeta({
 
 interface EmployeeSkill {
   id: string
-  skill_level: number
+  level: number
   created_at: string
   updated_at?: string
   skill_library?: {
@@ -200,20 +200,20 @@ const loading = ref(true)
 const totalSkills = computed(() => skills.value.length)
 
 const masteredSkills = computed(() => 
-  skills.value.filter(s => s.skill_level === 5).length
+  skills.value.filter(s => s.level === 5).length
 )
 
 const developingSkills = computed(() => 
-  skills.value.filter(s => s.skill_level >= 3 && s.skill_level < 5).length
+  skills.value.filter(s => s.level >= 3 && s.level < 5).length
 )
 
 const learningSkills = computed(() => 
-  skills.value.filter(s => s.skill_level < 3).length
+  skills.value.filter(s => s.level < 3).length
 )
 
 const overallScore = computed(() => {
   if (skills.value.length === 0) return 0
-  const avg = skills.value.reduce((sum, s) => sum + s.skill_level, 0) / skills.value.length
+  const avg = skills.value.reduce((sum, s) => sum + s.level, 0) / skills.value.length
   return Math.round(avg * 20)
 })
 
@@ -237,8 +237,8 @@ const skillsByCategory = computed(() => {
   return Object.entries(categories)
     .map(([name, skills]) => ({
       name,
-      skills: skills.sort((a, b) => b.skill_level - a.skill_level),
-      avgLevel: skills.reduce((sum, s) => sum + s.skill_level, 0) / skills.length
+      skills: skills.sort((a, b) => b.level - a.level),
+      avgLevel: skills.reduce((sum, s) => sum + s.level, 0) / skills.length
     }))
     .sort((a, b) => b.avgLevel - a.avgLevel)
 })
@@ -318,7 +318,7 @@ const fetchSkills = async () => {
         skill_library:skill_id(name, category, description)
       `)
       .eq('employee_id', employee.id)
-      .order('skill_level', { ascending: false })
+      .order('level', { ascending: false })
     
     if (error) throw error
     skills.value = data || []

@@ -258,7 +258,7 @@ const employees = ref<any[]>([])
 // Computed
 const averageSkillLevel = computed(() => {
   if (employeeSkills.value.length === 0) return 0
-  const total = employeeSkills.value.reduce((sum, es) => sum + es.skill_level, 0)
+  const total = employeeSkills.value.reduce((sum, es) => sum + es.level, 0)
   return total / employeeSkills.value.length
 })
 
@@ -285,7 +285,7 @@ const skillLevelDistribution = computed(() => {
   ]
   
   employeeSkills.value.forEach(es => {
-    const levelObj = levels.find(l => l.level === es.skill_level)
+    const levelObj = levels.find(l => l.level === es.level)
     if (levelObj) levelObj.count++
   })
   
@@ -308,7 +308,7 @@ const categoryStats = computed(() => {
       categories[category] = { skills: new Set(), levels: [] }
     }
     categories[category].skills.add(skill.id)
-    categories[category].levels.push(es.skill_level)
+    categories[category].levels.push(es.level)
   })
   
   return Object.entries(categories)
@@ -329,7 +329,7 @@ const skillGaps = computed((): SkillStat[] => {
       skillStats[es.skill_id] = { count: 0, totalLevel: 0 }
     }
     skillStats[es.skill_id].count++
-    skillStats[es.skill_id].totalLevel += es.skill_level
+    skillStats[es.skill_id].totalLevel += es.level
   })
   
   const gaps: SkillStat[] = []
@@ -366,7 +366,7 @@ const topPerformers = computed((): EmployeeSkillStat[] => {
     if (!employeeStats[emp.id]) {
       employeeStats[emp.id] = { employee: emp, levels: [] }
     }
-    employeeStats[emp.id].levels.push(es.skill_level)
+    employeeStats[emp.id].levels.push(es.level)
   })
   
   return Object.values(employeeStats)
@@ -458,7 +458,7 @@ const fetchData = async () => {
     const [empRes, skillRes, esRes] = await Promise.all([
       client.from('employees').select('id, first_name, last_name'),
       client.from('skill_library').select('id, name, category'),
-      client.from('employee_skills').select('employee_id, skill_id, skill_level')
+      client.from('employee_skills').select('employee_id, skill_id, level')
     ])
     
     employees.value = empRes.data || []
