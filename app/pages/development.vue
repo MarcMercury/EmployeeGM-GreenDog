@@ -539,7 +539,7 @@ async function fetchCurrentEmployee() {
       .from('employees')
       .select(`
         *,
-        position:positions(id, title),
+        position:job_positions(id, title),
         department:departments(id, name)
       `)
       .eq('profile_id', profileId)
@@ -567,7 +567,7 @@ async function fetchMySkills() {
         rating,
         is_goal,
         skill_id,
-        skill:skills(id, name, category)
+        skill:skill_library(id, name, category)
       `)
       .eq('employee_id', currentEmployee.value.id)
     
@@ -607,7 +607,7 @@ async function fetchMentorshipRequests() {
         *,
         mentor:employees!mentorship_requests_mentor_id_fkey(id, first_name, last_name),
         mentee:employees!mentorship_requests_mentee_id_fkey(id, first_name, last_name),
-        skill:skills(id, name)
+        skill:skill_library(id, name)
       `)
       .or(`mentee_id.eq.${currentEmployee.value.id},mentor_id.eq.${currentEmployee.value.id}`)
     

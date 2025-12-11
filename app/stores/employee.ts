@@ -257,7 +257,7 @@ export const useEmployeeStore = defineStore('employee', {
       
       try {
         const { data, error } = await supabase
-          .from('skills')
+          .from('skill_library')
           .insert(skill)
           .select()
           .single()

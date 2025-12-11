@@ -563,22 +563,27 @@ async function fetchEmployee() {
   error.value = false
   
   try {
+    console.log('[Profile] Fetching employee ID:', employeeId.value)
+    
     const { data, error: fetchError } = await client
       .from('employees')
       .select(`
         *,
         department:departments(id, name),
-        position:positions(id, title),
+        position:job_positions(id, title),
         location:locations(id, name),
         skills:employee_skills(
           id,
           rating,
           is_goal,
-          skill:skills(id, name, category)
+          skill_id,
+          skill:skill_library(id, name, category)
         )
       `)
       .eq('id', employeeId.value)
       .single()
+    
+    console.log('[Profile] Query result:', data, 'Error:', fetchError)
     
     if (fetchError) throw fetchError
     if (!data) throw new Error('Employee not found')

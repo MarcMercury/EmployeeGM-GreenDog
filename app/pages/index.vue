@@ -154,14 +154,7 @@ const navigateTo = (path: string) => router.push(path)
           <span>👥</span>
           View Team
         </NuxtLink>
-        <NuxtLink 
-          v-if="isAdmin"
-          to="/settings"
-          class="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition"
-        >
-          <span>⚙️</span>
-          Settings
-        </NuxtLink>
+
       </div>
     </div>
 
