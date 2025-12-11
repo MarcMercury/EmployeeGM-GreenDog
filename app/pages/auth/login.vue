@@ -129,39 +129,28 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
-const router = useRouter()
 const route = useRoute()
 
 // Track if we're redirecting to show loading state
 const isRedirecting = ref(false)
+let hasRedirected = false // Prevents multiple redirects
 
-// Check if already logged in - but don't redirect here, let plugin handle it
-const checkAndRedirect = async () => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      console.log('[Login] Already logged in, plugin should handle redirect')
-      isRedirecting.value = true
-      // Don't redirect here - the auth.client.ts plugin handles it
-    }
-  } catch (e) {
-    console.error('[Login] Error checking session:', e)
-  }
-  return false
+// Single function to handle redirect - called only once
+const doRedirect = () => {
+  if (hasRedirected) return
+  hasRedirected = true
+  isRedirecting.value = true
+  console.log('[Login] Redirecting to dashboard...')
+  navigateTo('/', { replace: true })
 }
 
-// Watch for user changes (Supabase auth state)
-watch(user, (newUser) => {
-  if (newUser && !isRedirecting.value) {
-    console.log('[Login] User state changed, showing redirect state...')
-    isRedirecting.value = true
-    // Don't redirect here - the auth.client.ts plugin handles it
-  }
-}, { immediate: true })
-
-// Check immediately on mount
+// Check on mount if already logged in
 onMounted(async () => {
-  await checkAndRedirect()
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.user) {
+    console.log('[Login] Already logged in on mount, redirecting')
+    doRedirect()
+  }
 })
 
 const formRef = ref()
@@ -241,19 +230,9 @@ async function handleSubmit() {
 
     if (data?.session && data?.user) {
       console.log('[Login] Login successful! User:', data.user.email)
-      console.log('[Login] Session expires:', data.session.expires_at)
       
-      // Set redirecting state
-      isRedirecting.value = true
-      
-      // Brief delay to ensure session is stored
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      const redirectTo = (route.query.redirect as string) || '/'
-      console.log('[Login] Forcing redirect to:', redirectTo)
-      
-      // ALWAYS use window.location.href for guaranteed redirect
-      window.location.href = redirectTo
+      // Use navigateTo for client-side navigation (no page reload)
+      doRedirect()
     } else {
       console.error('[Login] No session or user in response')
       error.value = 'Authentication succeeded but no session was created'
