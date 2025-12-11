@@ -149,18 +149,30 @@ const form = reactive({
 // Watch for user state changes and redirect if logged in
 watch(user, (newUser) => {
   if (newUser) {
-    console.log('[Login] User detected, redirecting to dashboard')
+    console.log('[Login] User detected via watch, redirecting to dashboard')
     const redirectTo = (route.query.redirect as string) || '/'
-    navigateTo(redirectTo, { replace: true })
+    window.location.href = redirectTo // Force hard redirect
   }
 }, { immediate: true })
 
 // Also check on mount in case watch misses it
-onMounted(() => {
+onMounted(async () => {
+  // Give Supabase a moment to hydrate the session
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
   if (user.value) {
     console.log('[Login] Already logged in on mount, redirecting...')
     const redirectTo = (route.query.redirect as string) || '/'
-    navigateTo(redirectTo, { replace: true })
+    window.location.href = redirectTo // Force hard redirect
+    return
+  }
+  
+  // Double-check with Supabase directly
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    console.log('[Login] Session found via getSession, redirecting...')
+    const redirectTo = (route.query.redirect as string) || '/'
+    window.location.href = redirectTo // Force hard redirect
   }
 })
 
