@@ -125,70 +125,71 @@ const getHoursForEmployee = (employeeId: string) => {
 </script>
 
 <template>
-  <div class="schedule-builder">
-    <!-- Loading State -->
-    <div v-if="scheduleStore.isLoading" class="d-flex justify-center align-center py-12">
-      <v-progress-circular indeterminate color="primary" />
-      <span class="ml-3">Loading schedule...</span>
-    </div>
-
-    <!-- Error State -->
-    <v-alert v-else-if="scheduleStore.error" type="error" class="ma-4">
-      {{ scheduleStore.error }}
-      <v-btn variant="text" size="small" @click="scheduleStore.loadWeek(currentWeekStart)">
-        Retry
-      </v-btn>
-    </v-alert>
-
-    <!-- Main Content -->
-    <template v-else>
-      <!-- Header -->
-      <div class="builder-header">
-        <div class="header-left">
-          <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
-          <v-chip color="primary" variant="flat" size="small" class="ml-2">
-            Admin Only
-          </v-chip>
-        </div>
-
-        <div class="header-center">
-          <v-btn icon="mdi-chevron-left" variant="text" @click="previousWeek" />
-          <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">
-            Today
-          </v-btn>
-          <span class="week-range">
-            {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
-          </span>
-          <v-btn icon="mdi-chevron-right" variant="text" @click="nextWeek" />
-        </div>
-
-        <div class="header-right">
-          <v-chip variant="outlined" size="small" class="mr-2">
-            <v-icon start size="small">mdi-account-check</v-icon>
-            {{ scheduleStore.shiftStats.filled }} Filled
-          </v-chip>
-          <v-chip variant="outlined" size="small" color="warning" class="mr-2">
-            <v-icon start size="small">mdi-account-clock</v-icon>
-            {{ scheduleStore.shiftStats.open }} Open
-          </v-chip>
-        </div>
+  <ClientOnly>
+    <div class="schedule-builder min-h-[calc(100vh-64px)]">
+      <!-- Loading State -->
+      <div v-if="scheduleStore.isLoading" class="d-flex flex-column justify-center align-center py-12 h-full">
+        <v-progress-circular indeterminate color="primary" size="48" />
+        <span class="mt-4 text-grey">Loading schedule...</span>
       </div>
 
-      <!-- Main content: Resource Bench + Grid -->
-      <div class="builder-content">
-        <!-- Resource Bench (Left sidebar) -->
-        <div class="resource-bench">
-          <div class="bench-header">
-            <h3 class="text-subtitle-1 font-weight-medium">Team Roster</h3>
-            <v-text-field
-              density="compact"
-              variant="outlined"
-              placeholder="Filter..."
-              prepend-inner-icon="mdi-magnify"
-              hide-details
-              class="mt-2"
-            />
+      <!-- Error State -->
+      <v-alert v-else-if="scheduleStore.error" type="error" class="ma-4">
+        {{ scheduleStore.error }}
+        <v-btn variant="text" size="small" @click="scheduleStore.loadWeek(currentWeekStart)">
+          Retry
+        </v-btn>
+      </v-alert>
+
+      <!-- Main Content -->
+      <template v-else>
+        <!-- Header -->
+        <div class="builder-header">
+          <div class="header-left">
+            <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
+            <v-chip color="primary" variant="flat" size="small" class="ml-2">
+              Admin Only
+            </v-chip>
           </div>
+
+          <div class="header-center">
+            <v-btn icon="mdi-chevron-left" variant="text" @click="previousWeek" />
+            <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">
+              Today
+            </v-btn>
+            <span class="week-range">
+              {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+            </span>
+            <v-btn icon="mdi-chevron-right" variant="text" @click="nextWeek" />
+          </div>
+
+          <div class="header-right">
+            <v-chip variant="outlined" size="small" class="mr-2">
+              <v-icon start size="small">mdi-account-check</v-icon>
+              {{ scheduleStore.shiftStats.filled }} Filled
+            </v-chip>
+            <v-chip variant="outlined" size="small" color="warning" class="mr-2">
+              <v-icon start size="small">mdi-account-clock</v-icon>
+              {{ scheduleStore.shiftStats.open }} Open
+            </v-chip>
+          </div>
+        </div>
+
+        <!-- Main content: Resource Bench + Grid -->
+        <div class="builder-content">
+          <!-- Resource Bench (Left sidebar) -->
+          <div class="resource-bench">
+            <div class="bench-header">
+              <h3 class="text-subtitle-1 font-weight-medium">Team Roster</h3>
+              <v-text-field
+                density="compact"
+                variant="outlined"
+                placeholder="Filter..."
+                prepend-inner-icon="mdi-magnify"
+                hide-details
+                class="mt-2"
+              />
+            </div>
 
         <div class="bench-employees">
           <div
@@ -290,11 +291,32 @@ const getHoursForEmployee = (employeeId: string) => {
               </div>
             </div>
 
-            <!-- No shifts for day -->
-            <div v-if="getShiftsForDay(day).length === 0" class="no-shifts">
-              <span class="text-caption text-grey">No shifts</span>
+            <!-- No shifts for day - Show empty slot placeholder -->
+            <div v-if="getShiftsForDay(day).length === 0" class="empty-day-placeholder">
+              <v-icon size="24" color="grey-lighten-1">mdi-calendar-blank</v-icon>
+              <span class="text-caption text-grey mt-1">No shifts scheduled</span>
+              <v-btn 
+                variant="text" 
+                size="x-small" 
+                color="primary"
+                class="mt-2"
+              >
+                + Add Shift
+              </v-btn>
             </div>
           </div>
+        </div>
+        
+        <!-- Empty Week State -->
+        <div v-if="scheduleStore.draftShifts.length === 0 && !scheduleStore.isLoading" class="empty-week-overlay">
+          <v-icon size="64" color="grey-lighten-1">mdi-calendar-clock</v-icon>
+          <h3 class="text-h6 mt-4">No Shifts This Week</h3>
+          <p class="text-body-2 text-grey mt-2">
+            Shifts haven't been created for {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d') }}
+          </p>
+          <v-btn color="primary" class="mt-4" prepend-icon="mdi-plus">
+            Create Shifts
+          </v-btn>
         </div>
       </div>
     </div>
@@ -384,6 +406,15 @@ const getHoursForEmployee = (employeeId: string) => {
     </v-dialog>
     </template>
   </div>
+  
+  <!-- SSR Fallback -->
+  <template #fallback>
+    <div class="d-flex flex-column justify-center align-center min-h-[calc(100vh-64px)] bg-grey-lighten-4">
+      <v-progress-circular indeterminate color="primary" size="48" />
+      <span class="mt-4 text-grey">Loading Schedule Builder...</span>
+    </div>
+  </template>
+  </ClientOnly>
 </template>
 
 <style scoped>
@@ -601,6 +632,42 @@ const getHoursForEmployee = (employeeId: string) => {
   align-items: center;
   justify-content: center;
   padding: 24px;
+}
+
+/* Empty day placeholder */
+.empty-day-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  min-height: 120px;
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  margin: 4px;
+  background: #fafafa;
+}
+
+/* Empty week overlay */
+.empty-week-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+}
+
+/* Schedule grid relative positioning */
+.schedule-grid {
+  position: relative;
 }
 
 /* Unsaved changes bar */

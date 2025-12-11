@@ -174,6 +174,60 @@
 
           <v-divider class="my-4" />
 
+          <!-- Lead Capture QR Code Section -->
+          <div class="mb-4 pa-4 bg-grey-lighten-4 rounded-lg">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div>
+                <p class="text-overline text-grey mb-0">Lead Capture Form</p>
+                <p class="text-body-2 font-weight-medium">Share this QR code at your event</p>
+              </div>
+              <v-btn 
+                icon="mdi-content-copy" 
+                size="small" 
+                variant="text"
+                @click="copyLeadCaptureUrl"
+              />
+            </div>
+            
+            <!-- QR Code Display -->
+            <div class="d-flex justify-center mb-3">
+              <div class="bg-white pa-3 rounded-lg" style="width: fit-content;">
+                <img 
+                  :src="getQrCodeUrl(selectedEvent.id)" 
+                  :alt="`QR code for ${selectedEvent.name}`"
+                  width="150"
+                  height="150"
+                  class="d-block"
+                />
+              </div>
+            </div>
+            
+            <!-- Lead Capture URL -->
+            <div class="text-center">
+              <v-text-field
+                :model-value="getLeadCaptureUrl(selectedEvent.id)"
+                readonly
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="mb-2"
+              >
+                <template #append-inner>
+                  <v-btn 
+                    icon="mdi-open-in-new" 
+                    size="x-small" 
+                    variant="text"
+                    :href="getLeadCaptureUrl(selectedEvent.id)"
+                    target="_blank"
+                  />
+                </template>
+              </v-text-field>
+              <p class="text-caption text-grey">Visitors can scan or visit this link to submit their info</p>
+            </div>
+          </div>
+
+          <v-divider class="my-4" />
+
           <!-- Lead Counter -->
           <div class="d-flex align-center justify-space-between mb-4">
             <div>
@@ -520,6 +574,30 @@ const getLeadCount = (eventId: string) =>
 
 const getEventLeads = (eventId: string) =>
   leads.value.filter(l => l.event_id === eventId)
+
+// QR Code and Lead Capture URL helpers
+const getLeadCaptureUrl = (eventId: string) => {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/public/lead-capture/${eventId}`
+}
+
+const getQrCodeUrl = (eventId: string) => {
+  const url = encodeURIComponent(getLeadCaptureUrl(eventId))
+  // Using Google Charts API for QR code generation (free, no dependencies)
+  return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${url}`
+}
+
+const copyLeadCaptureUrl = async () => {
+  if (!selectedEvent.value) return
+  const url = getLeadCaptureUrl(selectedEvent.value.id)
+  try {
+    await navigator.clipboard.writeText(url)
+    showNotification('Lead capture URL copied to clipboard!')
+  } catch (err) {
+    console.error('Failed to copy:', err)
+    showNotification('Failed to copy URL', 'error')
+  }
+}
 
 const openDrawer = (event: MarketingEvent) => {
   selectedEvent.value = event

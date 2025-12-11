@@ -131,8 +131,8 @@
       <p class="text-grey mt-4">Loading partners...</p>
     </div>
 
-    <!-- Partner Details Dialog -->
-    <v-dialog v-model="detailsDialog" max-width="600">
+    <!-- Partner Details Dialog - Full CRM Profile -->
+    <v-dialog v-model="detailsDialog" max-width="800" scrollable>
       <v-card v-if="selectedPartner" rounded="lg">
         <v-card-title class="d-flex align-center pa-4">
           <v-avatar :color="getTierColor(selectedPartner.tier)" size="48" class="mr-3">
@@ -149,56 +149,334 @@
 
         <v-divider />
 
-        <v-card-text class="pa-4">
-          <v-list density="compact" class="bg-transparent">
-            <v-list-item v-if="selectedPartner.email">
-              <template #prepend>
-                <v-icon color="primary">mdi-email</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedPartner.email }}</v-list-item-title>
-            </v-list-item>
+        <!-- Tabs for different CRM sections -->
+        <v-tabs v-model="detailsTab" color="primary" align-tabs="center">
+          <v-tab value="overview">Overview</v-tab>
+          <v-tab value="contacts">Contacts</v-tab>
+          <v-tab value="visits">Visit Log</v-tab>
+          <v-tab value="notes">Notes</v-tab>
+        </v-tabs>
 
-            <v-list-item v-if="selectedPartner.phone">
-              <template #prepend>
-                <v-icon color="primary">mdi-phone</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedPartner.phone }}</v-list-item-title>
-            </v-list-item>
+        <v-window v-model="detailsTab">
+          <!-- Overview Tab -->
+          <v-window-item value="overview">
+            <v-card-text class="pa-4">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <h4 class="text-subtitle-2 text-grey mb-3">Contact Information</h4>
+                  <v-list density="compact" class="bg-transparent">
+                    <v-list-item v-if="selectedPartner.email">
+                      <template #prepend>
+                        <v-icon color="primary" size="20">mdi-email</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.email }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.phone">
+                      <template #prepend>
+                        <v-icon color="primary" size="20">mdi-phone</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.phone }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.address">
+                      <template #prepend>
+                        <v-icon color="primary" size="20">mdi-map-marker</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.address }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <h4 class="text-subtitle-2 text-grey mb-3">Relationship Stats</h4>
+                  <v-list density="compact" class="bg-transparent">
+                    <v-list-item>
+                      <template #prepend>
+                        <v-icon color="success" size="20">mdi-handshake</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.total_referrals }} total referrals</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend>
+                        <v-icon :color="selectedPartner.is_active ? 'success' : 'grey'" size="20">
+                          mdi-circle
+                        </v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.is_active ? 'Active Partner' : 'Inactive' }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.relationship_status">
+                      <template #prepend>
+                        <v-icon color="info" size="20">mdi-chart-line</v-icon>
+                      </template>
+                      <v-list-item-title>
+                        <v-chip :color="getRelationshipColor(selectedPartner.relationship_status)" size="x-small" label>
+                          {{ formatRelationshipStatus(selectedPartner.relationship_status) }}
+                        </v-chip>
+                      </v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+              </v-row>
 
-            <v-list-item v-if="selectedPartner.address">
-              <template #prepend>
-                <v-icon color="primary">mdi-map-marker</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedPartner.address }}</v-list-item-title>
-            </v-list-item>
+              <v-divider class="my-4" />
 
-            <v-list-item>
-              <template #prepend>
-                <v-icon color="primary">mdi-handshake</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedPartner.total_referrals }} total referrals</v-list-item-title>
-            </v-list-item>
-          </v-list>
+              <!-- Quick Actions -->
+              <h4 class="text-subtitle-2 text-grey mb-3">Quick Actions</h4>
+              <div class="d-flex gap-2 flex-wrap">
+                <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-note-plus" @click="openVisitLogDialog">
+                  Log Visit
+                </v-btn>
+                <v-btn color="secondary" variant="tonal" size="small" prepend-icon="mdi-pencil" @click="openEditFromDetails">
+                  Edit Partner
+                </v-btn>
+                <v-btn v-if="selectedPartner.email" variant="tonal" size="small" prepend-icon="mdi-email" :href="`mailto:${selectedPartner.email}`">
+                  Send Email
+                </v-btn>
+                <v-btn v-if="selectedPartner.phone" variant="tonal" size="small" prepend-icon="mdi-phone" :href="`tel:${selectedPartner.phone}`">
+                  Call
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-window-item>
 
-          <v-divider class="my-4" />
+          <!-- Contacts Tab (Key Decision Maker) -->
+          <v-window-item value="contacts">
+            <v-card-text class="pa-4">
+              <h4 class="text-subtitle-2 text-grey mb-3">Key Decision Maker</h4>
+              <v-card variant="outlined" class="mb-4">
+                <v-card-text>
+                  <v-row dense>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.key_decision_maker"
+                        label="Name"
+                        density="compact"
+                        variant="outlined"
+                        prepend-inner-icon="mdi-account-star"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.key_decision_maker_title"
+                        label="Title/Role"
+                        density="compact"
+                        variant="outlined"
+                        prepend-inner-icon="mdi-badge-account"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.key_decision_maker_email"
+                        label="Email"
+                        density="compact"
+                        variant="outlined"
+                        prepend-inner-icon="mdi-email"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.key_decision_maker_phone"
+                        label="Phone"
+                        density="compact"
+                        variant="outlined"
+                        prepend-inner-icon="mdi-phone"
+                      />
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
 
-          <h4 class="text-subtitle-1 font-weight-bold mb-2">Notes & Visit Log</h4>
-          <v-textarea
-            v-model="editNotes"
-            variant="outlined"
-            rows="4"
-            placeholder="Add notes about visits, conversations, etc."
-          />
-        </v-card-text>
+              <h4 class="text-subtitle-2 text-grey mb-3">Communication Preferences</h4>
+              <v-card variant="outlined">
+                <v-card-text>
+                  <v-row dense>
+                    <v-col cols="12" md="6">
+                      <v-select
+                        v-model="crmFields.communication_preference"
+                        :items="communicationOptions"
+                        label="Preferred Contact Method"
+                        density="compact"
+                        variant="outlined"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-select
+                        v-model="crmFields.relationship_status"
+                        :items="relationshipOptions"
+                        label="Relationship Status"
+                        density="compact"
+                        variant="outlined"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.last_contact_date"
+                        label="Last Contact"
+                        type="date"
+                        density="compact"
+                        variant="outlined"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field
+                        v-model="crmFields.next_followup_date"
+                        label="Next Follow-up"
+                        type="date"
+                        density="compact"
+                        variant="outlined"
+                      />
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
 
-        <v-card-actions class="px-4 pb-4">
+              <div class="d-flex justify-end mt-4">
+                <v-btn color="primary" :loading="savingCrm" @click="saveCrmFields">
+                  Save Contact Info
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Visits Tab -->
+          <v-window-item value="visits">
+            <v-card-text class="pa-4">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <h4 class="text-subtitle-2 text-grey">Visit History</h4>
+                <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="openVisitLogDialog">
+                  Log New Visit
+                </v-btn>
+              </div>
+
+              <div v-if="visitLogs.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-clipboard-text-clock</v-icon>
+                <p class="text-grey mt-2">No visits logged yet</p>
+              </div>
+
+              <v-timeline v-else density="compact" side="end">
+                <v-timeline-item
+                  v-for="visit in visitLogs"
+                  :key="visit.id"
+                  :dot-color="getVisitTypeColor(visit.visit_type)"
+                  size="small"
+                >
+                  <template #opposite>
+                    <span class="text-caption text-grey">{{ formatVisitDate(visit.visit_date) }}</span>
+                  </template>
+                  <v-card variant="outlined" density="compact">
+                    <v-card-text class="pa-3">
+                      <div class="d-flex align-center gap-2 mb-1">
+                        <v-chip :color="getVisitTypeColor(visit.visit_type)" size="x-small" label>
+                          {{ visit.visit_type }}
+                        </v-chip>
+                        <span v-if="visit.contacted_person" class="text-caption">with {{ visit.contacted_person }}</span>
+                      </div>
+                      <p v-if="visit.summary" class="text-body-2 mb-1">{{ visit.summary }}</p>
+                      <p v-if="visit.next_steps" class="text-caption text-grey">
+                        <strong>Next:</strong> {{ visit.next_steps }}
+                      </p>
+                    </v-card-text>
+                  </v-card>
+                </v-timeline-item>
+              </v-timeline>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Notes Tab -->
+          <v-window-item value="notes">
+            <v-card-text class="pa-4">
+              <h4 class="text-subtitle-2 text-grey mb-3">Notes & Comments</h4>
+              <v-textarea
+                v-model="editNotes"
+                variant="outlined"
+                rows="8"
+                placeholder="Add notes about this partner relationship, preferences, history, etc."
+              />
+              <div class="d-flex justify-end mt-4">
+                <v-btn color="primary" :loading="saving" @click="saveNotes">
+                  Save Notes
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-window-item>
+        </v-window>
+
+        <v-divider />
+
+        <v-card-actions class="px-4 py-3">
           <v-btn variant="text" color="error" @click="confirmDelete(selectedPartner)">
-            Delete
+            Delete Partner
           </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="detailsDialog = false">Close</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveNotes">
-            Save Notes
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Visit Log Dialog -->
+    <v-dialog v-model="visitLogDialog" max-width="500">
+      <v-card rounded="lg">
+        <v-card-title class="bg-primary text-white py-4">
+          <v-icon start>mdi-clipboard-text-clock</v-icon>
+          Log Visit
+        </v-card-title>
+        <v-card-text class="pt-6">
+          <v-form ref="visitForm" v-model="visitFormValid">
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="visitFormData.visit_date"
+                  label="Visit Date *"
+                  type="date"
+                  :rules="[v => !!v || 'Required']"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="visitFormData.visit_type"
+                  :items="visitTypeOptions"
+                  label="Visit Type *"
+                  :rules="[v => !!v || 'Required']"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="visitFormData.contacted_person"
+                  label="Person Contacted"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="visitFormData.summary"
+                  label="Summary"
+                  rows="3"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="What did you discuss? Key takeaways?"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="visitFormData.next_steps"
+                  label="Next Steps"
+                  rows="2"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="What are the follow-up actions?"
+                />
+              </v-col>
+            </v-row>
+          </v-form>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer />
+          <v-btn variant="text" @click="visitLogDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="savingVisit" :disabled="!visitFormValid" @click="saveVisitLog">
+            Log Visit
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -340,20 +618,27 @@ definePageMeta({
 })
 
 const client = useSupabaseClient()
+const user = useSupabaseUser()
 
 // State
 const partners = ref<ReferralPartner[]>([])
+const visitLogs = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
+const savingCrm = ref(false)
+const savingVisit = ref(false)
 const deleting = ref(false)
 const partnerDialog = ref(false)
 const detailsDialog = ref(false)
+const visitLogDialog = ref(false)
 const deleteDialog = ref(false)
 const editMode = ref(false)
 const formValid = ref(false)
+const visitFormValid = ref(false)
 const selectedPartner = ref<ReferralPartner | null>(null)
 const partnerToDelete = ref<ReferralPartner | null>(null)
 const editNotes = ref('')
+const detailsTab = ref('overview')
 
 // Snackbar
 const snackbar = ref(false)
@@ -372,11 +657,54 @@ const partnerFormData = reactive({
   is_active: true
 })
 
+// CRM fields for extended partner info
+const crmFields = reactive({
+  key_decision_maker: '',
+  key_decision_maker_title: '',
+  key_decision_maker_email: '',
+  key_decision_maker_phone: '',
+  communication_preference: 'email',
+  relationship_status: 'new',
+  last_contact_date: '',
+  next_followup_date: ''
+})
+
+// Visit log form data
+const visitFormData = reactive({
+  visit_date: new Date().toISOString().split('T')[0],
+  visit_type: 'in_person',
+  contacted_person: '',
+  summary: '',
+  next_steps: ''
+})
+
 const tierOptions = [
   { title: 'Bronze (Low)', value: 'bronze' },
   { title: 'Silver (Medium)', value: 'silver' },
   { title: 'Gold (High)', value: 'gold' },
   { title: 'Platinum (VIP)', value: 'platinum' }
+]
+
+const communicationOptions = [
+  { title: 'Email', value: 'email' },
+  { title: 'Phone', value: 'phone' },
+  { title: 'Text/SMS', value: 'text' },
+  { title: 'In Person', value: 'in_person' }
+]
+
+const relationshipOptions = [
+  { title: 'New', value: 'new' },
+  { title: 'Developing', value: 'developing' },
+  { title: 'Established', value: 'established' },
+  { title: 'At Risk', value: 'at_risk' },
+  { title: 'Churned', value: 'churned' }
+]
+
+const visitTypeOptions = [
+  { title: 'In Person', value: 'in_person' },
+  { title: 'Phone Call', value: 'phone' },
+  { title: 'Video Call', value: 'video' },
+  { title: 'Email', value: 'email' }
 ]
 
 // Computed
@@ -431,6 +759,47 @@ const getTierIcon = (tier: ReferralTier) => {
 const formatTier = (tier: ReferralTier) =>
   tier.charAt(0).toUpperCase() + tier.slice(1)
 
+const getRelationshipColor = (status: string) => {
+  const colors: Record<string, string> = {
+    new: 'info',
+    developing: 'warning',
+    established: 'success',
+    at_risk: 'orange',
+    churned: 'grey'
+  }
+  return colors[status] || 'grey'
+}
+
+const formatRelationshipStatus = (status: string) => {
+  const labels: Record<string, string> = {
+    new: 'New',
+    developing: 'Developing',
+    established: 'Established',
+    at_risk: 'At Risk',
+    churned: 'Churned'
+  }
+  return labels[status] || status
+}
+
+const getVisitTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    in_person: 'success',
+    phone: 'info',
+    video: 'purple',
+    email: 'warning'
+  }
+  return colors[type] || 'grey'
+}
+
+const formatVisitDate = (dateStr: string) => {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
 const openAddDialog = () => {
   editMode.value = false
   Object.assign(partnerFormData, {
@@ -447,39 +816,148 @@ const openAddDialog = () => {
   partnerDialog.value = true
 }
 
-const openDetails = (partner: ReferralPartner) => {
+const openDetails = async (partner: ReferralPartner) => {
   selectedPartner.value = partner
   editNotes.value = partner.notes || ''
+  detailsTab.value = 'overview'
+  
+  // Load CRM fields
+  Object.assign(crmFields, {
+    key_decision_maker: (partner as any).key_decision_maker || '',
+    key_decision_maker_title: (partner as any).key_decision_maker_title || '',
+    key_decision_maker_email: (partner as any).key_decision_maker_email || '',
+    key_decision_maker_phone: (partner as any).key_decision_maker_phone || '',
+    communication_preference: (partner as any).communication_preference || 'email',
+    relationship_status: (partner as any).relationship_status || 'new',
+    last_contact_date: (partner as any).last_contact_date || '',
+    next_followup_date: (partner as any).next_followup_date || ''
+  })
+  
+  // Fetch visit logs
+  try {
+    const { data, error } = await client
+      .from('partner_visit_logs')
+      .select('*')
+      .eq('partner_id', partner.id)
+      .order('visit_date', { ascending: false })
+    
+    if (!error) {
+      visitLogs.value = data || []
+    }
+  } catch (err) {
+    console.error('Error fetching visit logs:', err)
+    visitLogs.value = []
+  }
+  
   detailsDialog.value = true
 }
 
-const logVisit = async (partner: ReferralPartner) => {
-  const timestamp = new Date().toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
+const openEditFromDetails = () => {
+  if (!selectedPartner.value) return
+  editMode.value = true
+  Object.assign(partnerFormData, {
+    hospital_name: selectedPartner.value.hospital_name,
+    contact_person: selectedPartner.value.contact_person || '',
+    email: selectedPartner.value.email || '',
+    phone: selectedPartner.value.phone || '',
+    address: selectedPartner.value.address || '',
+    tier: selectedPartner.value.tier,
+    total_referrals: selectedPartner.value.total_referrals,
+    notes: selectedPartner.value.notes || '',
+    is_active: selectedPartner.value.is_active
   })
-  
-  const visitNote = `Visited on ${timestamp} - `
-  const newNotes = partner.notes
-    ? `${visitNote}\n\n${partner.notes}`
-    : visitNote
+  detailsDialog.value = false
+  partnerDialog.value = true
+}
 
+const openVisitLogDialog = () => {
+  Object.assign(visitFormData, {
+    visit_date: new Date().toISOString().split('T')[0],
+    visit_type: 'in_person',
+    contacted_person: selectedPartner.value?.contact_person || '',
+    summary: '',
+    next_steps: ''
+  })
+  visitLogDialog.value = true
+}
+
+const saveCrmFields = async () => {
+  if (!selectedPartner.value) return
+  
+  savingCrm.value = true
   try {
+    const { error } = await client
+      .from('referral_partners')
+      .update({
+        key_decision_maker: crmFields.key_decision_maker || null,
+        key_decision_maker_title: crmFields.key_decision_maker_title || null,
+        key_decision_maker_email: crmFields.key_decision_maker_email || null,
+        key_decision_maker_phone: crmFields.key_decision_maker_phone || null,
+        communication_preference: crmFields.communication_preference,
+        relationship_status: crmFields.relationship_status,
+        last_contact_date: crmFields.last_contact_date || null,
+        next_followup_date: crmFields.next_followup_date || null
+      })
+      .eq('id', selectedPartner.value.id)
+    
+    if (error) throw error
+    showNotification('Contact info saved!')
+    await fetchPartners()
+  } catch (err) {
+    console.error('Error saving CRM fields:', err)
+    showNotification('Failed to save contact info', 'error')
+  } finally {
+    savingCrm.value = false
+  }
+}
+
+const saveVisitLog = async () => {
+  if (!selectedPartner.value) return
+  
+  savingVisit.value = true
+  try {
+    const { error } = await client
+      .from('partner_visit_logs')
+      .insert({
+        partner_id: selectedPartner.value.id,
+        visit_date: visitFormData.visit_date,
+        visit_type: visitFormData.visit_type,
+        contacted_person: visitFormData.contacted_person || null,
+        summary: visitFormData.summary || null,
+        next_steps: visitFormData.next_steps || null,
+        logged_by: user.value?.id || null
+      })
+    
+    if (error) throw error
+    
+    // Also update last_contact_date
     await client
       .from('referral_partners')
-      .update({ notes: newNotes })
-      .eq('id', partner.id)
-
-    partner.notes = newNotes
-    showNotification('Visit logged! Add details in the notes.')
-    openDetails(partner)
-  } catch (error) {
-    console.error('Error logging visit:', error)
+      .update({ last_contact_date: visitFormData.visit_date })
+      .eq('id', selectedPartner.value.id)
+    
+    visitLogDialog.value = false
+    showNotification('Visit logged!')
+    
+    // Refresh visit logs
+    const { data } = await client
+      .from('partner_visit_logs')
+      .select('*')
+      .eq('partner_id', selectedPartner.value.id)
+      .order('visit_date', { ascending: false })
+    
+    visitLogs.value = data || []
+  } catch (err) {
+    console.error('Error saving visit log:', err)
     showNotification('Failed to log visit', 'error')
+  } finally {
+    savingVisit.value = false
   }
+}
+
+const logVisit = (partner: ReferralPartner) => {
+  selectedPartner.value = partner
+  openVisitLogDialog()
 }
 
 const saveNotes = async () => {

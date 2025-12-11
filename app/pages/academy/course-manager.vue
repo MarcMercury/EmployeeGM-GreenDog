@@ -3,13 +3,12 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Training Center</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">📖 Course Manager</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Develop your skills and track your progress
+          Create and manage training courses for your team
         </p>
       </div>
       <v-btn
-        v-if="isAdmin"
         color="primary"
         prepend-icon="mdi-plus"
         @click="createCourseDialog = true"
@@ -260,7 +259,7 @@ import CourseCatalog from '~/components/academy/CourseCatalog.vue'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'admin-only']
 })
 
 const authStore = useAuthStore()
@@ -268,7 +267,7 @@ const uiStore = useUIStore()
 
 const isAdmin = computed(() => authStore.isAdmin)
 
-const tab = ref('my-training')
+const tab = ref('courses')
 const courses = ref<TrainingCourse[]>([])
 const myEnrollments = ref<(TrainingEnrollment & { course?: TrainingCourse; progress: number })[]>([])
 

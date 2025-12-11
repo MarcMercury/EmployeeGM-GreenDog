@@ -183,9 +183,9 @@ async function handleSignOut() {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.growth }">
-              <NuxtLink to="/training" class="nav-link group" active-class="nav-link-active">
+              <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
-                Training
+                My Training
               </NuxtLink>
               <NuxtLink to="/goals" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-emerald-500/20">🎯</div>
@@ -219,6 +219,10 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-fuchsia-500/20">📈</div>
                 Campaigns
               </NuxtLink>
+              <NuxtLink to="/marketing/calendar" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📅</div>
+                Calendar
+              </NuxtLink>
               <NuxtLink to="/leads" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
                 Leads
@@ -226,6 +230,10 @@ async function handleSignOut() {
               <NuxtLink to="/growth/partners" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-lime-500/20">🤝</div>
                 Partners
+              </NuxtLink>
+              <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
+                Events
               </NuxtLink>
             </div>
           </div>
@@ -247,6 +255,10 @@ async function handleSignOut() {
                 <NuxtLink to="/ops" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-red-500/20">🎛️</div>
                   Ops Center
+                </NuxtLink>
+                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">📖</div>
+                  Course Manager
                 </NuxtLink>
                 <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-yellow-500/20">⭐</div>
