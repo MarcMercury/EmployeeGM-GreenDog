@@ -31,12 +31,16 @@ export default defineNuxtPlugin({
       console.log('[AuthPlugin] Auth state changed:', event, 'User:', session?.user?.email)
       
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        // IMMEDIATELY redirect if on auth page - don't wait for profile fetches
+        if (window.location.pathname.startsWith('/auth/')) {
+          console.log('[AuthPlugin] Logged in on auth page, redirecting NOW...')
+          window.location.href = '/'
+          return // Stop processing, we're redirecting
+        }
+        
         console.log('[AuthPlugin] Fetching profile for user ID:', session.user.id)
         await authStore.fetchProfile(session.user.id)
         await userStore.fetchUserData()
-        
-        // If on login page, redirect to dashboard
-        redirectFromLogin()
       } else if (event === 'SIGNED_OUT') {
         authStore.$reset()
         userStore.clearUser()
@@ -48,15 +52,20 @@ export default defineNuxtPlugin({
     
     if (session?.user) {
       console.log('[AuthPlugin] Existing session found for:', session.user.email)
+      
+      // IMMEDIATELY redirect if on auth page
+      if (window.location.pathname.startsWith('/auth/')) {
+        console.log('[AuthPlugin] Already logged in on auth page, redirecting NOW...')
+        window.location.href = '/'
+        return // Stop plugin execution, we're redirecting
+      }
+      
       if (!authStore.profile) {
         await authStore.fetchProfile(session.user.id)
       }
       if (!userStore.profile) {
         await userStore.fetchUserData()
       }
-      
-      // Redirect away from login page if already authenticated
-      redirectFromLogin()
     }
     
     authStore.initialized = true
