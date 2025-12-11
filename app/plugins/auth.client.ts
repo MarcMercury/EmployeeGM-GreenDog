@@ -4,6 +4,8 @@ export default defineNuxtPlugin({
   dependsOn: ['supabase'],
   async setup() {
     const nuxtApp = useNuxtApp()
+    const router = useRouter()
+    const route = useRoute()
     // @nuxtjs/supabase provides { client } via provide("supabase", { client })
     const supabase = (nuxtApp.$supabase as { client: ReturnType<typeof import('@supabase/supabase-js').createClient> })?.client
     const authStore = useAuthStore()
@@ -16,6 +18,14 @@ export default defineNuxtPlugin({
 
     console.log('[AuthPlugin] Initializing auth...')
 
+    // Helper to redirect away from login page
+    const redirectFromLogin = () => {
+      if (window.location.pathname.startsWith('/auth/')) {
+        console.log('[AuthPlugin] On auth page while logged in, redirecting to dashboard...')
+        window.location.href = '/'
+      }
+    }
+
     // Watch for auth state changes
     supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[AuthPlugin] Auth state changed:', event, 'User:', session?.user?.email)
@@ -24,6 +34,9 @@ export default defineNuxtPlugin({
         console.log('[AuthPlugin] Fetching profile for user ID:', session.user.id)
         await authStore.fetchProfile(session.user.id)
         await userStore.fetchUserData()
+        
+        // If on login page, redirect to dashboard
+        redirectFromLogin()
       } else if (event === 'SIGNED_OUT') {
         authStore.$reset()
         userStore.clearUser()
@@ -41,6 +54,9 @@ export default defineNuxtPlugin({
       if (!userStore.profile) {
         await userStore.fetchUserData()
       }
+      
+      // Redirect away from login page if already authenticated
+      redirectFromLogin()
     }
     
     authStore.initialized = true
