@@ -5,12 +5,8 @@ export default defineNuxtRouteMiddleware((to) => {
   // Public routes that don't require auth
   const publicPaths = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/confirm']
   
-  // Check if current path is public
+  // Allow access to public/auth pages without checking
   if (publicPaths.includes(to.path) || to.path.startsWith('/auth/')) {
-    // Redirect logged-in users away from auth pages
-    if (user.value) {
-      return navigateTo('/')
-    }
     return
   }
 

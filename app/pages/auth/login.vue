@@ -82,13 +82,13 @@
             color="primary"
             size="x-large"
             block
-            :loading="isLoading || isRedirecting"
-            :disabled="isLoading || isRedirecting"
+            :loading="isLoading"
+            :disabled="isLoading"
             class="login-btn mb-4"
             @click="handleSubmit"
           >
             <v-icon start>mdi-login-variant</v-icon>
-            {{ isRedirecting ? 'Redirecting...' : 'Sign In' }}
+            Sign In
           </v-btn>
 
           <div class="text-center text-body-2 text-medium-emphasis">
@@ -128,31 +128,8 @@ definePageMeta({
 })
 
 const supabase = useSupabaseClient()
-const user = useSupabaseUser()
-const route = useRoute()
 
-// Track if we're redirecting to show loading state
-const isRedirecting = ref(false)
-let hasRedirected = false // Prevents multiple redirects
-
-// Single function to handle redirect - called only once
-const doRedirect = () => {
-  if (hasRedirected) return
-  hasRedirected = true
-  isRedirecting.value = true
-  console.log('[Login] Redirecting to dashboard...')
-  navigateTo('/', { replace: true })
-}
-
-// Check on mount if already logged in
-onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user) {
-    console.log('[Login] Already logged in on mount, redirecting')
-    doRedirect()
-  }
-})
-
+// Simple state
 const formRef = ref()
 const formValid = ref(false)
 const showPassword = ref(false)
@@ -176,29 +153,14 @@ function fillDemoCredentials() {
 }
 
 async function handleSubmit() {
-  // Reset error
   error.value = ''
   
-  // Check for empty fields first
   if (!form.email || !form.password) {
     error.value = 'Please enter email and password'
     return
   }
 
-  // Validate email format
-  if (!/.+@.+\..+/.test(form.email)) {
-    error.value = 'Please enter a valid email address'
-    return
-  }
-
-  // Validate password length
-  if (form.password.length < 6) {
-    error.value = 'Password must be at least 6 characters'
-    return
-  }
-
   isLoading.value = true
-  console.log('[Login] Starting authentication for:', form.email)
 
   try {
     const { data, error: authError } = await supabase.auth.signInWithPassword({
@@ -206,21 +168,9 @@ async function handleSubmit() {
       password: form.password
     })
 
-    console.log('[Login] Auth response received:', { 
-      hasUser: !!data?.user, 
-      hasSession: !!data?.session,
-      error: authError?.message 
-    })
-
     if (authError) {
-      console.error('[Login] Auth error:', authError)
-      // Provide user-friendly error messages
       if (authError.message.includes('Invalid login credentials')) {
-        error.value = 'Invalid email or password. Please check your credentials.'
-      } else if (authError.message.includes('Email not confirmed')) {
-        error.value = 'Please confirm your email before signing in.'
-      } else if (authError.message.includes('User not found')) {
-        error.value = 'No account found with this email address.'
+        error.value = 'Invalid email or password.'
       } else {
         error.value = authError.message || 'Authentication failed'
       }
@@ -228,19 +178,15 @@ async function handleSubmit() {
       return
     }
 
-    if (data?.session && data?.user) {
-      console.log('[Login] Login successful! User:', data.user.email)
-      
-      // Use navigateTo for client-side navigation (no page reload)
-      doRedirect()
+    if (data?.session) {
+      // Simple redirect - just go to home
+      window.location.href = '/'
     } else {
-      console.error('[Login] No session or user in response')
-      error.value = 'Authentication succeeded but no session was created'
+      error.value = 'Login failed. Please try again.'
       isLoading.value = false
     }
   } catch (err: any) {
-    console.error('[Login] Unexpected error:', err)
-    error.value = err?.message || 'An unexpected error occurred. Please try again.'
+    error.value = 'An unexpected error occurred.'
     isLoading.value = false
   }
 }

@@ -33,32 +33,13 @@ export default defineNuxtConfig({
     }
   },
 
-  // Supabase configuration
+  // Supabase configuration - keep it simple
   supabase: {
     redirectOptions: {
       login: '/auth/login',
       callback: '/auth/confirm',
-      include: undefined,
       exclude: ['/auth/*'],
       cookieRedirect: false
-    },
-    // Session persistence - keep user logged in for 7 days
-    clientOptions: {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        // Session storage key for localStorage
-        storageKey: 'greendog-auth-token',
-        // Token refresh threshold (refresh 5 minutes before expiry)
-        flowType: 'pkce'
-      }
-    },
-    // Cookie options for session storage
-    cookieOptions: {
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production'
     }
   },
 
