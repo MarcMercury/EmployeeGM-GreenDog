@@ -294,35 +294,78 @@ async function handleSignOut() {
 <style scoped>
 /* Navigation Link Styles */
 .nav-link {
-  @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-xl text-slate-300 
-         hover:bg-white/5 hover:text-white transition-all duration-200 cursor-pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.75rem;
+  color: #cbd5e1;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
 }
 
 .nav-link-active {
-  @apply !bg-gradient-to-r !from-green-600 !to-emerald-600 !text-white shadow-lg shadow-green-500/20;
+  background: linear-gradient(to right, #16a34a, #059669) !important;
+  color: white !important;
+  box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.2);
 }
 
 .nav-icon-wrap {
-  @apply w-8 h-8 rounded-lg bg-slate-800/50 flex items-center justify-center text-base transition-colors;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: rgba(30, 41, 59, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: background-color 0.2s;
 }
 
 /* Section Header */
 .section-header {
-  @apply flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-slate-400 
-         uppercase tracking-wider hover:text-slate-200 transition-colors cursor-pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.2s;
+  background: none;
+  border: none;
+}
+
+.section-header:hover {
+  color: #e2e8f0;
 }
 
 /* Collapsible Section Content */
 .section-content {
-  @apply overflow-hidden transition-all duration-300 ease-in-out;
+  overflow: hidden;
   max-height: 0;
   opacity: 0;
+  transition: all 0.3s ease-in-out;
 }
 
 .section-open {
   max-height: 500px;
   opacity: 1;
-  @apply mt-1 space-y-1;
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 /* Custom Scrollbar */
