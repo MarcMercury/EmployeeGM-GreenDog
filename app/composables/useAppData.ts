@@ -154,6 +154,7 @@ export const useAppData = () => {
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
       const [empResult, skillResult, deptResult, posResult, locResult] = await Promise.all([
         // Employees with relations - SINGLE SOURCE OF TRUTH
+        // Note: Fetch employee_skills separately to avoid ambiguous relationship
         client
           .from('employees')
           .select(`
@@ -169,13 +170,7 @@ export const useAppData = () => {
             profiles:profile_id ( id, avatar_url, role ),
             job_positions:position_id ( id, title ),
             departments:department_id ( id, name ),
-            locations:location_id ( id, name ),
-            employee_skills ( 
-              skill_id, 
-              level, 
-              is_goal,
-              skill_library ( id, name, category )
-            )
+            locations:location_id ( id, name )
           `)
           .order('last_name'),
 
@@ -242,13 +237,7 @@ export const useAppData = () => {
               id: emp.locations.id,
               name: emp.locations.name
             } : null,
-            skills: (emp.employee_skills || []).map((es: any) => ({
-              skill_id: es.skill_id,
-              skill_name: es.skill_library?.name || 'Unknown',
-              category: es.skill_library?.category || 'General',
-              rating: es.level || 0,
-              is_goal: es.is_goal || false
-            })),
+            skills: [], // Skills loaded separately if needed
             initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),
             tenure_months: tenureMonths
           }

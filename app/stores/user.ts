@@ -116,7 +116,9 @@ export const useUserStore = defineStore('user', {
       const supabase = useSupabaseClient()
       const user = useSupabaseUser()
 
-      if (!user.value) {
+      // Guard: Make sure we have a valid user with an ID
+      if (!user.value?.id) {
+        console.log('[UserStore] No user or user.id, clearing data')
         this.profile = null
         this.employee = null
         return
