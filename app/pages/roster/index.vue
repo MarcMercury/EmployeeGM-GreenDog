@@ -112,8 +112,8 @@
         :items-per-page-options="[10, 25, 50, 100]"
         hover
         density="comfortable"
-        class="roster-table"
-        @click:row="(_, { item }) => viewEmployee(item.id)"
+        :class="['roster-table', { 'roster-table--clickable': isAdmin }]"
+        @click:row="(_, { item }) => isAdmin && viewEmployee(item.id)"
       >
         <!-- Employee Name + Avatar -->
         <template #item.name="{ item }">
@@ -181,19 +181,20 @@
 
         <!-- Actions -->
         <template #item.actions="{ item }">
-          <div class="d-flex justify-end">
+          <div v-if="isAdmin" class="d-flex justify-end">
             <v-btn
               icon="mdi-eye"
               size="x-small"
               variant="text"
               @click.stop="viewEmployee(item.id)"
+              title="View Profile"
             />
             <v-btn
-              v-if="isAdmin"
               icon="mdi-pencil"
               size="x-small"
               variant="text"
               @click.stop="editEmployee(item)"
+              title="Edit"
             />
           </div>
         </template>
@@ -213,8 +214,8 @@
         <v-card 
           rounded="lg" 
           elevation="2" 
-          class="employee-card h-100"
-          @click="viewEmployee(emp.id)"
+          :class="['employee-card', 'h-100', { 'employee-card--clickable': isAdmin }]"
+          @click="isAdmin && viewEmployee(emp.id)"
         >
           <v-card-text class="text-center pb-2">
             <v-avatar size="72" :color="emp.avatar_url ? undefined : 'primary'" class="mb-3">
@@ -426,11 +427,11 @@ function clearFilters() {
 }
 
 function viewEmployee(id: string) {
-  router.push(`/employees/${id}`)
+  router.push(`/roster/${id}`)
 }
 
 function editEmployee(emp: any) {
-  router.push(`/employees/${emp.id}`)
+  router.push(`/roster/${emp.id}`)
 }
 
 async function refreshData() {
@@ -490,20 +491,28 @@ onMounted(async () => {
   min-height: 100%;
 }
 
-.roster-table {
+.roster-table :deep(tbody tr) {
+  cursor: default;
+}
+
+.roster-table--clickable :deep(tbody tr) {
   cursor: pointer;
 }
 
-.roster-table :deep(tbody tr:hover) {
+.roster-table--clickable :deep(tbody tr:hover) {
   background-color: rgba(var(--v-theme-primary), 0.04) !important;
 }
 
 .employee-card {
-  cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  cursor: default;
 }
 
-.employee-card:hover {
+.employee-card--clickable {
+  cursor: pointer;
+}
+
+.employee-card--clickable:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }

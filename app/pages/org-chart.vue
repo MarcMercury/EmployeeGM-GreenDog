@@ -44,7 +44,7 @@
         
         <!-- Zoom Controls -->
         <v-btn-group density="compact" variant="outlined">
-          <v-btn icon="mdi-minus" @click="zoomOut" :disabled="zoom <= 0.5" />
+          <v-btn icon="mdi-minus" @click="zoomOut" :disabled="zoom <= 0.3" />
           <v-btn @click="resetZoom">{{ Math.round(zoom * 100) }}%</v-btn>
           <v-btn icon="mdi-plus" @click="zoomIn" :disabled="zoom >= 1.5" />
         </v-btn-group>
@@ -220,9 +220,10 @@
         
         <v-card-actions class="pa-4">
           <v-btn 
+            v-if="isAdmin"
             color="primary" 
             variant="flat" 
-            :to="`/employees/${selectedEmployee.employee_id}`"
+            :to="`/roster/${selectedEmployee.employee_id}`"
           >
             <v-icon start>mdi-account-details</v-icon>
             View Full Profile
@@ -245,6 +246,10 @@ definePageMeta({
   middleware: ['auth']
 })
 
+// Auth store for admin check
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.isAdmin)
+
 // Composable
 const {
   employees,
@@ -264,7 +269,7 @@ const {
 
 // View state
 const viewMode = ref<'tree' | 'list'>('tree')
-const zoom = ref(1)
+const zoom = ref(0.65) // Start more zoomed out to see more of the chart
 const selectedEmployee = ref<OrgChartNode | null>(null)
 const selectedEmployeeId = ref<string | null>(null)
 const showEmployeeDialog = ref(false)
@@ -292,11 +297,11 @@ function zoomIn() {
 }
 
 function zoomOut() {
-  zoom.value = Math.max(zoom.value - 0.1, 0.5)
+  zoom.value = Math.max(zoom.value - 0.1, 0.3)
 }
 
 function resetZoom() {
-  zoom.value = 1
+  zoom.value = 0.65 // Reset to default zoomed-out view
 }
 
 // Pan controls
