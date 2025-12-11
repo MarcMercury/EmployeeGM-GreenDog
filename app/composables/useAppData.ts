@@ -166,7 +166,6 @@ export const useAppData = () => {
             phone_mobile,
             hire_date,
             employment_status,
-            status,
             profiles:profile_id ( id, avatar_url, role ),
             job_positions:position_id ( id, title ),
             departments:department_id ( id, name ),
@@ -189,13 +188,13 @@ export const useAppData = () => {
         // Job Positions
         client
           .from('job_positions')
-          .select('id, title, department_id')
+          .select('id, title')
           .order('title'),
 
         // Locations
         client
           .from('locations')
-          .select('id, name, address')
+          .select('id, name, city, state')
           .order('name')
       ])
 
