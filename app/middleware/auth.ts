@@ -1,7 +1,5 @@
 // Auth middleware - protects routes requiring authentication
-export default defineNuxtRouteMiddleware((to) => {
-  const user = useSupabaseUser()
-  
+export default defineNuxtRouteMiddleware(async (to) => {
   // Public routes that don't require auth
   const publicPaths = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/confirm']
   
@@ -10,8 +8,12 @@ export default defineNuxtRouteMiddleware((to) => {
     return
   }
 
+  // Check session directly (more reliable than useSupabaseUser)
+  const supabase = useSupabaseClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
   // Redirect unauthenticated users to login
-  if (!user.value) {
+  if (!session) {
     return navigateTo('/auth/login')
   }
 })

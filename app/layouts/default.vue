@@ -30,14 +30,15 @@ async function handleSignOut() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <v-app>
+    <div class="min-h-screen bg-gray-50">
     
-    <!-- Fixed Sidebar - Always visible on desktop via CSS -->
-    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white border-r border-slate-800 flex flex-col">
+      <!-- Fixed Sidebar - Always visible on desktop via CSS -->
+      <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white border-r border-slate-800 flex flex-col">
       
-      <!-- Logo Header -->
-      <div class="flex h-16 items-center px-6 bg-slate-950 shrink-0">
-        <span class="text-xl font-bold tracking-tight text-white">🐾 TeamOS</span>
+        <!-- Logo Header -->
+        <div class="flex h-16 items-center px-6 bg-slate-950 shrink-0">
+          <span class="text-xl font-bold tracking-tight text-white">🐾 TeamOS</span>
       </div>
 
       <!-- Navigation - Scrollable if needed -->
@@ -192,14 +193,15 @@ async function handleSignOut() {
 
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="ml-64 min-h-screen bg-gray-50">
-      <div class="p-6 lg:p-8">
-        <slot />
-      </div>
-    </main>
+      <!-- Main Content Area -->
+      <main class="ml-64 min-h-screen bg-gray-50">
+        <div class="p-6 lg:p-8">
+          <slot />
+        </div>
+      </main>
 
-  </div>
+    </div>
+  </v-app>
 </template>
 
 <style scoped>
