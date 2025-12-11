@@ -53,22 +53,22 @@
           />
         </template>
         <v-list-item to="/roster" title="All Staff" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Roster" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Skill Engine Group - Collapsible -->
+      <!-- People & Skills Group - Collapsible -->
       <v-list-group v-if="!rail" value="skills">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
             prepend-icon="mdi-hexagon-multiple"
-            title="Skill Engine"
+            title="People & Skills"
             rounded="lg"
             class="nav-item"
           />
         </template>
+        <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/my-stats" title="My Stats" prepend-icon="mdi-chart-arc" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/mentorship" title="Mentorship" prepend-icon="mdi-account-supervisor" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/skills" title="Skill Library" prepend-icon="mdi-star-circle" density="compact" rounded="lg" class="nav-item ml-4" />
@@ -110,22 +110,39 @@
       </v-list-group>
       <v-list-item v-else to="/goals" prepend-icon="mdi-chart-timeline-variant" title="Performance" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Marketing & Growth Group - Admin Only, Collapsible -->
-      <v-list-group v-if="isAdmin && !rail" value="marketing">
+      <!-- Recruiting Group - Admin Only -->
+      <v-list-group v-if="isAdmin && !rail" value="recruiting">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
-            prepend-icon="mdi-bullhorn"
-            title="Marketing"
+            prepend-icon="mdi-account-search"
+            title="Recruiting"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/marketing" title="Campaigns" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/referrals" title="Referrals" prepend-icon="mdi-account-arrow-right" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/recruiting" title="Dashboard" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/recruiting/candidates" title="Candidates" prepend-icon="mdi-account-multiple-plus" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/recruiting/onboarding" title="Onboarding" prepend-icon="mdi-clipboard-check-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="isAdmin" to="/marketing" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="isAdmin" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
+
+      <!-- Growth Group - Admin Only -->
+      <v-list-group v-if="isAdmin && !rail" value="growth">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-rocket-launch"
+            title="Growth"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/growth/partners" title="Referral Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else-if="isAdmin" to="/growth/events" prepend-icon="mdi-rocket-launch" title="Growth" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>

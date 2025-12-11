@@ -78,14 +78,13 @@
           </v-alert>
 
           <v-btn
-            type="button"
+            type="submit"
             color="primary"
             size="x-large"
             block
             :loading="isLoading"
-            :disabled="isLoading || !form.email || !form.password"
+            :disabled="isLoading"
             class="login-btn mb-4"
-            @click="handleSubmit"
           >
             <v-icon start>mdi-login-variant</v-icon>
             Sign In
@@ -128,17 +127,9 @@ definePageMeta({
 })
 
 const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 const router = useRouter()
 const route = useRoute()
-
-// Check if already logged in and redirect
-onMounted(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user) {
-    console.log('[Login] Already logged in, redirecting to dashboard')
-    await navigateTo('/', { replace: true })
-  }
-})
 
 const formRef = ref()
 const formValid = ref(false)
@@ -150,6 +141,15 @@ const form = reactive({
   email: '',
   password: ''
 })
+
+// Watch for user state changes and redirect if logged in
+watch(user, (newUser) => {
+  if (newUser) {
+    console.log('[Login] User detected, redirecting to dashboard')
+    const redirectTo = (route.query.redirect as string) || '/'
+    navigateTo(redirectTo, { replace: true })
+  }
+}, { immediate: true })
 
 const rules = {
   required: (v: string) => !!v || 'This field is required',
