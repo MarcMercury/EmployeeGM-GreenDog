@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 
 const authStore = useAuthStore()
+const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData } = useAppData()
 const router = useRouter()
 const supabase = useSupabaseClient()
 
@@ -19,20 +20,25 @@ const toggleSection = (section: keyof typeof sections.value) => {
   sections.value[section] = !sections.value[section]
 }
 
-// Fetch profile on mount using session directly
+// Fetch profile AND global data on mount
 onMounted(async () => {
   const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user && !authStore.profile) {
+  if (session?.user) {
     console.log('[Layout] Session found, fetching profile for:', session.user.email)
-    await authStore.fetchProfile(session.user.id)
+    // Fetch both auth profile AND global app data
+    await Promise.all([
+      authStore.fetchProfile(session.user.id),
+      fetchGlobalData()
+    ])
   }
 })
 
-const profile = computed(() => authStore.profile)
-const isAdmin = computed(() => authStore.profile?.role === 'admin')
-const firstName = computed(() => authStore.profile?.first_name || 'User')
+// Use profile from either source - prefer currentUserProfile from useAppData
+const profile = computed(() => currentUserProfile.value || authStore.profile)
+const isAdmin = computed(() => appDataIsAdmin.value || authStore.profile?.role === 'admin')
+const firstName = computed(() => profile.value?.first_name || 'User')
 const initials = computed(() => {
-  const p = authStore.profile
+  const p = profile.value
   if (!p) return 'U'
   return `${p.first_name?.[0] || ''}${p.last_name?.[0] || ''}`.toUpperCase() || 'U'
 })

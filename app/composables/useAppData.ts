@@ -101,6 +101,9 @@ export const useAppData = () => {
   const currentUserProfile = useState<AppUserProfile | null>('currentUserProfile', () => null)
   const isAdmin = useState<boolean>('isAdmin', () => false)
 
+  // Realtime subscription state
+  const realtimeSubscribed = useState<boolean>('realtimeSubscribed', () => false)
+
   /**
    * Fetch all global data in parallel
    * Called once on app mount
@@ -151,6 +154,7 @@ export const useAppData = () => {
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
       const [empResult, skillResult, deptResult, posResult, locResult] = await Promise.all([
         // Employees with relations - SINGLE SOURCE OF TRUTH
+        // Note: Fetch employee_skills separately to avoid ambiguous relationship
         client
           .from('employees')
           .select(`
@@ -162,17 +166,10 @@ export const useAppData = () => {
             phone_mobile,
             hire_date,
             employment_status,
-            status,
             profiles:profile_id ( id, avatar_url, role ),
             job_positions:position_id ( id, title ),
             departments:department_id ( id, name ),
-            locations:location_id ( id, name ),
-            employee_skills ( 
-              skill_id, 
-              level, 
-              is_goal,
-              skill_library ( id, name, category )
-            )
+            locations:location_id ( id, name )
           `)
           .order('last_name'),
 
@@ -191,13 +188,13 @@ export const useAppData = () => {
         // Job Positions
         client
           .from('job_positions')
-          .select('id, title, department_id')
+          .select('id, title')
           .order('title'),
 
         // Locations
         client
           .from('locations')
-          .select('id, name, address')
+          .select('id, name, city, state')
           .order('name')
       ])
 
@@ -239,13 +236,7 @@ export const useAppData = () => {
               id: emp.locations.id,
               name: emp.locations.name
             } : null,
-            skills: (emp.employee_skills || []).map((es: any) => ({
-              skill_id: es.skill_id,
-              skill_name: es.skill_library?.name || 'Unknown',
-              category: es.skill_library?.category || 'General',
-              rating: es.level || 0,
-              is_goal: es.is_goal || false
-            })),
+            skills: [], // Skills loaded separately if needed
             initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),
             tenure_months: tenureMonths
           }
@@ -292,6 +283,47 @@ export const useAppData = () => {
       initialized.value = true
       console.log(`[AppData] Hydrated: ${employees.value.length} employees, ${skills.value.length} skills, isAdmin: ${isAdmin.value}`)
 
+      // 3. LOAD EMPLOYEE SKILLS (separate query to avoid ambiguous relationship)
+      if (employees.value.length > 0) {
+        console.log('[useAppData] Loading employee skills...')
+        const { data: empSkills, error: skillsError } = await client
+          .from('employee_skills')
+          .select(`
+            employee_id,
+            skill_id,
+            rating,
+            is_goal,
+            skill_library:skill_id ( id, name, category )
+          `)
+        
+        if (empSkills && !skillsError) {
+          // Map skills to employees
+          const skillsByEmployee: Record<string, any[]> = {}
+          empSkills.forEach((es: any) => {
+            if (!skillsByEmployee[es.employee_id]) {
+              skillsByEmployee[es.employee_id] = []
+            }
+            skillsByEmployee[es.employee_id].push({
+              skill_id: es.skill_id,
+              skill_name: es.skill_library?.name || 'Unknown',
+              category: es.skill_library?.category || 'General',
+              rating: es.rating || 0,
+              is_goal: es.is_goal || false
+            })
+          })
+          
+          // Update employees with their skills
+          employees.value = employees.value.map(emp => ({
+            ...emp,
+            skills: skillsByEmployee[emp.id] || []
+          }))
+          
+          console.log('[useAppData] Skills loaded for employees')
+        } else if (skillsError) {
+          console.error('[useAppData] Error loading employee skills:', skillsError)
+        }
+      }
+
     } catch (e: any) {
       console.error('[AppData] Fetch Error:', e)
       error.value = e.message || 'Failed to load app data'
@@ -304,6 +336,97 @@ export const useAppData = () => {
    * Force refresh all data
    */
   const refresh = () => fetchGlobalData(true)
+
+  /**
+   * Subscribe to Realtime changes on employees and marketing_leads
+   * Automatically refreshes data when changes are detected
+   */
+  const subscribeToRealtime = () => {
+    if (realtimeSubscribed.value) {
+      console.log('[useAppData] Already subscribed to realtime')
+      return
+    }
+
+    console.log('[useAppData] Setting up realtime subscriptions...')
+
+    // Subscribe to employees table changes
+    const employeesChannel = client
+      .channel('employees-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'employees' },
+        (payload) => {
+          console.log('[Realtime] Employee change:', payload.eventType, payload.new)
+          // Refresh employees on any change
+          refresh()
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Employees subscription status:', status)
+      })
+
+    // Subscribe to marketing_leads table changes
+    const leadsChannel = client
+      .channel('leads-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'marketing_leads' },
+        (payload) => {
+          console.log('[Realtime] Marketing lead change:', payload.eventType, payload.new)
+          // Emit event for components to handle
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('realtime:lead-change', { 
+              detail: payload 
+            }))
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Leads subscription status:', status)
+      })
+
+    // Subscribe to recruiting_candidates table changes  
+    const candidatesChannel = client
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'recruiting_candidates' },
+        (payload) => {
+          console.log('[Realtime] Candidate change:', payload.eventType, payload.new)
+          // Emit event for components to handle
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('realtime:candidate-change', { 
+              detail: payload 
+            }))
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Candidates subscription status:', status)
+      })
+
+    realtimeSubscribed.value = true
+    console.log('[useAppData] Realtime subscriptions active')
+
+    // Return cleanup function
+    return () => {
+      console.log('[useAppData] Cleaning up realtime subscriptions')
+      client.removeChannel(employeesChannel)
+      client.removeChannel(leadsChannel)
+      client.removeChannel(candidatesChannel)
+      realtimeSubscribed.value = false
+    }
+  }
+
+  /**
+   * Unsubscribe from all realtime channels
+   */
+  const unsubscribeFromRealtime = () => {
+    if (!realtimeSubscribed.value) return
+    client.removeAllChannels()
+    realtimeSubscribed.value = false
+    console.log('[useAppData] Unsubscribed from realtime')
+  }
 
   // === HELPER METHODS ===
 
@@ -389,6 +512,11 @@ export const useAppData = () => {
     // Current User Identity
     currentUserProfile,
     isAdmin,
+
+    // Realtime
+    realtimeSubscribed,
+    subscribeToRealtime,
+    unsubscribeFromRealtime,
 
     // Actions
     fetchGlobalData,
