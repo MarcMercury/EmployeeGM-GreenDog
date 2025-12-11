@@ -38,7 +38,8 @@
         <v-form ref="formRef" v-model="formValid" @submit.prevent="handleSubmit">
           <v-text-field
             v-model="form.email"
-            label="Email Address"
+            :label="form.email ? '' : 'Email Address'"
+            placeholder="Email Address"
             type="email"
             prepend-inner-icon="mdi-email-outline"
             :rules="[rules.required, rules.email]"
@@ -47,12 +48,14 @@
             color="primary"
             class="mb-4 custom-input"
             bg-color="rgba(46,125,50,0.05)"
+            persistent-placeholder
             @keyup.enter="handleSubmit"
           />
 
           <v-text-field
             v-model="form.password"
-            label="Password"
+            :label="form.password ? '' : 'Password'"
+            placeholder="Password"
             :type="showPassword ? 'text' : 'password'"
             prepend-inner-icon="mdi-lock-outline"
             :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
@@ -62,6 +65,7 @@
             color="primary"
             class="mb-4 custom-input"
             bg-color="rgba(46,125,50,0.05)"
+            persistent-placeholder
             @click:append-inner="showPassword = !showPassword"
             @keyup.enter="handleSubmit"
           />
@@ -150,6 +154,15 @@ watch(user, (newUser) => {
     navigateTo(redirectTo, { replace: true })
   }
 }, { immediate: true })
+
+// Also check on mount in case watch misses it
+onMounted(() => {
+  if (user.value) {
+    console.log('[Login] Already logged in on mount, redirecting...')
+    const redirectTo = (route.query.redirect as string) || '/'
+    navigateTo(redirectTo, { replace: true })
+  }
+})
 
 const rules = {
   required: (v: string) => !!v || 'This field is required',
