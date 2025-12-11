@@ -332,7 +332,7 @@ async function loadDepartments() {
       .order('name')
 
     if (error) throw error
-    departments.value = (data || []).map(d => d.name)
+    departments.value = (data || []).map((d: { name: string }) => d.name)
   } catch (err) {
     console.error('Error loading departments:', err)
   }
@@ -399,7 +399,7 @@ async function exportPayroll() {
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.join(','))
+      ...rows.map((row: (string | number)[]) => row.join(','))
     ].join('\n')
 
     // Create and download file

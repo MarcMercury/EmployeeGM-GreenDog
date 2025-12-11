@@ -263,6 +263,22 @@
 </template>
 
 <script setup lang="ts">
+interface Patient {
+  id: string
+  name: string
+  species: string
+  breed: string
+  owner_name: string
+  owner_phone: string
+  reason: string
+  appointment_time: string
+  status: string
+  urgent: boolean
+  department: string
+  veterinarian: { name: string; initials: string }
+  notes?: string
+}
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
@@ -277,7 +293,7 @@ const loading = ref(false)
 const selectedDepartment = ref('general')
 const patientDialog = ref(false)
 const showAddPatient = ref(false)
-const selectedPatient = ref<any>(null)
+const selectedPatient = ref<Patient | null>(null)
 const addFormRef = ref()
 
 const snackbar = reactive({
@@ -312,7 +328,7 @@ const boardColumns = [
 ]
 
 // Sample patient data
-const patients = ref([
+const patients = ref<Patient[]>([
   { id: '1', name: 'Max', species: 'Dog', breed: 'Labrador', owner_name: 'John Smith', owner_phone: '555-1234', reason: 'Annual wellness exam', appointment_time: '09:00', status: 'waiting', urgent: false, department: 'general', veterinarian: { name: 'Dr. Johnson', initials: 'DJ' } },
   { id: '2', name: 'Luna', species: 'Cat', breed: 'Persian', owner_name: 'Sarah Davis', owner_phone: '555-5678', reason: 'Vaccinations', appointment_time: '09:30', status: 'in-exam', urgent: false, department: 'general', veterinarian: { name: 'Dr. Wilson', initials: 'DW' } },
   { id: '3', name: 'Rocky', species: 'Dog', breed: 'German Shepherd', owner_name: 'Mike Brown', owner_phone: '555-9012', reason: 'Limping - possible injury', appointment_time: '10:00', status: 'waiting', urgent: true, department: 'general', veterinarian: { name: 'Dr. Johnson', initials: 'DJ' } },
@@ -351,9 +367,10 @@ function getSpeciesIcon(species: string) {
   return icons[species] || 'mdi-paw'
 }
 
-function formatTime(time: string) {
+function formatTime(time: string | undefined) {
+  if (!time) return ''
   const [hours, minutes] = time.split(':')
-  const hour = parseInt(hours)
+  const hour = parseInt(hours || '0')
   const ampm = hour >= 12 ? 'PM' : 'AM'
   const displayHour = hour % 12 || 12
   return `${displayHour}:${minutes} ${ampm}`
@@ -365,9 +382,10 @@ function openPatientDetail(patient: any) {
 }
 
 function updatePatient() {
-  const index = patients.value.findIndex(p => p.id === selectedPatient.value.id)
+  if (!selectedPatient.value) return
+  const index = patients.value.findIndex(p => p.id === selectedPatient.value!.id)
   if (index !== -1) {
-    patients.value[index] = { ...selectedPatient.value }
+    patients.value[index] = { ...selectedPatient.value } as Patient
   }
   patientDialog.value = false
   snackbar.message = 'Patient updated successfully'
@@ -379,14 +397,22 @@ async function addPatient() {
   const { valid } = await addFormRef.value?.validate()
   if (!valid) return
 
-  patients.value.push({
+  const patient: Patient = {
     id: Date.now().toString(),
-    ...newPatient,
+    name: newPatient.name,
+    species: newPatient.species,
+    breed: newPatient.breed,
+    owner_name: newPatient.owner_name,
+    owner_phone: newPatient.owner_phone,
+    reason: newPatient.reason,
+    appointment_time: newPatient.appointment_time,
+    urgent: newPatient.urgent,
     status: 'waiting',
     department: selectedDepartment.value,
-    veterinarian: null,
+    veterinarian: { name: '', initials: '' },
     notes: ''
-  })
+  }
+  patients.value.push(patient)
 
   showAddPatient.value = false
   Object.assign(newPatient, {

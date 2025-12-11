@@ -390,10 +390,16 @@ function getStatusIcon(status: string) {
 async function fetchRequests() {
   loading.value = true
   try {
+    const profileId = authStore.profile?.id
+    if (!profileId) {
+      allRequests.value = []
+      return
+    }
+    
     const { data, error } = await supabase
       .from('time_off_requests')
       .select('*')
-      .eq('profile_id', authStore.profile?.id)
+      .eq('profile_id', profileId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -412,18 +418,27 @@ async function submitRequest() {
   const { valid } = await formRef.value?.validate()
   if (!valid) return
 
+  const profileId = authStore.profile?.id
+  const employeeId = userStore.employee?.id
+  if (!profileId || !employeeId) {
+    snackbar.message = 'User session not found'
+    snackbar.color = 'error'
+    snackbar.show = true
+    return
+  }
+
   submitting.value = true
   try {
     const { error } = await supabase
       .from('time_off_requests')
       .insert({
-        profile_id: authStore.profile?.id,
-        employee_id: userStore.employee?.id,
+        profile_id: profileId,
+        employee_id: employeeId,
         start_date: form.start_date,
         end_date: form.end_date,
         reason: form.reason || null,
         status: 'pending'
-      })
+      } as any)
 
     if (error) throw error
 

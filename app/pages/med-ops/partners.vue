@@ -87,7 +87,7 @@
         :items="filteredPartners"
         :search="search"
         hover
-        @click:row="(_, { item }) => openPartner(item)"
+        @click:row="(_: any, { item }: { item: any }) => openPartner(item)"
       >
         <template #item.name="{ item }">
           <div class="d-flex align-center gap-3">

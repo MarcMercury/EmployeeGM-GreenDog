@@ -119,13 +119,13 @@
         <h3 class="text-subtitle-1 font-weight-bold mb-3">Recent Searches</h3>
         <v-chip-group>
           <v-chip
-            v-for="search in recentSearches"
-            :key="search"
+            v-for="recentSearch in recentSearches"
+            :key="recentSearch"
             variant="outlined"
-            @click="searchQuery = search; search()"
+            @click="searchQuery = recentSearch"
           >
             <v-icon start size="small">mdi-history</v-icon>
-            {{ search }}
+            {{ recentSearch }}
           </v-chip>
         </v-chip-group>
       </div>

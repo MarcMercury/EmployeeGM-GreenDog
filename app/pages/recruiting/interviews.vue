@@ -413,7 +413,7 @@ const statusFilters = [
   { label: 'Pending', value: 'Pending', color: 'secondary' }
 ]
 
-const ratingCategories = [
+const ratingCategories: { key: keyof typeof sessionNotes.ratings; label: string }[] = [
   { key: 'technical', label: 'Technical Skills' },
   { key: 'communication', label: 'Communication' },
   { key: 'cultural_fit', label: 'Cultural Fit' },

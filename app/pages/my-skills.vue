@@ -338,8 +338,8 @@ async function loadSkillLibrary() {
     if (error) throw error
 
     // Filter out skills user already has as goals
-    const existingSkillIds = new Set(mySkills.value.map(s => s.skill_id))
-    availableGoalSkills.value = (data || []).filter(s => !existingSkillIds.has(s.id))
+    const existingSkillIds = new Set(mySkills.value.map((s: any) => s.skill_id))
+    availableGoalSkills.value = (data || []).filter((s: any) => !existingSkillIds.has(s.id))
   } catch (err) {
     console.error('Error loading skill library:', err)
   } finally {
@@ -361,17 +361,18 @@ async function addGoalSkill() {
       .select('id')
       .eq('employee_id', employeeId)
       .eq('skill_id', selectedGoalSkill.value)
-      .single()
+      .single() as { data: { id: string } | null }
 
     if (existing) {
       // Update existing to mark as goal
-      await supabase
+      const { error: updateError } = await (supabase as any)
         .from('employee_skills')
         .update({ is_goal: true })
         .eq('id', existing.id)
+      if (updateError) throw updateError
     } else {
       // Create new skill with is_goal = true
-      await supabase
+      const { error: insertError } = await (supabase as any)
         .from('employee_skills')
         .insert({
           employee_id: employeeId,
@@ -379,6 +380,7 @@ async function addGoalSkill() {
           level: 0,
           is_goal: true
         })
+      if (insertError) throw insertError
     }
 
     snackbar.message = 'Learning goal added!'

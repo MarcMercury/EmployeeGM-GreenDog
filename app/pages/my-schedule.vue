@@ -275,10 +275,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useOperationsStore, type Shift } from '~/stores/operations'
-import { useUserStore } from '~/stores/user'
-import { useEmployeeStore } from '~/stores/employee'
+import type { Shift } from '~/stores/operations'
 
 // Middleware
 definePageMeta({
@@ -298,6 +295,7 @@ const toast = useToast()
 const supabase = useSupabaseClient()
 
 // State
+const myShifts = ref<Shift[]>([])
 const swapDialog = ref(false)
 const dropDialog = ref(false)
 const swapShift = ref<Shift | null>(null)
@@ -341,20 +339,37 @@ const todayFormatted = computed(() => {
 
 const currentGreeting = computed(() => {
   const hour = new Date().getHours()
-  const name = userStore.currentEmployee?.profile?.first_name || 'there'
+  const name = userStore.profile?.first_name || 'there'
   if (hour < 12) return `Good morning, ${name}`
   if (hour < 17) return `Good afternoon, ${name}`
   return `Good evening, ${name}`
 })
 
-const weeklyHours = computed(() => opsStore.weeklyHours || 0)
-const upcomingShiftCount = computed(() => opsStore.upcomingShifts?.length || 0)
-const pendingRequestCount = computed(() => opsStore.pendingRequests?.length || 0)
+const weeklyHours = computed(() => {
+  // Calculate weekly hours from myShifts
+  const now = new Date()
+  const weekStart = new Date(now.setDate(now.getDate() - now.getDay()))
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekEnd.getDate() + 7)
+  
+  return myShifts.value.filter(s => {
+    const shiftDate = new Date(s.start_at)
+    return shiftDate >= weekStart && shiftDate < weekEnd
+  }).reduce((total, shift) => {
+    const start = new Date(shift.start_at)
+    const end = new Date(shift.end_at)
+    return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+  }, 0)
+})
+const upcomingShiftCount = computed(() => myShifts.value.filter(s => new Date(s.start_at) > new Date()).length)
+const pendingRequestCount = computed(() => 0) // Placeholder until we have time off requests
 
 const availableEmployees = computed(() => {
-  return employeeStore.employees?.map(e => ({
+  return employeeStore.employees?.map((e: any) => ({
     id: e.id,
-    name: e.full_name || `${e.first_name} ${e.last_name}`
+    name: e.profile?.first_name && e.profile?.last_name 
+      ? `${e.profile.first_name} ${e.profile.last_name}`
+      : e.id
   })) || []
 })
 
@@ -401,12 +416,16 @@ function formatDateRange(start: string, end: string) {
 
 function formatShiftInfo(shift: Shift) {
   if (!shift) return ''
-  const date = new Date(shift.date).toLocaleDateString('en-US', {
+  const startDate = new Date(shift.start_at)
+  const endDate = new Date(shift.end_at)
+  const date = startDate.toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric'
   })
-  return `${date} • ${shift.start_time} - ${shift.end_time}`
+  const startTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const endTime = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${date} • ${startTime} - ${endTime}`
 }
 
 function openSwapDialog(shift: Shift) {
@@ -477,12 +496,21 @@ async function fetchUpcomingTimeOff() {
 
 // Initialize
 onMounted(async () => {
-  await Promise.all([
-    userStore.fetchUserData(),
-    opsStore.fetchMySchedule?.(),
-    employeeStore.fetchEmployees?.(),
-    fetchUpcomingTimeOff()
-  ])
+  await userStore.fetchUserData()
+  
+  // Fetch my shifts
+  const employeeId = userStore.employee?.id
+  if (employeeId) {
+    const now = new Date()
+    const startDate = new Date(now.setDate(now.getDate() - 7)).toISOString().split('T')[0] || ''
+    const endDate = new Date(now.setDate(now.getDate() + 30)).toISOString().split('T')[0] || ''
+    
+    await opsStore.fetchShifts(startDate, endDate)
+    myShifts.value = opsStore.shifts.filter(s => s.employee_id === employeeId)
+  }
+  
+  await employeeStore.fetchEmployees?.()
+  await fetchUpcomingTimeOff()
 })
 </script>
 

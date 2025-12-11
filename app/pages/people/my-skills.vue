@@ -299,11 +299,17 @@ const fetchSkills = async () => {
   loading.value = true
   try {
     // Get current user's employee record
+    const email = user.value?.email
+    if (!email) {
+      loading.value = false
+      return
+    }
+    
     const { data: employee } = await client
       .from('employees')
       .select('id')
-      .eq('email', user.value?.email)
-      .single()
+      .eq('email', email)
+      .single() as { data: { id: string } | null }
     
     if (!employee) {
       loading.value = false

@@ -112,7 +112,7 @@
         :items="filteredPartners"
         :search="searchQuery"
         hover
-        @click:row="(event, { item }) => viewPartner(item)"
+        @click:row="(_event: any, { item }: { item: any }) => viewPartner(item)"
       >
         <template #item.name="{ item }">
           <div class="d-flex align-center py-2">
@@ -859,7 +859,10 @@ function savePartner() {
   if (editMode.value) {
     const index = partners.value.findIndex(p => p.id === form.id)
     if (index !== -1) {
-      partners.value[index] = { ...form, needs_followup: partners.value[index].needs_followup, activities: partners.value[index].activities }
+      const existing = partners.value[index]
+      if (existing) {
+        partners.value[index] = { ...form, needs_followup: existing.needs_followup, activities: existing.activities }
+      }
     }
     snackbar.message = 'Partner updated'
   } else {
