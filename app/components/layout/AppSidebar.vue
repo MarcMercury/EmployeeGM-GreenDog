@@ -88,9 +88,9 @@
           />
         </template>
         <v-list-item to="/schedule" title="Schedule" prepend-icon="mdi-calendar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/schedule/builder" title="Schedule Builder" prepend-icon="mdi-view-dashboard-edit" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/time-off" title="Time Off" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/training" title="Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/ops" title="Ops Center" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/schedule" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
 

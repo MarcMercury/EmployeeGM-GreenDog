@@ -1,22 +1,71 @@
 <script setup lang="ts">
 /**
- * Schedule Builder - Admin Only
- * Drag-and-drop schedule creation with conflict detection
+ * Schedule Builder v2 - The "Cockpit"
+ * High-density admin scheduling interface with drag-and-drop
+ * 
+ * Features:
+ * - Dense employee sidebar ("The Bench") with workload counters
+ * - Location-based grid with shift slots
+ * - Drag-and-drop with conflict prevention
+ * - Save as Template / Load Template
+ * - Close Clinic functionality
+ * - Attendance color coding
  */
+import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns'
+import type { ScheduleShift, ScheduleEmployee } from '~/composables/useScheduleRules'
+
 definePageMeta({
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'admin-only'],
+  layout: 'default'
 })
 
-import { format, addDays, startOfWeek, endOfWeek, isSameDay } from 'date-fns'
-
+// Stores and composables
 const scheduleStore = useScheduleBuilderStore()
-const { employees, isAdmin } = useAppData()
-const { validateAssignment, getValidationClass, getEmployeeHours } = useScheduleRules()
+const { employees, locations, isAdmin, departments, positions } = useAppData()
+const { validateAssignment, getEmployeeHours, calculateHours } = useScheduleRules()
+const uiStore = useUIStore()
+const supabase = useSupabaseClient()
 
-// Week navigation
+// --- State ---
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 1 }))
 
-// Days of the week
+// Sidebar filters
+const employeeSearch = ref('')
+const filterDepartment = ref<string | null>(null)
+const filterPosition = ref<string | null>(null)
+
+// Grid options
+const visibleLocations = ref<string[]>([])
+const showLocationPicker = ref(false)
+
+// Drag state
+const draggedEmployee = ref<ScheduleEmployee | null>(null)
+const dragOverSlotKey = ref<string | null>(null)
+const dropValidation = ref<{ valid: boolean; message: string | null } | null>(null)
+
+// Templates
+const showTemplateDialog = ref(false)
+const showLoadTemplateDialog = ref(false)
+const templateName = ref('')
+const templates = ref<{ id: string; name: string; description: string | null }[]>([])
+const selectedTemplateId = ref<string | null>(null)
+
+// Context menu
+const contextMenu = ref({
+  show: false,
+  x: 0,
+  y: 0,
+  locationId: '',
+  date: '',
+  locationName: ''
+})
+
+// Dialogs
+const showDiscardDialog = ref(false)
+const showPublishDialog = ref(false)
+const showAutoSuggestDialog = ref(false)
+
+// --- Computed ---
 const weekDays = computed(() => {
   const days = []
   for (let i = 0; i < 7; i++) {
@@ -25,12 +74,153 @@ const weekDays = computed(() => {
   return days
 })
 
-// Load schedule on mount and week change
-watch(currentWeekStart, (newWeek) => {
-  scheduleStore.loadWeek(newWeek)
-}, { immediate: true })
+// All unique department names
+const departmentOptions = computed(() => 
+  departments.value.map(d => ({ title: d.name, value: d.id }))
+)
 
-// Navigate weeks
+// All unique position titles
+const positionOptions = computed(() => 
+  positions.value.map(p => ({ title: p.title, value: p.id }))
+)
+
+// Filtered employees for the bench
+const filteredEmployees = computed(() => {
+  let result = employees.value.filter(e => e.is_active)
+  
+  if (employeeSearch.value) {
+    const search = employeeSearch.value.toLowerCase()
+    result = result.filter(e => 
+      e.full_name.toLowerCase().includes(search) ||
+      (e.position?.title || '').toLowerCase().includes(search)
+    )
+  }
+  
+  if (filterDepartment.value) {
+    result = result.filter(e => e.department?.id === filterDepartment.value)
+  }
+  
+  if (filterPosition.value) {
+    result = result.filter(e => e.position?.id === filterPosition.value)
+  }
+  
+  return result
+})
+
+// Visible locations for the grid
+const activeLocations = computed(() => {
+  if (visibleLocations.value.length === 0) {
+    // Show all locations by default
+    return locations.value
+  }
+  return locations.value.filter(l => visibleLocations.value.includes(l.id))
+})
+
+// Get shifts grouped by location and day
+const shiftMatrix = computed(() => {
+  const matrix: Record<string, Record<string, ScheduleShift[]>> = {}
+  
+  activeLocations.value.forEach(loc => {
+    matrix[loc.id] = {}
+    weekDays.value.forEach(day => {
+      const dateStr = format(day, 'yyyy-MM-dd')
+      matrix[loc.id][dateStr] = scheduleStore.draftShifts.filter(s => 
+        s.location_id === loc.id && 
+        s.start_at.startsWith(dateStr)
+      ).sort((a, b) => a.start_at.localeCompare(b.start_at))
+    })
+  })
+  
+  return matrix
+})
+
+// Check if location/day is closed
+const isLocationDayClosed = (locationId: string, dateStr: string): boolean => {
+  const shifts = shiftMatrix.value[locationId]?.[dateStr] || []
+  return shifts.length > 0 && shifts.every(s => s.status === 'closed_clinic')
+}
+
+// Get workload count (shifts assigned) for an employee this week
+const getEmployeeShiftCount = (employeeId: string): number => {
+  return scheduleStore.draftShifts.filter(s => s.employee_id === employeeId).length
+}
+
+// Get employee by ID
+const getEmployee = (employeeId: string | null) => {
+  if (!employeeId) return null
+  return employees.value.find(e => e.id === employeeId)
+}
+
+// --- Drag & Drop ---
+const handleDragStart = (employee: any, event: DragEvent) => {
+  draggedEmployee.value = {
+    id: employee.id,
+    first_name: employee.first_name,
+    last_name: employee.last_name,
+    full_name: employee.full_name,
+    initials: employee.initials,
+    avatar_url: employee.avatar_url,
+    position: employee.position,
+    hoursScheduled: getEmployeeHours(employee.id, scheduleStore.draftShifts)
+  }
+  event.dataTransfer?.setData('text/plain', employee.id)
+}
+
+const handleDragEnd = () => {
+  draggedEmployee.value = null
+  dragOverSlotKey.value = null
+  dropValidation.value = null
+}
+
+const handleDragOver = (shift: ScheduleShift, event: DragEvent) => {
+  event.preventDefault()
+  const key = `${shift.id}`
+  dragOverSlotKey.value = key
+  
+  if (draggedEmployee.value) {
+    const validation = validateAssignment(
+      draggedEmployee.value,
+      shift,
+      scheduleStore.draftShifts
+    )
+    dropValidation.value = { valid: validation.valid || validation.type === 'warning', message: validation.message }
+  }
+}
+
+const handleDragLeave = () => {
+  dragOverSlotKey.value = null
+  dropValidation.value = null
+}
+
+const handleDrop = (shift: ScheduleShift, event: DragEvent) => {
+  event.preventDefault()
+  
+  if (!draggedEmployee.value) return
+  
+  const validation = validateAssignment(
+    draggedEmployee.value,
+    shift,
+    scheduleStore.draftShifts
+  )
+  
+  if (validation.type === 'error') {
+    uiStore.showError(validation.message || 'Cannot assign employee')
+  } else {
+    if (validation.type === 'warning') {
+      uiStore.showWarning(validation.message || 'Warning')
+    }
+    scheduleStore.assignEmployee(shift.id, draggedEmployee.value.id)
+    uiStore.showSuccess(`Assigned ${draggedEmployee.value.first_name} to shift`)
+  }
+  
+  handleDragEnd()
+}
+
+const unassignEmployee = (shiftId: string) => {
+  scheduleStore.unassignEmployee(shiftId)
+}
+
+// --- Week Navigation ---
 const previousWeek = () => {
   currentWeekStart.value = addDays(currentWeekStart.value, -7)
 }
@@ -43,311 +233,569 @@ const goToToday = () => {
   currentWeekStart.value = startOfWeek(new Date(), { weekStartsOn: 1 })
 }
 
-// Get shifts for a specific day
-const getShiftsForDay = (date: Date) => {
-  const dateStr = format(date, 'yyyy-MM-dd')
-  return scheduleStore.shiftsByDate[dateStr] || []
-}
-
-// Drag and drop
-const draggedEmployeeId = ref<string | null>(null)
-const dragOverSlotId = ref<string | null>(null)
-
-const handleDragStart = (employeeId: string) => {
-  draggedEmployeeId.value = employeeId
-}
-
-const handleDragEnd = () => {
-  draggedEmployeeId.value = null
-  dragOverSlotId.value = null
-}
-
-const handleDragOver = (shiftId: string, e: DragEvent) => {
-  e.preventDefault()
-  dragOverSlotId.value = shiftId
-}
-
-const handleDrop = async (shift: any, e: DragEvent) => {
-  e.preventDefault()
-  if (!draggedEmployeeId.value) return
-
-  const employee = employees.value.find((emp: any) => emp.id === draggedEmployeeId.value)
-  if (!employee) return
-
-  // Validate assignment
-  const validation = validateAssignment(
-    employee,
-    shift,
-    scheduleStore.draftShifts
-  )
-
-  if (validation.valid) {
-    scheduleStore.assignEmployee(shift.id, draggedEmployeeId.value)
-  } else {
-    // Show warning but allow override for warnings
-    if (validation.type === 'warning') {
-      scheduleStore.assignEmployee(shift.id, draggedEmployeeId.value)
-    }
-    // Block if error
+// --- Context Menu (Close Clinic) ---
+const openContextMenu = (event: MouseEvent, locationId: string, date: Date) => {
+  event.preventDefault()
+  const loc = locations.value.find(l => l.id === locationId)
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    locationId,
+    date: format(date, 'yyyy-MM-dd'),
+    locationName: loc?.name || 'Location'
   }
-
-  handleDragEnd()
 }
 
-// Confirm dialog
-const showDiscardDialog = ref(false)
-const showPublishDialog = ref(false)
+const closeContextMenu = () => {
+  contextMenu.value.show = false
+}
+
+const toggleClinicClosed = () => {
+  const { locationId, date } = contextMenu.value
+  const isClosed = isLocationDayClosed(locationId, date)
+  
+  if (isClosed) {
+    scheduleStore.reopenLocation(locationId, date)
+    uiStore.showSuccess('Clinic reopened')
+  } else {
+    scheduleStore.closeLocation(locationId, date)
+    uiStore.showInfo('Clinic marked as closed')
+  }
+  
+  closeContextMenu()
+}
+
+// --- Templates ---
+const loadTemplates = async () => {
+  const { data } = await supabase
+    .from('schedule_templates')
+    .select('id, name, description')
+    .eq('is_active', true)
+    .order('name')
+  
+  templates.value = data || []
+}
+
+const saveAsTemplate = async () => {
+  if (!templateName.value.trim()) {
+    uiStore.showError('Please enter a template name')
+    return
+  }
+  
+  try {
+    // Create template
+    const { data: template, error: templateError } = await supabase
+      .from('schedule_templates')
+      .insert({
+        name: templateName.value.trim(),
+        description: `Week of ${format(currentWeekStart.value, 'MMM d, yyyy')}`
+      })
+      .select()
+      .single()
+    
+    if (templateError) throw templateError
+    
+    // Save template shifts
+    const templateShifts = scheduleStore.draftShifts.map(shift => {
+      const shiftDate = parseISO(shift.start_at)
+      const dayOfWeek = (shiftDate.getDay() + 6) % 7 // Convert to Mon=0, Sun=6
+      
+      return {
+        template_id: template.id,
+        day_of_week: dayOfWeek,
+        start_time: format(parseISO(shift.start_at), 'HH:mm:ss'),
+        end_time: format(parseISO(shift.end_at), 'HH:mm:ss'),
+        location_id: shift.location_id,
+        role_required: shift.role_required,
+        employee_id: shift.employee_id
+      }
+    })
+    
+    const { error: shiftsError } = await supabase
+      .from('schedule_template_shifts')
+      .insert(templateShifts)
+    
+    if (shiftsError) throw shiftsError
+    
+    uiStore.showSuccess(`Template "${templateName.value}" saved!`)
+    templateName.value = ''
+    showTemplateDialog.value = false
+    await loadTemplates()
+  } catch (err) {
+    console.error('Error saving template:', err)
+    uiStore.showError('Failed to save template')
+  }
+}
+
+const applyTemplate = async () => {
+  if (!selectedTemplateId.value) return
+  
+  try {
+    const { data: templateShifts } = await supabase
+      .from('schedule_template_shifts')
+      .select('*')
+      .eq('template_id', selectedTemplateId.value)
+    
+    if (!templateShifts?.length) {
+      uiStore.showError('Template has no shifts')
+      return
+    }
+    
+    // Create shifts from template for current week
+    const newShifts = templateShifts.map(ts => {
+      const targetDay = addDays(currentWeekStart.value, ts.day_of_week)
+      const [startHour, startMin] = ts.start_time.split(':').map(Number)
+      const [endHour, endMin] = ts.end_time.split(':').map(Number)
+      
+      const startAt = new Date(targetDay)
+      startAt.setHours(startHour, startMin, 0, 0)
+      
+      const endAt = new Date(targetDay)
+      endAt.setHours(endHour, endMin, 0, 0)
+      
+      return {
+        location_id: ts.location_id,
+        start_at: startAt.toISOString(),
+        end_at: endAt.toISOString(),
+        role_required: ts.role_required,
+        employee_id: ts.employee_id,
+        status: 'draft',
+        is_open_shift: !ts.employee_id,
+        is_published: false
+      }
+    })
+    
+    const { error } = await supabase
+      .from('shifts')
+      .insert(newShifts)
+    
+    if (error) throw error
+    
+    uiStore.showSuccess('Template applied! Reloading schedule...')
+    showLoadTemplateDialog.value = false
+    selectedTemplateId.value = null
+    await scheduleStore.loadWeek(currentWeekStart.value)
+  } catch (err) {
+    console.error('Error applying template:', err)
+    uiStore.showError('Failed to apply template')
+  }
+}
+
+// --- Auto-Suggest ---
+const autoSuggest = () => {
+  const openShifts = scheduleStore.draftShifts.filter(s => 
+    !s.employee_id && s.status !== 'closed_clinic'
+  )
+  
+  if (openShifts.length === 0) {
+    uiStore.showInfo('No open shifts to fill')
+    return
+  }
+  
+  let assigned = 0
+  
+  openShifts.forEach(shift => {
+    // Find available employees
+    const available = employees.value.filter(emp => {
+      if (!emp.is_active) return false
+      
+      // Check if role matches
+      if (shift.role_required) {
+        const empTitle = emp.position?.title || ''
+        if (!empTitle.toLowerCase().includes(shift.role_required.toLowerCase())) {
+          return false
+        }
+      }
+      
+      // Check for conflicts
+      const validation = validateAssignment(
+        {
+          id: emp.id,
+          first_name: emp.first_name,
+          last_name: emp.last_name,
+          full_name: emp.full_name,
+          initials: emp.initials,
+          position: emp.position
+        },
+        shift,
+        scheduleStore.draftShifts
+      )
+      
+      return validation.valid
+    })
+    
+    if (available.length > 0) {
+      // Sort by least hours worked this week
+      available.sort((a, b) => 
+        getEmployeeHours(a.id, scheduleStore.draftShifts) - 
+        getEmployeeHours(b.id, scheduleStore.draftShifts)
+      )
+      
+      scheduleStore.assignEmployee(shift.id, available[0].id)
+      assigned++
+    }
+  })
+  
+  if (assigned > 0) {
+    uiStore.showSuccess(`Auto-assigned ${assigned} shift${assigned > 1 ? 's' : ''}`)
+  } else {
+    uiStore.showWarning('No suitable employees found for open shifts')
+  }
+  
+  showAutoSuggestDialog.value = false
+}
+
+// --- Save/Publish ---
+const handleSave = async () => {
+  const success = await scheduleStore.saveDraft()
+  if (success) {
+    uiStore.showSuccess('Schedule saved')
+  } else {
+    uiStore.showError('Failed to save schedule')
+  }
+}
 
 const handleDiscard = () => {
   scheduleStore.discardChanges()
   showDiscardDialog.value = false
-}
-
-const handleSave = async () => {
-  const success = await scheduleStore.saveDraft()
-  if (success) {
-    // Show success toast
-  }
+  uiStore.showInfo('Changes discarded')
 }
 
 const handlePublish = async () => {
   const success = await scheduleStore.publishSchedule()
   if (success) {
     showPublishDialog.value = false
-    // Show success toast
+    uiStore.showSuccess('Schedule published! Employees will be notified.')
+  } else {
+    uiStore.showError('Failed to publish schedule')
   }
 }
 
-// Employee hours for the week
-const getHoursForEmployee = (employeeId: string) => {
-  return getEmployeeHours(employeeId, scheduleStore.draftShifts)
+// --- Shift slot styling based on attendance (for past shifts) ---
+const getShiftStatusClass = (shift: ScheduleShift): string => {
+  if (shift.status === 'closed_clinic') return 'slot-closed'
+  if (!shift.employee_id) return 'slot-open'
+  
+  // For past shifts, we would check time_punches here
+  // This is a placeholder - actual implementation would query attendance data
+  const now = new Date()
+  const shiftStart = parseISO(shift.start_at)
+  
+  if (shiftStart < now) {
+    // Past shift - check attendance status
+    if (shift.status === 'completed') return 'slot-ontime'
+    if (shift.status === 'missed') return 'slot-absent'
+    // Could also check for 'late', 'pto' based on time_punches
+    return 'slot-filled'
+  }
+  
+  return 'slot-filled'
+}
+
+// Format time for display
+const formatShiftTime = (startAt: string, endAt: string): string => {
+  return `${format(parseISO(startAt), 'h:mm a')} - ${format(parseISO(endAt), 'h:mm a')}`
+}
+
+// --- Lifecycle ---
+watch(currentWeekStart, (newWeek) => {
+  scheduleStore.loadWeek(newWeek)
+}, { immediate: true })
+
+onMounted(async () => {
+  // Initialize visible locations to all
+  visibleLocations.value = locations.value.map(l => l.id)
+  await loadTemplates()
+})
+
+// Click outside to close context menu
+const handleClickOutside = () => {
+  if (contextMenu.value.show) {
+    closeContextMenu()
+  }
 }
 </script>
 
 <template>
-  <ClientOnly>
-    <div class="schedule-builder min-h-[calc(100vh-64px)]">
-      <!-- Loading State -->
-      <div v-if="scheduleStore.isLoading" class="d-flex flex-column justify-center align-center py-12 h-full">
-        <v-progress-circular indeterminate color="primary" size="48" />
-        <span class="mt-4 text-grey">Loading schedule...</span>
+  <div class="schedule-cockpit" @click="handleClickOutside">
+    <!-- Loading Overlay -->
+    <div v-if="scheduleStore.isLoading" class="loading-overlay">
+      <v-progress-circular indeterminate color="primary" size="48" />
+      <span class="mt-4 text-grey">Loading schedule...</span>
+    </div>
+
+    <!-- Header Bar -->
+    <header class="cockpit-header">
+      <div class="header-left">
+        <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
+        <v-chip color="error" variant="flat" size="x-small" class="ml-2">ADMIN</v-chip>
       </div>
 
-      <!-- Error State -->
-      <v-alert v-else-if="scheduleStore.error" type="error" class="ma-4">
-        {{ scheduleStore.error }}
-        <v-btn variant="text" size="small" @click="scheduleStore.loadWeek(currentWeekStart)">
-          Retry
+      <div class="header-center">
+        <v-btn icon="mdi-chevron-left" size="small" variant="text" @click="previousWeek" />
+        <v-btn variant="tonal" size="x-small" class="mx-1" @click="goToToday">Today</v-btn>
+        <span class="week-label">
+          {{ format(currentWeekStart, 'MMM d') }} – {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+        </span>
+        <v-btn icon="mdi-chevron-right" size="small" variant="text" @click="nextWeek" />
+      </div>
+
+      <div class="header-right">
+        <!-- Stats -->
+        <v-chip variant="tonal" size="small" color="success" class="mr-1">
+          <v-icon start size="14">mdi-account-check</v-icon>
+          {{ scheduleStore.shiftStats.filled }}
+        </v-chip>
+        <v-chip variant="tonal" size="small" color="warning" class="mr-1">
+          <v-icon start size="14">mdi-account-clock</v-icon>
+          {{ scheduleStore.shiftStats.open }}
+        </v-chip>
+        <v-chip v-if="scheduleStore.shiftStats.closed > 0" variant="tonal" size="small" color="grey">
+          <v-icon start size="14">mdi-cancel</v-icon>
+          {{ scheduleStore.shiftStats.closed }}
+        </v-chip>
+        
+        <v-divider vertical class="mx-2" />
+        
+        <!-- Smart Tools -->
+        <v-btn 
+          variant="text" 
+          size="small" 
+          prepend-icon="mdi-auto-fix"
+          @click="showAutoSuggestDialog = true"
+        >
+          Auto-Fill
         </v-btn>
-      </v-alert>
-
-      <!-- Main Content -->
-      <template v-else>
-        <!-- Header -->
-        <div class="builder-header">
-          <div class="header-left">
-            <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
-            <v-chip color="primary" variant="flat" size="small" class="ml-2">
-              Admin Only
-            </v-chip>
-          </div>
-
-          <div class="header-center">
-            <v-btn icon="mdi-chevron-left" variant="text" @click="previousWeek" />
-            <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">
-              Today
+        
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn variant="text" size="small" prepend-icon="mdi-content-save-cog" v-bind="props">
+              Templates
             </v-btn>
-            <span class="week-range">
-              {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
-            </span>
-            <v-btn icon="mdi-chevron-right" variant="text" @click="nextWeek" />
-          </div>
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-content-save" @click="showTemplateDialog = true">
+              <v-list-item-title>Save as Template</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-download" @click="showLoadTemplateDialog = true; loadTemplates()">
+              <v-list-item-title>Load Template</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+        
+        <v-btn 
+          variant="text" 
+          size="small" 
+          prepend-icon="mdi-eye-settings"
+          @click="showLocationPicker = true"
+        >
+          View
+        </v-btn>
+      </div>
+    </header>
 
-          <div class="header-right">
-            <v-chip variant="outlined" size="small" class="mr-2">
-              <v-icon start size="small">mdi-account-check</v-icon>
-              {{ scheduleStore.shiftStats.filled }} Filled
-            </v-chip>
-            <v-chip variant="outlined" size="small" color="warning" class="mr-2">
-              <v-icon start size="small">mdi-account-clock</v-icon>
-              {{ scheduleStore.shiftStats.open }} Open
-            </v-chip>
+    <!-- Main Content -->
+    <div class="cockpit-body">
+      <!-- LEFT: Employee Bench -->
+      <aside class="employee-bench">
+        <div class="bench-header">
+          <div class="text-caption font-weight-medium text-grey-darken-2 mb-1">
+            TEAM BENCH
+          </div>
+          <v-text-field
+            v-model="employeeSearch"
+            placeholder="Search..."
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="mb-1"
+          />
+          <div class="d-flex gap-1">
+            <v-select
+              v-model="filterDepartment"
+              :items="departmentOptions"
+              placeholder="Dept"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              class="flex-grow-1"
+              style="max-width: 50%"
+            />
+            <v-select
+              v-model="filterPosition"
+              :items="positionOptions"
+              placeholder="Role"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              class="flex-grow-1"
+              style="max-width: 50%"
+            />
           </div>
         </div>
 
-        <!-- Main content: Resource Bench + Grid -->
-        <div class="builder-content">
-          <!-- Resource Bench (Left sidebar) -->
-          <div class="resource-bench">
-            <div class="bench-header">
-              <h3 class="text-subtitle-1 font-weight-medium">Team Roster</h3>
-              <v-text-field
-                density="compact"
-                variant="outlined"
-                placeholder="Filter..."
-                prepend-inner-icon="mdi-magnify"
-                hide-details
-                class="mt-2"
-              />
-            </div>
-
-        <div class="bench-employees">
+        <div class="bench-list">
           <div
-            v-for="emp in employees"
+            v-for="emp in filteredEmployees"
             :key="emp.id"
-            class="employee-card"
+            class="bench-employee"
             draggable="true"
-            @dragstart="handleDragStart(emp.id)"
+            @dragstart="handleDragStart(emp, $event)"
             @dragend="handleDragEnd"
           >
-            <v-avatar size="36" color="primary" class="mr-3">
-              <span class="text-white text-caption">
-                {{ emp.first_name?.charAt(0) }}{{ emp.last_name?.charAt(0) }}
-              </span>
+            <v-avatar size="24" :color="emp.avatar_url ? undefined : 'primary'" class="mr-2">
+              <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
+              <span v-else class="text-white text-caption">{{ emp.initials }}</span>
             </v-avatar>
-            <div class="employee-info">
-              <div class="font-weight-medium">
-                {{ emp.first_name }} {{ emp.last_name }}
-              </div>
-              <div class="text-caption text-grey">
-                {{ emp.position?.title || 'Employee' }}
-              </div>
+            <div class="employee-name">
+              {{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.
             </div>
-            <div class="employee-hours">
-              <v-chip size="x-small" :color="getHoursForEmployee(emp.id) > 40 ? 'error' : 'grey'">
-                {{ getHoursForEmployee(emp.id).toFixed(1) }}h
-              </v-chip>
-            </div>
-          </div>
-
-          <div v-if="employees.length === 0" class="text-center pa-4 text-grey">
-            No employees found
-          </div>
-        </div>
-      </div>
-
-      <!-- Schedule Grid (Main area) -->
-      <div class="schedule-grid">
-        <v-progress-linear v-if="scheduleStore.isLoading" indeterminate color="primary" />
-
-        <!-- Day Headers -->
-        <div class="grid-header">
-          <div v-for="day in weekDays" :key="day.toISOString()" class="day-header">
-            <div class="day-name" :class="{ 'is-today': isSameDay(day, new Date()) }">
-              {{ format(day, 'EEE') }}
-            </div>
-            <div class="day-date">{{ format(day, 'MMM d') }}</div>
-          </div>
-        </div>
-
-        <!-- Shifts Grid -->
-        <div class="grid-body">
-          <div v-for="day in weekDays" :key="day.toISOString()" class="day-column">
-            <!-- Shift slots -->
-            <div
-              v-for="shift in getShiftsForDay(day)"
-              :key="shift.id"
-              class="shift-slot"
-              :class="{
-                'is-filled': shift.employee_id != null,
-                'is-open': shift.employee_id == null && shift.status !== 'closed_clinic',
-                'is-closed': shift.status === 'closed_clinic',
-                'drag-over': dragOverSlotId === shift.id,
-                [getValidationClass(draggedEmployeeId ? validateAssignment(employees.find(e => e.id === draggedEmployeeId)!, shift, scheduleStore.draftShifts) : null)]: draggedEmployeeId
-              }"
-              @dragover="handleDragOver(shift.id, $event)"
-              @dragleave="dragOverSlotId = null"
-              @drop="handleDrop(shift, $event)"
+            <v-chip 
+              size="x-small" 
+              :color="getEmployeeShiftCount(emp.id) >= 5 ? 'warning' : 'grey'" 
+              variant="tonal"
+              class="workload-badge"
             >
-              <div class="shift-time">
-                {{ format(new Date(shift.start_at), 'h:mm a') }} - 
-                {{ format(new Date(shift.end_at), 'h:mm a') }}
-              </div>
-              <div class="shift-location text-caption">
-                {{ shift.location_name || 'Location' }}
-              </div>
-
-              <!-- Assigned employee -->
-              <div v-if="shift.employee_id" class="assigned-employee">
-                <v-chip
-                  size="small"
-                  closable
-                  @click:close="scheduleStore.unassignEmployee(shift.id)"
-                >
-                  {{ employees.find(e => e.id === shift.employee_id)?.first_name }}
-                </v-chip>
-              </div>
-
-              <!-- Empty state -->
-              <div v-else-if="shift.status !== 'closed_clinic'" class="empty-slot">
-                <v-icon size="small" color="grey">mdi-account-plus</v-icon>
-                <span class="text-caption">Drop here</span>
-              </div>
-
-              <!-- Closed state -->
-              <div v-else class="closed-slot">
-                <v-icon size="small" color="grey">mdi-cancel</v-icon>
-                <span class="text-caption">Closed</span>
-              </div>
-            </div>
-
-            <!-- No shifts for day - Show empty slot placeholder -->
-            <div v-if="getShiftsForDay(day).length === 0" class="empty-day-placeholder">
-              <v-icon size="24" color="grey-lighten-1">mdi-calendar-blank</v-icon>
-              <span class="text-caption text-grey mt-1">No shifts scheduled</span>
-              <v-btn 
-                variant="text" 
-                size="x-small" 
-                color="primary"
-                class="mt-2"
-              >
-                + Add Shift
-              </v-btn>
-            </div>
+              {{ getEmployeeShiftCount(emp.id) }}
+            </v-chip>
+          </div>
+          
+          <div v-if="filteredEmployees.length === 0" class="text-center py-4 text-grey text-caption">
+            No employees match filters
           </div>
         </div>
         
-        <!-- Empty Week State -->
-        <div v-if="scheduleStore.draftShifts.length === 0 && !scheduleStore.isLoading" class="empty-week-overlay">
-          <v-icon size="64" color="grey-lighten-1">mdi-calendar-clock</v-icon>
-          <h3 class="text-h6 mt-4">No Shifts This Week</h3>
-          <p class="text-body-2 text-grey mt-2">
-            Shifts haven't been created for {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d') }}
-          </p>
-          <v-btn color="primary" class="mt-4" prepend-icon="mdi-plus">
-            Create Shifts
-          </v-btn>
+        <div class="bench-footer text-caption text-grey">
+          {{ filteredEmployees.length }} employees
         </div>
-      </div>
+      </aside>
+
+      <!-- RIGHT: Schedule Grid -->
+      <main class="schedule-grid">
+        <!-- Grid Header: Days + Locations -->
+        <div class="grid-header">
+          <div class="location-header-spacer"></div>
+          <div 
+            v-for="day in weekDays" 
+            :key="day.toISOString()" 
+            class="day-header"
+            :class="{ 'is-today': isSameDay(day, new Date()) }"
+          >
+            <div class="day-name">{{ format(day, 'EEE') }}</div>
+            <div class="day-date">{{ format(day, 'M/d') }}</div>
+          </div>
+        </div>
+
+        <!-- Grid Body: Location rows -->
+        <div class="grid-body">
+          <div 
+            v-for="location in activeLocations" 
+            :key="location.id"
+            class="location-row"
+          >
+            <!-- Location Label -->
+            <div class="location-label">
+              <v-icon size="14" class="mr-1">mdi-map-marker</v-icon>
+              {{ location.name }}
+            </div>
+            
+            <!-- Day Columns -->
+            <div 
+              v-for="day in weekDays" 
+              :key="`${location.id}-${day.toISOString()}`"
+              class="day-cell"
+              :class="{ 
+                'is-closed': isLocationDayClosed(location.id, format(day, 'yyyy-MM-dd')),
+                'is-today': isSameDay(day, new Date())
+              }"
+              @contextmenu="openContextMenu($event, location.id, day)"
+            >
+              <!-- Shift Slots -->
+              <div 
+                v-for="shift in shiftMatrix[location.id]?.[format(day, 'yyyy-MM-dd')] || []"
+                :key="shift.id"
+                class="shift-slot"
+                :class="[
+                  getShiftStatusClass(shift),
+                  { 'drag-over': dragOverSlotKey === shift.id }
+                ]"
+                @dragover="handleDragOver(shift, $event)"
+                @dragleave="handleDragLeave"
+                @drop="handleDrop(shift, $event)"
+              >
+                <div class="shift-time">
+                  {{ format(parseISO(shift.start_at), 'h:mma') }}-{{ format(parseISO(shift.end_at), 'h:mma') }}
+                </div>
+                <div v-if="shift.role_required" class="shift-role">{{ shift.role_required }}</div>
+                
+                <!-- Assigned Employee -->
+                <div v-if="shift.employee_id" class="shift-employee">
+                  <span class="emp-name">{{ getEmployee(shift.employee_id)?.first_name }}</span>
+                  <v-btn 
+                    icon="mdi-close" 
+                    size="x-small" 
+                    variant="text"
+                    density="compact"
+                    @click.stop="unassignEmployee(shift.id)"
+                  />
+                </div>
+                
+                <!-- Empty Slot -->
+                <div v-else-if="shift.status !== 'closed_clinic'" class="shift-empty">
+                  <v-icon size="12">mdi-account-plus</v-icon>
+                </div>
+                
+                <!-- Closed Slot -->
+                <div v-else class="shift-closed">
+                  <v-icon size="12">mdi-cancel</v-icon>
+                </div>
+              </div>
+              
+              <!-- No shifts for this day/location -->
+              <div v-if="!shiftMatrix[location.id]?.[format(day, 'yyyy-MM-dd')]?.length" class="no-shifts">
+                <span class="text-caption text-grey">—</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- No locations message -->
+          <div v-if="activeLocations.length === 0" class="no-locations">
+            <v-icon size="48" color="grey-lighten-2">mdi-map-marker-off</v-icon>
+            <div class="text-body-2 text-grey mt-2">No locations selected</div>
+            <v-btn variant="text" size="small" @click="showLocationPicker = true">
+              Select Locations
+            </v-btn>
+          </div>
+        </div>
+      </main>
     </div>
 
     <!-- Unsaved Changes Bar -->
     <Teleport to="body">
       <Transition name="slide-up">
         <div v-if="scheduleStore.hasUnsavedChanges" class="unsaved-bar">
-          <v-icon color="warning" class="mr-2">mdi-alert-circle</v-icon>
-          <span>You have unsaved changes</span>
+          <v-icon color="warning" size="18">mdi-alert-circle</v-icon>
+          <span class="ml-2 text-body-2">Unsaved changes</span>
           <v-spacer />
-          <v-btn
-            variant="text"
-            size="small"
-            @click="showDiscardDialog = true"
-          >
-            Discard
-          </v-btn>
-          <v-btn
-            variant="tonal"
-            color="primary"
-            size="small"
+          <v-btn variant="text" size="small" @click="showDiscardDialog = true">Discard</v-btn>
+          <v-btn 
+            variant="tonal" 
+            color="primary" 
+            size="small" 
+            class="ml-2"
             :loading="scheduleStore.isSaving"
             @click="handleSave"
           >
             Save Draft
           </v-btn>
-          <v-btn
-            variant="flat"
-            color="success"
-            size="small"
+          <v-btn 
+            variant="flat" 
+            color="success" 
+            size="small" 
             class="ml-2"
             @click="showPublishDialog = true"
           >
@@ -357,17 +805,153 @@ const getHoursForEmployee = (employeeId: string) => {
       </Transition>
     </Teleport>
 
+    <!-- Context Menu -->
+    <v-menu 
+      v-model="contextMenu.show" 
+      :style="{ position: 'absolute', left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      :close-on-content-click="true"
+    >
+      <v-list density="compact">
+        <v-list-item @click="toggleClinicClosed">
+          <template #prepend>
+            <v-icon>{{ isLocationDayClosed(contextMenu.locationId, contextMenu.date) ? 'mdi-door-open' : 'mdi-cancel' }}</v-icon>
+          </template>
+          <v-list-item-title>
+            {{ isLocationDayClosed(contextMenu.locationId, contextMenu.date) ? 'Reopen Clinic' : 'Close Clinic' }}
+          </v-list-item-title>
+          <v-list-item-subtitle>{{ contextMenu.locationName }} - {{ contextMenu.date }}</v-list-item-subtitle>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <!-- Location Picker Dialog -->
+    <v-dialog v-model="showLocationPicker" max-width="400">
+      <v-card>
+        <v-card-title>View Options</v-card-title>
+        <v-card-text>
+          <div class="text-subtitle-2 mb-2">Show Locations</div>
+          <v-checkbox
+            v-for="loc in locations"
+            :key="loc.id"
+            v-model="visibleLocations"
+            :value="loc.id"
+            :label="loc.name"
+            density="compact"
+            hide-details
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="text" @click="visibleLocations = []">Hide All</v-btn>
+          <v-btn variant="text" @click="visibleLocations = locations.map(l => l.id)">Show All</v-btn>
+          <v-spacer />
+          <v-btn color="primary" @click="showLocationPicker = false">Done</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Save Template Dialog -->
+    <v-dialog v-model="showTemplateDialog" max-width="400">
+      <v-card>
+        <v-card-title>Save as Template</v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-grey mb-4">
+            Save this week's schedule as a reusable template.
+          </p>
+          <v-text-field
+            v-model="templateName"
+            label="Template Name"
+            placeholder="e.g., Standard Summer Week"
+            variant="outlined"
+            :rules="[v => !!v || 'Name required']"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showTemplateDialog = false">Cancel</v-btn>
+          <v-btn color="primary" @click="saveAsTemplate">Save Template</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Load Template Dialog -->
+    <v-dialog v-model="showLoadTemplateDialog" max-width="400">
+      <v-card>
+        <v-card-title>Load Template</v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-grey mb-4">
+            Apply a saved template to this week. This will add shifts from the template.
+          </p>
+          <v-select
+            v-model="selectedTemplateId"
+            :items="templates"
+            item-title="name"
+            item-value="id"
+            label="Select Template"
+            variant="outlined"
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props">
+                <v-list-item-subtitle v-if="item.raw.description">
+                  {{ item.raw.description }}
+                </v-list-item-subtitle>
+              </v-list-item>
+            </template>
+          </v-select>
+          <v-alert v-if="templates.length === 0" type="info" variant="tonal" density="compact">
+            No templates saved yet. Create one using "Save as Template".
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showLoadTemplateDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :disabled="!selectedTemplateId" @click="applyTemplate">
+            Apply Template
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Auto-Suggest Dialog -->
+    <v-dialog v-model="showAutoSuggestDialog" max-width="400">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-auto-fix</v-icon>
+          Auto-Fill Open Shifts
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-4">
+            The system will analyze open shifts and suggest the best available employees based on:
+          </p>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-briefcase-check">Role matching</v-list-item>
+            <v-list-item prepend-icon="mdi-clock-alert">No time conflicts</v-list-item>
+            <v-list-item prepend-icon="mdi-scale-balance">Balanced workload (least hours first)</v-list-item>
+          </v-list>
+          <v-alert type="info" variant="tonal" density="compact" class="mt-4">
+            {{ scheduleStore.shiftStats.open }} open shift{{ scheduleStore.shiftStats.open !== 1 ? 's' : '' }} to fill
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAutoSuggestDialog = false">Cancel</v-btn>
+          <v-btn color="primary" prepend-icon="mdi-magic-staff" @click="autoSuggest">
+            Auto-Fill
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Discard Dialog -->
     <v-dialog v-model="showDiscardDialog" max-width="400">
       <v-card>
         <v-card-title>Discard Changes?</v-card-title>
         <v-card-text>
-          All unsaved changes will be lost. This cannot be undone.
+          All unsaved changes will be lost.
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showDiscardDialog = false">Cancel</v-btn>
-          <v-btn color="error" variant="flat" @click="handleDiscard">Discard</v-btn>
+          <v-btn color="error" @click="handleDiscard">Discard</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -378,24 +962,23 @@ const getHoursForEmployee = (employeeId: string) => {
         <v-card-title>Publish Schedule?</v-card-title>
         <v-card-text>
           <p class="mb-4">
-            Publishing will notify all assigned employees of their shifts for:
+            Publishing will notify all assigned employees of their shifts.
           </p>
-          <v-chip color="primary" class="mr-2">
-            {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d') }}
-          </v-chip>
-          <v-alert type="info" variant="tonal" class="mt-4">
-            <strong>{{ scheduleStore.shiftStats.filled }}</strong> filled shifts will be published.
-            <span v-if="scheduleStore.shiftStats.open > 0" class="text-warning">
-              ({{ scheduleStore.shiftStats.open }} shifts still open)
-            </span>
+          <div class="d-flex gap-2 flex-wrap mb-4">
+            <v-chip color="success">{{ scheduleStore.shiftStats.filled }} Filled</v-chip>
+            <v-chip v-if="scheduleStore.shiftStats.open > 0" color="warning">
+              {{ scheduleStore.shiftStats.open }} Open
+            </v-chip>
+          </div>
+          <v-alert v-if="scheduleStore.shiftStats.open > 0" type="warning" variant="tonal" density="compact">
+            Some shifts are still open. Consider using Auto-Fill first.
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showPublishDialog = false">Cancel</v-btn>
-          <v-btn
-            color="success"
-            variant="flat"
+          <v-btn 
+            color="success" 
             :loading="scheduleStore.isPublishing"
             @click="handlePublish"
           >
@@ -404,34 +987,38 @@ const getHoursForEmployee = (employeeId: string) => {
         </v-card-actions>
       </v-card>
     </v-dialog>
-    </template>
   </div>
-  
-  <!-- SSR Fallback -->
-  <template #fallback>
-    <div class="d-flex flex-column justify-center align-center min-h-[calc(100vh-64px)] bg-grey-lighten-4">
-      <v-progress-circular indeterminate color="primary" size="48" />
-      <span class="mt-4 text-grey">Loading Schedule Builder...</span>
-    </div>
-  </template>
-  </ClientOnly>
 </template>
 
 <style scoped>
-.schedule-builder {
+.schedule-cockpit {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 64px);
-  background: #f5f5f5;
+  background: #f8f9fa;
+  position: relative;
 }
 
-.builder-header {
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  z-index: 100;
+}
+
+/* Header */
+.cockpit-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
+  padding: 8px 16px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
 }
 
 .header-left {
@@ -442,68 +1029,84 @@ const getHoursForEmployee = (employeeId: string) => {
 .header-center {
   display: flex;
   align-items: center;
+  gap: 4px;
 }
 
-.week-range {
+.week-label {
   font-weight: 500;
+  font-size: 0.875rem;
   min-width: 180px;
   text-align: center;
 }
 
-.builder-content {
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+/* Body: Bench + Grid */
+.cockpit-body {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* Resource Bench */
-.resource-bench {
-  width: 280px;
+/* Employee Bench */
+.employee-bench {
+  width: 200px;
   background: white;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .bench-header {
-  padding: 16px;
+  padding: 8px;
   border-bottom: 1px solid #e0e0e0;
 }
 
-.bench-employees {
+.bench-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px;
 }
 
-.employee-card {
+.bench-employee {
   display: flex;
   align-items: center;
-  padding: 12px;
-  margin-bottom: 8px;
-  background: #fafafa;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   cursor: grab;
-  transition: all 0.2s;
+  font-size: 0.75rem;
+  transition: background 0.15s;
 }
 
-.employee-card:hover {
+.bench-employee:hover {
   background: #f0f0f0;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.employee-card:active {
+.bench-employee:active {
   cursor: grabbing;
+  background: #e3f2fd;
 }
 
-.employee-info {
+.employee-name {
   flex: 1;
-  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.employee-hours {
+.workload-badge {
   flex-shrink: 0;
+  min-width: 20px;
+}
+
+.bench-footer {
+  padding: 6px 8px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
 }
 
 /* Schedule Grid */
@@ -518,159 +1121,193 @@ const getHoursForEmployee = (employeeId: string) => {
   display: flex;
   background: white;
   border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.location-header-spacer {
+  width: 100px;
+  flex-shrink: 0;
+  border-right: 1px solid #e0e0e0;
 }
 
 .day-header {
   flex: 1;
-  padding: 12px;
+  padding: 6px 4px;
   text-align: center;
   border-right: 1px solid #e0e0e0;
+  min-width: 80px;
 }
 
 .day-header:last-child {
   border-right: none;
 }
 
-.day-name {
-  font-weight: 600;
-  font-size: 0.875rem;
+.day-header.is-today {
+  background: #e3f2fd;
 }
 
-.day-name.is-today {
-  color: #1976D2;
+.day-name {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
 }
 
 .day-date {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #666;
 }
 
 .grid-body {
+  flex: 1;
+  overflow: auto;
+}
+
+.location-row {
   display: flex;
-  flex: 1;
-  overflow-y: auto;
+  border-bottom: 1px solid #e0e0e0;
+  min-height: 60px;
 }
 
-.day-column {
-  flex: 1;
+.location-label {
+  width: 100px;
   padding: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #666;
+  background: #fafafa;
   border-right: 1px solid #e0e0e0;
-  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
 }
 
-.day-column:last-child {
+.day-cell {
+  flex: 1;
+  padding: 4px;
+  border-right: 1px solid #e0e0e0;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.day-cell:last-child {
   border-right: none;
 }
 
-/* Shift slots */
-.shift-slot {
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  border: 2px dashed #e0e0e0;
-  transition: all 0.2s;
+.day-cell.is-today {
+  background: #f3f8ff;
 }
 
-.shift-slot.is-filled {
-  border-style: solid;
-  border-color: #4CAF50;
-  background: #E8F5E9;
-}
-
-.shift-slot.is-open {
-  border-color: #FF9800;
-}
-
-.shift-slot.is-closed {
-  border-color: #9E9E9E;
-  background: #f5f5f5;
-  opacity: 0.7;
-}
-
-.shift-slot.drag-over {
-  border-color: #1976D2;
-  background: #E3F2FD;
-  transform: scale(1.02);
-}
-
-.shift-slot.validation-error {
-  border-color: #f44336;
-  background: #FFEBEE;
-}
-
-.shift-slot.validation-warning {
-  border-color: #FF9800;
-  background: #FFF3E0;
-}
-
-.shift-time {
-  font-weight: 500;
-  font-size: 0.875rem;
-}
-
-.shift-location {
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.assigned-employee {
-  margin-top: 8px;
-}
-
-.empty-slot,
-.closed-slot {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: #9e9e9e;
-  margin-top: 8px;
+.day-cell.is-closed {
+  background: repeating-linear-gradient(
+    45deg,
+    #f5f5f5,
+    #f5f5f5 5px,
+    #e0e0e0 5px,
+    #e0e0e0 10px
+  );
 }
 
 .no-shifts {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  flex: 1;
 }
 
-/* Empty day placeholder */
-.empty-day-placeholder {
+.no-locations {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px;
-  min-height: 120px;
-  border: 2px dashed #e0e0e0;
-  border-radius: 8px;
-  margin: 4px;
-  background: #fafafa;
+  padding: 48px;
 }
 
-/* Empty week overlay */
-.empty-week-overlay {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* Shift Slots */
+.shift-slot {
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  border: 1px solid #e0e0e0;
+  background: white;
+  transition: all 0.15s;
+}
+
+.shift-slot.slot-open {
+  border-color: #ff9800;
+  border-style: dashed;
+}
+
+.shift-slot.slot-filled {
+  border-color: #4caf50;
+  background: #e8f5e9;
+}
+
+.shift-slot.slot-closed {
+  border-color: #9e9e9e;
+  background: #f5f5f5;
+  opacity: 0.6;
+}
+
+.shift-slot.slot-ontime {
+  border-color: #4caf50;
+  background: #e8f5e9;
+  border-left: 3px solid #4caf50;
+}
+
+.shift-slot.slot-late {
+  border-color: #ff9800;
+  background: #fff3e0;
+  border-left: 3px solid #ff9800;
+}
+
+.shift-slot.slot-absent {
+  border-color: #f44336;
+  background: #ffebee;
+  border-left: 3px solid #f44336;
+}
+
+.shift-slot.drag-over {
+  border-color: #1976d2;
+  background: #e3f2fd;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
+}
+
+.shift-time {
+  font-weight: 500;
+  color: #333;
+}
+
+.shift-role {
+  color: #666;
+  font-size: 0.6rem;
+}
+
+.shift-employee {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.emp-name {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.shift-empty,
+.shift-closed {
+  display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
-  padding: 32px;
-  background: rgba(255,255,255,0.95);
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+  color: #999;
+  margin-top: 2px;
 }
 
-/* Schedule grid relative positioning */
-.schedule-grid {
-  position: relative;
-}
-
-/* Unsaved changes bar */
+/* Unsaved Bar */
 .unsaved-bar {
   position: fixed;
   bottom: 0;
@@ -678,10 +1315,10 @@ const getHoursForEmployee = (employeeId: string) => {
   right: 0;
   display: flex;
   align-items: center;
-  padding: 12px 24px;
+  padding: 8px 16px;
   background: white;
   border-top: 1px solid #e0e0e0;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
   z-index: 100;
 }
 
