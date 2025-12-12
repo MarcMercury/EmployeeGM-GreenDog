@@ -427,11 +427,11 @@ function clearFilters() {
 }
 
 function viewEmployee(id: string) {
-  router.push(`/roster/${id}`)
+  router.push(`/employees/${id}`)
 }
 
 function editEmployee(emp: any) {
-  router.push(`/roster/${emp.id}`)
+  router.push(`/employees/${emp.id}`)
 }
 
 async function refreshData() {

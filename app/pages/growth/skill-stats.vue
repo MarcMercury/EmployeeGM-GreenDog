@@ -185,7 +185,7 @@
           <v-list-item
             v-for="(employee, index) in topPerformers"
             :key="employee.id"
-            :to="`/roster/${employee.id}`"
+            :to="`/employees/${employee.id}`"
           >
             <template #prepend>
               <v-avatar :color="getMedalColor(index)" class="mr-3">

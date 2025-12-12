@@ -223,7 +223,7 @@
             v-if="isAdmin"
             color="primary" 
             variant="flat" 
-            :to="`/roster/${selectedEmployee.employee_id}`"
+            :to="`/employees/${selectedEmployee.employee_id}`"
           >
             <v-icon start>mdi-account-details</v-icon>
             View Full Profile

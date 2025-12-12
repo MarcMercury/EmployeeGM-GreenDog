@@ -200,6 +200,35 @@ export const useUserStore = defineStore('user', {
           }
         }
 
+        // Fallback 2: If still no employee, try by first_name + last_name from profile
+        if (!employeeData && this.profile?.first_name && this.profile?.last_name) {
+          console.log('[UserStore] Trying name lookup:', this.profile.first_name, this.profile.last_name)
+          const result = await supabase
+            .from('employees')
+            .select(`
+              *,
+              department:departments(id, name, code),
+              position:job_positions(id, title, code, is_manager),
+              location:locations(id, name, city)
+            `)
+            .ilike('first_name', this.profile.first_name)
+            .ilike('last_name', this.profile.last_name)
+            .single()
+          
+          employeeData = result.data
+          employeeError = result.error
+          
+          // If found by name, update the employee's profile_id to link them
+          if (employeeData && !employeeData.profile_id) {
+            console.log('[UserStore] Linking employee to profile by name match...')
+            await supabase
+              .from('employees')
+              .update({ profile_id: this.profile.id })
+              .eq('id', employeeData.id)
+            employeeData.profile_id = this.profile.id
+          }
+        }
+
         if (employeeError && employeeError.code !== 'PGRST116') {
           // PGRST116 = no rows returned, which is okay
           console.log('[UserStore] Employee query error:', employeeError)
