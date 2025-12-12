@@ -880,7 +880,7 @@ async function loadEmployeeData() {
         *,
         profile:profiles!employees_profile_id_fkey(email, avatar_url, bio),
         department:departments(id, name),
-        position:positions(id, title),
+        position:job_positions(id, title),
         location:locations(id, name)
       `)
       .eq('id', employeeId.value)
