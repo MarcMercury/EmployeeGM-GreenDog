@@ -82,7 +82,6 @@ export const useRosterStore = defineStore('roster', {
               id,
               email,
               avatar_url,
-              bio,
               role
             ),
             department:departments (
@@ -160,7 +159,6 @@ export const useRosterStore = defineStore('roster', {
             hire_date: emp.hire_date,
             employment_status: emp.employment_status,
             avatar_url: emp.profile?.avatar_url || null,
-            bio: emp.profile?.bio || null,
             role: emp.profile?.role || 'user',
             position: emp.position ? {
               id: emp.position.id,
@@ -286,7 +284,6 @@ export const useRosterStore = defineStore('roster', {
           hire_date: emp.hire_date,
           employment_status: emp.employment_status,
           avatar_url: emp.profile?.avatar_url || null,
-          bio: emp.profile?.bio || null,
           role: emp.profile?.role || 'user',
           position: emp.position ? {
             id: emp.position.id,

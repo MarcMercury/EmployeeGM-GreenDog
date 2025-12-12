@@ -874,11 +874,12 @@ async function loadEmployeeData() {
 
   try {
     // Load employee basic info
+    // Note: bio column may not exist yet - query will still work, just won't include it
     const { data: emp, error: empError } = await supabase
       .from('employees')
       .select(`
         *,
-        profile:profiles!employees_profile_id_fkey(email, avatar_url, bio),
+        profile:profiles!employees_profile_id_fkey(email, avatar_url),
         department:departments(id, name),
         position:job_positions(id, title),
         location:locations(id, name)
@@ -891,9 +892,8 @@ async function loadEmployeeData() {
 
     employee.value = {
       ...emp,
-      email: emp.profile?.email,
-      avatar_url: emp.profile?.avatar_url,
-      bio: emp.profile?.bio
+      email: emp.profile?.email || emp.email_work,
+      avatar_url: emp.profile?.avatar_url
     }
 
     // Load additional data only if user can view sensitive info
