@@ -97,7 +97,7 @@
       </template>
       <v-card>
         <v-list density="compact">
-          <v-list-item :to="`/employees/${profile.id}`" prepend-icon="mdi-account">
+          <v-list-item to="/profile" prepend-icon="mdi-account">
             My Profile
           </v-list-item>
           <v-list-item to="/settings" prepend-icon="mdi-cog" v-if="isAdmin">

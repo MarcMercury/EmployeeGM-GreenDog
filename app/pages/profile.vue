@@ -436,6 +436,21 @@ definePageMeta({
 const userStore = useUserStore()
 const client = useSupabaseClient()
 const toast = useToast()
+const router = useRouter()
+
+// Redirect to employee profile if user has an employee record
+onMounted(async () => {
+  await userStore.fetchUserData()
+  
+  // If user has an employee ID, redirect to the enhanced profile view
+  if (userStore.employee?.id) {
+    await navigateTo(`/employees/${userStore.employee.id}`, { replace: true })
+    return
+  }
+  
+  // Otherwise load skills and goals for the basic profile
+  await Promise.all([fetchMySkills(), fetchMyGoals()])
+})
 
 // Edit dialog state
 const editDialog = ref(false)
@@ -549,12 +564,7 @@ async function saveProfile() {
   }
 }
 
-// Fetch user data on mount
-onMounted(async () => {
-  await userStore.fetchUserData()
-  await Promise.all([fetchMySkills(), fetchMyGoals()])
-})
-
+// fetchMySkills moved to be called from onMounted at top of script
 async function fetchMySkills() {
   skillsLoading.value = true
   try {

@@ -91,8 +91,10 @@ export const useEmployeeStore = defineStore('employee', {
         if (error) throw error
         
         // Transform to ProfileWithSkills format for backward compatibility
+        // IMPORTANT: id should be the employee ID, not profile ID
         this.employees = (data || []).map(emp => ({
-          id: emp.profile?.id || emp.id,
+          id: emp.id, // Employee ID - used for /employees/[id] routing
+          profile_id: emp.profile?.id || null, // Profile ID - for auth
           email: emp.profile?.email || emp.email_work || '',
           first_name: emp.first_name,
           last_name: emp.last_name,
@@ -181,7 +183,6 @@ export const useEmployeeStore = defineStore('employee', {
         const { data, error } = await supabase
           .from('skill_library')
           .select('*')
-          .eq('is_active', true)
           .order('category')
           .order('name')
 

@@ -445,7 +445,6 @@ onMounted(async () => {
   const { data: coursesData } = await supabase
     .from('training_courses')
     .select('*')
-    .eq('is_active', true)
     .order('title')
   
   if (coursesData) {

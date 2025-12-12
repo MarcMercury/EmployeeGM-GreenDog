@@ -286,41 +286,44 @@ export const useAppData = () => {
       // 3. LOAD EMPLOYEE SKILLS (separate query to avoid ambiguous relationship)
       if (employees.value.length > 0) {
         console.log('[useAppData] Loading employee skills...')
-        const { data: empSkills, error: skillsError } = await client
-          .from('employee_skills')
-          .select(`
-            employee_id,
-            skill_id,
-            level,
-            is_goal,
-            skill_library:skill_id ( id, name, category )
-          `)
-        
-        if (empSkills && !skillsError) {
-          // Map skills to employees
-          const skillsByEmployee: Record<string, any[]> = {}
-          empSkills.forEach((es: any) => {
-            if (!skillsByEmployee[es.employee_id]) {
-              skillsByEmployee[es.employee_id] = []
-            }
-            skillsByEmployee[es.employee_id]!.push({
-              skill_id: es.skill_id,
-              skill_name: es.skill_library?.name || 'Unknown',
-              category: es.skill_library?.category || 'General',
-              rating: es.level || 0, // Map 'level' column to 'rating' for component compatibility
-              is_goal: es.is_goal || false
+        try {
+          const { data: empSkills, error: skillsError } = await client
+            .from('employee_skills')
+            .select(`
+              employee_id,
+              skill_id,
+              level,
+              skill_library:skill_id ( id, name, category )
+            `)
+          
+          if (skillsError) {
+            console.error('[useAppData] Error loading employee skills:', skillsError)
+          } else if (empSkills) {
+            // Map skills to employees
+            const skillsByEmployee: Record<string, any[]> = {}
+            empSkills.forEach((es: any) => {
+              if (!skillsByEmployee[es.employee_id]) {
+                skillsByEmployee[es.employee_id] = []
+              }
+              skillsByEmployee[es.employee_id]!.push({
+                skill_id: es.skill_id,
+                skill_name: es.skill_library?.name || 'Unknown',
+                category: es.skill_library?.category || 'General',
+                rating: es.level || 0, // Map 'level' column to 'rating' for component compatibility
+                is_goal: false // Default value - migration may not be applied
+              })
             })
-          })
-          
-          // Update employees with their skills
-          employees.value = employees.value.map(emp => ({
-            ...emp,
-            skills: skillsByEmployee[emp.id] || []
-          }))
-          
-          console.log('[useAppData] Skills loaded for employees')
-        } else if (skillsError) {
-          console.error('[useAppData] Error loading employee skills:', skillsError)
+            
+            // Update employees with their skills
+            employees.value = employees.value.map(emp => ({
+              ...emp,
+              skills: skillsByEmployee[emp.id] || []
+            }))
+            
+            console.log('[useAppData] Skills loaded for employees')
+          }
+        } catch (skillErr) {
+          console.error('[useAppData] Exception loading employee skills:', skillErr)
         }
       }
 
