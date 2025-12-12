@@ -114,11 +114,24 @@ export const useUserStore = defineStore('user', {
   actions: {
     async fetchUserData() {
       const supabase = useSupabaseClient()
-      const user = useSupabaseUser()
+      const authStore = useAuthStore()
 
-      // Guard: Make sure we have a valid user with an ID
-      if (!user.value?.id) {
-        console.log('[UserStore] No user or user.id, clearing data')
+      // First, try to get auth info from authStore (already fetched in layout)
+      // Fall back to useSupabaseUser() if authStore not populated
+      let authUserId: string | undefined
+      
+      if (authStore.profile?.auth_user_id) {
+        // Use existing auth data
+        authUserId = authStore.profile.auth_user_id
+      } else {
+        // Try to get from Supabase session directly
+        const { data: { session } } = await supabase.auth.getSession()
+        authUserId = session?.user?.id
+      }
+
+      // Guard: Make sure we have a valid user ID
+      if (!authUserId) {
+        console.log('[UserStore] No auth user ID available, clearing data')
         this.profile = null
         this.employee = null
         return
@@ -132,7 +145,7 @@ export const useUserStore = defineStore('user', {
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('auth_user_id', user.value.id)
+          .eq('auth_user_id', authUserId)
           .single()
 
         if (profileError) throw profileError
@@ -156,6 +169,7 @@ export const useUserStore = defineStore('user', {
         }
         
         this.employee = employeeData as UserEmployee | null
+        console.log('[UserStore] Data loaded - Employee ID:', this.employee?.id)
 
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch user data'
