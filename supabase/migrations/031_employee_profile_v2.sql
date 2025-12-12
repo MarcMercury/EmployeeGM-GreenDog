@@ -170,6 +170,7 @@ ALTER TABLE public.employee_time_off_balances ENABLE ROW LEVEL SECURITY;
 -- =====================================================
 -- 7. RLS POLICIES - LICENSES
 -- =====================================================
+DROP POLICY IF EXISTS "Admins manage employee licenses" ON public.employee_licenses;
 CREATE POLICY "Admins manage employee licenses" ON public.employee_licenses
   FOR ALL USING (
     EXISTS (
@@ -179,6 +180,7 @@ CREATE POLICY "Admins manage employee licenses" ON public.employee_licenses
     )
   );
 
+DROP POLICY IF EXISTS "Employees view their own licenses" ON public.employee_licenses;
 CREATE POLICY "Employees view their own licenses" ON public.employee_licenses
   FOR SELECT USING (
     employee_id IN (
@@ -191,6 +193,7 @@ CREATE POLICY "Employees view their own licenses" ON public.employee_licenses
 -- =====================================================
 -- 8. RLS POLICIES - CE CREDITS
 -- =====================================================
+DROP POLICY IF EXISTS "Admins manage CE credits" ON public.employee_ce_credits;
 CREATE POLICY "Admins manage CE credits" ON public.employee_ce_credits
   FOR ALL USING (
     EXISTS (
@@ -200,6 +203,7 @@ CREATE POLICY "Admins manage CE credits" ON public.employee_ce_credits
     )
   );
 
+DROP POLICY IF EXISTS "Employees view their own CE credits" ON public.employee_ce_credits;
 CREATE POLICY "Employees view their own CE credits" ON public.employee_ce_credits
   FOR SELECT USING (
     employee_id IN (
@@ -209,6 +213,7 @@ CREATE POLICY "Employees view their own CE credits" ON public.employee_ce_credit
     )
   );
 
+DROP POLICY IF EXISTS "Admins manage CE transactions" ON public.employee_ce_transactions;
 CREATE POLICY "Admins manage CE transactions" ON public.employee_ce_transactions
   FOR ALL USING (
     EXISTS (
@@ -218,6 +223,7 @@ CREATE POLICY "Admins manage CE transactions" ON public.employee_ce_transactions
     )
   );
 
+DROP POLICY IF EXISTS "Employees view their own CE transactions" ON public.employee_ce_transactions;
 CREATE POLICY "Employees view their own CE transactions" ON public.employee_ce_transactions
   FOR SELECT USING (
     ce_credit_id IN (
@@ -233,6 +239,7 @@ CREATE POLICY "Employees view their own CE transactions" ON public.employee_ce_t
 -- =====================================================
 -- 9. RLS POLICIES - TIME OFF BALANCES
 -- =====================================================
+DROP POLICY IF EXISTS "Admins manage time off balances" ON public.employee_time_off_balances;
 CREATE POLICY "Admins manage time off balances" ON public.employee_time_off_balances
   FOR ALL USING (
     EXISTS (
@@ -242,6 +249,7 @@ CREATE POLICY "Admins manage time off balances" ON public.employee_time_off_bala
     )
   );
 
+DROP POLICY IF EXISTS "Employees view their own time off balances" ON public.employee_time_off_balances;
 CREATE POLICY "Employees view their own time off balances" ON public.employee_time_off_balances
   FOR SELECT USING (
     employee_id IN (
@@ -262,6 +270,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS employee_licenses_updated_at ON public.employee_licenses;
 CREATE TRIGGER employee_licenses_updated_at
   BEFORE UPDATE ON public.employee_licenses
   FOR EACH ROW
@@ -275,6 +284,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS employee_ce_credits_updated_at ON public.employee_ce_credits;
 CREATE TRIGGER employee_ce_credits_updated_at
   BEFORE UPDATE ON public.employee_ce_credits
   FOR EACH ROW
@@ -288,6 +298,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS employee_time_off_balances_updated_at ON public.employee_time_off_balances;
 CREATE TRIGGER employee_time_off_balances_updated_at
   BEFORE UPDATE ON public.employee_time_off_balances
   FOR EACH ROW
