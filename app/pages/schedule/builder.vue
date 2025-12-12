@@ -19,9 +19,18 @@ definePageMeta({
   layout: 'default'
 })
 
+console.log('[ScheduleBuilder] Page script starting...')
+
 // Stores and composables
 const scheduleStore = useScheduleBuilderStore()
+console.log('[ScheduleBuilder] Store loaded:', !!scheduleStore)
+
 const { employees, locations, isAdmin, departments, positions } = useAppData()
+console.log('[ScheduleBuilder] AppData loaded:', { 
+  employeesCount: employees.value?.length, 
+  locationsCount: locations.value?.length 
+})
+
 const { validateAssignment, getEmployeeHours, calculateHours } = useScheduleRules()
 const toast = useToast()
 const supabase = useSupabaseClient()
