@@ -280,6 +280,7 @@
           </div>
         </v-card-text>
       </v-card>
+    </template>
 
     <!-- Add/Edit Skill Dialog -->
     <v-dialog v-model="addSkillDialog" max-width="500">
