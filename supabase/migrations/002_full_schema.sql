@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- Per AGENT.md: role column on profiles: enum 'admin', 'user'
 -- =====================================================
 CREATE TABLE public.profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   auth_user_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name TEXT,
   last_name TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE public.profiles (
 -- 2. ROLES & PERMISSIONS
 -- =====================================================
 CREATE TABLE public.roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT,
@@ -41,14 +41,14 @@ CREATE TABLE public.roles (
 );
 
 CREATE TABLE public.permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE,
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE public.role_permissions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
   permission_id UUID NOT NULL REFERENCES public.permissions(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -56,7 +56,7 @@ CREATE TABLE public.role_permissions (
 );
 
 CREATE TABLE public.profile_roles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   role_id UUID NOT NULL REFERENCES public.roles(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -67,7 +67,7 @@ CREATE TABLE public.profile_roles (
 -- 3. COMPANY SETTINGS
 -- =====================================================
 CREATE TABLE public.company_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   legal_name TEXT,
   display_name TEXT,
   industry TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE public.company_settings (
 -- 4. LOCATIONS
 -- =====================================================
 CREATE TABLE public.locations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT,
   address_line1 TEXT,
@@ -103,7 +103,7 @@ CREATE TABLE public.locations (
 -- 5. DEPARTMENTS
 -- =====================================================
 CREATE TABLE public.departments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT,
   parent_department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
@@ -116,7 +116,7 @@ CREATE TABLE public.departments (
 -- 6. JOB POSITIONS
 -- =====================================================
 CREATE TABLE public.job_positions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   code TEXT,
   description TEXT,
@@ -130,7 +130,7 @@ CREATE TABLE public.job_positions (
 -- 7. EMPLOYEES
 -- =====================================================
 CREATE TABLE public.employees (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID UNIQUE REFERENCES public.profiles(id) ON DELETE SET NULL,
   employee_number TEXT UNIQUE,
   first_name TEXT NOT NULL,
@@ -159,7 +159,7 @@ CREATE TABLE public.employees (
 -- 8. TEAMS
 -- =====================================================
 CREATE TABLE public.teams (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -167,7 +167,7 @@ CREATE TABLE public.teams (
 );
 
 CREATE TABLE public.employee_teams (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   role_in_team TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE public.employee_teams (
 -- 9. WORK SCHEDULES
 -- =====================================================
 CREATE TABLE public.work_schedules (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   weekday INTEGER NOT NULL CHECK (weekday >= 0 AND weekday <= 6),
   start_time TIME,
@@ -193,7 +193,7 @@ CREATE TABLE public.work_schedules (
 -- 10. TIME OFF
 -- =====================================================
 CREATE TABLE public.time_off_types (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT UNIQUE,
   requires_approval BOOLEAN NOT NULL DEFAULT true,
@@ -204,7 +204,7 @@ CREATE TABLE public.time_off_types (
 );
 
 CREATE TABLE public.time_off_requests (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   time_off_type_id UUID NOT NULL REFERENCES public.time_off_types(id) ON DELETE RESTRICT,
   start_date DATE NOT NULL,
@@ -223,7 +223,7 @@ CREATE TABLE public.time_off_requests (
 -- 11. GEOFENCES & CLOCK DEVICES
 -- =====================================================
 CREATE TABLE public.geofences (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   location_id UUID REFERENCES public.locations(id) ON DELETE CASCADE,
   latitude NUMERIC,
@@ -235,7 +235,7 @@ CREATE TABLE public.geofences (
 );
 
 CREATE TABLE public.clock_devices (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   device_type TEXT,
   identifier TEXT UNIQUE,
@@ -249,7 +249,7 @@ CREATE TABLE public.clock_devices (
 -- 12. TIME PUNCHES & ENTRIES
 -- =====================================================
 CREATE TABLE public.time_punches (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   punch_type TEXT NOT NULL CHECK (punch_type IN ('in', 'out')),
   punched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -269,7 +269,7 @@ CREATE TABLE public.time_punches (
 -- 13. SHIFT TEMPLATES & SHIFTS
 -- =====================================================
 CREATE TABLE public.shift_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   location_id UUID REFERENCES public.locations(id) ON DELETE SET NULL,
   department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
@@ -283,7 +283,7 @@ CREATE TABLE public.shift_templates (
 );
 
 CREATE TABLE public.shifts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   location_id UUID REFERENCES public.locations(id) ON DELETE SET NULL,
   department_id UUID REFERENCES public.departments(id) ON DELETE SET NULL,
@@ -298,7 +298,7 @@ CREATE TABLE public.shifts (
 );
 
 CREATE TABLE public.time_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   shift_id UUID REFERENCES public.shifts(id) ON DELETE SET NULL,
   clock_in_at TIMESTAMPTZ,
@@ -313,7 +313,7 @@ CREATE TABLE public.time_entries (
 );
 
 CREATE TABLE public.shift_changes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shift_id UUID NOT NULL REFERENCES public.shifts(id) ON DELETE CASCADE,
   from_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   to_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
@@ -330,7 +330,7 @@ CREATE TABLE public.shift_changes (
 -- 14. APPOINTMENTS
 -- =====================================================
 CREATE TABLE public.appointments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT,
@@ -345,7 +345,7 @@ CREATE TABLE public.appointments (
 );
 
 CREATE TABLE public.appointment_participants (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   appointment_id UUID NOT NULL REFERENCES public.appointments(id) ON DELETE CASCADE,
   name TEXT,
   email TEXT,
@@ -357,7 +357,7 @@ CREATE TABLE public.appointment_participants (
 -- 15. MARKETING CAMPAIGNS & LEADS
 -- =====================================================
 CREATE TABLE public.marketing_campaigns (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   channel TEXT CHECK (channel IN ('email', 'social', 'print', 'digital', 'event', 'referral', 'other')),
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'active', 'paused', 'completed', 'cancelled')),
@@ -375,7 +375,7 @@ CREATE TABLE public.marketing_campaigns (
 
 -- Files table (needed for marketing_assets FK)
 CREATE TABLE public.files (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   uploader_profile_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   bucket TEXT,
   path TEXT,
@@ -388,7 +388,7 @@ CREATE TABLE public.files (
 );
 
 CREATE TABLE public.marketing_assets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_id UUID REFERENCES public.marketing_campaigns(id) ON DELETE CASCADE,
   type TEXT,
   title TEXT,
@@ -401,7 +401,7 @@ CREATE TABLE public.marketing_assets (
 );
 
 CREATE TABLE public.leads (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name TEXT,
   last_name TEXT,
   email TEXT,
@@ -418,7 +418,7 @@ CREATE TABLE public.leads (
 );
 
 CREATE TABLE public.lead_activities (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
   type TEXT,
   employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
@@ -432,7 +432,7 @@ CREATE TABLE public.lead_activities (
 -- 16. SOCIAL MEDIA
 -- =====================================================
 CREATE TABLE public.social_accounts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   platform TEXT NOT NULL,
   handle TEXT,
   profile_url TEXT,
@@ -442,7 +442,7 @@ CREATE TABLE public.social_accounts (
 );
 
 CREATE TABLE public.social_posts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   social_account_id UUID REFERENCES public.social_accounts(id) ON DELETE SET NULL,
   campaign_id UUID REFERENCES public.marketing_campaigns(id) ON DELETE SET NULL,
   title TEXT,
@@ -459,7 +459,7 @@ CREATE TABLE public.social_posts (
 );
 
 CREATE TABLE public.social_post_attachments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   social_post_id UUID NOT NULL REFERENCES public.social_posts(id) ON DELETE CASCADE,
   file_id UUID REFERENCES public.files(id) ON DELETE SET NULL,
   alt_text TEXT,
@@ -471,7 +471,7 @@ CREATE TABLE public.social_post_attachments (
 -- 17. TRAINING & COURSES
 -- =====================================================
 CREATE TABLE public.training_courses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE,
   title TEXT NOT NULL,
   description TEXT,
@@ -484,7 +484,7 @@ CREATE TABLE public.training_courses (
 );
 
 CREATE TABLE public.training_lessons (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id UUID NOT NULL REFERENCES public.training_courses(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   content TEXT,
@@ -496,7 +496,7 @@ CREATE TABLE public.training_lessons (
 );
 
 CREATE TABLE public.training_enrollments (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   course_id UUID NOT NULL REFERENCES public.training_courses(id) ON DELETE CASCADE,
   enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -508,7 +508,7 @@ CREATE TABLE public.training_enrollments (
 );
 
 CREATE TABLE public.training_progress (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   lesson_id UUID NOT NULL REFERENCES public.training_lessons(id) ON DELETE CASCADE,
   started_at TIMESTAMPTZ,
@@ -520,7 +520,7 @@ CREATE TABLE public.training_progress (
 );
 
 CREATE TABLE public.training_quizzes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   course_id UUID REFERENCES public.training_courses(id) ON DELETE CASCADE,
   lesson_id UUID REFERENCES public.training_lessons(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
@@ -531,7 +531,7 @@ CREATE TABLE public.training_quizzes (
 );
 
 CREATE TABLE public.training_quiz_questions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quiz_id UUID NOT NULL REFERENCES public.training_quizzes(id) ON DELETE CASCADE,
   question_text TEXT NOT NULL,
   question_type TEXT DEFAULT 'multiple_choice',
@@ -542,7 +542,7 @@ CREATE TABLE public.training_quiz_questions (
 );
 
 CREATE TABLE public.training_quiz_attempts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   quiz_id UUID NOT NULL REFERENCES public.training_quizzes(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -557,7 +557,7 @@ CREATE TABLE public.training_quiz_attempts (
 -- 18. PERFORMANCE REVIEWS
 -- =====================================================
 CREATE TABLE public.review_cycles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
   period_start DATE,
@@ -569,7 +569,7 @@ CREATE TABLE public.review_cycles (
 );
 
 CREATE TABLE public.review_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
   form_schema JSONB,
@@ -579,7 +579,7 @@ CREATE TABLE public.review_templates (
 );
 
 CREATE TABLE public.performance_reviews (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   review_cycle_id UUID REFERENCES public.review_cycles(id) ON DELETE SET NULL,
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   manager_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
@@ -596,7 +596,7 @@ CREATE TABLE public.performance_reviews (
 );
 
 CREATE TABLE public.review_participants (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   performance_review_id UUID NOT NULL REFERENCES public.performance_reviews(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   role TEXT,
@@ -606,7 +606,7 @@ CREATE TABLE public.review_participants (
 );
 
 CREATE TABLE public.review_responses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   performance_review_id UUID NOT NULL REFERENCES public.performance_reviews(id) ON DELETE CASCADE,
   question_key TEXT,
   responder_role TEXT,
@@ -619,7 +619,7 @@ CREATE TABLE public.review_responses (
 );
 
 CREATE TABLE public.review_signoffs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   performance_review_id UUID NOT NULL REFERENCES public.performance_reviews(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   role TEXT,
@@ -632,7 +632,7 @@ CREATE TABLE public.review_signoffs (
 -- 19. GOALS & FEEDBACK
 -- =====================================================
 CREATE TABLE public.goals (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
   owner_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
@@ -649,7 +649,7 @@ CREATE TABLE public.goals (
 );
 
 CREATE TABLE public.goal_updates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   goal_id UUID NOT NULL REFERENCES public.goals(id) ON DELETE CASCADE,
   employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   comment TEXT,
@@ -658,7 +658,7 @@ CREATE TABLE public.goal_updates (
 );
 
 CREATE TABLE public.feedback (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   from_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   to_employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   type TEXT,
@@ -672,7 +672,7 @@ CREATE TABLE public.feedback (
 -- 20. PAY & PAYROLL
 -- =====================================================
 CREATE TABLE public.employee_pay_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   pay_type TEXT DEFAULT 'hourly',
   hourly_rate NUMERIC,
@@ -686,7 +686,7 @@ CREATE TABLE public.employee_pay_settings (
 );
 
 CREATE TABLE public.pay_periods (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL CHECK (end_date >= start_date),
@@ -696,7 +696,7 @@ CREATE TABLE public.pay_periods (
 );
 
 CREATE TABLE public.payroll_runs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   pay_period_id UUID NOT NULL REFERENCES public.pay_periods(id) ON DELETE CASCADE,
   run_number INTEGER DEFAULT 1 CHECK (run_number > 0),
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending_approval', 'approved', 'processed', 'cancelled')),
@@ -708,7 +708,7 @@ CREATE TABLE public.payroll_runs (
 );
 
 CREATE TABLE public.payroll_run_items (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   payroll_run_id UUID NOT NULL REFERENCES public.payroll_runs(id) ON DELETE CASCADE,
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   regular_hours NUMERIC,
@@ -720,7 +720,7 @@ CREATE TABLE public.payroll_run_items (
 );
 
 CREATE TABLE public.financial_kpis (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   period_start DATE,
   period_end DATE,
   kpi_key TEXT NOT NULL,
@@ -735,7 +735,7 @@ CREATE TABLE public.financial_kpis (
 -- 21. ANNOUNCEMENTS, TASKS, NOTES
 -- =====================================================
 CREATE TABLE public.announcements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   body TEXT,
   audience_type TEXT DEFAULT 'all',
@@ -747,7 +747,7 @@ CREATE TABLE public.announcements (
 );
 
 CREATE TABLE public.tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT,
   assigned_to_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
@@ -762,7 +762,7 @@ CREATE TABLE public.tasks (
 );
 
 CREATE TABLE public.employee_notes (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   author_employee_id UUID REFERENCES public.employees(id) ON DELETE SET NULL,
   visibility TEXT DEFAULT 'private',
@@ -774,7 +774,7 @@ CREATE TABLE public.employee_notes (
 -- 22. NOTIFICATIONS
 -- =====================================================
 CREATE TABLE public.notifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   type TEXT,
   title TEXT,
@@ -789,7 +789,7 @@ CREATE TABLE public.notifications (
 -- 23. AUDIT LOGS
 -- =====================================================
 CREATE TABLE public.audit_logs (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_profile_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   action TEXT NOT NULL,
   entity_type TEXT,
@@ -802,7 +802,7 @@ CREATE TABLE public.audit_logs (
 -- 24. APP SETTINGS & FEATURE FLAGS
 -- =====================================================
 CREATE TABLE public.app_settings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key TEXT NOT NULL UNIQUE,
   value TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -810,7 +810,7 @@ CREATE TABLE public.app_settings (
 );
 
 CREATE TABLE public.feature_flags (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   feature_key TEXT NOT NULL UNIQUE,
   is_enabled BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -821,7 +821,7 @@ CREATE TABLE public.feature_flags (
 -- 25. SKILL LIBRARY
 -- =====================================================
 CREATE TABLE public.skill_library (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   category TEXT NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
@@ -830,7 +830,7 @@ CREATE TABLE public.skill_library (
 );
 
 CREATE TABLE public.employee_skills (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   skill_id UUID NOT NULL REFERENCES public.skill_library(id) ON DELETE CASCADE,
   level INTEGER DEFAULT 0 CHECK (level >= 0 AND level <= 5),
@@ -847,7 +847,7 @@ CREATE TABLE public.employee_skills (
 -- Automatic pairing: Learners (level 0) with Mentors (level 5)
 -- =====================================================
 CREATE TABLE public.mentorships (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   skill_id UUID NOT NULL REFERENCES public.skill_library(id) ON DELETE CASCADE,
   mentor_employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   mentee_employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
@@ -868,7 +868,7 @@ CREATE TABLE public.mentorships (
 -- 27. CERTIFICATIONS (per AGENT.md - Required certifications)
 -- =====================================================
 CREATE TABLE public.certifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT UNIQUE,
   description TEXT,
@@ -881,7 +881,7 @@ CREATE TABLE public.certifications (
 );
 
 CREATE TABLE public.employee_certifications (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   certification_id UUID NOT NULL REFERENCES public.certifications(id) ON DELETE CASCADE,
   certification_number TEXT,
@@ -901,7 +901,7 @@ CREATE TABLE public.employee_certifications (
 -- 28. ACHIEVEMENTS & GAMIFICATION (per AGENT.md)
 -- =====================================================
 CREATE TABLE public.achievements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   code TEXT UNIQUE,
   description TEXT,
@@ -916,7 +916,7 @@ CREATE TABLE public.achievements (
 );
 
 CREATE TABLE public.employee_achievements (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   achievement_id UUID NOT NULL REFERENCES public.achievements(id) ON DELETE CASCADE,
   earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -930,7 +930,7 @@ CREATE TABLE public.employee_achievements (
 -- 29. POINTS LOG (per AGENT.md - Point tracking for gamification)
 -- =====================================================
 CREATE TABLE public.points_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   points INTEGER NOT NULL,
   reason TEXT NOT NULL,
@@ -945,7 +945,7 @@ CREATE TABLE public.points_log (
 -- Normalized from skill_library.category for better queries
 -- =====================================================
 CREATE TABLE public.skill_categories (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   display_order INTEGER DEFAULT 0,

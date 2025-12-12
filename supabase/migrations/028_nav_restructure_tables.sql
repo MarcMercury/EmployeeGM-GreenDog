@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_employee_goals_employee ON employee_goals(employe
 ALTER TABLE employee_goals ENABLE ROW LEVEL SECURITY;
 
 -- Employees can view their own goals
+DROP POLICY IF EXISTS "Employees can view own goals" ON public.employee_goals;
 CREATE POLICY "Employees can view own goals"
     ON employee_goals FOR SELECT
     USING (
@@ -39,6 +40,7 @@ CREATE POLICY "Employees can view own goals"
     );
 
 -- Employees can create their own goals
+DROP POLICY IF EXISTS "Employees can create own goals" ON public.employee_goals;
 CREATE POLICY "Employees can create own goals"
     ON employee_goals FOR INSERT
     WITH CHECK (
@@ -50,6 +52,7 @@ CREATE POLICY "Employees can create own goals"
     );
 
 -- Employees can update their own goals
+DROP POLICY IF EXISTS "Employees can update own goals" ON public.employee_goals;
 CREATE POLICY "Employees can update own goals"
     ON employee_goals FOR UPDATE
     USING (
@@ -61,6 +64,7 @@ CREATE POLICY "Employees can update own goals"
     );
 
 -- Employees can delete their own goals
+DROP POLICY IF EXISTS "Employees can delete own goals" ON public.employee_goals;
 CREATE POLICY "Employees can delete own goals"
     ON employee_goals FOR DELETE
     USING (
@@ -72,6 +76,7 @@ CREATE POLICY "Employees can delete own goals"
     );
 
 -- Admins can manage all goals
+DROP POLICY IF EXISTS "Admins can manage all goals" ON public.employee_goals;
 CREATE POLICY "Admins can manage all goals"
     ON employee_goals FOR ALL
     USING (
@@ -108,12 +113,14 @@ CREATE TABLE IF NOT EXISTS med_ops_partners (
 ALTER TABLE med_ops_partners ENABLE ROW LEVEL SECURITY;
 
 -- All authenticated users can view partners
+DROP POLICY IF EXISTS "Users can view med_ops_partners" ON public.med_ops_partners;
 CREATE POLICY "Users can view med_ops_partners"
     ON med_ops_partners FOR SELECT
     TO authenticated
     USING (true);
 
 -- Only admins can manage partners
+DROP POLICY IF EXISTS "Admins can manage med_ops_partners" ON public.med_ops_partners;
 CREATE POLICY "Admins can manage med_ops_partners"
     ON med_ops_partners FOR ALL
     USING (
@@ -150,12 +157,14 @@ CREATE INDEX IF NOT EXISTS idx_wiki_articles_category ON wiki_articles(category)
 ALTER TABLE wiki_articles ENABLE ROW LEVEL SECURITY;
 
 -- All authenticated users can view published articles
+DROP POLICY IF EXISTS "Users can view published wiki articles" ON public.wiki_articles;
 CREATE POLICY "Users can view published wiki articles"
     ON wiki_articles FOR SELECT
     TO authenticated
     USING (is_published = true);
 
 -- Admins can manage all articles
+DROP POLICY IF EXISTS "Admins can manage wiki_articles" ON public.wiki_articles;
 CREATE POLICY "Admins can manage wiki_articles"
     ON wiki_articles FOR ALL
     USING (
@@ -198,22 +207,26 @@ CREATE INDEX IF NOT EXISTS idx_medical_boards_status ON medical_boards(status);
 ALTER TABLE medical_boards ENABLE ROW LEVEL SECURITY;
 
 -- All authenticated users can view and update boards
+DROP POLICY IF EXISTS "Users can view medical_boards" ON public.medical_boards;
 CREATE POLICY "Users can view medical_boards"
     ON medical_boards FOR SELECT
     TO authenticated
     USING (true);
 
+DROP POLICY IF EXISTS "Users can update medical_boards" ON public.medical_boards;
 CREATE POLICY "Users can update medical_boards"
     ON medical_boards FOR UPDATE
     TO authenticated
     USING (true);
 
+DROP POLICY IF EXISTS "Users can insert medical_boards" ON public.medical_boards;
 CREATE POLICY "Users can insert medical_boards"
     ON medical_boards FOR INSERT
     TO authenticated
     WITH CHECK (true);
 
 -- Admins can delete
+DROP POLICY IF EXISTS "Admins can delete medical_boards" ON public.medical_boards;
 CREATE POLICY "Admins can delete medical_boards"
     ON medical_boards FOR DELETE
     USING (
@@ -250,6 +263,7 @@ CREATE TABLE IF NOT EXISTS marketing_resources (
 ALTER TABLE marketing_resources ENABLE ROW LEVEL SECURITY;
 
 -- Only admins can view and manage marketing resources
+DROP POLICY IF EXISTS "Admins can manage marketing_resources" ON public.marketing_resources;
 CREATE POLICY "Admins can manage marketing_resources"
     ON marketing_resources FOR ALL
     USING (
@@ -292,6 +306,7 @@ CREATE TABLE IF NOT EXISTS partnerships (
 ALTER TABLE partnerships ENABLE ROW LEVEL SECURITY;
 
 -- Only admins can manage partnerships
+DROP POLICY IF EXISTS "Admins can manage partnerships" ON public.partnerships;
 CREATE POLICY "Admins can manage partnerships"
     ON partnerships FOR ALL
     USING (
@@ -322,6 +337,7 @@ CREATE INDEX IF NOT EXISTS idx_partnership_activities_partnership ON partnership
 -- RLS Policies
 ALTER TABLE partnership_activities ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage partnership_activities" ON public.partnership_activities;
 CREATE POLICY "Admins can manage partnership_activities"
     ON partnership_activities FOR ALL
     USING (

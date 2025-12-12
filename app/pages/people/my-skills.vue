@@ -81,7 +81,7 @@
       </v-row>
 
       <!-- Skills by Category -->
-      <v-row v-if="skillsByCategory.length > 0">
+      <v-row v-if="hasSkillsByCategory">
         <v-col v-for="category in skillsByCategory" :key="category.name" cols="12" md="6">
           <v-card rounded="lg" class="mb-4">
             <v-card-title class="d-flex align-center">
@@ -142,7 +142,7 @@
       </v-card>
 
       <!-- Skill Radar Chart (Visual) -->
-      <v-card v-if="skillsByCategory.length >= 3" rounded="lg" class="mt-6">
+      <v-card v-if="hasMultipleCategories" rounded="lg" class="mt-6">
         <v-card-title>
           <v-icon start>mdi-radar</v-icon>
           Skills Overview
@@ -162,7 +162,7 @@
                 </div>
               </v-progress-circular>
               <div class="text-body-2 mt-2">{{ category.name }}</div>
-              <div class="text-caption text-grey">{{ category.skills.length }} skills</div>
+              <div class="text-caption text-grey">{{ category.skills?.length || 0 }} skills</div>
             </div>
           </div>
         </v-card-text>
@@ -196,24 +196,25 @@ const user = useSupabaseUser()
 const skills = ref<EmployeeSkill[]>([])
 const loading = ref(true)
 
-// Computed
-const totalSkills = computed(() => skills.value.length)
+// Computed - with defensive null checks
+const totalSkills = computed(() => (skills.value || []).length)
 
 const masteredSkills = computed(() => 
-  skills.value.filter(s => s.level === 5).length
+  (skills.value || []).filter(s => s.level === 5).length
 )
 
 const developingSkills = computed(() => 
-  skills.value.filter(s => s.level >= 3 && s.level < 5).length
+  (skills.value || []).filter(s => s.level >= 3 && s.level < 5).length
 )
 
 const learningSkills = computed(() => 
-  skills.value.filter(s => s.level < 3).length
+  (skills.value || []).filter(s => s.level < 3).length
 )
 
 const overallScore = computed(() => {
-  if (skills.value.length === 0) return 0
-  const avg = skills.value.reduce((sum, s) => sum + s.level, 0) / skills.value.length
+  const skillList = skills.value || []
+  if (skillList.length === 0) return 0
+  const avg = skillList.reduce((sum, s) => sum + s.level, 0) / skillList.length
   return Math.round(avg * 20)
 })
 
@@ -225,8 +226,9 @@ const overallScoreColor = computed(() => {
 
 const skillsByCategory = computed(() => {
   const categories: Record<string, EmployeeSkill[]> = {}
+  const skillList = skills.value || []
   
-  skills.value.forEach(skill => {
+  skillList.forEach(skill => {
     const category = skill.skill_library?.category || 'Other'
     if (!categories[category]) {
       categories[category] = []
@@ -238,10 +240,14 @@ const skillsByCategory = computed(() => {
     .map(([name, skills]) => ({
       name,
       skills: skills.sort((a, b) => b.level - a.level),
-      avgLevel: skills.reduce((sum, s) => sum + s.level, 0) / skills.length
+      avgLevel: skills.length > 0 ? skills.reduce((sum, s) => sum + s.level, 0) / skills.length : 0
     }))
     .sort((a, b) => b.avgLevel - a.avgLevel)
 })
+
+// Safe accessor for template
+const hasSkillsByCategory = computed(() => (skillsByCategory.value || []).length > 0)
+const hasMultipleCategories = computed(() => (skillsByCategory.value || []).length >= 3)
 
 // Methods
 const getCategoryIcon = (category: string) => {
@@ -308,7 +314,7 @@ const fetchSkills = async () => {
     const { data: employee } = await client
       .from('employees')
       .select('id')
-      .eq('email', email)
+      .eq('email_work', email)
       .single() as { data: { id: string } | null }
     
     if (!employee) {

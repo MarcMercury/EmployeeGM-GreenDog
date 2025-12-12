@@ -5,7 +5,7 @@
 
 -- Create junction table for employee <-> location many-to-many relationship
 CREATE TABLE IF NOT EXISTS public.employee_locations (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id UUID NOT NULL REFERENCES public.employees(id) ON DELETE CASCADE,
   location_id UUID NOT NULL REFERENCES public.locations(id) ON DELETE CASCADE,
   is_primary BOOLEAN NOT NULL DEFAULT false,
@@ -29,10 +29,12 @@ CREATE INDEX IF NOT EXISTS idx_employee_locations_location
 -- Enable RLS
 ALTER TABLE public.employee_locations ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
+-- RLS Policies (DROP first to make migration idempotent)
+DROP POLICY IF EXISTS "Anyone can view employee locations" ON public.employee_locations;
 CREATE POLICY "Anyone can view employee locations" 
   ON public.employee_locations FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage employee locations" ON public.employee_locations;
 CREATE POLICY "Admins can manage employee locations" 
   ON public.employee_locations FOR ALL 
   USING (
@@ -52,6 +54,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_employee_locations_updated_at ON public.employee_locations;
 CREATE TRIGGER trigger_employee_locations_updated_at
   BEFORE UPDATE ON public.employee_locations
   FOR EACH ROW

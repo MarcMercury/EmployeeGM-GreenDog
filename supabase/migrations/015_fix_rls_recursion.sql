@@ -4,10 +4,7 @@
 -- Solution: Use profiles.role column directly with SECURITY DEFINER to bypass RLS
 -- =====================================================
 
--- Drop existing function
-DROP FUNCTION IF EXISTS public.is_admin();
-
--- Create new is_admin() that checks profiles.role directly
+-- Create/replace is_admin() that checks profiles.role directly
 -- SECURITY DEFINER runs as the function owner, bypassing RLS
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
@@ -29,8 +26,7 @@ GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
 
 -- Also fix current_profile_id to be SECURITY DEFINER
-DROP FUNCTION IF EXISTS public.current_profile_id();
-
+-- Use CREATE OR REPLACE to avoid dropping with dependencies
 CREATE OR REPLACE FUNCTION public.current_profile_id()
 RETURNS UUID AS $$
 BEGIN

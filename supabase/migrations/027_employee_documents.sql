@@ -107,6 +107,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS employee_documents_updated_at ON public.employee_documents;
 CREATE TRIGGER employee_documents_updated_at
   BEFORE UPDATE ON public.employee_documents
   FOR EACH ROW

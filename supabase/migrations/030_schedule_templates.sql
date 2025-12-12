@@ -7,7 +7,7 @@
 
 -- Schedule Templates Table - Stores named templates
 CREATE TABLE IF NOT EXISTS public.schedule_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   description TEXT,
   created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.schedule_templates (
 
 -- Template Shifts - The actual shift patterns in a template
 CREATE TABLE IF NOT EXISTS public.schedule_template_shifts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID NOT NULL REFERENCES public.schedule_templates(id) ON DELETE CASCADE,
   day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6), -- 0 = Monday, 6 = Sunday
   start_time TIME NOT NULL,
