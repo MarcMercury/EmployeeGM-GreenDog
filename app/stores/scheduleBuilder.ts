@@ -107,10 +107,11 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      * Count of filled vs open shifts
      */
     shiftStats(): { filled: number; open: number; closed: number } {
+      const shifts = this.draftShifts || []
       return {
-        filled: this.draftShifts.filter(s => s.employee_id != null).length,
-        open: this.draftShifts.filter(s => s.employee_id == null && s.status !== 'closed_clinic').length,
-        closed: this.draftShifts.filter(s => s.status === 'closed_clinic').length
+        filled: shifts.filter(s => s.employee_id != null).length,
+        open: shifts.filter(s => s.employee_id == null && s.status !== 'closed_clinic').length,
+        closed: shifts.filter(s => s.status === 'closed_clinic').length
       }
     }
   },

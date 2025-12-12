@@ -91,22 +91,22 @@ const weekDays = computed(() => {
 
 // All unique department names
 const departmentOptions = computed(() => 
-  departments.value.map(d => ({ title: d.name, value: d.id }))
+  (departments.value || []).map(d => ({ title: d.name, value: d.id }))
 )
 
 // All unique position titles
 const positionOptions = computed(() => 
-  positions.value.map(p => ({ title: p.title, value: p.id }))
+  (positions.value || []).map(p => ({ title: p.title, value: p.id }))
 )
 
 // Filtered employees for the bench
 const filteredEmployees = computed(() => {
-  let result = employees.value.filter(e => e.is_active)
+  let result = (employees.value || []).filter(e => e.is_active)
   
   if (employeeSearch.value) {
     const search = employeeSearch.value.toLowerCase()
     result = result.filter(e => 
-      e.full_name.toLowerCase().includes(search) ||
+      e.full_name?.toLowerCase().includes(search) ||
       (e.position?.title || '').toLowerCase().includes(search)
     )
   }
@@ -124,25 +124,29 @@ const filteredEmployees = computed(() => {
 
 // Visible locations for the grid
 const activeLocations = computed(() => {
+  const locs = locations.value || []
   if (visibleLocations.value.length === 0) {
     // Show all locations by default
-    return locations.value
+    return locs
   }
-  return locations.value.filter(l => visibleLocations.value.includes(l.id))
+  return locs.filter(l => visibleLocations.value.includes(l.id))
 })
 
 // Get shifts grouped by location and day
 const shiftMatrix = computed(() => {
   const matrix: Record<string, Record<string, ScheduleShift[]>> = {}
+  const locs = activeLocations.value || []
+  const days = weekDays.value || []
+  const shifts = scheduleStore.draftShifts || []
   
-  activeLocations.value.forEach(loc => {
+  locs.forEach(loc => {
     matrix[loc.id] = {}
-    weekDays.value.forEach(day => {
+    days.forEach(day => {
       const dateStr = format(day, 'yyyy-MM-dd')
-      matrix[loc.id][dateStr] = scheduleStore.draftShifts.filter(s => 
+      matrix[loc.id][dateStr] = shifts.filter(s => 
         s.location_id === loc.id && 
-        s.start_at.startsWith(dateStr)
-      ).sort((a, b) => a.start_at.localeCompare(b.start_at))
+        s.start_at?.startsWith(dateStr)
+      ).sort((a, b) => (a.start_at || '').localeCompare(b.start_at || ''))
     })
   })
   
@@ -157,13 +161,13 @@ const isLocationDayClosed = (locationId: string, dateStr: string): boolean => {
 
 // Get workload count (shifts assigned) for an employee this week
 const getEmployeeShiftCount = (employeeId: string): number => {
-  return scheduleStore.draftShifts.filter(s => s.employee_id === employeeId).length
+  return (scheduleStore.draftShifts || []).filter(s => s.employee_id === employeeId).length
 }
 
 // Get employee by ID
 const getEmployee = (employeeId: string | null) => {
   if (!employeeId) return null
-  return employees.value.find(e => e.id === employeeId)
+  return (employees.value || []).find(e => e.id === employeeId)
 }
 
 // --- Drag & Drop ---
@@ -583,7 +587,7 @@ watch(currentWeekStart, (newWeek) => {
 
 onMounted(async () => {
   // Initialize visible locations to all
-  visibleLocations.value = locations.value.map(l => l.id)
+  visibleLocations.value = (locations.value || []).map(l => l.id)
   await loadTemplates()
 })
 
