@@ -117,8 +117,16 @@ const authStore = useAuthStore()
 const employeeStore = useEmployeeStore()
 const scheduleStore = useScheduleStore()
 const uiStore = useUIStore()
+const router = useRouter()
 
 const isAdmin = computed(() => authStore.isAdmin)
+
+// Redirect admins to the full Schedule Builder
+onMounted(() => {
+  if (authStore.isAdmin) {
+    router.replace('/schedule/builder')
+  }
+})
 
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 const viewMode = ref<'day' | 'week' | 'month'>('week')
