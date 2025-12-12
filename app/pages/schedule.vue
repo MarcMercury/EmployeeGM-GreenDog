@@ -19,7 +19,7 @@
     </div>
 
     <!-- Calendar -->
-    <ScheduleScheduleCalendar
+    <ScheduleCalendar
       :schedules="schedules"
       v-model:selected-date="selectedDate"
       v-model:view-mode="viewMode"
