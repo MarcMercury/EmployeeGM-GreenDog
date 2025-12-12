@@ -100,7 +100,7 @@ export const useRosterStore = defineStore('roster', {
               name,
               code
             ),
-            employee_skills (
+            employee_skills!employee_id (
               id,
               skill_id,
               level,
@@ -227,7 +227,7 @@ export const useRosterStore = defineStore('roster', {
               last_name,
               position:job_positions (title)
             ),
-            employee_skills (
+            employee_skills!employee_id (
               id,
               skill_id,
               level,

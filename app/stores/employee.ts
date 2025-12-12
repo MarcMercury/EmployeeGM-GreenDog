@@ -72,6 +72,7 @@ export const useEmployeeStore = defineStore('employee', {
 
       try {
         // Fetch from employees table with all related data
+        // Note: Use employee_skills!employee_id to disambiguate (there's also certified_by_employee_id FK)
         const { data, error } = await supabase
           .from('employees')
           .select(`
@@ -80,7 +81,7 @@ export const useEmployeeStore = defineStore('employee', {
             department:departments (*),
             position:job_positions (*),
             location:locations (*),
-            employee_skills (
+            employee_skills!employee_id (
               *,
               skill:skill_library (*)
             )
@@ -128,6 +129,7 @@ export const useEmployeeStore = defineStore('employee', {
 
       try {
         // Try to find employee by profile_id first
+        // Note: Use employee_skills!employee_id to disambiguate
         const { data, error } = await supabase
           .from('employees')
           .select(`
@@ -136,7 +138,7 @@ export const useEmployeeStore = defineStore('employee', {
             department:departments (*),
             position:job_positions (*),
             location:locations (*),
-            employee_skills (
+            employee_skills!employee_id (
               *,
               skill:skill_library (*)
             )

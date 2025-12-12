@@ -565,6 +565,7 @@ async function fetchEmployee() {
   try {
     console.log('[Profile] Fetching employee ID:', employeeId.value)
     
+    // Note: Use employee_skills!employee_id to disambiguate (there's also certified_by_employee_id FK)
     const { data, error: fetchError } = await client
       .from('employees')
       .select(`
@@ -572,7 +573,7 @@ async function fetchEmployee() {
         department:departments(id, name),
         position:job_positions(id, title),
         location:locations(id, name),
-        skills:employee_skills(
+        skills:employee_skills!employee_id(
           id,
           level,
           skill_id,

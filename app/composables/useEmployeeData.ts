@@ -144,12 +144,11 @@ export function useEmployeeData() {
             id,
             name
           ),
-          employee_skills (
+          employee_skills!employee_id (
             id,
             skill_id,
             level,
             certified_at,
-            is_goal,
             skill:skill_library (
               id,
               name,
