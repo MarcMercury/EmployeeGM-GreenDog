@@ -57,6 +57,100 @@
       </v-col>
     </v-row>
 
+    <!-- Filters Section -->
+    <v-card class="mb-6" variant="outlined" rounded="lg">
+      <v-card-text>
+        <v-row dense align="center">
+          <v-col cols="12" sm="4">
+            <v-text-field
+              v-model="searchQuery"
+              prepend-inner-icon="mdi-magnify"
+              label="Search skills..."
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="3">
+            <v-select
+              v-model="filterLevel"
+              :items="levelFilterOptions"
+              label="Skill Level"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="3">
+            <v-select
+              v-model="filterCategory"
+              :items="allCategories"
+              label="Category"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="2">
+            <v-checkbox
+              v-model="showGoalsOnly"
+              label="Goals Only"
+              density="compact"
+              hide-details
+              color="warning"
+            />
+          </v-col>
+        </v-row>
+        <div v-if="hasActiveFilters" class="d-flex align-center gap-2 mt-3">
+          <span class="text-caption text-grey">Active filters:</span>
+          <v-chip
+            v-if="searchQuery"
+            size="small"
+            closable
+            @click:close="searchQuery = ''"
+          >
+            Search: "{{ searchQuery }}"
+          </v-chip>
+          <v-chip
+            v-if="filterLevel !== null"
+            size="small"
+            closable
+            @click:close="filterLevel = null"
+          >
+            Level: {{ levelFilterOptions.find(l => l.value === filterLevel)?.title }}
+          </v-chip>
+          <v-chip
+            v-if="filterCategory"
+            size="small"
+            closable
+            @click:close="filterCategory = null"
+          >
+            {{ filterCategory }}
+          </v-chip>
+          <v-chip
+            v-if="showGoalsOnly"
+            size="small"
+            color="warning"
+            closable
+            @click:close="showGoalsOnly = false"
+          >
+            Goals Only
+          </v-chip>
+          <v-btn
+            variant="text"
+            size="small"
+            color="primary"
+            @click="clearFilters"
+          >
+            Clear All
+          </v-btn>
+        </div>
+      </v-card-text>
+    </v-card>
+
     <!-- Loading State -->
     <div v-if="loading" class="d-flex justify-center py-12">
       <v-progress-circular indeterminate color="primary" size="48" />
@@ -69,11 +163,19 @@
       <p class="text-body-2 text-grey">Contact your manager to assign skills or set learning goals</p>
     </v-card>
 
+    <!-- No Results State (with filters) -->
+    <v-card v-else-if="filteredCategories.length === 0" class="text-center pa-8">
+      <v-icon size="64" color="grey-lighten-1">mdi-filter-off</v-icon>
+      <h3 class="text-h6 mt-4">No skills match your filters</h3>
+      <p class="text-body-2 text-grey mb-4">Try adjusting your search or filter criteria</p>
+      <v-btn color="primary" variant="outlined" @click="clearFilters">Clear Filters</v-btn>
+    </v-card>
+
     <!-- Skills by Category (Collapsible) -->
     <template v-else>
       <v-expansion-panels v-model="expandedPanels" multiple>
         <v-expansion-panel
-          v-for="category in categories"
+          v-for="category in filteredCategories"
           :key="category"
           rounded="lg"
           class="mb-3"
@@ -84,14 +186,14 @@
               <span class="text-subtitle-1 font-weight-medium">{{ category }}</span>
               <v-spacer />
               <v-chip size="small" variant="tonal" :color="getCategoryColor(category)">
-                {{ getSkillsByCategory(category).length }} skills
+                {{ getFilteredSkillsByCategory(category).length }} skills
               </v-chip>
             </div>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-list density="compact" class="bg-transparent">
               <v-list-item
-                v-for="skill in getSkillsByCategory(category)"
+                v-for="skill in getFilteredSkillsByCategory(category)"
                 :key="skill.id"
                 class="py-3"
               >

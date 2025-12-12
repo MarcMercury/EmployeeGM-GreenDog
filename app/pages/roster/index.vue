@@ -112,8 +112,8 @@
         :items-per-page-options="[10, 25, 50, 100]"
         hover
         density="comfortable"
-        :class="['roster-table', { 'roster-table--clickable': isAdmin }]"
-        @click:row="(_, { item }) => isAdmin && viewEmployee(item.id)"
+        :class="['roster-table', 'roster-table--clickable']"
+        @click:row="(_, { item }) => viewEmployee(item.id)"
       >
         <!-- Employee Name + Avatar -->
         <template #item.name="{ item }">
@@ -214,8 +214,8 @@
         <v-card 
           rounded="lg" 
           elevation="2" 
-          :class="['employee-card', 'h-100', { 'employee-card--clickable': isAdmin }]"
-          @click="isAdmin && viewEmployee(emp.id)"
+          class="employee-card h-100 employee-card--clickable cursor-pointer"
+          @click="viewEmployee(emp.id)"
         >
           <v-card-text class="text-center pb-2">
             <v-avatar size="72" :color="emp.avatar_url ? undefined : 'primary'" class="mb-3">

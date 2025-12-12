@@ -382,7 +382,7 @@
 import SkillHexagon from '~/components/skill/SkillHexagon.vue'
 
 definePageMeta({
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth']
 })
 
 const route = useRoute()
