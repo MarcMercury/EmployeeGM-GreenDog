@@ -918,144 +918,177 @@ async function loadEmployeeData() {
 }
 
 async function loadPaySettings() {
-  const { data } = await supabase
-    .from('employee_pay_settings')
-    .select('*')
-    .eq('employee_id', employeeId.value)
-    .order('effective_from', { ascending: false })
-    .limit(1)
-    .single()
-  
-  paySettings.value = data
-  if (data) {
-    payForm.value = {
-      pay_type: data.pay_type || 'hourly',
-      hourly_rate: data.hourly_rate || 0,
-      annual_salary: data.annual_salary || 0
+  try {
+    const { data } = await supabase
+      .from('employee_pay_settings')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('effective_from', { ascending: false })
+      .limit(1)
+      .single()
+    
+    paySettings.value = data
+    if (data) {
+      payForm.value = {
+        pay_type: data.pay_type || 'hourly',
+        hourly_rate: data.hourly_rate || 0,
+        annual_salary: data.annual_salary || 0
+      }
     }
+  } catch (err) {
+    console.log('[Profile] Pay settings not available:', err)
   }
 }
 
 async function loadPTOBalances() {
-  const { data } = await supabase
-    .from('employee_time_off_balances')
-    .select(`
-      *,
-      time_off_type:time_off_types(name)
-    `)
-    .eq('employee_id', employeeId.value)
-    .eq('period_year', currentYear)
+  try {
+    const { data } = await supabase
+      .from('employee_time_off_balances')
+      .select(`
+        *,
+        time_off_type:time_off_types(name)
+      `)
+      .eq('employee_id', employeeId.value)
+      .eq('period_year', currentYear)
 
-  ptoBalances.value = (data || []).map(b => ({
-    ...b,
-    type_name: b.time_off_type?.name || 'Unknown',
-    available_hours: (b.accrued_hours + b.carryover_hours) - b.used_hours - b.pending_hours
-  }))
+    ptoBalances.value = (data || []).map(b => ({
+      ...b,
+      type_name: b.time_off_type?.name || 'Unknown',
+      available_hours: (b.accrued_hours + b.carryover_hours) - b.used_hours - b.pending_hours
+    }))
+  } catch (err) {
+    console.log('[Profile] PTO balances not available:', err)
+  }
 }
 
 async function loadNotes() {
-  const { data } = await supabase
-    .from('employee_notes')
-    .select(`
-      *,
-      author:employees!employee_notes_author_employee_id_fkey(first_name, last_name)
-    `)
-    .eq('employee_id', employeeId.value)
-    .order('created_at', { ascending: false })
+  try {
+    const { data } = await supabase
+      .from('employee_notes')
+      .select(`
+        *,
+        author:employees!employee_notes_author_employee_id_fkey(first_name, last_name)
+      `)
+      .eq('employee_id', employeeId.value)
+      .order('created_at', { ascending: false })
 
-  notes.value = (data || []).map(n => ({
-    ...n,
-    author_name: n.author ? `${n.author.first_name} ${n.author.last_name}` : null
-  }))
+    notes.value = (data || []).map(n => ({
+      ...n,
+      author_name: n.author ? `${n.author.first_name} ${n.author.last_name}` : null
+    }))
+  } catch (err) {
+    console.log('[Profile] Notes not available:', err)
+  }
 }
 
 async function loadDocuments() {
-  const { data } = await supabase
-    .from('employee_documents')
-    .select('*')
-    .eq('employee_id', employeeId.value)
-    .order('created_at', { ascending: false })
+  try {
+    const { data } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('created_at', { ascending: false })
 
-  documents.value = data || []
+    documents.value = data || []
+  } catch (err) {
+    console.log('[Profile] Documents not available:', err)
+  }
 }
 
 async function loadLicenses() {
-  const { data } = await supabase
-    .from('employee_licenses')
-    .select('*')
-    .eq('employee_id', employeeId.value)
-    .order('expiration_date', { ascending: true })
+  try {
+    const { data } = await supabase
+      .from('employee_licenses')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('expiration_date', { ascending: true })
 
-  licenses.value = data || []
+    licenses.value = data || []
+  } catch (err) {
+    console.log('[Profile] Licenses not available:', err)
+  }
 }
 
 async function loadCECredits() {
-  const { data: credits } = await supabase
-    .from('employee_ce_credits')
-    .select('*')
-    .eq('employee_id', employeeId.value)
-    .eq('period_year', currentYear)
-    .single()
-
-  ceCredits.value = credits
-
-  if (credits) {
-    const { data: transactions } = await supabase
-      .from('employee_ce_transactions')
+  try {
+    const { data: credits } = await supabase
+      .from('employee_ce_credits')
       .select('*')
-      .eq('ce_credit_id', credits.id)
-      .order('transaction_date', { ascending: false })
+      .eq('employee_id', employeeId.value)
+      .eq('period_year', currentYear)
+      .single()
 
-    ceTransactions.value = transactions || []
+    ceCredits.value = credits
+
+    if (credits) {
+      const { data: transactions } = await supabase
+        .from('employee_ce_transactions')
+        .select('*')
+        .eq('ce_credit_id', credits.id)
+        .order('transaction_date', { ascending: false })
+
+      ceTransactions.value = transactions || []
+    }
+  } catch (err) {
+    console.log('[Profile] CE credits not available:', err)
   }
 }
 
 async function loadReliabilityScore() {
-  // Calculate from time_punches and shifts
-  const { data: shifts } = await supabase
-    .from('shifts')
-    .select('id, start_at')
-    .eq('employee_id', employeeId.value)
-    .eq('status', 'completed')
-    .lte('start_at', new Date().toISOString())
+  try {
+    // Calculate from time_punches and shifts
+    const { data: shifts } = await supabase
+      .from('shifts')
+      .select('id, start_at')
+      .eq('employee_id', employeeId.value)
+      .eq('status', 'completed')
+      .lte('start_at', new Date().toISOString())
 
-  const { data: punches } = await supabase
-    .from('time_punches')
-    .select('id, punch_in, shift_id')
-    .eq('employee_id', employeeId.value)
-    .not('punch_in', 'is', null)
+    const { data: punches } = await supabase
+      .from('time_punches')
+      .select('id, punch_in, shift_id')
+      .eq('employee_id', employeeId.value)
+      .not('punch_in', 'is', null)
 
-  totalShifts.value = shifts?.length || 0
-  
-  if (totalShifts.value === 0) {
-    reliabilityScore.value = 100
-    return
-  }
-
-  // Count on-time arrivals (punched in within 5 min of shift start)
-  let onTimeCount = 0
-  shifts?.forEach(shift => {
-    const punch = punches?.find(p => p.shift_id === shift.id)
-    if (punch) {
-      const shiftStart = new Date(shift.start_at)
-      const punchIn = new Date(punch.punch_in)
-      const diffMinutes = (punchIn.getTime() - shiftStart.getTime()) / 60000
-      if (diffMinutes <= 5) onTimeCount++
+    totalShifts.value = shifts?.length || 0
+    
+    if (totalShifts.value === 0) {
+      reliabilityScore.value = 100
+      return
     }
-  })
 
-  reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+    // Count on-time arrivals (punched in within 5 min of shift start)
+    let onTimeCount = 0
+    shifts?.forEach(shift => {
+      const punch = punches?.find(p => p.shift_id === shift.id)
+      if (punch) {
+        const shiftStart = new Date(shift.start_at)
+        const punchIn = new Date(punch.punch_in)
+        const diffMinutes = (punchIn.getTime() - shiftStart.getTime()) / 60000
+        if (diffMinutes <= 5) onTimeCount++
+      }
+    })
+
+    reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+  } catch (err) {
+    console.log('[Profile] Reliability score not available:', err)
+    reliabilityScore.value = 100
+  }
 }
 
 async function loadSkillLevel() {
-  const { data } = await supabase
-    .from('employee_skills')
-    .select('level')
-    .eq('employee_id', employeeId.value)
+  try {
+    const { data } = await supabase
+      .from('employee_skills')
+      .select('level')
+      .eq('employee_id', employeeId.value)
 
-  if (data && data.length > 0) {
-    const totalPoints = data.reduce((sum, s) => sum + (s.level || 0), 0)
-    aggregateSkillLevel.value = Math.max(1, Math.floor(totalPoints / 5) + 1)
+    if (data && data.length > 0) {
+      const totalPoints = data.reduce((sum, s) => sum + (s.level || 0), 0)
+      aggregateSkillLevel.value = Math.max(1, Math.floor(totalPoints / 5) + 1)
+    }
+  } catch (err) {
+    console.log('[Profile] Skill level not available:', err)
   }
 }
 
