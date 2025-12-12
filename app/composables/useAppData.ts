@@ -291,7 +291,7 @@ export const useAppData = () => {
           .select(`
             employee_id,
             skill_id,
-            rating,
+            level,
             is_goal,
             skill_library:skill_id ( id, name, category )
           `)
@@ -307,7 +307,7 @@ export const useAppData = () => {
               skill_id: es.skill_id,
               skill_name: es.skill_library?.name || 'Unknown',
               category: es.skill_library?.category || 'General',
-              rating: es.rating || 0,
+              rating: es.level || 0, // Map 'level' column to 'rating' for component compatibility
               is_goal: es.is_goal || false
             })
           })

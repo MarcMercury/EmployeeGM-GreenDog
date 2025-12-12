@@ -23,7 +23,7 @@ definePageMeta({
 const scheduleStore = useScheduleBuilderStore()
 const { employees, locations, isAdmin, departments, positions } = useAppData()
 const { validateAssignment, getEmployeeHours, calculateHours } = useScheduleRules()
-const uiStore = useUIStore()
+const toast = useToast()
 const supabase = useSupabaseClient()
 
 // --- State ---
@@ -43,12 +43,22 @@ const draggedEmployee = ref<ScheduleEmployee | null>(null)
 const dragOverSlotKey = ref<string | null>(null)
 const dropValidation = ref<{ valid: boolean; message: string | null } | null>(null)
 
-// Templates
+// Dialogs
 const showTemplateDialog = ref(false)
 const showLoadTemplateDialog = ref(false)
 const templateName = ref('')
 const templates = ref<{ id: string; name: string; description: string | null }[]>([])
 const selectedTemplateId = ref<string | null>(null)
+
+// Add Shift Dialog
+const showAddShiftDialog = ref(false)
+const addShiftLocation = ref<any>(null)
+const addShiftDate = ref<Date | null>(null)
+const addShiftForm = ref({
+  startTime: '09:00',
+  endTime: '17:00',
+  roleRequired: ''
+})
 
 // Context menu
 const contextMenu = ref({
@@ -204,13 +214,13 @@ const handleDrop = (shift: ScheduleShift, event: DragEvent) => {
   )
   
   if (validation.type === 'error') {
-    uiStore.showError(validation.message || 'Cannot assign employee')
+    toast.error(validation.message || 'Cannot assign employee')
   } else {
     if (validation.type === 'warning') {
-      uiStore.showWarning(validation.message || 'Warning')
+      toast.warning(validation.message || 'Warning')
     }
     scheduleStore.assignEmployee(shift.id, draggedEmployee.value.id)
-    uiStore.showSuccess(`Assigned ${draggedEmployee.value.first_name} to shift`)
+    toast.success(`Assigned ${draggedEmployee.value.first_name} to shift`)
   }
   
   handleDragEnd()
@@ -218,6 +228,37 @@ const handleDrop = (shift: ScheduleShift, event: DragEvent) => {
 
 const unassignEmployee = (shiftId: string) => {
   scheduleStore.unassignEmployee(shiftId)
+}
+
+const removeShift = (shiftId: string) => {
+  scheduleStore.removeShift(shiftId)
+}
+
+// --- Add Shift ---
+const openAddShiftDialog = (location: any, day: Date) => {
+  addShiftLocation.value = location
+  addShiftDate.value = day
+  addShiftForm.value = {
+    startTime: '09:00',
+    endTime: '17:00',
+    roleRequired: ''
+  }
+  showAddShiftDialog.value = true
+}
+
+const addShift = () => {
+  if (!addShiftLocation.value || !addShiftDate.value) return
+  
+  scheduleStore.addShift(
+    addShiftLocation.value.id,
+    addShiftLocation.value.name,
+    addShiftDate.value,
+    addShiftForm.value.startTime,
+    addShiftForm.value.endTime,
+    addShiftForm.value.roleRequired || undefined
+  )
+  
+  showAddShiftDialog.value = false
 }
 
 // --- Week Navigation ---
@@ -257,10 +298,10 @@ const toggleClinicClosed = () => {
   
   if (isClosed) {
     scheduleStore.reopenLocation(locationId, date)
-    uiStore.showSuccess('Clinic reopened')
+    toast.success('Clinic reopened')
   } else {
     scheduleStore.closeLocation(locationId, date)
-    uiStore.showInfo('Clinic marked as closed')
+    toast.info('Clinic marked as closed')
   }
   
   closeContextMenu()
@@ -279,7 +320,7 @@ const loadTemplates = async () => {
 
 const saveAsTemplate = async () => {
   if (!templateName.value.trim()) {
-    uiStore.showError('Please enter a template name')
+    toast.error('Please enter a template name')
     return
   }
   
@@ -318,13 +359,13 @@ const saveAsTemplate = async () => {
     
     if (shiftsError) throw shiftsError
     
-    uiStore.showSuccess(`Template "${templateName.value}" saved!`)
+    toast.success(`Template "${templateName.value}" saved!`)
     templateName.value = ''
     showTemplateDialog.value = false
     await loadTemplates()
   } catch (err) {
     console.error('Error saving template:', err)
-    uiStore.showError('Failed to save template')
+    toast.error('Failed to save template')
   }
 }
 
@@ -338,7 +379,7 @@ const applyTemplate = async () => {
       .eq('template_id', selectedTemplateId.value)
     
     if (!templateShifts?.length) {
-      uiStore.showError('Template has no shifts')
+      toast.error('Template has no shifts')
       return
     }
     
@@ -372,13 +413,13 @@ const applyTemplate = async () => {
     
     if (error) throw error
     
-    uiStore.showSuccess('Template applied! Reloading schedule...')
+    toast.success('Template applied! Reloading schedule...')
     showLoadTemplateDialog.value = false
     selectedTemplateId.value = null
     await scheduleStore.loadWeek(currentWeekStart.value)
   } catch (err) {
     console.error('Error applying template:', err)
-    uiStore.showError('Failed to apply template')
+    toast.error('Failed to apply template')
   }
 }
 
@@ -389,7 +430,7 @@ const autoSuggest = () => {
   )
   
   if (openShifts.length === 0) {
-    uiStore.showInfo('No open shifts to fill')
+    toast.info('No open shifts to fill')
     return
   }
   
@@ -438,9 +479,9 @@ const autoSuggest = () => {
   })
   
   if (assigned > 0) {
-    uiStore.showSuccess(`Auto-assigned ${assigned} shift${assigned > 1 ? 's' : ''}`)
+    toast.success(`Auto-assigned ${assigned} shift${assigned > 1 ? 's' : ''}`)
   } else {
-    uiStore.showWarning('No suitable employees found for open shifts')
+    toast.warning('No suitable employees found for open shifts')
   }
   
   showAutoSuggestDialog.value = false
@@ -450,25 +491,25 @@ const autoSuggest = () => {
 const handleSave = async () => {
   const success = await scheduleStore.saveDraft()
   if (success) {
-    uiStore.showSuccess('Schedule saved')
+    toast.success('Schedule saved')
   } else {
-    uiStore.showError('Failed to save schedule')
+    toast.error('Failed to save schedule')
   }
 }
 
 const handleDiscard = () => {
   scheduleStore.discardChanges()
   showDiscardDialog.value = false
-  uiStore.showInfo('Changes discarded')
+  toast.info('Changes discarded')
 }
 
 const handlePublish = async () => {
   const success = await scheduleStore.publishSchedule()
   if (success) {
     showPublishDialog.value = false
-    uiStore.showSuccess('Schedule published! Employees will be notified.')
+    toast.success('Schedule published! Employees will be notified.')
   } else {
-    uiStore.showError('Failed to publish schedule')
+    toast.error('Failed to publish schedule')
   }
 }
 
@@ -727,8 +768,19 @@ const handleClickOutside = () => {
                 @dragleave="handleDragLeave"
                 @drop="handleDrop(shift, $event)"
               >
-                <div class="shift-time">
-                  {{ format(parseISO(shift.start_at), 'h:mma') }}-{{ format(parseISO(shift.end_at), 'h:mma') }}
+                <div class="d-flex align-center justify-space-between">
+                  <div class="shift-time">
+                    {{ format(parseISO(shift.start_at), 'h:mma') }}-{{ format(parseISO(shift.end_at), 'h:mma') }}
+                  </div>
+                  <v-btn
+                    v-if="!shift.employee_id"
+                    icon="mdi-delete"
+                    size="x-small"
+                    variant="text"
+                    density="compact"
+                    color="error"
+                    @click.stop="removeShift(shift.id)"
+                  />
                 </div>
                 <div v-if="shift.role_required" class="shift-role">{{ shift.role_required }}</div>
                 
@@ -755,10 +807,17 @@ const handleClickOutside = () => {
                 </div>
               </div>
               
-              <!-- No shifts for this day/location -->
-              <div v-if="!shiftMatrix[location.id]?.[format(day, 'yyyy-MM-dd')]?.length" class="no-shifts">
-                <span class="text-caption text-grey">—</span>
-              </div>
+              <!-- Add Shift Button (always visible in each cell) -->
+              <v-btn
+                v-if="!isLocationDayClosed(location.id, format(day, 'yyyy-MM-dd'))"
+                size="x-small"
+                variant="text"
+                color="primary"
+                class="add-shift-btn"
+                @click="openAddShiftDialog(location, day)"
+              >
+                <v-icon size="14">mdi-plus</v-icon>
+              </v-btn>
             </div>
           </div>
           
@@ -984,6 +1043,56 @@ const handleClickOutside = () => {
           >
             Publish & Notify
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add Shift Dialog -->
+    <v-dialog v-model="showAddShiftDialog" max-width="400">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-plus-circle</v-icon>
+          Add Shift
+        </v-card-title>
+        <v-card-subtitle v-if="addShiftLocation && addShiftDate">
+          {{ addShiftLocation.name }} - {{ format(addShiftDate, 'EEE, MMM d') }}
+        </v-card-subtitle>
+        <v-card-text>
+          <v-row>
+            <v-col cols="6">
+              <v-text-field
+                v-model="addShiftForm.startTime"
+                label="Start Time"
+                type="time"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model="addShiftForm.endTime"
+                label="End Time"
+                type="time"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+          <v-text-field
+            v-model="addShiftForm.roleRequired"
+            label="Role Required (optional)"
+            placeholder="e.g., Hygienist, Assistant"
+            variant="outlined"
+            density="compact"
+          />
+          <v-alert type="info" variant="tonal" density="compact" class="mt-2">
+            After adding, drag an employee from the bench to assign them.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddShiftDialog = false">Cancel</v-btn>
+          <v-btn color="primary" @click="addShift">Add Shift</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1215,6 +1324,16 @@ const handleClickOutside = () => {
   align-items: center;
   justify-content: center;
   flex: 1;
+}
+
+.add-shift-btn {
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  margin-top: 2px;
+}
+
+.day-cell:hover .add-shift-btn {
+  opacity: 1;
 }
 
 .no-locations {

@@ -56,28 +56,31 @@
         <v-card rounded="lg">
           <v-card-title>Company Information</v-card-title>
           <v-card-text>
-            <v-text-field
-              v-model="companyName"
-              label="Company Name"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="companyEmail"
-              label="Contact Email"
-              type="email"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="companyPhone"
-              label="Phone Number"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-btn color="primary" @click="saveCompanyInfo">
-              Save Changes
-            </v-btn>
+            <v-skeleton-loader v-if="loadingCompany" type="article" />
+            <template v-else>
+              <v-text-field
+                v-model="companyName"
+                label="Display Name"
+                variant="outlined"
+                class="mb-3"
+              />
+              <v-text-field
+                v-model="companyLegalName"
+                label="Legal Name"
+                variant="outlined"
+                class="mb-3"
+              />
+              <v-select
+                v-model="companyTimezone"
+                :items="timezoneOptions"
+                label="Timezone"
+                variant="outlined"
+                class="mb-3"
+              />
+              <v-btn color="primary" @click="saveCompanyInfo">
+                Save Changes
+              </v-btn>
+            </template>
           </v-card-text>
         </v-card>
       </v-col>
@@ -217,6 +220,10 @@ definePageMeta({
   middleware: ['auth', 'admin']
 })
 
+const supabase = useSupabaseClient()
+const toast = useToast()
+
+// UI Store for theme
 const uiStore = useUIStore()
 
 const darkMode = computed({
@@ -225,9 +232,14 @@ const darkMode = computed({
 })
 
 const notifications = ref(true)
-const companyName = ref('Green Dog Dental')
-const companyEmail = ref('info@greendogdental.com')
-const companyPhone = ref('')
+
+// Company settings from database
+const companySettingsId = ref<string | null>(null)
+const companyName = ref('')
+const companyLegalName = ref('')
+const companyTimezone = ref('America/Los_Angeles')
+const companyAddress = ref<any>({})
+const loadingCompany = ref(true)
 
 const departments = ref<Department[]>([])
 const addDepartmentDialog = ref(false)
@@ -242,8 +254,63 @@ const newDepartment = reactive({
   description: ''
 })
 
-function saveCompanyInfo() {
-  uiStore.showSuccess('Settings saved')
+// Load company settings from Supabase
+async function loadCompanySettings() {
+  loadingCompany.value = true
+  try {
+    const { data, error } = await supabase
+      .from('company_settings')
+      .select('*')
+      .limit(1)
+      .single()
+    
+    if (!error && data) {
+      companySettingsId.value = data.id
+      companyName.value = data.display_name || ''
+      companyLegalName.value = data.legal_name || ''
+      companyTimezone.value = data.timezone || 'America/Los_Angeles'
+      companyAddress.value = data.primary_address || {}
+    }
+  } catch (err) {
+    console.error('Failed to load company settings:', err)
+  } finally {
+    loadingCompany.value = false
+  }
+}
+
+async function saveCompanyInfo() {
+  try {
+    const updateData = {
+      display_name: companyName.value,
+      legal_name: companyLegalName.value,
+      timezone: companyTimezone.value,
+      primary_address: companyAddress.value,
+      updated_at: new Date().toISOString()
+    }
+
+    if (companySettingsId.value) {
+      const { error } = await supabase
+        .from('company_settings')
+        .update(updateData)
+        .eq('id', companySettingsId.value)
+      
+      if (error) throw error
+    } else {
+      // Create new if doesn't exist
+      const { data, error } = await supabase
+        .from('company_settings')
+        .insert(updateData)
+        .select()
+        .single()
+      
+      if (error) throw error
+      companySettingsId.value = data.id
+    }
+    
+    toast.success('Company settings saved')
+  } catch (err) {
+    toast.error('Failed to save settings')
+  }
 }
 
 function editDepartment(dept: Department) {
@@ -267,7 +334,7 @@ function closeDepartmentDialog() {
 
 async function saveDepartment() {
   if (!newDepartment.name) {
-    uiStore.showError('Department name is required')
+    toast.error('Department name is required')
     return
   }
 
@@ -290,7 +357,7 @@ async function saveDepartment() {
       if (idx !== -1) {
         departments.value[idx] = { ...departments.value[idx], ...newDepartment }
       }
-      uiStore.showSuccess('Department updated')
+      toast.success('Department updated')
     } else {
       // Create new
       const { data, error } = await supabase
@@ -304,12 +371,12 @@ async function saveDepartment() {
       
       if (error) throw error
       departments.value.push(data as Department)
-      uiStore.showSuccess('Department added')
+      toast.success('Department added')
     }
     
     closeDepartmentDialog()
   } catch {
-    uiStore.showError(editingDepartment.value ? 'Failed to update department' : 'Failed to add department')
+    toast.error(editingDepartment.value ? 'Failed to update department' : 'Failed to add department')
   }
 }
 
@@ -328,9 +395,9 @@ async function deleteDepartment() {
     departments.value = departments.value.filter(d => d.id !== departmentToDelete.value!.id)
     deleteDepartmentDialog.value = false
     departmentToDelete.value = null
-    uiStore.showSuccess('Department deleted')
+    toast.success('Department deleted')
   } catch {
-    uiStore.showError('Failed to delete department')
+    toast.error('Failed to delete department')
   }
 }
 
@@ -341,28 +408,36 @@ async function addDepartment() {
 
 async function exportData() {
   try {
-    const supabase = useSupabaseClient()
+    // Fetch employees with related data
+    const { data: employees } = await supabase
+      .from('employees')
+      .select(`
+        first_name,
+        last_name,
+        email_work,
+        phone_mobile,
+        hire_date,
+        employment_status,
+        position:job_positions(title),
+        department:departments(name)
+      `)
+      .eq('employment_status', 'active')
     
-    // Fetch profiles
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email, phone, hire_date, job_title')
-      .eq('is_active', true)
-    
-    if (!profiles || profiles.length === 0) {
-      uiStore.showInfo('No data to export')
+    if (!employees || employees.length === 0) {
+      toast.info('No data to export')
       return
     }
     
     // Convert to CSV
-    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Hire Date', 'Job Title']
-    const rows = profiles.map(p => [
-      p.first_name || '',
-      p.last_name || '',
-      p.email || '',
-      p.phone || '',
-      p.hire_date || '',
-      p.job_title || ''
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Hire Date', 'Department', 'Position']
+    const rows = employees.map((e: any) => [
+      e.first_name || '',
+      e.last_name || '',
+      e.email_work || '',
+      e.phone_mobile || '',
+      e.hire_date || '',
+      e.department?.name || '',
+      e.position?.title || ''
     ])
     
     const csvContent = [
@@ -379,9 +454,9 @@ async function exportData() {
     a.click()
     URL.revokeObjectURL(url)
     
-    uiStore.showSuccess('Data exported successfully')
+    toast.success('Data exported successfully')
   } catch {
-    uiStore.showError('Failed to export data')
+    toast.error('Failed to export data')
   }
 }
 
@@ -399,7 +474,7 @@ function handleImport(event: Event) {
   reader.onload = async (e) => {
     const content = e.target?.result as string
     // Parse CSV and show preview
-    uiStore.showInfo(`File "${file.name}" loaded. Import processing coming soon.`)
+    toast.info(`File "${file.name}" loaded. Import processing coming soon.`)
     console.log('CSV content:', content.substring(0, 500))
   }
   reader.readAsText(file)
@@ -407,23 +482,23 @@ function handleImport(event: Event) {
 }
 
 async function backupDatabase() {
-  uiStore.showInfo('Creating backup...')
+  toast.info('Creating backup...')
   
   try {
-    const supabase = useSupabaseClient()
-    
     // Fetch all main tables for backup
-    const [profilesRes, deptRes, schedRes] = await Promise.all([
-      supabase.from('profiles').select('*'),
+    const [employeesRes, deptRes, shiftRes, companyRes] = await Promise.all([
+      supabase.from('employees').select('*'),
       supabase.from('departments').select('*'),
-      supabase.from('schedules').select('*')
+      supabase.from('shifts').select('*'),
+      supabase.from('company_settings').select('*')
     ])
     
     const backup = {
       timestamp: new Date().toISOString(),
-      profiles: profilesRes.data || [],
+      employees: employeesRes.data || [],
       departments: deptRes.data || [],
-      schedules: schedRes.data || []
+      shifts: shiftRes.data || [],
+      company_settings: companyRes.data || []
     }
     
     // Download as JSON
@@ -436,15 +511,28 @@ async function backupDatabase() {
     URL.revokeObjectURL(url)
     
     lastBackup.value = new Date().toLocaleString()
-    uiStore.showSuccess('Backup created successfully')
+    toast.success('Backup created successfully')
   } catch {
-    uiStore.showError('Failed to create backup')
+    toast.error('Failed to create backup')
   }
 }
 
+// Timezone options
+const timezoneOptions = [
+  'America/New_York',
+  'America/Chicago',
+  'America/Denver',
+  'America/Los_Angeles',
+  'America/Phoenix',
+  'Pacific/Honolulu',
+  'America/Anchorage'
+]
+
 onMounted(async () => {
+  // Fetch company settings
+  await loadCompanySettings()
+  
   // Fetch departments
-  const supabase = useSupabaseClient()
   const { data } = await supabase
     .from('departments')
     .select('*')

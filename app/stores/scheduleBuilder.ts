@@ -5,6 +5,12 @@
 import { defineStore } from 'pinia'
 import type { ScheduleShift, ScheduleEmployee } from '~/composables/useScheduleRules'
 
+interface ShiftTemplate {
+  start_time: string // e.g., "09:00"
+  end_time: string   // e.g., "17:00"
+  role_required: string | null
+}
+
 interface ScheduleBuilderState {
   // Draft shifts (local state, not saved)
   draftShifts: ScheduleShift[]
@@ -18,6 +24,8 @@ interface ScheduleBuilderState {
   isPublishing: boolean
   // Error
   error: string | null
+  // Default shift templates per location
+  defaultShiftTemplates: ShiftTemplate[]
 }
 
 export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
@@ -28,7 +36,13 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     isLoading: false,
     isSaving: false,
     isPublishing: false,
-    error: null
+    error: null,
+    // Default shift times - can be customized
+    defaultShiftTemplates: [
+      { start_time: '08:00', end_time: '16:00', role_required: null },
+      { start_time: '09:00', end_time: '17:00', role_required: null },
+      { start_time: '10:00', end_time: '18:00', role_required: null }
+    ]
   }),
 
   getters: {
@@ -145,8 +159,54 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
           role_required: s.role_required,
           status: s.status || 'draft',
           is_published: s.is_published || false,
-          is_open_shift: s.is_open_shift || false
+          is_open_shift: s.is_open_shift || false,
+          is_new: false // DB shifts are not new
         }))
+
+        // Store both draft and db versions
+        this.dbShifts = JSON.parse(JSON.stringify(shifts))
+        this.draftShifts = shifts
+
+      } catch (e: any) {
+        this.error = e.message || 'Failed to load shifts'
+        console.error('[ScheduleBuilder] Load error:', e)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    /**
+     * Add a new shift slot to the draft
+     */
+    addShift(locationId: string, locationName: string, date: Date, startTime: string, endTime: string, roleRequired?: string) {
+      const dateStr = date.toISOString().split('T')[0]
+      const startAt = `${dateStr}T${startTime}:00`
+      const endAt = `${dateStr}T${endTime}:00`
+      
+      const newShift: ScheduleShift = {
+        id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        start_at: startAt,
+        end_at: endAt,
+        location_id: locationId,
+        location_name: locationName,
+        employee_id: null,
+        role_required: roleRequired || null,
+        status: 'draft',
+        is_published: false,
+        is_open_shift: true,
+        is_new: true // Mark as new for saving
+      }
+      
+      this.draftShifts.push(newShift)
+      return newShift.id
+    },
+
+    /**
+     * Remove a shift from draft (only unsaved or allow delete saved)
+     */
+    removeShift(shiftId: string) {
+      this.draftShifts = this.draftShifts.filter(s => s.id !== shiftId)
+    },
 
         // Store both draft and db versions
         this.dbShifts = JSON.parse(JSON.stringify(shifts))
@@ -217,22 +277,55 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
       this.error = null
 
       try {
-        // Find changed shifts
+        // 1. Insert new shifts
+        const newShifts = this.draftShifts.filter(s => (s as any).is_new)
+        if (newShifts.length > 0) {
+          const insertData = newShifts.map(shift => ({
+            location_id: shift.location_id,
+            start_at: shift.start_at,
+            end_at: shift.end_at,
+            employee_id: shift.employee_id,
+            role_required: shift.role_required,
+            status: shift.status || 'draft',
+            is_published: false,
+            is_open_shift: !shift.employee_id
+          }))
+
+          const { data: insertedShifts, error: insertError } = await (client
+            .from('shifts') as ReturnType<typeof client.from>)
+            .insert(insertData)
+            .select('id')
+
+          if (insertError) throw insertError
+
+          // Update local IDs with DB IDs
+          if (insertedShifts) {
+            newShifts.forEach((shift, idx) => {
+              if (insertedShifts[idx]) {
+                const oldId = shift.id
+                shift.id = insertedShifts[idx].id
+                ;(shift as any).is_new = false
+              }
+            })
+          }
+        }
+
+        // 2. Update changed existing shifts
         const changedShifts = this.draftShifts.filter(draft => {
+          if ((draft as any).is_new) return false
           const db = this.dbShifts.find(s => s.id === draft.id)
-          if (!db) return true
+          if (!db) return false
           return draft.employee_id !== db.employee_id ||
                  draft.status !== db.status
         })
 
-        // Batch update
         for (const shift of changedShifts) {
-          // Note: Using type assertion until Supabase types are regenerated
           const { error } = await (client
             .from('shifts') as ReturnType<typeof client.from>)
             .update({
               employee_id: shift.employee_id,
               status: shift.status,
+              is_open_shift: !shift.employee_id,
               updated_at: new Date().toISOString()
             })
             .eq('id', shift.id)
