@@ -60,6 +60,11 @@ const addShiftForm = ref({
   roleRequired: ''
 })
 
+// Generate Base Schedule Dialog
+const showGenerateDialog = ref(false)
+const selectedLocationForGenerate = ref<string | null>(null)
+const isGenerating = ref(false)
+
 // Context menu
 const contextMenu = ref({
   show: false,
@@ -259,6 +264,38 @@ const addShift = () => {
   )
   
   showAddShiftDialog.value = false
+}
+
+// --- Generate Base Schedule from Templates ---
+const generateBaseSchedule = async () => {
+  if (!selectedLocationForGenerate.value) {
+    toast.error('Please select a location')
+    return
+  }
+  
+  const location = locations.value.find(l => l.id === selectedLocationForGenerate.value)
+  if (!location) return
+  
+  isGenerating.value = true
+  try {
+    const addedCount = await scheduleStore.generateFromTemplates(
+      currentWeekStart.value,
+      location.id,
+      location.name
+    )
+    
+    if (addedCount > 0) {
+      toast.success(`Generated ${addedCount} shift slots from templates`)
+    } else {
+      toast.info('No new shifts added - schedule already has shifts for this week')
+    }
+    
+    showGenerateDialog.value = false
+  } catch (err: any) {
+    toast.error(err.message || 'Failed to generate schedule')
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 // --- Week Navigation ---
@@ -600,6 +637,16 @@ const handleClickOutside = () => {
         <v-divider vertical class="mx-2" />
         
         <!-- Smart Tools -->
+        <v-btn 
+          variant="tonal" 
+          size="small" 
+          color="primary"
+          prepend-icon="mdi-calendar-plus"
+          @click="showGenerateDialog = true"
+        >
+          Generate Base
+        </v-btn>
+        
         <v-btn 
           variant="text" 
           size="small" 
@@ -995,6 +1042,53 @@ const handleClickOutside = () => {
           <v-btn variant="text" @click="showAutoSuggestDialog = false">Cancel</v-btn>
           <v-btn color="primary" prepend-icon="mdi-magic-staff" @click="autoSuggest">
             Auto-Fill
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Generate Base Schedule Dialog -->
+    <v-dialog v-model="showGenerateDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2" color="primary">mdi-calendar-plus</v-icon>
+          Generate Base Schedule
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 mb-4">
+            This will create the standard clinic shifts for the selected week from the shift templates. 
+            These are the base shifts that the clinic operates with every week.
+          </p>
+          
+          <v-select
+            v-model="selectedLocationForGenerate"
+            :items="locations"
+            item-title="name"
+            item-value="id"
+            label="Select Location"
+            variant="outlined"
+            class="mb-3"
+            :rules="[v => !!v || 'Location is required']"
+          />
+          
+          <v-alert type="info" variant="tonal" density="compact">
+            <strong>Week:</strong> {{ format(currentWeekStart, 'MMM d') }} – {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+          </v-alert>
+          
+          <v-alert v-if="scheduleStore.draftShifts.length > 0" type="warning" variant="tonal" density="compact" class="mt-3">
+            Existing shifts for this week will be preserved. Only days without shifts will be populated.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showGenerateDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="isGenerating"
+            :disabled="!selectedLocationForGenerate"
+            @click="generateBaseSchedule"
+          >
+            Generate Shifts
           </v-btn>
         </v-card-actions>
       </v-card>

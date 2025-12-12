@@ -176,6 +176,76 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     },
 
     /**
+     * Load shift templates from database and generate base schedule for the week
+     * This creates shifts for each day of the week based on shift_templates
+     */
+    async generateFromTemplates(weekStart: Date, locationId: string, locationName: string) {
+      const client = useSupabaseClient()
+      
+      try {
+        // Fetch all active shift templates
+        const { data: templates, error } = await client
+          .from('shift_templates')
+          .select('*')
+          .eq('is_active', true)
+          .order('start_time')
+
+        if (error) throw error
+        if (!templates || templates.length === 0) {
+          throw new Error('No shift templates found')
+        }
+
+        // Generate shifts for each day of the week (Mon-Sat, skip Sunday for now)
+        const daysToGenerate = [0, 1, 2, 3, 4, 5] // Mon-Sat
+        let addedCount = 0
+
+        for (const dayOffset of daysToGenerate) {
+          const targetDate = new Date(weekStart)
+          targetDate.setDate(targetDate.getDate() + dayOffset)
+          const dateStr = targetDate.toISOString().split('T')[0]
+
+          // Check if shifts already exist for this day
+          const existingForDay = this.draftShifts.filter(s => 
+            s.start_at.startsWith(dateStr) && s.location_id === locationId
+          )
+          
+          // Only add templates if no shifts exist for this day/location
+          if (existingForDay.length === 0) {
+            templates.forEach((template: any) => {
+              // Skip remote shifts for now (they don't have a physical location)
+              if (template.is_remote) return
+              
+              const startAt = `${dateStr}T${template.start_time}:00`
+              const endAt = `${dateStr}T${template.end_time}:00`
+              
+              const newShift: ScheduleShift = {
+                id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                start_at: startAt,
+                end_at: endAt,
+                location_id: locationId,
+                location_name: locationName,
+                employee_id: null,
+                role_required: template.role_name || null,
+                status: 'draft',
+                is_published: false,
+                is_open_shift: true,
+                is_new: true
+              }
+              
+              this.draftShifts.push(newShift)
+              addedCount++
+            })
+          }
+        }
+
+        return addedCount
+      } catch (e: any) {
+        console.error('[ScheduleBuilder] Generate from templates error:', e)
+        throw e
+      }
+    },
+
+    /**
      * Add a new shift slot to the draft
      */
     addShift(locationId: string, locationName: string, date: Date, startTime: string, endTime: string, roleRequired?: string) {
@@ -206,18 +276,6 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      */
     removeShift(shiftId: string) {
       this.draftShifts = this.draftShifts.filter(s => s.id !== shiftId)
-    },
-
-        // Store both draft and db versions
-        this.dbShifts = JSON.parse(JSON.stringify(shifts))
-        this.draftShifts = shifts
-
-      } catch (e: any) {
-        this.error = e.message || 'Failed to load shifts'
-        console.error('[ScheduleBuilder] Load error:', e)
-      } finally {
-        this.isLoading = false
-      }
     },
 
     /**
