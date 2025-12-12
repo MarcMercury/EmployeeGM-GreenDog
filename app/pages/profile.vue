@@ -440,14 +440,19 @@ const router = useRouter()
 
 // Redirect to employee profile if user has an employee record
 onMounted(async () => {
+  console.log('[ProfilePage] Loading user data...')
   await userStore.fetchUserData()
+  
+  console.log('[ProfilePage] Employee check:', userStore.employee?.id, userStore.employee?.first_name)
   
   // If user has an employee ID, redirect to the enhanced profile view
   if (userStore.employee?.id) {
+    console.log('[ProfilePage] Redirecting to /employees/', userStore.employee.id)
     await navigateTo(`/employees/${userStore.employee.id}`, { replace: true })
     return
   }
   
+  console.log('[ProfilePage] No employee ID found, showing basic profile')
   // Otherwise load skills and goals for the basic profile
   await Promise.all([fetchMySkills(), fetchMyGoals()])
 })

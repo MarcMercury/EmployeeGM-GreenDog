@@ -150,26 +150,63 @@ export const useUserStore = defineStore('user', {
 
         if (profileError) throw profileError
         this.profile = profileData as UserProfile
+        console.log('[UserStore] Profile loaded:', this.profile?.id, this.profile?.email)
 
-        // Fetch employee with joined data
-        const { data: employeeData, error: employeeError } = await supabase
-          .from('employees')
-          .select(`
-            *,
-            department:departments(id, name, code),
-            position:job_positions(id, title, code, is_manager),
-            location:locations(id, name, city)
-          `)
-          .eq('profile_id', this.profile.id)
-          .single()
+        // Fetch employee with joined data - try profile_id first
+        let employeeData = null
+        let employeeError = null
+        
+        if (this.profile?.id) {
+          const result = await supabase
+            .from('employees')
+            .select(`
+              *,
+              department:departments(id, name, code),
+              position:job_positions(id, title, code, is_manager),
+              location:locations(id, name, city)
+            `)
+            .eq('profile_id', this.profile.id)
+            .single()
+          
+          employeeData = result.data
+          employeeError = result.error
+        }
+
+        // Fallback: If no employee found by profile_id, try by email
+        if (!employeeData && this.profile?.email) {
+          console.log('[UserStore] No employee by profile_id, trying email lookup...')
+          const result = await supabase
+            .from('employees')
+            .select(`
+              *,
+              department:departments(id, name, code),
+              position:job_positions(id, title, code, is_manager),
+              location:locations(id, name, city)
+            `)
+            .eq('email_work', this.profile.email)
+            .single()
+          
+          employeeData = result.data
+          employeeError = result.error
+          
+          // If found by email, update the employee's profile_id to link them
+          if (employeeData && !employeeData.profile_id) {
+            console.log('[UserStore] Linking employee to profile...')
+            await supabase
+              .from('employees')
+              .update({ profile_id: this.profile.id })
+              .eq('id', employeeData.id)
+            employeeData.profile_id = this.profile.id
+          }
+        }
 
         if (employeeError && employeeError.code !== 'PGRST116') {
           // PGRST116 = no rows returned, which is okay
-          throw employeeError
+          console.log('[UserStore] Employee query error:', employeeError)
         }
         
         this.employee = employeeData as UserEmployee | null
-        console.log('[UserStore] Data loaded - Employee ID:', this.employee?.id)
+        console.log('[UserStore] Data loaded - Employee ID:', this.employee?.id, 'Name:', this.employee?.first_name)
 
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch user data'
