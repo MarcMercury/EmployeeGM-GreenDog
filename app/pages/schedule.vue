@@ -121,13 +121,6 @@ const router = useRouter()
 
 const isAdmin = computed(() => authStore.isAdmin)
 
-// Redirect admins to the full Schedule Builder
-onMounted(() => {
-  if (authStore.isAdmin) {
-    router.replace('/schedule/builder')
-  }
-})
-
 const selectedDate = ref(new Date().toISOString().split('T')[0])
 const viewMode = ref<'day' | 'week' | 'month'>('week')
 
@@ -246,6 +239,12 @@ async function deleteSchedule() {
 }
 
 onMounted(async () => {
+  // Redirect admins to the full Schedule Builder
+  if (authStore.isAdmin) {
+    router.replace('/schedule/builder')
+    return
+  }
+  
   await Promise.all([
     employeeStore.fetchEmployees(),
     scheduleStore.fetchSchedules()
