@@ -328,10 +328,6 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">⚙️</div>
                   App Settings
                 </NuxtLink>
-                <NuxtLink to="/schedule/builder" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-red-500/20">📅</div>
-                  Schedule Builder
-                </NuxtLink>
               </div>
             </div>
           </template>

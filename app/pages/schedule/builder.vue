@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /**
- * Schedule Builder v2 - The "Cockpit"
- * High-density admin scheduling interface with drag-and-drop
+ * Schedule Builder v3 - The "Cockpit"
+ * Ultra high-density admin scheduling interface for 100+ employees
  * 
  * Features:
- * - Dense employee sidebar ("The Bench") with workload counters
- * - Location-based grid with shift slots
- * - Drag-and-drop with conflict prevention
- * - Save as Template / Load Template
- * - Close Clinic functionality
- * - Attendance color coding
+ * - Super compact employee sidebar ("The Bench") with workload counters & reliability scores
+ * - Location-based grid with shift slots organized by day
+ * - Drag-and-drop with conflict prevention (double-booking, overtime)
+ * - Save as Template / Load Template for recurring schedules
+ * - Close Clinic functionality (right-click header)
+ * - Attendance color coding (late = yellow, absent = red, PTO = purple, on-time = green)
+ * - Auto-suggest "Magic Wand" for intelligent shift filling
  */
-import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay, parseISO, subDays } from 'date-fns'
 import type { ScheduleShift, ScheduleEmployee } from '~/composables/useScheduleRules'
 
 definePageMeta({
@@ -19,21 +20,16 @@ definePageMeta({
   layout: 'default'
 })
 
-console.log('[ScheduleBuilder] Page script starting...')
-
 // Stores and composables
 const scheduleStore = useScheduleBuilderStore()
-console.log('[ScheduleBuilder] Store loaded:', !!scheduleStore)
-
 const { employees, locations, isAdmin, departments, positions } = useAppData()
-console.log('[ScheduleBuilder] AppData loaded:', { 
-  employeesCount: employees.value?.length, 
-  locationsCount: locations.value?.length 
-})
-
 const { validateAssignment, getEmployeeHours, calculateHours } = useScheduleRules()
 const toast = useToast()
 const supabase = useSupabaseClient()
+
+// Attendance/reliability data
+const employeeReliability = ref<Map<string, { score: number; onTime: number; late: number; absent: number; total: number }>>(new Map())
+const shiftAttendance = ref<Map<string, 'on-time' | 'late' | 'absent' | 'pto' | 'pending'>>(new Map())
 
 // --- State ---
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 1 }))
@@ -88,6 +84,145 @@ const contextMenu = ref({
 const showDiscardDialog = ref(false)
 const showPublishDialog = ref(false)
 const showAutoSuggestDialog = ref(false)
+
+// Employee detail drawer
+const showEmployeeDrawer = ref(false)
+const selectedEmployeeForDrawer = ref<string | null>(null)
+
+// --- Load Reliability Scores ---
+const loadReliabilityScores = async () => {
+  const employeeIds = (employees.value || []).map(e => e.id)
+  if (employeeIds.length === 0) return
+  
+  try {
+    // Get shifts from last 90 days
+    const ninetyDaysAgo = subDays(new Date(), 90)
+    
+    const { data: shiftsData } = await supabase
+      .from('shifts')
+      .select('id, employee_id, start_at, status')
+      .in('employee_id', employeeIds)
+      .gte('start_at', ninetyDaysAgo.toISOString())
+      .lt('start_at', new Date().toISOString())
+    
+    const { data: punchesData } = await supabase
+      .from('time_punches')
+      .select('employee_id, punch_type, punched_at, shift_id')
+      .in('employee_id', employeeIds)
+      .gte('punched_at', ninetyDaysAgo.toISOString())
+    
+    // Calculate reliability per employee
+    const reliabilityMap = new Map<string, { score: number; onTime: number; late: number; absent: number; total: number }>()
+    
+    for (const empId of employeeIds) {
+      const empShifts = (shiftsData || []).filter(s => s.employee_id === empId)
+      const empPunches = (punchesData || []).filter(p => p.employee_id === empId && p.punch_type === 'in')
+      
+      let onTime = 0
+      let late = 0
+      let absent = 0
+      
+      for (const shift of empShifts) {
+        const shiftStart = parseISO(shift.start_at)
+        const clockIn = empPunches.find(p => {
+          const punchTime = parseISO(p.punched_at)
+          // Find punch within 2 hours of shift start
+          const diffMinutes = (punchTime.getTime() - shiftStart.getTime()) / (1000 * 60)
+          return diffMinutes >= -120 && diffMinutes <= 120
+        })
+        
+        if (!clockIn) {
+          // Check if shift is marked as missed/absent
+          if (shift.status === 'missed' || shift.status === 'cancelled') {
+            absent++
+          } else if (shiftStart < new Date()) {
+            absent++
+          }
+        } else {
+          const punchTime = parseISO(clockIn.punched_at)
+          const lateMinutes = (punchTime.getTime() - shiftStart.getTime()) / (1000 * 60)
+          if (lateMinutes > 5) {
+            late++
+          } else {
+            onTime++
+          }
+        }
+      }
+      
+      const total = onTime + late + absent
+      const score = total > 0 ? Math.round((onTime / total) * 100) : 100
+      
+      reliabilityMap.set(empId, { score, onTime, late, absent, total })
+    }
+    
+    employeeReliability.value = reliabilityMap
+  } catch (err) {
+    console.error('Error loading reliability scores:', err)
+  }
+}
+
+// --- Load Shift Attendance Data ---
+const loadShiftAttendance = async () => {
+  const shifts = scheduleStore.draftShifts || []
+  if (shifts.length === 0) return
+  
+  const pastShifts = shifts.filter(s => parseISO(s.start_at) < new Date() && s.employee_id)
+  if (pastShifts.length === 0) return
+  
+  try {
+    const { data: punchesData } = await supabase
+      .from('time_punches')
+      .select('employee_id, punch_type, punched_at')
+      .in('employee_id', pastShifts.map(s => s.employee_id).filter(Boolean))
+      .gte('punched_at', format(currentWeekStart.value, 'yyyy-MM-dd'))
+    
+    const { data: timeOffData } = await supabase
+      .from('time_off_requests')
+      .select('employee_id, start_date, end_date, status')
+      .eq('status', 'approved')
+      .gte('end_date', format(currentWeekStart.value, 'yyyy-MM-dd'))
+      .lte('start_date', format(addDays(currentWeekStart.value, 6), 'yyyy-MM-dd'))
+    
+    const attendanceMap = new Map<string, 'on-time' | 'late' | 'absent' | 'pto' | 'pending'>()
+    
+    for (const shift of pastShifts) {
+      const shiftStart = parseISO(shift.start_at)
+      const shiftDate = format(shiftStart, 'yyyy-MM-dd')
+      
+      // Check if on PTO
+      const ptoRequest = (timeOffData || []).find(pto => 
+        pto.employee_id === shift.employee_id &&
+        shiftDate >= pto.start_date &&
+        shiftDate <= pto.end_date
+      )
+      
+      if (ptoRequest) {
+        attendanceMap.set(shift.id, 'pto')
+        continue
+      }
+      
+      // Find clock-in punch
+      const clockIn = (punchesData || []).find(p => {
+        if (p.employee_id !== shift.employee_id || p.punch_type !== 'in') return false
+        const punchTime = parseISO(p.punched_at)
+        const diffMinutes = (punchTime.getTime() - shiftStart.getTime()) / (1000 * 60)
+        return diffMinutes >= -60 && diffMinutes <= 120
+      })
+      
+      if (!clockIn) {
+        attendanceMap.set(shift.id, 'absent')
+      } else {
+        const punchTime = parseISO(clockIn.punched_at)
+        const lateMinutes = (punchTime.getTime() - shiftStart.getTime()) / (1000 * 60)
+        attendanceMap.set(shift.id, lateMinutes > 5 ? 'late' : 'on-time')
+      }
+    }
+    
+    shiftAttendance.value = attendanceMap
+  } catch (err) {
+    console.error('Error loading shift attendance:', err)
+  }
+}
 
 // --- Computed ---
 const weekDays = computed(() => {
@@ -177,6 +312,24 @@ const getEmployeeShiftCount = (employeeId: string): number => {
 const getEmployee = (employeeId: string | null) => {
   if (!employeeId) return null
   return (employees.value || []).find(e => e.id === employeeId)
+}
+
+// Get reliability score for employee
+const getEmployeeReliability = (employeeId: string): number => {
+  return employeeReliability.value.get(employeeId)?.score ?? 100
+}
+
+// Get reliability color
+const getReliabilityColor = (score: number): string => {
+  if (score >= 95) return 'success'
+  if (score >= 80) return 'warning'
+  return 'error'
+}
+
+// Open employee detail drawer
+const openEmployeeDrawer = (employeeId: string) => {
+  selectedEmployeeForDrawer.value = employeeId
+  showEmployeeDrawer.value = true
 }
 
 // --- Drag & Drop ---
@@ -568,20 +721,50 @@ const getShiftStatusClass = (shift: ScheduleShift): string => {
   if (shift.status === 'closed_clinic') return 'slot-closed'
   if (!shift.employee_id) return 'slot-open'
   
-  // For past shifts, we would check time_punches here
-  // This is a placeholder - actual implementation would query attendance data
-  const now = new Date()
   const shiftStart = parseISO(shift.start_at)
+  const now = new Date()
   
-  if (shiftStart < now) {
-    // Past shift - check attendance status
-    if (shift.status === 'completed') return 'slot-ontime'
-    if (shift.status === 'missed') return 'slot-absent'
-    // Could also check for 'late', 'pto' based on time_punches
+  // Future shift - just show as filled
+  if (shiftStart > now) {
     return 'slot-filled'
   }
   
-  return 'slot-filled'
+  // Past shift - check attendance from our loaded data
+  const attendance = shiftAttendance.value.get(shift.id)
+  
+  switch (attendance) {
+    case 'on-time':
+      return 'slot-ontime'
+    case 'late':
+      return 'slot-late'
+    case 'absent':
+      return 'slot-absent'
+    case 'pto':
+      return 'slot-pto'
+    default:
+      return 'slot-filled'
+  }
+}
+
+// Get attendance icon for shift
+const getAttendanceIcon = (shift: ScheduleShift): string | null => {
+  const shiftStart = parseISO(shift.start_at)
+  if (shiftStart > new Date() || !shift.employee_id) return null
+  
+  const attendance = shiftAttendance.value.get(shift.id)
+  
+  switch (attendance) {
+    case 'on-time':
+      return 'mdi-check-circle'
+    case 'late':
+      return 'mdi-clock-alert'
+    case 'absent':
+      return 'mdi-close-circle'
+    case 'pto':
+      return 'mdi-palm-tree'
+    default:
+      return null
+  }
 }
 
 // Format time for display
@@ -590,14 +773,19 @@ const formatShiftTime = (startAt: string, endAt: string): string => {
 }
 
 // --- Lifecycle ---
-watch(currentWeekStart, (newWeek) => {
-  scheduleStore.loadWeek(newWeek)
+watch(currentWeekStart, async (newWeek) => {
+  await scheduleStore.loadWeek(newWeek)
+  // Reload attendance data for the new week
+  await loadShiftAttendance()
 }, { immediate: true })
 
 onMounted(async () => {
   // Initialize visible locations to all
   visibleLocations.value = (locations.value || []).map(l => l.id)
-  await loadTemplates()
+  await Promise.all([
+    loadTemplates(),
+    loadReliabilityScores()
+  ])
 })
 
 // Click outside to close context menu
@@ -701,17 +889,18 @@ const handleClickOutside = () => {
       <!-- LEFT: Employee Bench -->
       <aside class="employee-bench">
         <div class="bench-header">
-          <div class="text-caption font-weight-medium text-grey-darken-2 mb-1">
-            TEAM BENCH
+          <div class="d-flex align-center justify-space-between mb-1">
+            <span class="text-caption font-weight-bold text-grey-darken-2">TEAM BENCH</span>
+            <v-chip size="x-small" variant="tonal">{{ filteredEmployees.length }}</v-chip>
           </div>
           <v-text-field
             v-model="employeeSearch"
-            placeholder="Search..."
+            placeholder="Search team..."
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
             density="compact"
             hide-details
-            class="mb-1"
+            class="mb-1 compact-input"
           />
           <div class="d-flex gap-1">
             <v-select
@@ -722,8 +911,7 @@ const handleClickOutside = () => {
               density="compact"
               hide-details
               clearable
-              class="flex-grow-1"
-              style="max-width: 50%"
+              class="flex-grow-1 compact-input"
             />
             <v-select
               v-model="filterPosition"
@@ -733,8 +921,7 @@ const handleClickOutside = () => {
               density="compact"
               hide-details
               clearable
-              class="flex-grow-1"
-              style="max-width: 50%"
+              class="flex-grow-1 compact-input"
             />
           </div>
         </div>
@@ -747,22 +934,44 @@ const handleClickOutside = () => {
             draggable="true"
             @dragstart="handleDragStart(emp, $event)"
             @dragend="handleDragEnd"
+            @click.right.prevent="openEmployeeDrawer(emp.id)"
           >
-            <v-avatar size="24" :color="emp.avatar_url ? undefined : 'primary'" class="mr-2">
-              <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
-              <span v-else class="text-white text-caption">{{ emp.initials }}</span>
-            </v-avatar>
-            <div class="employee-name">
-              {{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.
+            <div class="employee-avatar">
+              <v-avatar size="20" :color="emp.avatar_url ? undefined : 'primary'">
+                <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
+                <span v-else class="text-white" style="font-size: 8px;">{{ emp.initials }}</span>
+              </v-avatar>
             </div>
-            <v-chip 
-              size="x-small" 
-              :color="getEmployeeShiftCount(emp.id) >= 5 ? 'warning' : 'grey'" 
-              variant="tonal"
-              class="workload-badge"
-            >
-              {{ getEmployeeShiftCount(emp.id) }}
-            </v-chip>
+            <div class="employee-info">
+              <div class="employee-name">
+                {{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.
+              </div>
+              <div class="employee-role">
+                {{ emp.position?.title?.substring(0, 12) || 'Staff' }}
+              </div>
+            </div>
+            <div class="employee-badges">
+              <v-tooltip location="top">
+                <template #activator="{ props }">
+                  <span 
+                    v-bind="props"
+                    class="reliability-badge"
+                    :class="[`reliability-${getReliabilityColor(getEmployeeReliability(emp.id))}`]"
+                  >
+                    {{ getEmployeeReliability(emp.id) }}%
+                  </span>
+                </template>
+                Reliability Score (On-Time %)
+              </v-tooltip>
+              <v-chip 
+                size="x-small" 
+                :color="getEmployeeShiftCount(emp.id) >= 5 ? 'warning' : 'grey'" 
+                variant="tonal"
+                class="workload-badge"
+              >
+                {{ getEmployeeShiftCount(emp.id) }}
+              </v-chip>
+            </div>
           </div>
           
           <div v-if="filteredEmployees.length === 0" class="text-center py-4 text-grey text-caption">
@@ -770,8 +979,12 @@ const handleClickOutside = () => {
           </div>
         </div>
         
-        <div class="bench-footer text-caption text-grey">
-          {{ filteredEmployees.length }} employees
+        <div class="bench-footer">
+          <div class="legend">
+            <span class="legend-item"><span class="dot dot-success"></span>On-time</span>
+            <span class="legend-item"><span class="dot dot-warning"></span>Late</span>
+            <span class="legend-item"><span class="dot dot-error"></span>Absent</span>
+          </div>
         </div>
       </aside>
 
@@ -832,15 +1045,23 @@ const handleClickOutside = () => {
                   <div class="shift-time">
                     {{ format(parseISO(shift.start_at), 'h:mma') }}-{{ format(parseISO(shift.end_at), 'h:mma') }}
                   </div>
-                  <v-btn
-                    v-if="!shift.employee_id"
-                    icon="mdi-delete"
-                    size="x-small"
-                    variant="text"
-                    density="compact"
-                    color="error"
-                    @click.stop="removeShift(shift.id)"
-                  />
+                  <div class="d-flex align-center gap-1">
+                    <v-icon 
+                      v-if="getAttendanceIcon(shift)" 
+                      :icon="getAttendanceIcon(shift)" 
+                      size="10"
+                      :color="shiftAttendance.get(shift.id) === 'on-time' ? 'success' : shiftAttendance.get(shift.id) === 'late' ? 'warning' : shiftAttendance.get(shift.id) === 'pto' ? 'purple' : 'error'"
+                    />
+                    <v-btn
+                      v-if="!shift.employee_id"
+                      icon="mdi-delete"
+                      size="x-small"
+                      variant="text"
+                      density="compact"
+                      color="error"
+                      @click.stop="removeShift(shift.id)"
+                    />
+                  </div>
                 </div>
                 <div v-if="shift.role_required" class="shift-role">{{ shift.role_required }}</div>
                 
@@ -1231,7 +1452,7 @@ const handleClickOutside = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: white;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
@@ -1250,7 +1471,7 @@ const handleClickOutside = () => {
 
 .week-label {
   font-weight: 500;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   min-width: 180px;
   text-align: center;
 }
@@ -1267,9 +1488,9 @@ const handleClickOutside = () => {
   overflow: hidden;
 }
 
-/* Employee Bench */
+/* Employee Bench - Ultra Compact for 100+ employees */
 .employee-bench {
-  width: 200px;
+  width: 220px;
   background: white;
   border-right: 1px solid #e0e0e0;
   display: flex;
@@ -1278,28 +1499,42 @@ const handleClickOutside = () => {
 }
 
 .bench-header {
-  padding: 8px;
+  padding: 6px;
   border-bottom: 1px solid #e0e0e0;
+}
+
+.compact-input :deep(.v-field) {
+  font-size: 0.7rem;
+  min-height: 28px;
+}
+
+.compact-input :deep(.v-field__input) {
+  padding: 4px 8px;
+  min-height: 28px;
 }
 
 .bench-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px;
+  padding: 2px;
 }
 
+/* Ultra-compact employee card for high density */
 .bench-employee {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 3px 4px;
+  border-radius: 4px;
   cursor: grab;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   transition: background 0.15s;
+  gap: 4px;
+  border-bottom: 1px solid #f5f5f5;
 }
 
 .bench-employee:hover {
-  background: #f0f0f0;
+  background: #f0f7ff;
+  border-color: #e0e0e0;
 }
 
 .bench-employee:active {
@@ -1307,23 +1542,100 @@ const handleClickOutside = () => {
   background: #e3f2fd;
 }
 
-.employee-name {
+.employee-avatar {
+  flex-shrink: 0;
+}
+
+.employee-info {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.employee-name {
+  font-weight: 600;
+  font-size: 0.68rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #333;
+  line-height: 1.2;
+}
+
+.employee-role {
+  font-size: 0.55rem;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+.employee-badges {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.reliability-badge {
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.reliability-success {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.reliability-warning {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.reliability-error {
+  background: #ffebee;
+  color: #c62828;
 }
 
 .workload-badge {
   flex-shrink: 0;
-  min-width: 20px;
+  min-width: 18px;
+  height: 16px !important;
+  font-size: 0.6rem !important;
 }
 
 .bench-footer {
-  padding: 6px 8px;
+  padding: 4px 6px;
   border-top: 1px solid #e0e0e0;
-  text-align: center;
+  background: #fafafa;
+  font-size: 0.6rem;
 }
+
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #666;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot-success { background: #4caf50; }
+.dot-warning { background: #ff9800; }
+.dot-error { background: #f44336; }
 
 /* Schedule Grid */
 .schedule-grid {
@@ -1341,17 +1653,17 @@ const handleClickOutside = () => {
 }
 
 .location-header-spacer {
-  width: 100px;
+  width: 90px;
   flex-shrink: 0;
   border-right: 1px solid #e0e0e0;
 }
 
 .day-header {
   flex: 1;
-  padding: 6px 4px;
+  padding: 4px;
   text-align: center;
   border-right: 1px solid #e0e0e0;
-  min-width: 80px;
+  min-width: 90px;
 }
 
 .day-header:last-child {
@@ -1364,12 +1676,12 @@ const handleClickOutside = () => {
 
 .day-name {
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
 }
 
 .day-date {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: #666;
 }
 
@@ -1381,13 +1693,13 @@ const handleClickOutside = () => {
 .location-row {
   display: flex;
   border-bottom: 1px solid #e0e0e0;
-  min-height: 60px;
+  min-height: 50px;
 }
 
 .location-label {
-  width: 100px;
-  padding: 8px;
-  font-size: 0.7rem;
+  width: 90px;
+  padding: 6px;
+  font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
   color: #666;
@@ -1400,9 +1712,9 @@ const handleClickOutside = () => {
 
 .day-cell {
   flex: 1;
-  padding: 4px;
+  padding: 3px;
   border-right: 1px solid #e0e0e0;
-  min-width: 80px;
+  min-width: 90px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1421,20 +1733,14 @@ const handleClickOutside = () => {
     45deg,
     #f5f5f5,
     #f5f5f5 5px,
-    #e0e0e0 5px,
-    #e0e0e0 10px
+    #e8e8e8 5px,
+    #e8e8e8 10px
   );
-}
-
-.no-shifts {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
+  pointer-events: none;
 }
 
 .add-shift-btn {
-  opacity: 0.5;
+  opacity: 0.4;
   transition: opacity 0.2s;
   margin-top: 2px;
 }
@@ -1451,11 +1757,11 @@ const handleClickOutside = () => {
   padding: 48px;
 }
 
-/* Shift Slots */
+/* Shift Slots - Compact */
 .shift-slot {
-  padding: 4px 6px;
-  border-radius: 4px;
-  font-size: 0.65rem;
+  padding: 3px 5px;
+  border-radius: 3px;
+  font-size: 0.6rem;
   border: 1px solid #e0e0e0;
   background: white;
   transition: all 0.15s;
@@ -1464,11 +1770,12 @@ const handleClickOutside = () => {
 .shift-slot.slot-open {
   border-color: #ff9800;
   border-style: dashed;
+  background: #fffaf0;
 }
 
 .shift-slot.slot-filled {
   border-color: #4caf50;
-  background: #e8f5e9;
+  background: #f1f8f2;
 }
 
 .shift-slot.slot-closed {
@@ -1495,6 +1802,12 @@ const handleClickOutside = () => {
   border-left: 3px solid #f44336;
 }
 
+.shift-slot.slot-pto {
+  border-color: #9c27b0;
+  background: #f3e5f5;
+  border-left: 3px solid #9c27b0;
+}
+
 .shift-slot.drag-over {
   border-color: #1976d2;
   background: #e3f2fd;
@@ -1505,23 +1818,25 @@ const handleClickOutside = () => {
 .shift-time {
   font-weight: 500;
   color: #333;
+  font-size: 0.58rem;
 }
 
 .shift-role {
   color: #666;
-  font-size: 0.6rem;
+  font-size: 0.55rem;
 }
 
 .shift-employee {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .emp-name {
   font-weight: 600;
   color: #1976d2;
+  font-size: 0.6rem;
 }
 
 .shift-empty,
@@ -1537,7 +1852,7 @@ const handleClickOutside = () => {
 .unsaved-bar {
   position: fixed;
   bottom: 0;
-  left: 0;
+  left: 264px;
   right: 0;
   display: flex;
   align-items: center;
@@ -1556,5 +1871,23 @@ const handleClickOutside = () => {
 .slide-up-enter-from,
 .slide-up-leave-to {
   transform: translateY(100%);
+}
+
+/* Scrollbar styling for bench */
+.bench-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.bench-list::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.bench-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
+}
+
+.bench-list::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
 }
 </style>
