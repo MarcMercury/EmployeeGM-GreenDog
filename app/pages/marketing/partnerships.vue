@@ -5,10 +5,10 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Partnerships</h1>
         <p class="text-body-1 text-grey-darken-1">
-          CRM for referral clinics, businesses, and independent doctors
+          {{ isAdmin ? 'CRM for referral clinics, businesses, and independent doctors' : 'Directory of our partner businesses and referral contacts' }}
         </p>
       </div>
-      <div class="d-flex gap-2">
+      <div v-if="isAdmin" class="d-flex gap-2">
         <v-btn variant="outlined" prepend-icon="mdi-download" @click="exportPartners">
           Export
         </v-btn>
@@ -18,8 +18,8 @@
       </div>
     </div>
 
-    <!-- Stats Cards -->
-    <v-row class="mb-6">
+    <!-- Stats Cards (Admin Only) -->
+    <v-row v-if="isAdmin" class="mb-6">
       <v-col cols="6" md="3">
         <v-card rounded="lg" class="text-center pa-4">
           <div class="text-h4 font-weight-bold text-primary">{{ partners.length }}</div>
@@ -50,7 +50,7 @@
     <v-card rounded="lg" class="mb-6">
       <v-card-text>
         <v-row align="center">
-          <v-col cols="12" md="4">
+          <v-col cols="12" :md="isAdmin ? 4 : 6">
             <v-text-field
               v-model="searchQuery"
               placeholder="Search partners..."
@@ -61,7 +61,7 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" md="2">
+          <v-col cols="12" :md="isAdmin ? 2 : 6">
             <v-select
               v-model="filterType"
               :items="partnerTypes"
@@ -72,35 +72,37 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" md="2">
-            <v-select
-              v-model="filterStatus"
-              :items="['All', 'Active', 'Inactive', 'Prospect']"
-              label="Status"
-              variant="outlined"
+          <template v-if="isAdmin">
+            <v-col cols="12" md="2">
+              <v-select
+                v-model="filterStatus"
+                :items="['All', 'Active', 'Inactive', 'Prospect']"
+                label="Status"
+                variant="outlined"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="2">
+              <v-select
+                v-model="filterPriority"
+                :items="['All', 'High', 'Medium', 'Low']"
+                label="Priority"
+                variant="outlined"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="2">
+              <v-switch
+                v-model="showNeedsFollowUp"
+                label="Needs Follow-up"
+                color="warning"
+                hide-details
               density="compact"
-              hide-details
             />
-          </v-col>
-          <v-col cols="12" md="2">
-            <v-select
-              v-model="filterPriority"
-              :items="['All', 'High', 'Medium', 'Low']"
-              label="Priority"
-              variant="outlined"
-              density="compact"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="12" md="2">
-            <v-switch
-              v-model="showNeedsFollowUp"
-              label="Needs Follow-up"
-              color="warning"
-              hide-details
-              density="compact"
-            />
-          </v-col>
+            </v-col>
+          </template>
         </v-row>
       </v-card-text>
     </v-card>
@@ -108,7 +110,7 @@
     <!-- Partners Table -->
     <v-card rounded="lg">
       <v-data-table
-        :headers="tableHeaders"
+        :headers="visibleTableHeaders"
         :items="filteredPartners"
         :search="searchQuery"
         hover
@@ -156,9 +158,12 @@
         </template>
         
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="logCall(item)" />
-          <v-btn icon="mdi-email" size="small" variant="text" @click.stop="sendEmail(item)" />
-          <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="editPartner(item)" />
+          <template v-if="isAdmin">
+            <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="logCall(item)" />
+            <v-btn icon="mdi-email" size="small" variant="text" @click.stop="sendEmail(item)" />
+            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="editPartner(item)" />
+          </template>
+          <v-btn v-else icon="mdi-eye" size="small" variant="text" @click.stop="viewPartner(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -395,7 +400,8 @@
               </v-list>
             </v-col>
             
-            <v-col cols="12" md="6">
+            <!-- CRM Metrics (Admin Only) -->
+            <v-col v-if="isAdmin" cols="12" md="6">
               <h4 class="text-subtitle-2 mb-2">Relationship Metrics</h4>
               <div class="d-flex align-center mb-3">
                 <v-icon color="success" class="mr-2">mdi-account-arrow-right</v-icon>
@@ -425,15 +431,16 @@
             </div>
           </div>
           
-          <div v-if="selectedPartner.notes" class="mt-4">
+          <!-- Notes (Admin Only) -->
+          <div v-if="isAdmin && selectedPartner.notes" class="mt-4">
             <h4 class="text-subtitle-2 mb-2">Notes</h4>
             <v-alert variant="tonal" type="info" density="compact">
               {{ selectedPartner.notes }}
             </v-alert>
           </div>
 
-          <!-- Activity Log -->
-          <div class="mt-6">
+          <!-- Activity Log (Admin Only) -->
+          <div v-if="isAdmin" class="mt-6">
             <h4 class="text-subtitle-2 mb-2">Recent Activity</h4>
             <v-timeline density="compact" side="end">
               <v-timeline-item
@@ -455,15 +462,17 @@
         </v-card-text>
         
         <v-card-actions class="pa-4">
-          <v-btn variant="outlined" prepend-icon="mdi-phone" @click="logCall(selectedPartner)">
-            Log Call
-          </v-btn>
-          <v-btn variant="outlined" prepend-icon="mdi-email" @click="sendEmail(selectedPartner)">
-            Send Email
-          </v-btn>
+          <template v-if="isAdmin">
+            <v-btn variant="outlined" prepend-icon="mdi-phone" @click="logCall(selectedPartner)">
+              Log Call
+            </v-btn>
+            <v-btn variant="outlined" prepend-icon="mdi-email" @click="sendEmail(selectedPartner)">
+              Send Email
+            </v-btn>
+          </template>
           <v-spacer />
           <v-btn variant="text" @click="showViewDialog = false">Close</v-btn>
-          <v-btn color="primary" @click="editPartner(selectedPartner); showViewDialog = false">
+          <v-btn v-if="isAdmin" color="primary" @click="editPartner(selectedPartner); showViewDialog = false">
             Edit
           </v-btn>
         </v-card-actions>
@@ -514,8 +523,11 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth']
 })
+
+// Get admin status
+const { isAdmin } = useAppData()
 
 useHead({
   title: 'Partnerships'
@@ -574,12 +586,21 @@ const availableTags = [
 
 const tableHeaders = [
   { title: 'Partner', key: 'name', sortable: true },
-  { title: 'Priority', key: 'priority', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Referrals', key: 'referrals', sortable: true },
-  { title: 'Last Contact', key: 'last_contact', sortable: true },
+  { title: 'Priority', key: 'priority', sortable: true, adminOnly: true },
+  { title: 'Status', key: 'status', sortable: true, adminOnly: true },
+  { title: 'Referrals', key: 'referrals', sortable: true, adminOnly: true },
+  { title: 'Last Contact', key: 'last_contact', sortable: true, adminOnly: true },
   { title: 'Actions', key: 'actions', sortable: false }
 ]
+
+// Computed headers based on role
+const visibleTableHeaders = computed(() => {
+  if (isAdmin.value) {
+    return tableHeaders
+  }
+  // Non-admins see simplified view: Partner name, contact info, and view button
+  return tableHeaders.filter(h => !h.adminOnly)
+})
 
 const form = reactive({
   id: '',

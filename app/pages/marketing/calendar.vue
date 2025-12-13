@@ -5,10 +5,10 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Marketing Calendar</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Visualize your events and campaigns
+          {{ isAdmin ? 'Visualize your events and campaigns' : 'View upcoming events and campaigns' }}
         </p>
       </div>
-      <div class="d-flex gap-2">
+      <div v-if="isAdmin" class="d-flex gap-2">
         <v-btn variant="outlined" :to="'/growth/events'" prepend-icon="mdi-format-list-bulleted">
           List View
         </v-btn>
@@ -90,8 +90,8 @@
               <div
                 v-for="event in getEventsForDate(day.date)"
                 :key="event.id"
-                class="calendar-event mb-1 pa-1 rounded cursor-pointer"
-                :class="getEventClass(event)"
+                class="calendar-event mb-1 pa-1 rounded"
+                :class="[getEventClass(event), { 'cursor-pointer': true }]"
                 @click="openEventDrawer(event)"
               >
                 <div class="d-flex align-center gap-1">
@@ -145,6 +145,7 @@
           <v-toolbar-title>Event Details</v-toolbar-title>
           <v-spacer />
           <v-btn 
+            v-if="isAdmin"
             icon="mdi-arrow-right" 
             variant="text" 
             :to="`/growth/events`" 
@@ -208,7 +209,7 @@
 
           <v-divider class="my-4" />
 
-          <div class="text-center">
+          <div v-if="isAdmin" class="text-center">
             <v-btn 
               color="primary" 
               :to="`/growth/events`"
@@ -228,6 +229,9 @@ definePageMeta({
   layout: 'default',
   middleware: ['auth']
 })
+
+// Get admin status
+const { isAdmin } = useAppData()
 
 interface MarketingEvent {
   id: string

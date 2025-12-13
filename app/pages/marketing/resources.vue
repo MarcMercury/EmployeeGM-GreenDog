@@ -5,10 +5,10 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Resources</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Comprehensive directory of vendors, agencies, photographers, and resources
+          {{ isAdmin ? 'Manage vendors, agencies, photographers, and resources' : 'Download marketing assets and find vendor contacts' }}
         </p>
       </div>
-      <div class="d-flex gap-2">
+      <div v-if="isAdmin" class="d-flex gap-2">
         <v-btn variant="outlined" prepend-icon="mdi-download" @click="exportResources">
           Export
         </v-btn>
@@ -125,7 +125,7 @@
               <v-icon>mdi-open-in-new</v-icon>
             </v-btn>
             <v-spacer />
-            <v-btn size="small" variant="text" icon="mdi-pencil" @click.stop="editResource(resource)" />
+            <v-btn v-if="isAdmin" size="small" variant="text" icon="mdi-pencil" @click.stop="editResource(resource)" />
           </v-card-actions>
         </v-card>
       </v-col>
@@ -169,8 +169,8 @@
         
         <template #item.actions="{ item }">
           <v-btn icon="mdi-eye" size="small" variant="text" @click="viewResource(item)" />
-          <v-btn icon="mdi-pencil" size="small" variant="text" @click="editResource(item)" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteResource(item)" />
+          <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" @click="editResource(item)" />
+          <v-btn v-if="isAdmin" icon="mdi-delete" size="small" variant="text" color="error" @click="deleteResource(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -347,8 +347,11 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth']
 })
+
+// Get admin status
+const { isAdmin } = useAppData()
 
 useHead({
   title: 'Resources'

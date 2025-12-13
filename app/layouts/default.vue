@@ -277,32 +277,37 @@ async function handleSignOut() {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.marketing }">
+              <!-- Calendar: Visible to all -->
               <NuxtLink to="/marketing/calendar" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📅</div>
                 Calendar
               </NuxtLink>
+              
+              <!-- Admin-only: Events, Leads, Campaigns -->
               <template v-if="isAdmin">
                 <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
                   Events
                 </NuxtLink>
-                <NuxtLink to="/leads" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
                   Leads
                 </NuxtLink>
-                <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
-                  Resources
-                </NuxtLink>
-                <NuxtLink to="/marketing" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/growth/campaigns" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-fuchsia-500/20">📈</div>
                   Campaigns
                 </NuxtLink>
-                <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
-                  Partnerships
-                </NuxtLink>
               </template>
+              
+              <!-- Visible to all: Resources, Partnerships -->
+              <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
+                Resources
+              </NuxtLink>
+              <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
+                Partnerships
+              </NuxtLink>
             </div>
           </div>
 
