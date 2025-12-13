@@ -767,6 +767,23 @@ const getAttendanceIcon = (shift: ScheduleShift): string | null => {
   }
 }
 
+// Get attendance color for shift
+const getAttendanceColor = (shift: ScheduleShift): string => {
+  const attendance = shiftAttendance.value.get(shift.id)
+  switch (attendance) {
+    case 'on-time':
+      return 'success'
+    case 'late':
+      return 'warning'
+    case 'pto':
+      return 'purple'
+    case 'absent':
+      return 'error'
+    default:
+      return 'grey'
+  }
+}
+
 // Format time for display
 const formatShiftTime = (startAt: string, endAt: string): string => {
   return `${format(parseISO(startAt), 'h:mm a')} - ${format(parseISO(endAt), 'h:mm a')}`
@@ -1050,7 +1067,7 @@ const handleClickOutside = () => {
                       v-if="getAttendanceIcon(shift)" 
                       :icon="getAttendanceIcon(shift)" 
                       size="10"
-                      :color="shiftAttendance.get(shift.id) === 'on-time' ? 'success' : shiftAttendance.get(shift.id) === 'late' ? 'warning' : shiftAttendance.get(shift.id) === 'pto' ? 'purple' : 'error'"
+                      :color="getAttendanceColor(shift)"
                     />
                     <v-btn
                       v-if="!shift.employee_id"
