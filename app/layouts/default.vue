@@ -100,45 +100,49 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-purple-500/20">👤</div>
                 My Profile
               </NuxtLink>
-              <NuxtLink to="/mentorship" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">🤝</div>
-                Mentorship
+              <NuxtLink to="/development" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
+                My Growth
+              </NuxtLink>
+              <NuxtLink to="/people/my-skills" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-amber-500/20">⭐</div>
+                My Skills
               </NuxtLink>
               <NuxtLink to="/org-chart" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-teal-500/20">🏢</div>
                 Org Chart
               </NuxtLink>
+              <template v-if="isAdmin">
+                <NuxtLink to="/people/skill-matrix" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📊</div>
+                  Skill Matrix
+                  <span class="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Admin</span>
+                </NuxtLink>
+                <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
+                  Skill Stats
+                  <span class="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Admin</span>
+                </NuxtLink>
+              </template>
             </div>
           </div>
 
-          <!-- Section: Growth (Collapsible) - MOVED UP -->
+          <!-- Section: Training (Collapsible) -->
           <div class="pt-2">
             <button 
               @click="toggleSection('growth')"
               class="section-header group"
             >
-              <span>🎓 Growth</span>
+              <span>🎓 Training</span>
               <svg 
                 class="w-4 h-4 transition-transform duration-200" 
                 :class="{ 'rotate-180': sections.growth }"
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.growth }">
-              <NuxtLink to="/development" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-purple-500/20">📈</div>
-                My Growth
-              </NuxtLink>
               <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
                 Academy
-              </NuxtLink>
-              <NuxtLink to="/reviews" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-blue-500/20">📊</div>
-                My Reviews
-              </NuxtLink>
-              <NuxtLink to="/my-skills" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">⭐</div>
-                My Skills
               </NuxtLink>
             </div>
           </div>

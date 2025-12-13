@@ -1,18 +1,10 @@
 <template>
-  <div>
-    <GoalTracker />
-  </div>
+  <div />
 </template>
 
 <script setup lang="ts">
-import GoalTracker from '~/components/performance/GoalTracker.vue'
-
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
-})
-
-useHead({
-  title: 'My Goals'
+  middleware: [(to, from) => navigateTo('/development?tab=goals', { replace: true })]
 })
 </script>
