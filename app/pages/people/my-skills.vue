@@ -364,7 +364,7 @@ const fetchSkills = async () => {
     
     // Fetch ALL skills from library
     const { data: skillsData, error: skillsError } = await client
-      .from('skills')
+      .from('skill_library')
       .select('id, name, category, description')
       .order('category')
       .order('name')
@@ -372,11 +372,11 @@ const fetchSkills = async () => {
     if (skillsError) throw skillsError
     allSkills.value = skillsData || []
     
-    // Fetch employee's ratings if they have an employee record
+    // Fetch employee's skill levels if they have an employee record
     if (employee) {
       const { data: ratingsData, error: ratingsError } = await client
         .from('employee_skills')
-        .select('skill_id, rating')
+        .select('skill_id, level')
         .eq('employee_id', employee.id)
       
       if (ratingsError) throw ratingsError
@@ -384,7 +384,7 @@ const fetchSkills = async () => {
       // Build lookup map
       const ratingsMap: Record<string, number> = {}
       ratingsData?.forEach((r: any) => {
-        ratingsMap[r.skill_id] = r.rating || 0
+        ratingsMap[r.skill_id] = r.level || 0
       })
       employeeRatings.value = ratingsMap
     }
