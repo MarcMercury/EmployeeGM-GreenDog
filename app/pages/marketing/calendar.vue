@@ -8,13 +8,26 @@
           {{ isAdmin ? 'Visualize your events and campaigns' : 'View upcoming events and campaigns' }}
         </p>
       </div>
-      <div v-if="isAdmin" class="d-flex gap-2">
-        <v-btn variant="outlined" :to="'/growth/events'" prepend-icon="mdi-format-list-bulleted">
-          List View
-        </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" :to="'/growth/events'" @click.prevent="createEventRedirect">
-          Create Event
-        </v-btn>
+      <div class="d-flex gap-2">
+        <!-- View Toggle -->
+        <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
+          <v-btn value="month" size="small">
+            <v-icon start size="18">mdi-calendar-month</v-icon>
+            Month
+          </v-btn>
+          <v-btn value="week" size="small">
+            <v-icon start size="18">mdi-calendar-week</v-icon>
+            Week
+          </v-btn>
+        </v-btn-toggle>
+        <template v-if="isAdmin">
+          <v-btn variant="outlined" :to="'/growth/events'" prepend-icon="mdi-format-list-bulleted">
+            List View
+          </v-btn>
+          <v-btn color="primary" prepend-icon="mdi-plus" :to="'/growth/events'" @click.prevent="createEventRedirect">
+            Create Event
+          </v-btn>
+        </template>
       </div>
     </div>
 
@@ -22,9 +35,14 @@
     <v-card rounded="lg" class="mb-6">
       <v-card-text class="pa-4">
         <div class="d-flex align-center justify-space-between">
-          <v-btn icon="mdi-chevron-left" variant="text" @click="previousMonth" />
-          <h2 class="text-h5 font-weight-bold">{{ currentMonthYear }}</h2>
-          <v-btn icon="mdi-chevron-right" variant="text" @click="nextMonth" />
+          <v-btn icon="mdi-chevron-left" variant="text" @click="viewMode === 'month' ? previousMonth() : previousWeek()" />
+          <div class="text-center">
+            <h2 class="text-h5 font-weight-bold">{{ viewMode === 'month' ? currentMonthYear : currentWeekRange }}</h2>
+            <v-btn variant="text" size="small" color="primary" @click="goToToday" class="mt-1">
+              Today
+            </v-btn>
+          </div>
+          <v-btn icon="mdi-chevron-right" variant="text" @click="viewMode === 'month' ? nextMonth() : nextWeek()" />
         </div>
       </v-card-text>
     </v-card>
@@ -34,8 +52,8 @@
       <v-progress-circular indeterminate color="primary" size="64" />
     </div>
 
-    <!-- Calendar Grid -->
-    <v-card v-else rounded="lg">
+    <!-- Month View Calendar Grid -->
+    <v-card v-else-if="viewMode === 'month'" rounded="lg">
       <!-- Day Headers -->
       <div class="calendar-header d-flex border-b">
         <div 
@@ -103,6 +121,72 @@
                   {{ formatTime(event.start_time) }}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </v-card>
+
+    <!-- Week View Calendar Grid -->
+    <v-card v-else rounded="lg">
+      <!-- Day Headers with Dates -->
+      <div class="calendar-header d-flex border-b">
+        <div 
+          v-for="day in currentWeekDays" 
+          :key="day.date.toISOString()" 
+          class="calendar-header-cell flex-grow-1 text-center py-3"
+          :class="{ 'bg-primary-lighten-5': day.isToday }"
+          style="width: 14.28%;"
+        >
+          <div class="text-overline text-grey">{{ weekDays[day.date.getDay()] }}</div>
+          <div 
+            class="text-h6 font-weight-bold"
+            :class="{ 'text-primary': day.isToday }"
+          >
+            {{ day.date.getDate() }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Week Day Columns -->
+      <div class="calendar-body d-flex" style="min-height: 400px;">
+        <div 
+          v-for="day in currentWeekDays" 
+          :key="day.date.toISOString()" 
+          class="calendar-day flex-grow-1 pa-2 border-e"
+          :class="{ 'bg-primary-lighten-5': day.isToday }"
+          style="width: 14.28%;"
+        >
+          <!-- Events for this day -->
+          <div class="calendar-events">
+            <div
+              v-for="event in getEventsForDate(day.date)"
+              :key="event.id"
+              class="calendar-event mb-2 pa-2 rounded"
+              :class="[getEventClass(event), { 'cursor-pointer': true }]"
+              @click="openEventDrawer(event)"
+            >
+              <div class="text-caption font-weight-bold text-truncate mb-1">
+                {{ event.name }}
+              </div>
+              <div v-if="event.start_time" class="text-caption opacity-80">
+                <v-icon size="12">mdi-clock-outline</v-icon>
+                {{ formatTime(event.start_time) }}
+                <template v-if="event.end_time"> - {{ formatTime(event.end_time) }}</template>
+              </div>
+              <div v-if="event.location" class="text-caption opacity-80 mt-1">
+                <v-icon size="12">mdi-map-marker</v-icon>
+                {{ event.location }}
+              </div>
+            </div>
+            
+            <!-- Empty state for day -->
+            <div 
+              v-if="getEventsForDate(day.date).length === 0" 
+              class="text-center text-grey-lighten-1 py-8"
+            >
+              <v-icon size="24" color="grey-lighten-2">mdi-calendar-blank</v-icon>
+              <div class="text-caption mt-1">No events</div>
             </div>
           </div>
         </div>
@@ -260,6 +344,7 @@ const events = ref<MarketingEvent[]>([])
 const currentDate = ref(new Date())
 const drawer = ref(false)
 const selectedEvent = ref<MarketingEvent | null>(null)
+const viewMode = ref<'month' | 'week'>('month')
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -269,6 +354,47 @@ const currentMonthYear = computed(() => {
     month: 'long',
     year: 'numeric'
   })
+})
+
+// Week view: get the start of the current week (Sunday)
+const currentWeekStart = computed(() => {
+  const date = new Date(currentDate.value)
+  const day = date.getDay()
+  date.setDate(date.getDate() - day)
+  date.setHours(0, 0, 0, 0)
+  return date
+})
+
+// Week view: get all 7 days of the current week
+const currentWeekDays = computed((): CalendarDay[] => {
+  const days: CalendarDay[] = []
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(currentWeekStart.value)
+    date.setDate(date.getDate() + i)
+    days.push({
+      date,
+      isCurrentMonth: date.getMonth() === currentDate.value.getMonth(),
+      isToday: isToday(date)
+    })
+  }
+  return days
+})
+
+// Week view: display range like "Dec 8 - 14, 2025"
+const currentWeekRange = computed(() => {
+  const start = currentWeekDays.value[0]?.date
+  const end = currentWeekDays.value[6]?.date
+  if (!start || !end) return ''
+  
+  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
+  const year = end.getFullYear()
+  
+  if (startMonth === endMonth) {
+    return `${startMonth} ${start.getDate()} - ${end.getDate()}, ${year}`
+  } else {
+    return `${startMonth} ${start.getDate()} - ${endMonth} ${end.getDate()}, ${year}`
+  }
 })
 
 const calendarWeeks = computed((): CalendarDay[][] => {
@@ -346,6 +472,26 @@ const nextMonth = () => {
     currentDate.value.getMonth() + 1,
     1
   )
+}
+
+const previousWeek = () => {
+  currentDate.value = new Date(
+    currentDate.value.getFullYear(),
+    currentDate.value.getMonth(),
+    currentDate.value.getDate() - 7
+  )
+}
+
+const nextWeek = () => {
+  currentDate.value = new Date(
+    currentDate.value.getFullYear(),
+    currentDate.value.getMonth(),
+    currentDate.value.getDate() + 7
+  )
+}
+
+const goToToday = () => {
+  currentDate.value = new Date()
 }
 
 const getEventsForDate = (date: Date): MarketingEvent[] => {
