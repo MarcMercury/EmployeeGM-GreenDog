@@ -46,7 +46,7 @@
           <v-card rounded="lg" color="primary" variant="flat">
             <v-card-text class="text-center text-white">
               <v-icon size="32" class="mb-2 opacity-80">mdi-lightbulb</v-icon>
-              <div class="text-h4 font-weight-bold">{{ totalSkills }}</div>
+              <div class="text-h4 font-weight-bold">{{ totalSkillsAvailable }}</div>
               <div class="text-body-2 opacity-80">Total Skills</div>
             </v-card-text>
           </v-card>
@@ -70,18 +70,18 @@
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
-          <v-card rounded="lg" color="info" variant="flat">
+          <v-card rounded="lg" color="grey-darken-1" variant="flat">
             <v-card-text class="text-center text-white">
-              <v-icon size="32" class="mb-2 opacity-80">mdi-school</v-icon>
-              <div class="text-h4 font-weight-bold">{{ learningSkills }}</div>
-              <div class="text-body-2 opacity-80">Learning</div>
+              <v-icon size="32" class="mb-2 opacity-80">mdi-book-open-blank-variant</v-icon>
+              <div class="text-h4 font-weight-bold">{{ unratedSkills }}</div>
+              <div class="text-body-2 opacity-80">Not Rated</div>
             </v-card-text>
           </v-card>
         </v-col>
       </v-row>
 
       <!-- Skills by Category - Collapsible Sections -->
-      <v-expansion-panels v-if="hasSkillsByCategory" variant="accordion" multiple class="mb-6">
+      <v-expansion-panels v-if="hasSkillsByCategory" variant="accordion" multiple v-model="openPanels" class="mb-6">
         <v-expansion-panel v-for="category in skillsByCategory" :key="category.name" class="mb-2">
           <v-expansion-panel-title>
             <div class="d-flex align-center flex-grow-1">
@@ -92,7 +92,7 @@
                 {{ category.skills.length }} skill{{ category.skills.length !== 1 ? 's' : '' }}
               </v-chip>
               <v-chip size="small" variant="tonal" color="primary">
-                {{ category.avgLevel.toFixed(1) }} avg
+                {{ category.ratedAvg > 0 ? category.ratedAvg.toFixed(1) : '0.0' }} avg
               </v-chip>
             </div>
           </v-expansion-panel-title>
@@ -100,35 +100,43 @@
             <v-list density="compact" class="bg-transparent">
               <v-list-item
                 v-for="skill in category.skills"
-                :key="skill.id"
+                :key="skill.skillId"
                 class="rounded mb-1 px-0"
               >
                 <template #prepend>
-                  <v-avatar size="32" :color="getLevelColor(skill.level)" variant="tonal">
-                    <span class="text-caption font-weight-bold">{{ skill.level }}</span>
+                  <v-avatar size="32" :color="getLevelColor(skill.rating)" variant="tonal">
+                    <span class="text-caption font-weight-bold">{{ skill.rating }}</span>
                   </v-avatar>
                 </template>
                 
-                <v-list-item-title>{{ skill.skill_library?.name || 'Unknown' }}</v-list-item-title>
+                <v-list-item-title>
+                  {{ skill.name }}
+                  <v-chip v-if="skill.rating === 0" size="x-small" variant="outlined" color="grey" class="ml-2">
+                    Not Rated
+                  </v-chip>
+                </v-list-item-title>
                 <v-list-item-subtitle>
-                  {{ skill.skill_library?.description || 'No description' }}
+                  {{ skill.description || 'No description available' }}
                 </v-list-item-subtitle>
                 
                 <template #append>
                   <div class="d-flex align-center gap-2">
                     <v-rating
-                      :model-value="skill.level"
+                      :model-value="skill.rating"
                       readonly
                       density="compact"
                       size="x-small"
                       color="amber"
+                      empty-icon="mdi-star-outline"
+                      full-icon="mdi-star"
                     />
                     <v-chip 
-                      :color="getLevelColor(skill.level)" 
+                      v-if="skill.rating > 0"
+                      :color="getLevelColor(skill.rating)" 
                       size="x-small"
                       variant="flat"
                     >
-                      {{ getLevelLabel(skill.level) }}
+                      {{ getLevelLabel(skill.rating) }}
                     </v-chip>
                   </div>
                 </template>
@@ -140,12 +148,9 @@
 
       <!-- Empty State -->
       <v-card v-else rounded="lg" class="text-center py-12">
-        <v-icon size="64" color="grey-lighten-1">mdi-lightbulb-off</v-icon>
-        <h3 class="text-h6 mt-4">No skills recorded yet</h3>
-        <p class="text-grey mb-4">Your skills will appear here once they're assessed</p>
-        <v-btn color="primary" variant="outlined" @click="navigateTo('/development')">
-          Go to Development
-        </v-btn>
+        <v-icon size="64" color="grey-lighten-1">mdi-book-open-variant</v-icon>
+        <h3 class="text-h6 mt-4">Loading Skills Library...</h3>
+        <p class="text-grey mb-4">Your skills are being loaded</p>
       </v-card>
 
       <!-- Skill Radar Chart (Visual) -->
@@ -158,18 +163,20 @@
           <div class="d-flex flex-wrap justify-center gap-4">
             <div v-for="category in skillsByCategory" :key="category.name" class="text-center">
               <v-progress-circular
-                :model-value="(category.avgLevel / 5) * 100"
+                :model-value="(category.ratedAvg / 5) * 100"
                 :color="getCategoryColor(category.name)"
                 :size="100"
                 :width="12"
               >
                 <div>
-                  <div class="text-h6 font-weight-bold">{{ category.avgLevel.toFixed(1) }}</div>
+                  <div class="text-h6 font-weight-bold">{{ category.ratedAvg > 0 ? category.ratedAvg.toFixed(1) : '0.0' }}</div>
                   <div class="text-caption text-grey">/ 5</div>
                 </div>
               </v-progress-circular>
               <div class="text-body-2 mt-2">{{ category.name }}</div>
-              <div class="text-caption text-grey">{{ category.skills?.length || 0 }} skills</div>
+              <div class="text-caption text-grey">
+                {{ category.skills.filter(s => s.rating > 0).length }} / {{ category.skills.length }} rated
+              </div>
             </div>
           </div>
         </v-card-text>
@@ -184,44 +191,66 @@ definePageMeta({
   middleware: ['auth']
 })
 
-interface EmployeeSkill {
+interface SkillLibraryItem {
   id: string
-  level: number
-  created_at: string
-  updated_at?: string
-  skill_library?: {
-    name: string
-    category: string
-    description?: string
-  }
+  name: string
+  category: string
+  description?: string
+}
+
+interface EmployeeSkillRating {
+  skill_id: string
+  rating: number
+}
+
+interface MergedSkill {
+  skillId: string
+  name: string
+  category: string
+  description?: string
+  rating: number
 }
 
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 
 // State
-const skills = ref<EmployeeSkill[]>([])
+const allSkills = ref<SkillLibraryItem[]>([])
+const employeeRatings = ref<Record<string, number>>({})
 const loading = ref(true)
+const openPanels = ref<number[]>([]) // All panels open by default
 
-// Computed - with defensive null checks
-const totalSkills = computed(() => (skills.value || []).length)
+// Computed
+const mergedSkills = computed(() => {
+  return allSkills.value.map(skill => ({
+    skillId: skill.id,
+    name: skill.name,
+    category: skill.category,
+    description: skill.description,
+    rating: employeeRatings.value[skill.id] || 0
+  }))
+})
+
+const totalSkillsAvailable = computed(() => mergedSkills.value.length)
+
+const ratedSkills = computed(() => mergedSkills.value.filter(s => s.rating > 0))
 
 const masteredSkills = computed(() => 
-  (skills.value || []).filter(s => s.level === 5).length
+  ratedSkills.value.filter(s => s.rating === 5).length
 )
 
 const developingSkills = computed(() => 
-  (skills.value || []).filter(s => s.level >= 3 && s.level < 5).length
+  ratedSkills.value.filter(s => s.rating >= 3 && s.rating < 5).length
 )
 
-const learningSkills = computed(() => 
-  (skills.value || []).filter(s => s.level < 3).length
+const unratedSkills = computed(() => 
+  mergedSkills.value.filter(s => s.rating === 0).length
 )
 
 const overallScore = computed(() => {
-  const skillList = skills.value || []
-  if (skillList.length === 0) return 0
-  const avg = skillList.reduce((sum, s) => sum + s.level, 0) / skillList.length
+  const rated = ratedSkills.value
+  if (rated.length === 0) return 0
+  const avg = rated.reduce((sum, s) => sum + s.rating, 0) / rated.length
   return Math.round(avg * 20)
 })
 
@@ -232,11 +261,10 @@ const overallScoreColor = computed(() => {
 })
 
 const skillsByCategory = computed(() => {
-  const categories: Record<string, EmployeeSkill[]> = {}
-  const skillList = skills.value || []
+  const categories: Record<string, MergedSkill[]> = {}
   
-  skillList.forEach(skill => {
-    const category = skill.skill_library?.category || 'Other'
+  mergedSkills.value.forEach(skill => {
+    const category = skill.category || 'Other'
     if (!categories[category]) {
       categories[category] = []
     }
@@ -244,17 +272,27 @@ const skillsByCategory = computed(() => {
   })
   
   return Object.entries(categories)
-    .map(([name, skills]) => ({
-      name,
-      skills: skills.sort((a, b) => b.level - a.level),
-      avgLevel: skills.length > 0 ? skills.reduce((sum, s) => sum + s.level, 0) / skills.length : 0
-    }))
-    .sort((a, b) => b.avgLevel - a.avgLevel)
+    .map(([name, skills]) => {
+      const ratedInCategory = skills.filter(s => s.rating > 0)
+      return {
+        name,
+        skills: skills.sort((a, b) => {
+          // Sort: rated skills first (by rating desc), then unrated alphabetically
+          if (a.rating === 0 && b.rating === 0) return a.name.localeCompare(b.name)
+          if (a.rating === 0) return 1
+          if (b.rating === 0) return -1
+          return b.rating - a.rating
+        }),
+        ratedAvg: ratedInCategory.length > 0 
+          ? ratedInCategory.reduce((sum, s) => sum + s.rating, 0) / ratedInCategory.length 
+          : 0
+      }
+    })
+    .sort((a, b) => b.ratedAvg - a.ratedAvg)
 })
 
-// Safe accessor for template
-const hasSkillsByCategory = computed(() => (skillsByCategory.value || []).length > 0)
-const hasMultipleCategories = computed(() => (skillsByCategory.value || []).length >= 3)
+const hasSkillsByCategory = computed(() => skillsByCategory.value.length > 0)
+const hasMultipleCategories = computed(() => skillsByCategory.value.length >= 3)
 
 // Methods
 const getCategoryIcon = (category: string) => {
@@ -324,23 +362,35 @@ const fetchSkills = async () => {
       .eq('email_work', email)
       .single() as { data: { id: string } | null }
     
-    if (!employee) {
-      loading.value = false
-      return
+    // Fetch ALL skills from library
+    const { data: skillsData, error: skillsError } = await client
+      .from('skills')
+      .select('id, name, category, description')
+      .order('category')
+      .order('name')
+    
+    if (skillsError) throw skillsError
+    allSkills.value = skillsData || []
+    
+    // Fetch employee's ratings if they have an employee record
+    if (employee) {
+      const { data: ratingsData, error: ratingsError } = await client
+        .from('employee_skills')
+        .select('skill_id, rating')
+        .eq('employee_id', employee.id)
+      
+      if (ratingsError) throw ratingsError
+      
+      // Build lookup map
+      const ratingsMap: Record<string, number> = {}
+      ratingsData?.forEach((r: any) => {
+        ratingsMap[r.skill_id] = r.rating || 0
+      })
+      employeeRatings.value = ratingsMap
     }
     
-    // Fetch skills
-    const { data, error } = await client
-      .from('employee_skills')
-      .select(`
-        *,
-        skill_library:skill_id(name, category, description)
-      `)
-      .eq('employee_id', employee.id)
-      .order('level', { ascending: false })
-    
-    if (error) throw error
-    skills.value = data || []
+    // Open all panels by default
+    openPanels.value = Array.from({ length: skillsByCategory.value.length }, (_, i) => i)
   } catch (error) {
     console.error('Error fetching skills:', error)
   } finally {
