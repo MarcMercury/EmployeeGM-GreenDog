@@ -121,6 +121,15 @@
             <v-chip :color="getStatusColor(selectedCandidate.status)" label class="mr-2">
               {{ formatStatus(selectedCandidate.status) }}
             </v-chip>
+            <v-btn 
+              color="primary" 
+              variant="tonal"
+              class="mr-2"
+              :to="`/recruiting/${selectedCandidate.id}`"
+            >
+              <v-icon start>mdi-account-details</v-icon>
+              Full Profile
+            </v-btn>
             <v-menu>
               <template #activator="{ props }">
                 <v-btn icon="mdi-dots-vertical" variant="text" v-bind="props" />

@@ -495,6 +495,136 @@ export interface ReferralPartner {
   updated_at: string
 }
 
+// =====================================================
+// RECRUITING MODULE
+// =====================================================
+
+export type CandidateStatus = 'new' | 'screening' | 'interview' | 'offer' | 'hired' | 'rejected'
+
+export interface Candidate {
+  id: string
+  first_name: string
+  last_name: string
+  preferred_name: string | null
+  email: string
+  email_personal: string | null
+  phone: string | null
+  phone_mobile: string | null
+  phone_work: string | null
+  avatar_url: string | null
+  
+  // Address
+  address_line1: string | null
+  address_line2: string | null
+  city: string | null
+  state: string | null
+  postal_code: string | null
+  date_of_birth: string | null
+  
+  // Emergency Contact
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+  emergency_contact_relationship: string | null
+  
+  // Professional
+  license_type: string | null
+  license_number: string | null
+  license_state: string | null
+  license_expiration: string | null
+  
+  // Compensation
+  expected_salary: number | null
+  expected_hourly_rate: number | null
+  pay_type_preference: 'hourly' | 'salary' | 'either' | null
+  
+  // Job Targeting
+  target_position_id: string | null
+  department_id: string | null
+  location_id: string | null
+  resume_url: string | null
+  
+  // Source
+  source: string | null
+  referral_source: string | null
+  
+  // Interview Tracking
+  interview_date: string | null
+  interviewed_by: string | null
+  working_interview_date: string | null
+  working_interview_completed: boolean
+  
+  // Status
+  status: CandidateStatus
+  onboarding_complete: boolean
+  notes: string | null
+  applied_at: string
+  created_at: string
+  updated_at: string
+  
+  // Joined relations
+  job_positions?: JobPosition | null
+  department?: Department | null
+  location?: Location | null
+}
+
+export interface CandidateWithRelations extends Candidate {
+  job_positions: JobPosition | null
+  department: Department | null
+  location: Location | null
+  candidate_skills: CandidateSkill[]
+  candidate_documents: CandidateDocument[]
+  candidate_notes: CandidateNote[]
+}
+
+export interface CandidateSkill {
+  id: string
+  candidate_id: string
+  skill_id: string
+  rating: number
+  notes: string | null
+  rated_by: string | null
+  rated_at: string
+  created_at: string
+  skill?: Skill
+}
+
+export interface CandidateDocument {
+  id: string
+  candidate_id: string
+  uploader_id: string | null
+  file_name: string
+  file_url: string
+  file_type: string | null
+  file_size: number | null
+  description: string | null
+  category: 'general' | 'resume' | 'cover_letter' | 'certification' | 'license' | 'reference' | 'background_check' | 'other'
+  created_at: string
+  updated_at: string
+}
+
+export interface CandidateNote {
+  id: string
+  candidate_id: string
+  author_id: string | null
+  note: string
+  note_type: 'general' | 'interview' | 'screening' | 'reference_check' | 'background_check' | 'offer' | 'rejection' | 'system'
+  is_pinned: boolean
+  created_at: string
+  updated_at: string
+  author?: Profile
+}
+
+export interface HireCandidatePayload {
+  candidate_id: string
+  employment_type: 'full-time' | 'part-time' | 'contract' | 'per-diem'
+  job_title_id: string
+  start_date: string
+  starting_wage: number
+  pay_type: 'hourly' | 'salary'
+  department_id?: string
+  location_id?: string
+}
+
 export interface SocialAccount {
   id: string
   platform: SocialPlatform

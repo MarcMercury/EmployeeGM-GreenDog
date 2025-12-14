@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { HireCandidatePayload } from '~/types/database.types'
 
 interface HireCandidateOptions {
   candidateId: string
@@ -13,12 +14,61 @@ interface HireCandidateResult {
 }
 
 /**
- * Converts a candidate to an employee by:
+ * Converts a candidate to an employee using the database RPC function.
+ * 
+ * This calls the `promote_candidate_to_employee` database function which:
+ * 1. Creates a new profile for the employee
+ * 2. Creates the employee record with all candidate data
+ * 3. Migrates candidate_skills → employee_skills
+ * 4. Migrates candidate_documents → employee_documents
+ * 5. Migrates candidate_notes → employee_notes
+ * 6. Creates license records if applicable
+ * 7. Sets up pay settings
+ * 8. Updates candidate status to 'hired'
+ * 
+ * This is an atomic database transaction - if any step fails, all changes are rolled back.
+ */
+export async function hireCandidateWithPayload(
+  client: SupabaseClient,
+  payload: HireCandidatePayload
+): Promise<HireCandidateResult> {
+  try {
+    const { data: newEmployeeId, error: rpcError } = await client
+      .rpc('promote_candidate_to_employee', {
+        p_candidate_id: payload.candidate_id,
+        p_employment_type: payload.employment_type,
+        p_job_title_id: payload.job_title_id,
+        p_start_date: payload.start_date,
+        p_starting_wage: payload.starting_wage,
+        p_pay_type: payload.pay_type,
+        p_department_id: payload.department_id || null,
+        p_location_id: payload.location_id || null
+      })
+
+    if (rpcError) {
+      throw new Error(rpcError.message || 'Failed to hire candidate')
+    }
+
+    return {
+      success: true,
+      employeeId: newEmployeeId
+    }
+  } catch (err: any) {
+    console.error('Hire candidate error:', err)
+    return {
+      success: false,
+      error: err.message || 'An unexpected error occurred'
+    }
+  }
+}
+
+/**
+ * Legacy function - Converts a candidate to an employee by:
  * 1. Creating a new employee record from candidate data
  * 2. Copying all candidate_skills to employee_skills
  * 3. Marking the candidate as 'converted' with reference to new employee
  * 
- * This is a transactional operation - if any step fails, the whole process fails.
+ * @deprecated Use hireCandidateWithPayload for the full atomic transaction
  */
 export async function hireCandidate(
   client: SupabaseClient,

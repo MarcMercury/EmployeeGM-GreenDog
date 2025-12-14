@@ -278,7 +278,7 @@ const toggleStatusFilter = (status: string) => {
 }
 
 const openCandidate = (candidate: Candidate) => {
-  navigateTo(`/recruiting/shadow/${candidate.id}`)
+  navigateTo(`/recruiting/${candidate.id}`)
 }
 
 const fetchCandidates = async () => {
