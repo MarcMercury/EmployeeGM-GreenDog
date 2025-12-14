@@ -26,6 +26,7 @@
     "vite-plugin-vuetify": "^2.1.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3",
+    "vuedraggable": "^4.1.0",
     "vuetify": "^3.11.3",
     "zod": "^3.24.0"
   },
