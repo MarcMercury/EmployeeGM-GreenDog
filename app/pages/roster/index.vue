@@ -253,65 +253,234 @@
     </v-row>
 
     <!-- Add Employee Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="600">
+    <v-dialog v-model="showAddDialog" max-width="800" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-account-plus</v-icon>
           <span>Add New Employee</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="showAddDialog = false" />
+          <v-btn icon="mdi-close" variant="text" @click="closeAddDialog" />
         </v-card-title>
         <v-divider />
-        <v-card-text>
-          <v-form ref="addFormRef">
-            <v-row>
-              <v-col cols="6">
-                <v-text-field
-                  v-model="newEmployee.first_name"
-                  label="First Name"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-text-field
-                  v-model="newEmployee.last_name"
-                  label="Last Name"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-text-field
-                  v-model="newEmployee.email"
-                  label="Email"
-                  type="email"
-                  :rules="[v => !!v || 'Required', v => /.+@.+/.test(v) || 'Invalid email']"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-select
-                  v-model="newEmployee.department_id"
-                  :items="departmentsList"
-                  item-title="name"
-                  item-value="id"
-                  label="Department"
-                />
-              </v-col>
-              <v-col cols="6">
-                <v-select
-                  v-model="newEmployee.position_id"
-                  :items="positionsList"
-                  item-title="title"
-                  item-value="id"
-                  label="Position"
-                />
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
+        
+        <!-- Stepper for organized form sections -->
+        <v-stepper v-model="addStep" :items="['Basic Info', 'Employment', 'Contact', 'Additional']" alt-labels>
+          <template v-slot:item.1>
+            <v-card flat>
+              <v-card-text>
+                <h3 class="text-h6 mb-4">Basic Information</h3>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.first_name"
+                      label="First Name *"
+                      variant="outlined"
+                      :rules="[v => !!v || 'Required']"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.last_name"
+                      label="Last Name *"
+                      variant="outlined"
+                      :rules="[v => !!v || 'Required']"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.preferred_name"
+                      label="Preferred Name / Nickname"
+                      variant="outlined"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.employee_number"
+                      label="Employee Number"
+                      variant="outlined"
+                      hint="Leave blank to auto-generate"
+                      persistent-hint
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.date_of_birth"
+                      label="Date of Birth"
+                      variant="outlined"
+                      type="date"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </template>
+
+          <template v-slot:item.2>
+            <v-card flat>
+              <v-card-text>
+                <h3 class="text-h6 mb-4">Employment Details</h3>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.department_id"
+                      :items="departmentsList"
+                      item-title="name"
+                      item-value="id"
+                      label="Department"
+                      variant="outlined"
+                      clearable
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.position_id"
+                      :items="positionsList"
+                      item-title="title"
+                      item-value="id"
+                      label="Position / Job Title"
+                      variant="outlined"
+                      clearable
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.manager_employee_id"
+                      :items="managerOptions"
+                      item-title="full_name"
+                      item-value="id"
+                      label="Reports To (Manager)"
+                      variant="outlined"
+                      clearable
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.location_id"
+                      :items="locationsList"
+                      item-title="name"
+                      item-value="id"
+                      label="Primary Location"
+                      variant="outlined"
+                      clearable
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.employment_type"
+                      :items="employmentTypes"
+                      label="Employment Type"
+                      variant="outlined"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-select
+                      v-model="newEmployee.employment_status"
+                      :items="employmentStatuses"
+                      label="Status"
+                      variant="outlined"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.hire_date"
+                      label="Hire Date"
+                      variant="outlined"
+                      type="date"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </template>
+
+          <template v-slot:item.3>
+            <v-card flat>
+              <v-card-text>
+                <h3 class="text-h6 mb-4">Contact Information</h3>
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.email_work"
+                      label="Work Email *"
+                      variant="outlined"
+                      type="email"
+                      :rules="[v => !!v || 'Required', v => /.+@.+/.test(v) || 'Invalid email']"
+                      prepend-inner-icon="mdi-email"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.email_personal"
+                      label="Personal Email"
+                      variant="outlined"
+                      type="email"
+                      prepend-inner-icon="mdi-email-outline"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.phone_work"
+                      label="Work Phone"
+                      variant="outlined"
+                      prepend-inner-icon="mdi-phone"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <v-text-field
+                      v-model="newEmployee.phone_mobile"
+                      label="Mobile Phone"
+                      variant="outlined"
+                      prepend-inner-icon="mdi-cellphone"
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </template>
+
+          <template v-slot:item.4>
+            <v-card flat>
+              <v-card-text>
+                <h3 class="text-h6 mb-4">Additional Information</h3>
+                <v-row>
+                  <v-col cols="12">
+                    <v-textarea
+                      v-model="newEmployee.notes_internal"
+                      label="Internal Notes"
+                      variant="outlined"
+                      rows="3"
+                      hint="Private notes visible only to admins"
+                      persistent-hint
+                    />
+                  </v-col>
+                  <v-col cols="12">
+                    <v-checkbox
+                      v-model="newEmployee.send_invite"
+                      label="Send email invitation to set up account"
+                      color="primary"
+                      hide-details
+                    />
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </template>
+        </v-stepper>
+
         <v-divider />
         <v-card-actions class="pa-4">
+          <v-btn v-if="addStep > 1" variant="text" @click="addStep--">
+            <v-icon start>mdi-chevron-left</v-icon>
+            Back
+          </v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="showAddDialog = false">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" :loading="isSaving" @click="createEmployee">
+          <v-btn variant="text" @click="closeAddDialog">Cancel</v-btn>
+          <v-btn v-if="addStep < 4" color="primary" variant="flat" @click="addStep++">
+            Next
+            <v-icon end>mdi-chevron-right</v-icon>
+          </v-btn>
+          <v-btn v-else color="primary" variant="flat" :loading="isSaving" @click="createEmployee">
+            <v-icon start>mdi-account-plus</v-icon>
             Add Employee
           </v-btn>
         </v-card-actions>
@@ -341,13 +510,54 @@ const viewMode = ref<'table' | 'cards'>('table')
 const showAddDialog = ref(false)
 const isSaving = ref(false)
 const addFormRef = ref()
+const addStep = ref(1)
+
+// Load locations
+const supabase = useSupabaseClient()
+const locationsList = ref<{ id: string; name: string }[]>([])
+
+// Employment type and status options
+const employmentTypes = [
+  { title: 'Full-Time', value: 'full-time' },
+  { title: 'Part-Time', value: 'part-time' },
+  { title: 'Contract', value: 'contract' },
+  { title: 'Per Diem', value: 'per-diem' },
+  { title: 'Intern', value: 'intern' }
+]
+
+const employmentStatuses = [
+  { title: 'Active', value: 'active' },
+  { title: 'Inactive', value: 'inactive' },
+  { title: 'On Leave', value: 'on-leave' }
+]
+
+// Manager options (current employees who can be managers)
+const managerOptions = computed(() => 
+  employees.value.map(emp => ({
+    id: emp.id,
+    full_name: `${emp.first_name} ${emp.last_name}`
+  }))
+)
 
 const newEmployee = reactive({
   first_name: '',
   last_name: '',
-  email: '',
+  preferred_name: '',
+  employee_number: '',
+  date_of_birth: '',
+  email_work: '',
+  email_personal: '',
+  phone_work: '',
+  phone_mobile: '',
   department_id: null as string | null,
-  position_id: null as string | null
+  position_id: null as string | null,
+  manager_employee_id: null as string | null,
+  location_id: null as string | null,
+  employment_type: 'full-time',
+  employment_status: 'active',
+  hire_date: new Date().toISOString().split('T')[0],
+  notes_internal: '',
+  send_invite: true
 })
 
 // Table headers
@@ -438,40 +648,103 @@ async function refreshData() {
   await fetchGlobalData(true)
 }
 
+function closeAddDialog() {
+  showAddDialog.value = false
+  addStep.value = 1
+  // Reset form
+  Object.assign(newEmployee, {
+    first_name: '',
+    last_name: '',
+    preferred_name: '',
+    employee_number: '',
+    date_of_birth: '',
+    email_work: '',
+    email_personal: '',
+    phone_work: '',
+    phone_mobile: '',
+    department_id: null,
+    position_id: null,
+    manager_employee_id: null,
+    location_id: null,
+    employment_type: 'full-time',
+    employment_status: 'active',
+    hire_date: new Date().toISOString().split('T')[0],
+    notes_internal: '',
+    send_invite: true
+  })
+}
+
+async function loadLocations() {
+  try {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name')
+    
+    if (!error && data) {
+      locationsList.value = data
+    }
+  } catch (err) {
+    console.error('Failed to load locations:', err)
+  }
+}
+
 async function createEmployee() {
-  const { valid } = await addFormRef.value?.validate()
-  if (!valid) return
+  // Basic validation
+  if (!newEmployee.first_name || !newEmployee.last_name || !newEmployee.email_work) {
+    uiStore.showError('Please fill in all required fields (First Name, Last Name, Work Email)')
+    return
+  }
+  
+  // Email validation
+  if (!/.+@.+\..+/.test(newEmployee.email_work)) {
+    uiStore.showError('Please enter a valid work email address')
+    return
+  }
   
   isSaving.value = true
   try {
-    const client = useSupabaseClient()
+    const insertData: Record<string, any> = {
+      first_name: newEmployee.first_name,
+      last_name: newEmployee.last_name,
+      email_work: newEmployee.email_work,
+      employment_status: newEmployee.employment_status,
+      employment_type: newEmployee.employment_type
+    }
     
-    const { error } = await client
+    // Add optional fields only if provided
+    if (newEmployee.preferred_name) insertData.preferred_name = newEmployee.preferred_name
+    if (newEmployee.employee_number) insertData.employee_number = newEmployee.employee_number
+    if (newEmployee.date_of_birth) insertData.date_of_birth = newEmployee.date_of_birth
+    if (newEmployee.email_personal) insertData.email_personal = newEmployee.email_personal
+    if (newEmployee.phone_work) insertData.phone_work = newEmployee.phone_work
+    if (newEmployee.phone_mobile) insertData.phone_mobile = newEmployee.phone_mobile
+    if (newEmployee.department_id) insertData.department_id = newEmployee.department_id
+    if (newEmployee.position_id) insertData.position_id = newEmployee.position_id
+    if (newEmployee.manager_employee_id) insertData.manager_employee_id = newEmployee.manager_employee_id
+    if (newEmployee.location_id) insertData.location_id = newEmployee.location_id
+    if (newEmployee.hire_date) insertData.hire_date = newEmployee.hire_date
+    if (newEmployee.notes_internal) insertData.notes_internal = newEmployee.notes_internal
+    
+    const { data, error } = await supabase
       .from('employees')
-      .insert({
-        first_name: newEmployee.first_name,
-        last_name: newEmployee.last_name,
-        email_work: newEmployee.email,
-        department_id: newEmployee.department_id,
-        position_id: newEmployee.position_id,
-        employment_status: 'active'
-      })
+      .insert(insertData)
+      .select()
+      .single()
     
     if (error) throw error
     
-    showAddDialog.value = false
-    uiStore.showSuccess('Employee added successfully')
+    closeAddDialog()
+    uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added successfully!`)
     await refreshData()
     
-    // Reset form
-    Object.assign(newEmployee, {
-      first_name: '',
-      last_name: '',
-      email: '',
-      department_id: null,
-      position_id: null
-    })
+    // TODO: If send_invite is true, trigger email invitation
+    if (newEmployee.send_invite) {
+      console.log('Email invitation would be sent to:', newEmployee.email_work)
+    }
   } catch (error: any) {
+    console.error('Create employee error:', error)
     uiStore.showError(error.message || 'Failed to create employee')
   } finally {
     isSaving.value = false
@@ -483,6 +756,7 @@ onMounted(async () => {
   if (employees.value.length === 0) {
     await fetchGlobalData()
   }
+  await loadLocations()
 })
 </script>
 

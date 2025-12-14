@@ -58,6 +58,45 @@
           <v-card-text>
             <v-skeleton-loader v-if="loadingCompany" type="article" />
             <template v-else>
+              <!-- Company Logo Upload -->
+              <div class="d-flex align-center gap-4 mb-4">
+                <v-avatar size="80" color="grey-lighten-3" rounded="lg">
+                  <v-img v-if="companyLogo" :src="companyLogo" cover />
+                  <v-icon v-else size="40" color="grey">mdi-domain</v-icon>
+                </v-avatar>
+                <div>
+                  <p class="text-body-1 font-weight-medium mb-1">Company Logo</p>
+                  <p class="text-caption text-grey mb-2">PNG or JPG, max 2MB</p>
+                  <v-btn 
+                    size="small" 
+                    variant="outlined" 
+                    prepend-icon="mdi-upload" 
+                    :loading="uploadingLogo"
+                    @click="triggerLogoUpload"
+                  >
+                    Upload Logo
+                  </v-btn>
+                  <v-btn 
+                    v-if="companyLogo" 
+                    size="small" 
+                    variant="text" 
+                    color="error"
+                    icon="mdi-delete"
+                    class="ml-2"
+                    @click="removeLogo"
+                  />
+                  <input 
+                    ref="logoInput" 
+                    type="file" 
+                    accept="image/png,image/jpeg,image/jpg" 
+                    hidden 
+                    @change="handleLogoUpload" 
+                  />
+                </div>
+              </div>
+              
+              <v-divider class="mb-4" />
+              
               <v-text-field
                 v-model="companyName"
                 label="Display Name"
@@ -239,6 +278,9 @@ const companyName = ref('')
 const companyLegalName = ref('')
 const companyTimezone = ref('America/Los_Angeles')
 const companyAddress = ref<any>({})
+const companyLogo = ref<string | null>(null)
+const uploadingLogo = ref(false)
+const logoInput = ref<HTMLInputElement | null>(null)
 const loadingCompany = ref(true)
 
 const departments = ref<Department[]>([])
@@ -270,6 +312,7 @@ async function loadCompanySettings() {
       companyLegalName.value = data.legal_name || ''
       companyTimezone.value = data.timezone || 'America/Los_Angeles'
       companyAddress.value = data.primary_address || {}
+      companyLogo.value = data.logo_url || null
     }
   } catch (err) {
     console.error('Failed to load company settings:', err)
@@ -310,6 +353,89 @@ async function saveCompanyInfo() {
     toast.success('Company settings saved')
   } catch (err) {
     toast.error('Failed to save settings')
+  }
+}
+
+function triggerLogoUpload() {
+  logoInput.value?.click()
+}
+
+async function handleLogoUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  // Validate file type
+  if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+    toast.error('Please upload a PNG or JPG image')
+    return
+  }
+
+  // Validate file size (2MB max)
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error('Image must be less than 2MB')
+    return
+  }
+
+  uploadingLogo.value = true
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `company-logo-${Date.now()}.${fileExt}`
+    const filePath = `logos/${fileName}`
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('company-assets')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadError) throw uploadError
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('company-assets')
+      .getPublicUrl(filePath)
+
+    const logoUrl = urlData.publicUrl
+
+    // Update company settings with logo URL
+    if (companySettingsId.value) {
+      const { error } = await supabase
+        .from('company_settings')
+        .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+        .eq('id', companySettingsId.value)
+
+      if (error) throw error
+    }
+
+    companyLogo.value = logoUrl
+    toast.success('Logo uploaded successfully')
+  } catch (err) {
+    console.error('Logo upload error:', err)
+    toast.error('Failed to upload logo')
+  } finally {
+    uploadingLogo.value = false
+    // Reset input
+    if (input) input.value = ''
+  }
+}
+
+async function removeLogo() {
+  if (!companyLogo.value || !companySettingsId.value) return
+
+  try {
+    // Update company settings to remove logo URL
+    const { error } = await supabase
+      .from('company_settings')
+      .update({ logo_url: null, updated_at: new Date().toISOString() })
+      .eq('id', companySettingsId.value)
+
+    if (error) throw error
+
+    companyLogo.value = null
+    toast.success('Logo removed')
+  } catch (err) {
+    console.error('Remove logo error:', err)
+    toast.error('Failed to remove logo')
   }
 }
 

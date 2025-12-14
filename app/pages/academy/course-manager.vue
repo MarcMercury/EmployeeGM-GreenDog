@@ -231,7 +231,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="closeCourseDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveCourse">{{ editingCourse ? 'Update' : 'Create' }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveCourse">{{ editingCourse ? 'Update' : 'Create' }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -275,6 +275,7 @@ const createCourseDialog = ref(false)
 const deleteDialog = ref(false)
 const editingCourse = ref<TrainingCourse | null>(null)
 const courseToDelete = ref<TrainingCourse | null>(null)
+const saving = ref(false)
 
 const courseForm = reactive({
   title: '',
@@ -360,6 +361,7 @@ async function saveCourse() {
     return
   }
   
+  saving.value = true
   try {
     const supabase = useSupabaseClient()
     
@@ -403,12 +405,15 @@ async function saveCourse() {
       
       if (error) throw error
       courses.value.push(data as TrainingCourse)
-      uiStore.showSuccess('Course created')
+      uiStore.showSuccess('Course created successfully!')
     }
     
     closeCourseDialog()
-  } catch {
+  } catch (err) {
+    console.error('Save course error:', err)
     uiStore.showError(editingCourse.value ? 'Failed to update course' : 'Failed to create course')
+  } finally {
+    saving.value = false
   }
 }
 

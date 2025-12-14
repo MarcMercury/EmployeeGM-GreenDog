@@ -5,7 +5,7 @@
     <div>
       <h1 class="text-h4 font-weight-bold mb-1">My Skills</h1>
       <p class="text-body-1 text-grey-darken-1">
-        Your complete skill profile with {{ totalSkills }} skills across {{ totalCategories }} categories
+        {{ showAllSkills ? `Viewing all ${totalLibrarySkills} skills` : `Your ${totalSkills} assigned skills` }} across {{ totalCategories }} categories
       </p>
       </div>
       <v-btn
@@ -101,6 +101,15 @@
           density="compact"
           hide-details
           color="warning"
+        />
+        </v-col>
+        <v-col cols="12" sm="2">
+        <v-checkbox
+          v-model="showAllSkills"
+          label="Show All Skills"
+          density="compact"
+          hide-details
+          color="primary"
         />
         </v-col>
       </v-row>
@@ -302,12 +311,14 @@ const userStore = useUserStore()
 // State
 const loading = ref(true)
 const mySkills = ref<any[]>([])
+const allSkillLibrary = ref<any[]>([])
 const expandedPanels = ref<number[]>([])
 const showGoalDialog = ref(false)
 const selectedGoalSkill = ref<string | null>(null)
 const availableGoalSkills = ref<any[]>([])
 const loadingSkillLibrary = ref(false)
 const savingGoal = ref(false)
+const showAllSkills = ref(true)  // Toggle to show all skills (default true)
 
 // Filter state
 const searchQuery = ref('')
@@ -323,6 +334,7 @@ const snackbar = reactive({
 
 // Level filter options
 const levelFilterOptions = [
+  { title: 'Untrained (0)', value: 0 },
   { title: 'Learning (1)', value: 1 },
   { title: 'Developing (2)', value: 2 },
   { title: 'Proficient (3)', value: 3 },
@@ -331,25 +343,52 @@ const levelFilterOptions = [
 ]
 
 // Computed - with defensive checks to prevent undefined errors
-const totalSkills = computed(() => (mySkills.value || []).length)
+// When showAllSkills is true, merge all library skills with employee's levels
+const displayedSkills = computed(() => {
+  if (!showAllSkills.value) {
+    // Only show skills the employee has
+    return mySkills.value || []
+  }
+  
+  // Merge all skills from library with employee's skill levels
+  const employeeSkillMap = new Map(
+    (mySkills.value || []).map((s: any) => [s.skill_id, s])
+  )
+  
+  return (allSkillLibrary.value || []).map((libSkill: any) => {
+    const empSkill = employeeSkillMap.get(libSkill.id)
+    return {
+      id: empSkill?.id || `lib-${libSkill.id}`,
+      skill_id: libSkill.id,
+      level: empSkill?.level || 0,
+      is_goal: empSkill?.is_goal || false,
+      name: libSkill.name,
+      category: libSkill.category || 'Other',
+      description: libSkill.description
+    }
+  })
+})
+
+const totalSkills = computed(() => (displayedSkills.value || []).filter(s => s.level > 0).length)
+const totalLibrarySkills = computed(() => (allSkillLibrary.value || []).length)
 
 const mentorSkillsCount = computed(() => 
-  (mySkills.value || []).filter(s => s.level >= 5).length
+  (displayedSkills.value || []).filter(s => s.level >= 5).length
 )
 
 const goalSkillsCount = computed(() => 
-  (mySkills.value || []).filter(s => s.is_goal).length
+  (displayedSkills.value || []).filter(s => s.is_goal).length
 )
 
 const averageLevel = computed(() => {
-  const skills = mySkills.value || []
+  const skills = (displayedSkills.value || []).filter(s => s.level > 0)
   if (skills.length === 0) return 0
   const sum = skills.reduce((acc, s) => acc + (s.level || 0), 0)
   return sum / skills.length
 })
 
 const categories = computed(() => {
-  const skills = mySkills.value || []
+  const skills = displayedSkills.value || []
   const cats = [...new Set(skills.map(s => s.category || 'Other'))]
   return cats.sort()
 })
@@ -361,7 +400,7 @@ const totalCategories = computed(() => (categories.value || []).length)
 const allCategories = computed(() => categories.value || [])
 
 // Check for empty skills (safe accessor)
-const hasNoSkills = computed(() => (mySkills.value || []).length === 0)
+const hasNoSkills = computed(() => (displayedSkills.value || []).length === 0)
 
 // Check if any filters are active
 const hasActiveFilters = computed(() => {
@@ -370,7 +409,7 @@ const hasActiveFilters = computed(() => {
 
 // Filtered skills based on search and filters
 const filteredSkills = computed(() => {
-  let result = mySkills.value || []
+  let result = displayedSkills.value || []
 
   // Filter by search query
   if (searchQuery.value) {
@@ -412,7 +451,7 @@ const hasNoFilteredCategories = computed(() => (filteredCategories.value || []).
 
 // Methods
 function getSkillsByCategory(category: string) {
-  return (mySkills.value || [])
+  return (displayedSkills.value || [])
     .filter(s => (s.category || 'Other') === category)
     .sort((a, b) => (b.level || 0) - (a.level || 0))
 }
@@ -432,9 +471,29 @@ function clearFilters() {
 
 function getCategoryColor(category: string) {
   const colors: Record<string, string> = {
+    'Clinical Skills': 'red',
+    'Diagnostics & Imaging': 'blue',
+    'Surgical & Procedural': 'purple',
+    'Emergency & Critical Care': 'orange',
+    'Pharmacy & Treatment': 'green',
+    'Specialty Skills': 'teal',
+    'Client Service': 'indigo',
+    'Operations & Admin': 'amber',
+    'HR / People Ops': 'pink',
+    'Practice Management': 'cyan',
+    'Training & Education': 'deep-purple',
+    'Leadership Skills': 'deep-orange',
+    'Financial Skills': 'lime',
+    'Inventory Skills': 'brown',
+    'Facilities Skills': 'blue-grey',
+    'Technology Skills': 'light-blue',
+    'Soft Skills': 'purple',
+    'Gameplay Attributes': 'success',
+    'Creative / Marketing': 'pink',
+    'Legal / Compliance': 'grey',
+    'Remote Work Skills': 'primary',
     'Clinical': 'red',
     'Technical': 'blue',
-    'Soft Skills': 'purple',
     'Administrative': 'amber',
     'Medical': 'green',
     'Safety': 'orange',
@@ -445,6 +504,27 @@ function getCategoryColor(category: string) {
 
 function getCategoryIcon(category: string) {
   const icons: Record<string, string> = {
+    'Clinical Skills': 'mdi-stethoscope',
+    'Diagnostics & Imaging': 'mdi-microscope',
+    'Surgical & Procedural': 'mdi-hospital-box',
+    'Emergency & Critical Care': 'mdi-ambulance',
+    'Pharmacy & Treatment': 'mdi-pill',
+    'Specialty Skills': 'mdi-medal',
+    'Client Service': 'mdi-account-heart',
+    'Operations & Admin': 'mdi-clipboard-list',
+    'HR / People Ops': 'mdi-account-group',
+    'Practice Management': 'mdi-office-building',
+    'Training & Education': 'mdi-school',
+    'Leadership Skills': 'mdi-crown',
+    'Financial Skills': 'mdi-currency-usd',
+    'Inventory Skills': 'mdi-package-variant',
+    'Facilities Skills': 'mdi-tools',
+    'Technology Skills': 'mdi-laptop',
+    'Soft Skills': 'mdi-account-voice',
+    'Gameplay Attributes': 'mdi-gamepad-variant',
+    'Creative / Marketing': 'mdi-palette',
+    'Legal / Compliance': 'mdi-scale-balance',
+    'Remote Work Skills': 'mdi-home-city',
     'Clinical': 'mdi-stethoscope',
     'Technical': 'mdi-cog',
     'Soft Skills': 'mdi-account-group',
@@ -461,7 +541,8 @@ function getLevelColor(level: number) {
   if (level >= 4) return 'teal'
   if (level >= 3) return 'primary'
   if (level >= 2) return 'warning'
-  return 'orange'
+  if (level >= 1) return 'orange'
+  return 'grey'  // Level 0 - untrained
 }
 
 function getLevelLabel(level: number) {
@@ -476,6 +557,19 @@ function getLevelLabel(level: number) {
 async function fetchMySkills() {
   loading.value = true
   try {
+    // First, load all skills from the library
+    const { data: libraryData, error: libraryError } = await supabase
+      .from('skill_library')
+      .select('id, name, category, description')
+      .order('category')
+      .order('name')
+    
+    if (libraryError) {
+      console.error('[MySkills] Error loading skill library:', libraryError)
+    } else {
+      allSkillLibrary.value = libraryData || []
+    }
+    
     const employeeId = userStore.employee?.id
     if (!employeeId) {
     // No employee record - this is a valid state, not an error
