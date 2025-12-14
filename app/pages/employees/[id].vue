@@ -89,6 +89,20 @@
                 My Paystubs
                 <v-chip size="x-small" variant="text" class="ml-auto">Coming Soon</v-chip>
               </v-btn>
+              
+              <!-- Admin: Delete Employee -->
+              <v-divider v-if="isAdmin && !isOwnProfile" class="my-2" />
+              <v-btn 
+                v-if="isAdmin && !isOwnProfile" 
+                block 
+                variant="text" 
+                color="error" 
+                class="justify-start" 
+                @click="showDeleteDialog = true"
+              >
+                <v-icon start>mdi-delete-forever</v-icon>
+                Delete Employee
+              </v-btn>
             </v-card-text>
           </v-card>
 
@@ -641,6 +655,55 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Delete Employee Confirmation Dialog -->
+    <v-dialog v-model="showDeleteDialog" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center text-error">
+          <v-icon start color="error">mdi-alert-circle</v-icon>
+          Delete Employee
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            <strong>This action cannot be undone!</strong>
+          </v-alert>
+          <p class="mb-3">
+            You are about to permanently delete <strong>{{ employee?.first_name }} {{ employee?.last_name }}</strong> 
+            and ALL associated data including:
+          </p>
+          <ul class="text-body-2 mb-4">
+            <li>Employee profile and personal information</li>
+            <li>Skills and certifications</li>
+            <li>Pay settings and PTO balances</li>
+            <li>Documents and notes</li>
+            <li>Schedule assignments</li>
+            <li>Time-off requests</li>
+            <li>All historical records</li>
+          </ul>
+          <v-text-field
+            v-model="deleteConfirmText"
+            :label="`Type '${employee?.first_name} ${employee?.last_name}' to confirm`"
+            variant="outlined"
+            color="error"
+            class="mb-2"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="closeDeleteDialog">Cancel</v-btn>
+          <v-btn 
+            color="error" 
+            variant="flat"
+            :loading="deleting" 
+            :disabled="deleteConfirmText !== `${employee?.first_name} ${employee?.last_name}`"
+            @click="deleteEmployee"
+          >
+            <v-icon start>mdi-delete-forever</v-icon>
+            Permanently Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -653,6 +716,7 @@ definePageMeta({
 })
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const userStore = useUserStore()
 const supabase = useSupabaseClient()
@@ -681,6 +745,9 @@ const showPayDialog = ref(false)
 const showUploadDialog = ref(false)
 const showLicenseDialog = ref(false)
 const showCEDialog = ref(false)
+const showDeleteDialog = ref(false)
+const deleteConfirmText = ref('')
+const deleting = ref(false)
 
 // Form states
 const newNote = ref('')
@@ -1331,6 +1398,86 @@ async function saveCEData() {
     toast.error('Failed to save CE data')
   } finally {
     savingCE.value = false
+  }
+}
+
+// Delete Employee Functions
+function closeDeleteDialog() {
+  showDeleteDialog.value = false
+  deleteConfirmText.value = ''
+}
+
+async function deleteEmployee() {
+  if (!employee.value || !isAdmin.value) return
+  
+  const fullName = `${employee.value.first_name} ${employee.value.last_name}`
+  if (deleteConfirmText.value !== fullName) {
+    toast.error('Please type the employee name correctly to confirm')
+    return
+  }
+  
+  deleting.value = true
+  try {
+    const empId = employee.value.id
+    
+    // Delete in order to respect foreign key constraints
+    // 1. Delete employee_skills
+    await supabase.from('employee_skills').delete().eq('employee_id', empId)
+    
+    // 2. Delete employee_documents
+    await supabase.from('employee_documents').delete().eq('employee_id', empId)
+    
+    // 3. Delete employee_notes
+    await supabase.from('employee_notes').delete().eq('employee_id', empId)
+    
+    // 4. Delete employee_licenses
+    await supabase.from('employee_licenses').delete().eq('employee_id', empId)
+    
+    // 5. Delete employee_ce_credits
+    await supabase.from('employee_ce_credits').delete().eq('employee_id', empId)
+    
+    // 6. Delete employee_ce_transactions
+    await supabase.from('employee_ce_transactions').delete().eq('employee_id', empId)
+    
+    // 7. Delete employee_pay_settings
+    await supabase.from('employee_pay_settings').delete().eq('employee_id', empId)
+    
+    // 8. Delete pto_balances
+    await supabase.from('pto_balances').delete().eq('employee_id', empId)
+    
+    // 9. Delete time_off_requests
+    await supabase.from('time_off_requests').delete().eq('employee_id', empId)
+    
+    // 10. Delete shift_assignments
+    await supabase.from('shift_assignments').delete().eq('employee_id', empId)
+    
+    // 11. Delete employee_locations
+    await supabase.from('employee_locations').delete().eq('employee_id', empId)
+    
+    // 12. Delete training_enrollments
+    await supabase.from('training_enrollments').delete().eq('employee_id', empId)
+    
+    // 13. Nullify manager references on other employees
+    await supabase.from('employees').update({ manager_employee_id: null }).eq('manager_employee_id', empId)
+    
+    // 14. Finally, delete the employee record
+    const { error: deleteError } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', empId)
+    
+    if (deleteError) throw deleteError
+    
+    toast.success(`${fullName} has been permanently deleted`)
+    closeDeleteDialog()
+    
+    // Navigate back to roster
+    router.push('/roster')
+  } catch (err: any) {
+    console.error('Delete employee error:', err)
+    toast.error(err.message || 'Failed to delete employee')
+  } finally {
+    deleting.value = false
   }
 }
 

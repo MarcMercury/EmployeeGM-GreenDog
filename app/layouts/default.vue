@@ -94,30 +94,33 @@ async function handleSignOut() {
         <nav class="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
         
           <!-- Dashboard -->
-          <a href="/" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
+          <NuxtLink to="/" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
             <div class="nav-icon-wrap group-hover:bg-blue-500/20">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
             </div>
             <span v-if="!sidebarCollapsed">Dashboard</span>
-          </a>
+          </NuxtLink>
 
           <!-- Collapsed mode: just show icons -->
           <template v-if="sidebarCollapsed">
-            <a href="/roster" class="nav-link group justify-center" title="Roster">
+            <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
-            </a>
-            <a href="/profile" class="nav-link group justify-center" title="Profile">
+            </NuxtLink>
+            <NuxtLink to="/profile" class="nav-link group justify-center" title="Profile">
               <div class="nav-icon-wrap group-hover:bg-purple-500/20">👤</div>
-            </a>
-            <a href="/schedule" class="nav-link group justify-center" title="Schedule">
+            </NuxtLink>
+            <NuxtLink to="/schedule" class="nav-link group justify-center" title="Schedule">
               <div class="nav-icon-wrap group-hover:bg-green-500/20">📅</div>
-            </a>
-            <a href="/marketing/resources" class="nav-link group justify-center" title="Resources">
+            </NuxtLink>
+            <NuxtLink to="/marketing/calendar" class="nav-link group justify-center" title="Calendar">
+              <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📆</div>
+            </NuxtLink>
+            <NuxtLink to="/marketing/resources" class="nav-link group justify-center" title="Resources">
               <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
-            </a>
-            <a href="/marketing/partnerships" class="nav-link group justify-center" title="Partnerships">
+            </NuxtLink>
+            <NuxtLink to="/marketing/partnerships" class="nav-link group justify-center" title="Partnerships">
               <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
-            </a>
+            </NuxtLink>
           </template>
 
           <!-- Expanded mode: full navigation -->
