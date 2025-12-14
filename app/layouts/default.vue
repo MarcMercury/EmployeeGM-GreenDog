@@ -48,6 +48,54 @@ const initials = computed(() => {
   return `${p.first_name?.[0] || ''}${p.last_name?.[0] || ''}`.toUpperCase() || 'U'
 })
 
+// Unread notification count
+const unreadNotificationCount = ref(0)
+let notificationChannel: ReturnType<typeof supabase.channel> | null = null
+
+const fetchUnreadCount = async () => {
+  if (!profile.value?.id) return
+  
+  try {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_read', false)
+    
+    if (!error) {
+      unreadNotificationCount.value = count || 0
+    }
+  } catch (err) {
+    console.error('[Layout] Error fetching notification count:', err)
+  }
+}
+
+// Watch for profile changes to fetch notifications
+watch(() => profile.value?.id, (newId) => {
+  if (newId) {
+    fetchUnreadCount()
+    
+    // Subscribe to realtime notification changes
+    if (notificationChannel) {
+      supabase.removeChannel(notificationChannel)
+    }
+    
+    notificationChannel = supabase
+      .channel('notifications-count')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        () => fetchUnreadCount()
+      )
+      .subscribe()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  if (notificationChannel) {
+    supabase.removeChannel(notificationChannel)
+  }
+})
+
 async function handleSignOut() {
   console.log('[Layout] Signing out...')
   try {
@@ -101,8 +149,27 @@ async function handleSignOut() {
             <span v-if="!sidebarCollapsed">Dashboard</span>
           </NuxtLink>
 
+          <!-- Activity Hub -->
+          <NuxtLink to="/activity" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
+            <div class="nav-icon-wrap group-hover:bg-amber-500/20 relative">
+              🔔
+              <span v-if="unreadNotificationCount > 0" class="absolute -top-1 -right-1 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+              </span>
+            </div>
+            <span v-if="!sidebarCollapsed">Activity Hub</span>
+          </NuxtLink>
+
           <!-- Collapsed mode: just show icons -->
           <template v-if="sidebarCollapsed">
+            <NuxtLink to="/activity" class="nav-link group justify-center" title="Activity Hub">
+              <div class="nav-icon-wrap group-hover:bg-amber-500/20 relative">
+                🔔
+                <span v-if="unreadNotificationCount > 0" class="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                  {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
+                </span>
+              </div>
+            </NuxtLink>
             <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
             </NuxtLink>
