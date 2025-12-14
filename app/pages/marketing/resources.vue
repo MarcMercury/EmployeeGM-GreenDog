@@ -37,7 +37,7 @@
     <v-window v-model="activeTab">
       <v-window-item value="library">
         <!-- Breadcrumb Navigation -->
-        <v-breadcrumbs :items="breadcrumbs" class="px-0 mb-4">
+        <v-breadcrumbs :items="(breadcrumbs as any[])" class="px-0 mb-4">
           <template #prepend>
             <v-icon icon="mdi-folder-home" size="small" />
           </template>
@@ -48,7 +48,7 @@
             <v-breadcrumbs-item 
               :disabled="item.disabled"
               class="breadcrumb-link"
-              @click="navigateToFolder(item.path)"
+              @click="navigateToFolder(getBreadcrumbPath(item))"
             >
               {{ item.title }}
             </v-breadcrumbs-item>
@@ -1003,7 +1003,7 @@ const visibleCategories = computed(() => {
 })
 
 const breadcrumbs = computed(() => {
-  const items = [{ title: 'Library', path: '', disabled: currentPath.value === '' }]
+  const items: { title: string; path: string; disabled: boolean }[] = [{ title: 'Library', path: '', disabled: currentPath.value === '' }]
   
   if (currentPath.value) {
     const parts = currentPath.value.split('/')
@@ -1011,10 +1011,11 @@ const breadcrumbs = computed(() => {
     
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
+      if (!part) continue
       path = path ? `${path}/${part}` : part
       
       // Find the name for this path segment
-      let name = part
+      let name: string = part
       if (i === 0) {
         const category = fileCategories.value.find(c => c.id === part)
         if (category) name = category.name
@@ -1135,6 +1136,10 @@ function getFolderItemCount(categoryId: string) {
 
 function navigateToFolder(path: string) {
   currentPath.value = path
+}
+
+function getBreadcrumbPath(item: unknown): string {
+  return (item as { path: string }).path || ''
 }
 
 function getFileTypeIcon(type: string) {
@@ -1362,6 +1367,7 @@ function saveVendor() {
 .description-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

@@ -86,6 +86,12 @@
           <span class="font-weight-bold">{{ item.name }}</span>
         </template>
 
+        <template #item.event_type="{ item }">
+          <v-chip size="small" variant="tonal" :color="getEventTypeColor(item.event_type)">
+            {{ formatEventType(item.event_type) }}
+          </v-chip>
+        </template>
+
         <template #item.location="{ item }">
           <div class="d-flex align-center">
             <v-icon size="16" color="grey" class="mr-1">mdi-map-marker</v-icon>
@@ -142,6 +148,14 @@
         </v-toolbar>
 
         <div class="pa-4">
+          <div class="d-flex align-center gap-2 mb-2">
+            <v-chip size="small" variant="tonal" :color="getEventTypeColor(selectedEvent.event_type || 'general')">
+              {{ formatEventType(selectedEvent.event_type || 'general') }}
+            </v-chip>
+            <v-chip size="small" :color="getStatusColor(selectedEvent.status)">
+              {{ formatStatus(selectedEvent.status) }}
+            </v-chip>
+          </div>
           <h2 class="text-h5 font-weight-bold mb-2">{{ selectedEvent.name }}</h2>
           <p class="text-body-2 text-grey mb-4">{{ selectedEvent.description }}</p>
 
@@ -152,7 +166,7 @@
               </template>
               <v-list-item-title>{{ formatDate(selectedEvent.event_date) }}</v-list-item-title>
               <v-list-item-subtitle>
-                {{ selectedEvent.start_time }} - {{ selectedEvent.end_time }}
+                {{ selectedEvent.start_time || 'TBD' }} - {{ selectedEvent.end_time || 'TBD' }}
               </v-list-item-subtitle>
             </v-list-item>
 
@@ -163,12 +177,52 @@
               <v-list-item-title>{{ selectedEvent.location || 'Location TBD' }}</v-list-item-title>
             </v-list-item>
 
+            <v-list-item v-if="selectedEvent.contact_name">
+              <template #prepend>
+                <v-icon color="primary">mdi-account</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedEvent.contact_name }}</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedEvent.contact_phone || selectedEvent.contact_email }}</v-list-item-subtitle>
+            </v-list-item>
+
             <v-list-item>
               <template #prepend>
                 <v-icon color="primary">mdi-account-group</v-icon>
               </template>
               <v-list-item-title>Staffing Needs</v-list-item-title>
               <v-list-item-subtitle>{{ selectedEvent.staffing_needs || 'Not specified' }}</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.supplies_needed">
+              <template #prepend>
+                <v-icon color="primary">mdi-package-variant</v-icon>
+              </template>
+              <v-list-item-title>Supplies</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedEvent.supplies_needed }}</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.expected_attendance">
+              <template #prepend>
+                <v-icon color="primary">mdi-account-multiple</v-icon>
+              </template>
+              <v-list-item-title>Expected Attendance</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedEvent.expected_attendance }} people</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.budget">
+              <template #prepend>
+                <v-icon color="primary">mdi-currency-usd</v-icon>
+              </template>
+              <v-list-item-title>Budget</v-list-item-title>
+              <v-list-item-subtitle>${{ selectedEvent.budget.toLocaleString() }}</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.notes">
+              <template #prepend>
+                <v-icon color="primary">mdi-note-text</v-icon>
+              </template>
+              <v-list-item-title>Notes</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedEvent.notes }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
 
@@ -260,20 +314,33 @@
     </v-navigation-drawer>
 
     <!-- Create/Edit Event Dialog -->
-    <v-dialog v-model="eventDialog" max-width="600">
+    <v-dialog v-model="eventDialog" max-width="800" scrollable>
       <v-card rounded="lg">
         <v-card-title class="bg-primary text-white py-4">
           <v-icon start>mdi-calendar-star</v-icon>
           {{ editMode ? 'Edit Event' : 'Create Event' }}
         </v-card-title>
-        <v-card-text class="pt-6">
+        <v-card-text class="pt-6" style="max-height: 70vh; overflow-y: auto;">
           <v-form ref="eventForm" v-model="formValid">
+            <!-- Basic Info Section -->
+            <p class="text-overline text-grey mb-2">BASIC INFORMATION</p>
             <v-row>
-              <v-col cols="12">
+              <v-col cols="12" sm="8">
                 <v-text-field
                   v-model="eventFormData.name"
                   label="Event Name *"
                   :rules="[v => !!v || 'Required']"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-select
+                  v-model="eventFormData.event_type"
+                  :items="eventTypes"
+                  item-title="title"
+                  item-value="value"
+                  label="Event Type"
                   variant="outlined"
                   density="compact"
                 />
@@ -287,7 +354,13 @@
                   rows="2"
                 />
               </v-col>
-              <v-col cols="12" sm="6">
+            </v-row>
+
+            <!-- Date & Time Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">DATE & LOCATION</p>
+            <v-row>
+              <v-col cols="12" sm="4">
                 <v-text-field
                   v-model="eventFormData.event_date"
                   label="Event Date *"
@@ -297,7 +370,7 @@
                   density="compact"
                 />
               </v-col>
-              <v-col cols="6" sm="3">
+              <v-col cols="6" sm="4">
                 <v-text-field
                   v-model="eventFormData.start_time"
                   label="Start Time"
@@ -306,7 +379,7 @@
                   density="compact"
                 />
               </v-col>
-              <v-col cols="6" sm="3">
+              <v-col cols="6" sm="4">
                 <v-text-field
                   v-model="eventFormData.end_time"
                   label="End Time"
@@ -318,13 +391,52 @@
               <v-col cols="12">
                 <v-text-field
                   v-model="eventFormData.location"
-                  label="Location"
+                  label="Location / Address"
                   prepend-inner-icon="mdi-map-marker"
                   variant="outlined"
                   density="compact"
                 />
               </v-col>
-              <v-col cols="12">
+            </v-row>
+
+            <!-- Venue Contact Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">VENUE / ORGANIZER CONTACT</p>
+            <v-row>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model="eventFormData.contact_name"
+                  label="Contact Name"
+                  prepend-inner-icon="mdi-account"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model="eventFormData.contact_phone"
+                  label="Contact Phone"
+                  prepend-inner-icon="mdi-phone"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-text-field
+                  v-model="eventFormData.contact_email"
+                  label="Contact Email"
+                  prepend-inner-icon="mdi-email"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <!-- Staffing & Logistics Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">STAFFING & LOGISTICS</p>
+            <v-row>
+              <v-col cols="12" sm="6">
                 <v-textarea
                   v-model="eventFormData.staffing_needs"
                   label="Staffing Needs"
@@ -334,22 +446,97 @@
                   rows="2"
                 />
               </v-col>
-              <v-col cols="6">
+              <v-col cols="12" sm="6">
+                <v-textarea
+                  v-model="eventFormData.supplies_needed"
+                  label="Supplies & Materials"
+                  placeholder="e.g., Brochures, banners, giveaways, dental models"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
+                <v-text-field
+                  v-model.number="eventFormData.budget"
+                  label="Budget ($)"
+                  type="number"
+                  prepend-inner-icon="mdi-currency-usd"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
+                <v-text-field
+                  v-model.number="eventFormData.expected_attendance"
+                  label="Expected Attendance"
+                  type="number"
+                  prepend-inner-icon="mdi-account-group"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="6" sm="3">
                 <v-select
                   v-model="eventFormData.staffing_status"
-                  :items="['planned', 'confirmed']"
+                  :items="[{ title: 'Planning', value: 'planned' }, { title: 'Confirmed', value: 'confirmed' }]"
+                  item-title="title"
+                  item-value="value"
                   label="Staffing Status"
                   variant="outlined"
                   density="compact"
                 />
               </v-col>
-              <v-col cols="6">
+              <v-col cols="6" sm="3">
                 <v-select
                   v-model="eventFormData.status"
-                  :items="['planned', 'confirmed', 'cancelled', 'completed']"
+                  :items="[{ title: 'Planned', value: 'planned' }, { title: 'Confirmed', value: 'confirmed' }, { title: 'Cancelled', value: 'cancelled' }, { title: 'Completed', value: 'completed' }]"
+                  item-title="title"
+                  item-value="value"
                   label="Event Status"
                   variant="outlined"
                   density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <!-- Registration Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">REGISTRATION</p>
+            <v-row>
+              <v-col cols="12" sm="4" class="d-flex align-center">
+                <v-switch
+                  v-model="eventFormData.registration_required"
+                  label="Registration Required"
+                  color="primary"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" sm="8">
+                <v-text-field
+                  v-model="eventFormData.registration_link"
+                  label="Registration URL"
+                  placeholder="https://..."
+                  prepend-inner-icon="mdi-link"
+                  variant="outlined"
+                  density="compact"
+                  :disabled="!eventFormData.registration_required"
+                />
+              </v-col>
+            </v-row>
+
+            <!-- Notes Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">NOTES & INSTRUCTIONS</p>
+            <v-row>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="eventFormData.notes"
+                  label="Planning Notes / Special Instructions"
+                  placeholder="Any special instructions, setup requirements, or important details..."
+                  variant="outlined"
+                  density="compact"
+                  rows="3"
                 />
               </v-col>
             </v-row>
@@ -433,13 +620,26 @@ interface MarketingEvent {
   id: string
   name: string
   description: string | null
+  event_type: string
   event_date: string
   start_time: string | null
   end_time: string | null
   location: string | null
+  contact_name: string | null
+  contact_phone: string | null
+  contact_email: string | null
   staffing_needs: string | null
+  supplies_needed: string | null
+  budget: number | null
+  expected_attendance: number | null
   staffing_status: string
   status: string
+  registration_required: boolean
+  registration_link: string | null
+  notes: string | null
+  post_event_notes: string | null
+  actual_attendance: number | null
+  leads_collected: number
 }
 
 interface Lead {
@@ -473,16 +673,41 @@ const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
 
+// Event types for dropdown
+const eventTypes = [
+  { title: 'General', value: 'general' },
+  { title: 'CE Event', value: 'ce_event' },
+  { title: 'Street Fair', value: 'street_fair' },
+  { title: 'Open House', value: 'open_house' },
+  { title: 'Adoption Event', value: 'adoption_event' },
+  { title: 'Community Outreach', value: 'community_outreach' },
+  { title: 'Health Fair', value: 'health_fair' },
+  { title: 'School Visit', value: 'school_visit' },
+  { title: 'Pet Expo', value: 'pet_expo' },
+  { title: 'Fundraiser', value: 'fundraiser' },
+  { title: 'Other', value: 'other' }
+]
+
 const eventFormData = reactive({
   name: '',
   description: '',
+  event_type: 'general',
   event_date: '',
   start_time: '',
   end_time: '',
   location: '',
+  contact_name: '',
+  contact_phone: '',
+  contact_email: '',
   staffing_needs: '',
+  supplies_needed: '',
+  budget: null as number | null,
+  expected_attendance: null as number | null,
   staffing_status: 'planned',
-  status: 'planned'
+  status: 'planned',
+  registration_required: false,
+  registration_link: '',
+  notes: ''
 })
 
 const leadFormData = reactive({
@@ -495,6 +720,7 @@ const leadFormData = reactive({
 const headers = [
   { title: 'Date', key: 'event_date', sortable: true },
   { title: 'Event Name', key: 'name', sortable: true },
+  { title: 'Type', key: 'event_type', sortable: true },
   { title: 'Location', key: 'location', sortable: true },
   { title: 'Staffing', key: 'staffing_status', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
@@ -548,6 +774,40 @@ const formatDate = (dateStr: string) => {
 
 const formatStatus = (status: string) =>
   status.charAt(0).toUpperCase() + status.slice(1)
+
+const formatEventType = (type: string) => {
+  const labels: Record<string, string> = {
+    general: 'General',
+    ce_event: 'CE Event',
+    street_fair: 'Street Fair',
+    open_house: 'Open House',
+    adoption_event: 'Adoption',
+    community_outreach: 'Outreach',
+    health_fair: 'Health Fair',
+    school_visit: 'School Visit',
+    pet_expo: 'Pet Expo',
+    fundraiser: 'Fundraiser',
+    other: 'Other'
+  }
+  return labels[type] || type
+}
+
+const getEventTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    general: 'grey',
+    ce_event: 'purple',
+    street_fair: 'orange',
+    open_house: 'blue',
+    adoption_event: 'pink',
+    community_outreach: 'teal',
+    health_fair: 'green',
+    school_visit: 'cyan',
+    pet_expo: 'amber',
+    fundraiser: 'red',
+    other: 'grey'
+  }
+  return colors[type] || 'grey'
+}
 
 const getStatusColor = (status: string) => {
   const colors: Record<string, string> = {
@@ -609,13 +869,23 @@ const openCreateDialog = () => {
   Object.assign(eventFormData, {
     name: '',
     description: '',
+    event_type: 'general',
     event_date: '',
     start_time: '',
     end_time: '',
     location: '',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
     staffing_needs: '',
+    supplies_needed: '',
+    budget: null,
+    expected_attendance: null,
     staffing_status: 'planned',
-    status: 'planned'
+    status: 'planned',
+    registration_required: false,
+    registration_link: '',
+    notes: ''
   })
   eventDialog.value = true
 }
@@ -626,13 +896,23 @@ const openEditDialog = () => {
   Object.assign(eventFormData, {
     name: selectedEvent.value.name,
     description: selectedEvent.value.description || '',
+    event_type: selectedEvent.value.event_type || 'general',
     event_date: selectedEvent.value.event_date,
     start_time: selectedEvent.value.start_time || '',
     end_time: selectedEvent.value.end_time || '',
     location: selectedEvent.value.location || '',
+    contact_name: selectedEvent.value.contact_name || '',
+    contact_phone: selectedEvent.value.contact_phone || '',
+    contact_email: selectedEvent.value.contact_email || '',
     staffing_needs: selectedEvent.value.staffing_needs || '',
+    supplies_needed: selectedEvent.value.supplies_needed || '',
+    budget: selectedEvent.value.budget,
+    expected_attendance: selectedEvent.value.expected_attendance,
     staffing_status: selectedEvent.value.staffing_status,
-    status: selectedEvent.value.status
+    status: selectedEvent.value.status,
+    registration_required: selectedEvent.value.registration_required || false,
+    registration_link: selectedEvent.value.registration_link || '',
+    notes: selectedEvent.value.notes || ''
   })
   eventDialog.value = true
 }
@@ -650,20 +930,32 @@ const openAddLeadDialog = () => {
 const saveEvent = async () => {
   saving.value = true
   try {
+    const eventPayload = {
+      name: eventFormData.name,
+      description: eventFormData.description || null,
+      event_type: eventFormData.event_type,
+      event_date: eventFormData.event_date,
+      start_time: eventFormData.start_time || null,
+      end_time: eventFormData.end_time || null,
+      location: eventFormData.location || null,
+      contact_name: eventFormData.contact_name || null,
+      contact_phone: eventFormData.contact_phone || null,
+      contact_email: eventFormData.contact_email || null,
+      staffing_needs: eventFormData.staffing_needs || null,
+      supplies_needed: eventFormData.supplies_needed || null,
+      budget: eventFormData.budget,
+      expected_attendance: eventFormData.expected_attendance,
+      staffing_status: eventFormData.staffing_status,
+      status: eventFormData.status,
+      registration_required: eventFormData.registration_required,
+      registration_link: eventFormData.registration_link || null,
+      notes: eventFormData.notes || null
+    }
+
     if (editMode.value && selectedEvent.value) {
       const { error } = await client
         .from('marketing_events')
-        .update({
-          name: eventFormData.name,
-          description: eventFormData.description || null,
-          event_date: eventFormData.event_date,
-          start_time: eventFormData.start_time || null,
-          end_time: eventFormData.end_time || null,
-          location: eventFormData.location || null,
-          staffing_needs: eventFormData.staffing_needs || null,
-          staffing_status: eventFormData.staffing_status,
-          status: eventFormData.status
-        })
+        .update(eventPayload)
         .eq('id', selectedEvent.value.id)
 
       if (error) throw error
@@ -671,17 +963,7 @@ const saveEvent = async () => {
     } else {
       const { error } = await client
         .from('marketing_events')
-        .insert({
-          name: eventFormData.name,
-          description: eventFormData.description || null,
-          event_date: eventFormData.event_date,
-          start_time: eventFormData.start_time || null,
-          end_time: eventFormData.end_time || null,
-          location: eventFormData.location || null,
-          staffing_needs: eventFormData.staffing_needs || null,
-          staffing_status: eventFormData.staffing_status,
-          status: eventFormData.status
-        })
+        .insert(eventPayload)
 
       if (error) throw error
       showNotification('Event created successfully')

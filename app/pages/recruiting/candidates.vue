@@ -298,7 +298,7 @@
           Add Candidate
         </v-card-title>
         <v-card-text class="pt-6">
-          <v-form ref="addForm" v-model="addFormValid">
+          <v-form ref="addForm" v-model="addFormValid" @submit.prevent="saveCandidate">
             <v-row>
               <v-col cols="6">
                 <v-text-field
@@ -592,6 +592,8 @@ const saveNotes = async () => {
   }
 }
 
+const addForm = ref()
+
 const openAddDialog = () => {
   Object.assign(newCandidate, {
     first_name: '',
@@ -601,7 +603,12 @@ const openAddDialog = () => {
     target_position_id: null,
     resume_url: ''
   })
+  addFormValid.value = false
   addDialog.value = true
+  // Reset form validation state
+  nextTick(() => {
+    addForm.value?.resetValidation()
+  })
 }
 
 const saveCandidate = async () => {

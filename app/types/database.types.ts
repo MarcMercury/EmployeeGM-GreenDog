@@ -448,18 +448,34 @@ export interface MarketingCampaign {
   updated_at: string
 }
 
+export type MarketingEventType = 'general' | 'ce_event' | 'street_fair' | 'open_house' | 'adoption_event' | 'community_outreach' | 'health_fair' | 'school_visit' | 'pet_expo' | 'fundraiser' | 'other'
+export type MarketingEventStatus = 'planned' | 'confirmed' | 'cancelled' | 'completed'
+
 export interface MarketingEvent {
   id: string
   campaign_id: string | null
   name: string
   description: string | null
+  event_type: MarketingEventType
   event_date: string
   start_time: string | null
   end_time: string | null
   location: string | null
-  staffing_needs: number
+  contact_name: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  staffing_needs: string | null
+  supplies_needed: string | null
   budget: number | null
-  status: 'planned' | 'confirmed' | 'cancelled' | 'completed'
+  expected_attendance: number | null
+  staffing_status: 'planned' | 'confirmed'
+  status: MarketingEventStatus
+  registration_required: boolean
+  registration_link: string | null
+  notes: string | null
+  post_event_notes: string | null
+  actual_attendance: number | null
+  leads_collected: number
   created_at: string
   updated_at: string
 }
