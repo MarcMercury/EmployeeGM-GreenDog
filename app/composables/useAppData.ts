@@ -4,6 +4,12 @@
  * Uses Nuxt's useState for SSR-compatible global state.
  * Fetches core data ONCE on app mount and makes it available everywhere.
  * 
+ * Features:
+ * - TTL-based caching to reduce unnecessary refetches
+ * - Selective fetching for performance optimization
+ * - Automatic cache invalidation on data changes
+ * - Realtime subscriptions for live updates
+ * 
  * This is the single source of truth for:
  * - Employees (with positions, departments, skills)
  * - Skill Library
@@ -11,6 +17,15 @@
  * - Job Positions
  * - Locations
  */
+
+// Cache configuration
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes default TTL
+const STALE_WHILE_REVALIDATE_MS = 30 * 1000 // 30 seconds for background refresh
+
+interface CacheMetadata {
+  lastFetched: number
+  isStale: boolean
+}
 
 export interface AppEmployee {
   id: string
@@ -83,6 +98,16 @@ export interface AppUserProfile {
   phone: string | null
 }
 
+// Selective fetch options for performance
+export interface FetchOptions {
+  employees?: boolean
+  skills?: boolean
+  departments?: boolean
+  positions?: boolean
+  locations?: boolean
+  force?: boolean  // Bypass cache
+}
+
 export const useAppData = () => {
   const user = useSupabaseUser()
   const client = useSupabaseClient()
@@ -97,6 +122,15 @@ export const useAppData = () => {
   const initialized = useState<boolean>('appInitialized', () => false)
   const error = useState<string | null>('appError', () => null)
 
+  // Cache metadata for each data type
+  const cacheMetadata = useState<Record<string, CacheMetadata>>('appCacheMetadata', () => ({
+    employees: { lastFetched: 0, isStale: true },
+    skills: { lastFetched: 0, isStale: true },
+    departments: { lastFetched: 0, isStale: true },
+    positions: { lastFetched: 0, isStale: true },
+    locations: { lastFetched: 0, isStale: true }
+  }))
+
   // Current user identity (the "God Mode" switch)
   const currentUserProfile = useState<AppUserProfile | null>('currentUserProfile', () => null)
   const isAdmin = useState<boolean>('isAdmin', () => false)
@@ -105,14 +139,78 @@ export const useAppData = () => {
   const realtimeSubscribed = useState<boolean>('realtimeSubscribed', () => false)
 
   /**
-   * Fetch all global data in parallel
-   * Called once on app mount
+   * Check if cache is valid for a data type
    */
-  const fetchGlobalData = async (force = false) => {
-    // Skip if already initialized (unless forced)
+  const isCacheValid = (dataType: string, ttl = CACHE_TTL_MS): boolean => {
+    const metadata = cacheMetadata.value[dataType]
+    if (!metadata) return false
+    return Date.now() - metadata.lastFetched < ttl
+  }
+
+  /**
+   * Check if cache is stale but still usable (for stale-while-revalidate)
+   */
+  const isCacheStale = (dataType: string): boolean => {
+    const metadata = cacheMetadata.value[dataType]
+    if (!metadata) return true
+    const age = Date.now() - metadata.lastFetched
+    return age > STALE_WHILE_REVALIDATE_MS && age < CACHE_TTL_MS
+  }
+
+  /**
+   * Update cache metadata after fetch
+   */
+  const updateCacheMetadata = (dataType: string) => {
+    cacheMetadata.value[dataType] = {
+      lastFetched: Date.now(),
+      isStale: false
+    }
+  }
+
+  /**
+   * Invalidate cache for a specific data type
+   * Call this after mutations to trigger refetch
+   */
+  const invalidateCache = (dataType: 'employees' | 'skills' | 'departments' | 'positions' | 'locations' | 'all') => {
+    if (dataType === 'all') {
+      Object.keys(cacheMetadata.value).forEach(key => {
+        cacheMetadata.value[key] = { lastFetched: 0, isStale: true }
+      })
+    } else {
+      cacheMetadata.value[dataType] = { lastFetched: 0, isStale: true }
+    }
+    console.log(`[useAppData] Cache invalidated for: ${dataType}`)
+  }
+
+  /**
+   * Fetch all global data in parallel
+   * Supports selective fetching and caching for performance
+   * 
+   * @param forceOrOptions - boolean (force all) or FetchOptions for selective fetch
+   */
+  const fetchGlobalData = async (forceOrOptions: boolean | FetchOptions = false) => {
+    // Normalize options
+    const options: FetchOptions = typeof forceOrOptions === 'boolean' 
+      ? { force: forceOrOptions, employees: true, skills: true, departments: true, positions: true, locations: true }
+      : { employees: true, skills: true, departments: true, positions: true, locations: true, ...forceOrOptions }
+
+    const force = options.force || false
+
+    // Skip if already initialized and not forcing (unless specific data requested)
     if (!force && initialized.value) {
-      console.log('[useAppData] Already initialized, skipping fetch')
-      return
+      // Check if all requested data is in valid cache
+      const allCached = [
+        !options.employees || isCacheValid('employees'),
+        !options.skills || isCacheValid('skills'),
+        !options.departments || isCacheValid('departments'),
+        !options.positions || isCacheValid('positions'),
+        !options.locations || isCacheValid('locations')
+      ].every(Boolean)
+
+      if (allCached) {
+        console.log('[useAppData] All requested data in cache, skipping fetch')
+        return
+      }
     }
 
     // Skip if already loading
@@ -152,14 +250,17 @@ export const useAppData = () => {
       }
 
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed
+      // Note: Using Promise.all for maximum parallelism - selective fetching would add complexity
+      // Cache validation happens at entry point; individual refetch via invalidateCache()
       const [empResult, skillResult, deptResult, posResult, locResult] = await Promise.all([
         // Employees with relations - SINGLE SOURCE OF TRUTH
         // Note: Fetch employee_skills separately to avoid ambiguous relationship
-        client
-          .from('employees')
-          .select(`
-            id,
-            profile_id,
+        (options.employees && (force || !isCacheValid('employees')))
+          ? client
+              .from('employees')
+              .select(`
+                id,
+                profile_id,
             first_name,
             last_name,
             email_work,
@@ -171,31 +272,40 @@ export const useAppData = () => {
             departments:department_id ( id, name ),
             locations:location_id ( id, name )
           `)
-          .order('last_name'),
+          .order('last_name')
+          : Promise.resolve({ data: null, error: null }),
 
         // Skill Library
-        client
-          .from('skill_library')
-          .select('id, name, category, description')
-          .order('category, name'),
+        (options.skills && (force || !isCacheValid('skills')))
+          ? client
+              .from('skill_library')
+              .select('id, name, category, description')
+              .order('category, name')
+          : Promise.resolve({ data: null, error: null }),
 
         // Departments
-        client
-          .from('departments')
-          .select('id, name, code')
-          .order('name'),
+        (options.departments && (force || !isCacheValid('departments')))
+          ? client
+              .from('departments')
+              .select('id, name, code')
+              .order('name')
+          : Promise.resolve({ data: null, error: null }),
 
         // Job Positions
-        client
-          .from('job_positions')
-          .select('id, title')
-          .order('title'),
+        (options.positions && (force || !isCacheValid('positions')))
+          ? client
+              .from('job_positions')
+              .select('id, title')
+              .order('title')
+          : Promise.resolve({ data: null, error: null }),
 
         // Locations
-        client
-          .from('locations')
-          .select('id, name, city, state')
-          .order('name')
+        (options.locations && (force || !isCacheValid('locations')))
+          ? client
+              .from('locations')
+              .select('id, name, city, state')
+              .order('name')
+          : Promise.resolve({ data: null, error: null })
       ])
 
       console.log('[useAppData] Employees raw result:', empResult.data?.length || 0, 'Error:', empResult.error)
@@ -241,6 +351,7 @@ export const useAppData = () => {
             tenure_months: tenureMonths
           }
         })
+        updateCacheMetadata('employees')
       }
 
       // Process Skills
@@ -251,6 +362,7 @@ export const useAppData = () => {
           category: s.category || 'General',
           description: s.description
         }))
+        updateCacheMetadata('skills')
       }
 
       // Process Departments
@@ -260,6 +372,7 @@ export const useAppData = () => {
           name: d.name,
           code: d.code
         }))
+        updateCacheMetadata('departments')
       }
 
       // Process Positions
@@ -269,6 +382,7 @@ export const useAppData = () => {
           title: p.title,
           department_id: p.department_id
         }))
+        updateCacheMetadata('positions')
       }
 
       // Process Locations
@@ -278,6 +392,7 @@ export const useAppData = () => {
           name: l.name,
           address: l.address
         }))
+        updateCacheMetadata('locations')
       }
 
       initialized.value = true
@@ -524,6 +639,11 @@ export const useAppData = () => {
     // Actions
     fetchGlobalData,
     refresh,
+
+    // Cache Management
+    invalidateCache,
+    isCacheValid,
+    cacheMetadata,
 
     // Getters
     getEmployee,
