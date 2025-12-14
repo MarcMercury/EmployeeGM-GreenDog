@@ -11,7 +11,7 @@ const sections = ref({
   adminOps: false,
   medOps: false,
   recruiting: false,
-  marketing: false,
+  marketing: true,
   admin: true
 })
 
