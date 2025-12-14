@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Redirect to new Growth module location
+// Redirect to Marketing Calendar (main landing page for Marketing)
 definePageMeta({
-  middleware: [(to, from) => navigateTo('/growth/campaigns', { replace: true })]
+  middleware: [(to, from) => navigateTo('/marketing/calendar', { replace: true })]
 })
 </script>
 

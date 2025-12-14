@@ -332,7 +332,7 @@ async function handleSignOut() {
                 Calendar
               </NuxtLink>
               
-              <!-- Admin-only: Events, Leads, Campaigns -->
+              <!-- Admin-only: Events, Leads -->
               <template v-if="isAdmin">
                 <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
@@ -341,10 +341,6 @@ async function handleSignOut() {
                 <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
                   Leads
-                </NuxtLink>
-                <NuxtLink to="/growth/campaigns" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-fuchsia-500/20">📈</div>
-                  Campaigns
                 </NuxtLink>
               </template>
               
