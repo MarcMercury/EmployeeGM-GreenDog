@@ -111,8 +111,8 @@
       </v-list-group>
       <v-list-item v-else-if="isAdmin" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Marketing Group - Admin Only -->
-      <v-list-group v-if="isAdmin && !rail" value="marketing">
+      <!-- Marketing Group - Visible to all, some items admin-only -->
+      <v-list-group v-if="!rail" value="marketing">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -122,13 +122,15 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Admin only items -->
+        <v-list-item v-if="isAdmin" to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="isAdmin" to="/growth/campaigns" title="Campaigns" prepend-icon="mdi-chart-timeline-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Visible to all -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/partnerships" title="Partnerships" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="isAdmin" to="/growth/events" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/marketing/resources" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>

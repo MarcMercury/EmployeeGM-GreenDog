@@ -80,42 +80,49 @@
         </v-col>
       </v-row>
 
-      <!-- Skills by Category -->
-      <v-row v-if="hasSkillsByCategory">
-        <v-col v-for="category in skillsByCategory" :key="category.name" cols="12" md="6">
-          <v-card rounded="lg" class="mb-4">
-            <v-card-title class="d-flex align-center">
-              <v-icon :color="getCategoryColor(category.name)" start>{{ getCategoryIcon(category.name) }}</v-icon>
-              {{ category.name }}
+      <!-- Skills by Category - Collapsible Sections -->
+      <v-expansion-panels v-if="hasSkillsByCategory" variant="accordion" multiple class="mb-6">
+        <v-expansion-panel v-for="category in skillsByCategory" :key="category.name" class="mb-2">
+          <v-expansion-panel-title>
+            <div class="d-flex align-center flex-grow-1">
+              <v-icon :color="getCategoryColor(category.name)" class="mr-3">{{ getCategoryIcon(category.name) }}</v-icon>
+              <span class="text-subtitle-1 font-weight-bold">{{ category.name }}</span>
               <v-spacer />
-              <v-chip size="small" variant="flat" :color="getCategoryColor(category.name)">
+              <v-chip size="small" variant="flat" :color="getCategoryColor(category.name)" class="mr-2">
+                {{ category.skills.length }} skill{{ category.skills.length !== 1 ? 's' : '' }}
+              </v-chip>
+              <v-chip size="small" variant="tonal" color="primary">
                 {{ category.avgLevel.toFixed(1) }} avg
               </v-chip>
-            </v-card-title>
-
-            <v-expansion-panels variant="accordion" class="px-4 pb-4">
-              <v-expansion-panel v-for="skill in category.skills" :key="skill.id" elevation="0">
-                <v-expansion-panel-title>
-                  <div class="d-flex align-center justify-space-between flex-grow-1 pr-4">
-                    <span>{{ skill.skill_library?.name || 'Unknown' }}</span>
+            </div>
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item
+                v-for="skill in category.skills"
+                :key="skill.id"
+                class="rounded mb-1 px-0"
+              >
+                <template #prepend>
+                  <v-avatar size="32" :color="getLevelColor(skill.level)" variant="tonal">
+                    <span class="text-caption font-weight-bold">{{ skill.level }}</span>
+                  </v-avatar>
+                </template>
+                
+                <v-list-item-title>{{ skill.skill_library?.name || 'Unknown' }}</v-list-item-title>
+                <v-list-item-subtitle>
+                  {{ skill.skill_library?.description || 'No description' }}
+                </v-list-item-subtitle>
+                
+                <template #append>
+                  <div class="d-flex align-center gap-2">
                     <v-rating
                       :model-value="skill.level"
                       readonly
                       density="compact"
-                      size="small"
+                      size="x-small"
                       color="amber"
                     />
-                  </div>
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <div class="text-body-2 text-grey mb-2">
-                    {{ skill.skill_library?.description || 'No description available' }}
-                  </div>
-                  <div class="d-flex align-center justify-space-between">
-                    <span class="text-caption">
-                      <v-icon size="14" start>mdi-calendar</v-icon>
-                      Last updated: {{ formatDate(skill.updated_at || skill.created_at) }}
-                    </span>
                     <v-chip 
                       :color="getLevelColor(skill.level)" 
                       size="x-small"
@@ -124,12 +131,12 @@
                       {{ getLevelLabel(skill.level) }}
                     </v-chip>
                   </div>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-          </v-card>
-        </v-col>
-      </v-row>
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
 
       <!-- Empty State -->
       <v-card v-else rounded="lg" class="text-center py-12">
