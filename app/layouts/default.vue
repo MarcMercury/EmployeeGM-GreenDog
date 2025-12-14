@@ -446,6 +446,7 @@ async function handleSignOut() {
   overflow: hidden;
   max-height: 0;
   opacity: 0;
+  pointer-events: none;
   transition: all 0.3s ease-in-out;
 }
 
@@ -456,6 +457,7 @@ async function handleSignOut() {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  pointer-events: auto;
 }
 
 /* Custom Scrollbar */
