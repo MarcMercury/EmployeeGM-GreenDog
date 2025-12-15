@@ -135,17 +135,17 @@ const stats = computed(() => {
   ).length
 
   const totalSkillRatings = emps.reduce((sum, e) => {
-    return sum + e.skills.reduce((s, skill) => s + skill.rating, 0)
+    return sum + (e.skills || []).reduce((s, skill) => s + (skill.rating || 0), 0)
   }, 0)
   
-  const totalSkillCount = emps.reduce((sum, e) => sum + e.skills.length, 0)
+  const totalSkillCount = emps.reduce((sum, e) => sum + (e.skills?.length || 0), 0)
   const avgSkillLevel = totalSkillCount > 0 
     ? (totalSkillRatings / totalSkillCount).toFixed(1) 
     : '0.0'
 
   // Count mentors (employees with at least one skill at level 5)
   const mentorCount = emps.filter(e => 
-    e.skills.some(s => s.rating === 5)
+    (e.skills || []).some(s => s.rating === 5)
   ).length
 
   return {
