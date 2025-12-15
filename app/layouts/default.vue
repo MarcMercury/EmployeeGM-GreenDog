@@ -7,15 +7,14 @@ const supabase = useSupabaseClient()
 const sidebarCollapsed = ref(false)
 
 // Collapsible section states - all collapsed by default
+// NEW 3-TIER STRUCTURE: My Workspace (all), Management (manager+), Admin Ops (admin)
 const sections = ref({
-  people: false,
-  growth: false,
-  operations: false,
-  adminOps: false,
-  medOps: false,
-  recruiting: false,
-  marketing: false,
-  admin: false
+  myWorkspace: false,    // Personal: My Schedule, My Skills, My Growth, My Time Off
+  management: false,     // Manager+: Roster, Team Schedule, Recruiting, Approvals
+  medOps: false,         // All users: Med Ops tools
+  marketing: false,      // All/Admin: Marketing tools
+  adminOps: false,       // Admin only: Settings, Course Manager, Payroll
+  training: false        // All users: Academy
 })
 
 const toggleSection = (section: keyof typeof sections.value) => {
@@ -192,86 +191,27 @@ async function handleSignOut() {
 
           <!-- Expanded mode: full navigation -->
           <template v-else>
+          
+          <!-- ==========================================
+               SECTION 1: MY WORKSPACE (All Users)
+               Personal data: My Schedule, My Skills, My Growth, My Time Off
+               ========================================== -->
           <div class="pt-4">
             <button 
-              @click="toggleSection('people')"
+              @click="toggleSection('myWorkspace')"
               class="section-header group"
             >
-              <span>👥 People & Skills</span>
+              <span>👤 My Workspace</span>
               <svg 
                 class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': sections.people }"
+                :class="{ 'rotate-180': sections.myWorkspace }"
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            <div class="section-content" :class="{ 'section-open': sections.people }">
-              <NuxtLink to="/roster" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
-                Roster
-              </NuxtLink>
+            <div class="section-content" :class="{ 'section-open': sections.myWorkspace }">
               <NuxtLink to="/profile" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-purple-500/20">👤</div>
                 My Profile
               </NuxtLink>
-              <NuxtLink to="/development" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
-                My Growth
-              </NuxtLink>
-              <NuxtLink to="/people/my-skills" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">⭐</div>
-                My Skills
-              </NuxtLink>
-              <NuxtLink to="/org-chart" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-teal-500/20">🏢</div>
-                Org Chart
-              </NuxtLink>
-              <template v-if="isAdmin">
-                <NuxtLink to="/people/skill-matrix" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📊</div>
-                  Skill Matrix
-                  <span class="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Admin</span>
-                </NuxtLink>
-                <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
-                  Skill Stats
-                  <span class="ml-auto text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">Admin</span>
-                </NuxtLink>
-              </template>
-            </div>
-          </div>
-
-          <!-- Section: Training (Collapsible) -->
-          <div class="pt-2">
-            <button 
-              @click="toggleSection('growth')"
-              class="section-header group"
-            >
-              <span>🎓 Training</span>
-              <svg 
-                class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': sections.growth }"
-                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="section-content" :class="{ 'section-open': sections.growth }">
-              <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
-                Academy
-              </NuxtLink>
-            </div>
-          </div>
-
-          <!-- Section: Operations (Collapsible) -->
-          <div class="pt-2">
-            <button 
-              @click="toggleSection('operations')"
-              class="section-header group"
-            >
-              <span>📅 Operations</span>
-              <svg 
-                class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': sections.operations }"
-                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="section-content" :class="{ 'section-open': sections.operations }">
               <NuxtLink to="/my-schedule" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📆</div>
                 My Schedule
@@ -280,47 +220,93 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-sky-500/20">🏖️</div>
                 My Time Off
               </NuxtLink>
+              <NuxtLink to="/people/my-skills" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-amber-500/20">⭐</div>
+                My Skills
+              </NuxtLink>
+              <NuxtLink to="/development" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
+                My Growth
+              </NuxtLink>
             </div>
           </div>
 
-          <!-- Section: Admin OPS (Collapsible) - ADMIN ONLY -->
+          <!-- ==========================================
+               SECTION 2: MANAGEMENT (Manager/Admin Only)
+               Team view: Roster, Team Schedule, Recruiting, Approvals
+               ========================================== -->
           <template v-if="isAdmin">
             <div class="pt-2">
               <button 
-                @click="toggleSection('adminOps')"
+                @click="toggleSection('management')"
                 class="section-header group"
               >
-                <span>🛠️ Admin Ops</span>
+                <span>👥 Management</span>
                 <svg 
                   class="w-4 h-4 transition-transform duration-200" 
-                  :class="{ 'rotate-180': sections.adminOps }"
+                  :class="{ 'rotate-180': sections.management }"
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              <div class="section-content" :class="{ 'section-open': sections.adminOps }">
+              <div class="section-content" :class="{ 'section-open': sections.management }">
+                <NuxtLink to="/roster" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
+                  Roster
+                </NuxtLink>
+                <NuxtLink to="/org-chart" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-teal-500/20">🏢</div>
+                  Org Chart
+                </NuxtLink>
                 <NuxtLink to="/schedule/builder" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📅</div>
-                  Schedule Builder
-                  <span class="ml-auto text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">Admin</span>
-                </NuxtLink>
-                <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📖</div>
-                  Skill Library
-                </NuxtLink>
-                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>
-                  Course Manager
+                  Team Schedule
                 </NuxtLink>
                 <NuxtLink to="/time-off" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-sky-500/20">🏖️</div>
-                  Manage Time Off
+                  <div class="nav-icon-wrap group-hover:bg-sky-500/20">✅</div>
+                  Time Off Approvals
                 </NuxtLink>
-                <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
-                  Export Payroll
+                <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
+                  Recruiting Pipeline
+                </NuxtLink>
+                <NuxtLink to="/recruiting/interviews" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
+                  Interviews
+                </NuxtLink>
+                <NuxtLink to="/people/skill-matrix" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📊</div>
+                  Skill Matrix
+                </NuxtLink>
+                <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
+                  Skill Stats
                 </NuxtLink>
               </div>
             </div>
           </template>
+
+          <!-- Section: Training (Collapsible) - ALL USERS -->
+          <div class="pt-2">
+            <button 
+              @click="toggleSection('training')"
+              class="section-header group"
+            >
+              <span>🎓 Training</span>
+              <svg 
+                class="w-4 h-4 transition-transform duration-200" 
+                :class="{ 'rotate-180': sections.training }"
+                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="section-content" :class="{ 'section-open': sections.training }">
+              <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
+                Academy
+              </NuxtLink>
+              <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📖</div>
+                Skill Library
+              </NuxtLink>
+            </div>
+          </div>
 
           <!-- Section: Med OPS (Collapsible) - ALL USERS -->
           <div class="pt-2">
@@ -354,33 +340,7 @@ async function handleSignOut() {
             </div>
           </div>
 
-          <!-- Section: Recruiting (Collapsible) - ADMIN ONLY -->
-          <template v-if="isAdmin">
-            <div class="pt-2">
-              <button 
-                @click="toggleSection('recruiting')"
-                class="section-header group"
-              >
-                <span>🎯 Recruiting</span>
-                <svg 
-                  class="w-4 h-4 transition-transform duration-200" 
-                  :class="{ 'rotate-180': sections.recruiting }"
-                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </button>
-              <div class="section-content" :class="{ 'section-open': sections.recruiting }">
-                <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📋</div>
-                  Pipeline
-                </NuxtLink>
-                <NuxtLink to="/recruiting/interviews" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
-                  Interviews
-                </NuxtLink>
-              </div>
-            </div>
-          </template>
-
-          <!-- Section: Marketing (Collapsible) -->
+          <!-- Section: Marketing (Collapsible) - ALL USERS -->
           <div class="pt-2">
             <button 
               @click="toggleSection('marketing')"
@@ -423,27 +383,34 @@ async function handleSignOut() {
             </div>
           </div>
 
-          <!-- Section: Admin (Collapsible) - Only for admins -->
+          <!-- ==========================================
+               SECTION 3: ADMIN OPS (Admin Only)
+               Global Settings, Integrations, Course Manager, Payroll
+               ========================================== -->
           <template v-if="isAdmin">
             <div class="pt-2">
               <button 
-                @click="toggleSection('admin')"
+                @click="toggleSection('adminOps')"
                 class="section-header group"
               >
-                <span>⚙️ Admin</span>
+                <span>⚙️ Admin Ops</span>
                 <svg 
                   class="w-4 h-4 transition-transform duration-200" 
-                  :class="{ 'rotate-180': sections.admin }"
+                  :class="{ 'rotate-180': sections.adminOps }"
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              <div class="section-content" :class="{ 'section-open': sections.admin }">
-                <NuxtLink to="/admin/global-settings" class="nav-link group" active-class="nav-link-active">
+              <div class="section-content" :class="{ 'section-open': sections.adminOps }">
+                <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
                   Global Settings
                 </NuxtLink>
-                <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">⚙️</div>
-                  App Settings
+                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>
+                  Course Manager
+                </NuxtLink>
+                <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
+                  Export Payroll
                 </NuxtLink>
               </div>
             </div>
