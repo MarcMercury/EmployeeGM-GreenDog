@@ -96,15 +96,14 @@ BEGIN
             changes_json := changes_json || jsonb_build_object('benefits_enrolled', jsonb_build_object('old', OLD.benefits_enrolled, 'new', NEW.benefits_enrolled));
         END IF;
         
-        INSERT INTO public.audit_log (
-            actor_id, entity_type, entity_id, action, old_values, new_values, changes
+        INSERT INTO public.audit_logs (
+            actor_profile_id, entity_type, entity_id, action, metadata
         ) VALUES (
-            auth.uid(), 'compensation', NEW.id, 'UPDATE',
-            to_jsonb(OLD), to_jsonb(NEW), changes_json
+            auth.uid(), 'compensation', NEW.id, 'UPDATE', changes_json
         );
     ELSIF TG_OP = 'INSERT' THEN
-        INSERT INTO public.audit_log (
-            actor_id, entity_type, entity_id, action, new_values
+        INSERT INTO public.audit_logs (
+            actor_profile_id, entity_type, entity_id, action, metadata
         ) VALUES (
             auth.uid(), 'compensation', NEW.id, 'INSERT', to_jsonb(NEW)
         );
