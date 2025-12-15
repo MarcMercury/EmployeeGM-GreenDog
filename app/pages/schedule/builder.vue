@@ -21,6 +21,7 @@ interface ShiftTemplate {
   raw_shift: string | null
   start_time: string
   end_time: string
+  color?: string
 }
 
 // Composables
@@ -35,39 +36,54 @@ const shifts = ref<any[]>([])
 const isLoading = ref(true)
 
 // Roster filters
-const rosterSearch = ref('')
 const rosterPositionFilter = ref<string | null>(null)
 
 // Drag state
 const draggedEmployee = ref<any>(null)
 const dragOverCell = ref<string | null>(null)
 
+// Shift editing state
+const editDialog = ref(false)
+const editingShift = ref<ShiftTemplate | null>(null)
+const editForm = ref({
+  role_name: '',
+  name: '',
+  raw_shift: '',
+  start_time: '',
+  end_time: '',
+  color: '#f5f5f5'
+})
+
+// Publishing state
+const isPublishing = ref(false)
+const publishDialog = ref(false)
+
 // Default shift templates
 const defaultShiftTemplates: ShiftTemplate[] = [
-  { id: 'd1', role_name: 'VET-SURGERY', name: 'Surgeon', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd2', role_name: 'Intern', name: 'Intern', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd3', role_name: 'Extern/Student', name: 'Student', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd4', role_name: 'Surgery Lead', name: 'Surg Lead', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00' },
-  { id: 'd5', role_name: 'Surgery Tech 1', name: 'Surg Tech 1', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd6', role_name: 'Surgery Tech 2', name: 'Surg Tech 2', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd7', role_name: 'VET-AP', name: 'AP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd8', role_name: 'AP Lead', name: 'AP Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30' },
-  { id: 'd9', role_name: 'AP Tech', name: 'AP Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd10', role_name: 'VET-NAP', name: 'NAP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd11', role_name: 'DA - NAP', name: 'DA NAP', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd12', role_name: 'DA - TRAINING', name: 'DA Training', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd13', role_name: 'Clinic Tech', name: 'Clinic Tech', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00' },
-  { id: 'd14', role_name: 'Float/Lead', name: 'Float Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30' },
-  { id: 'd15', role_name: 'Dentals', name: 'Dentals', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd16', role_name: 'VET-IM', name: 'IM Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd17', role_name: 'IM Tech/DA', name: 'IM Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
-  { id: 'd18', role_name: 'VET-EXOTICS', name: 'Exotics Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd19', role_name: 'Exotics Tech', name: 'Exotics Tech', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00' },
-  { id: 'd20', role_name: 'VET-MPMV', name: 'MPMV Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30' },
-  { id: 'd21', role_name: 'Manager', name: 'Manager', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30' },
-  { id: 'd22', role_name: 'In House Admin', name: 'Admin', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00' },
-  { id: 'd23', role_name: 'Sch Admin', name: 'Scheduler', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00' },
-  { id: 'd24', role_name: 'Office Admin', name: 'Office Admin', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30' },
+  { id: 'd1', role_name: 'VET-SURGERY', name: 'Surgeon', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ff00ff' },
+  { id: 'd2', role_name: 'Intern', name: 'Intern', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99ff' },
+  { id: 'd3', role_name: 'Extern/Student', name: 'Student', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffccff' },
+  { id: 'd4', role_name: 'Surgery Lead', name: 'Surg Lead', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ff66cc' },
+  { id: 'd5', role_name: 'Surgery Tech 1', name: 'Surg Tech 1', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99cc' },
+  { id: 'd6', role_name: 'Surgery Tech 2', name: 'Surg Tech 2', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffcccc' },
+  { id: 'd7', role_name: 'VET-AP', name: 'AP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ffff00' },
+  { id: 'd8', role_name: 'AP Lead', name: 'AP Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffff66' },
+  { id: 'd9', role_name: 'AP Tech', name: 'AP Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffffcc' },
+  { id: 'd10', role_name: 'VET-NAP', name: 'NAP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ffff' },
+  { id: 'd11', role_name: 'DA - NAP', name: 'DA NAP', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#66ffff' },
+  { id: 'd12', role_name: 'DA - TRAINING', name: 'DA Training', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#99ffff' },
+  { id: 'd13', role_name: 'Clinic Tech', name: 'Clinic Tech', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ccffff' },
+  { id: 'd14', role_name: 'Float/Lead', name: 'Float Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffcc00' },
+  { id: 'd15', role_name: 'Dentals', name: 'Dentals', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff9900' },
+  { id: 'd16', role_name: 'VET-IM', name: 'IM Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff00' },
+  { id: 'd17', role_name: 'IM Tech/DA', name: 'IM Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#99ff99' },
+  { id: 'd18', role_name: 'VET-EXOTICS', name: 'Exotics Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff99' },
+  { id: 'd19', role_name: 'Exotics Tech', name: 'Exotics Tech', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#99ffcc' },
+  { id: 'd20', role_name: 'VET-MPMV', name: 'MPMV Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#0099ff' },
+  { id: 'd21', role_name: 'Manager', name: 'Manager', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#e0e0e0' },
+  { id: 'd22', role_name: 'In House Admin', name: 'Admin', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#d0d0d0' },
+  { id: 'd23', role_name: 'Sch Admin', name: 'Scheduler', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#c0c0c0' },
+  { id: 'd24', role_name: 'Office Admin', name: 'Office Admin', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#b0b0b0' },
 ]
 
 // Week days
@@ -102,15 +118,6 @@ const positionOptions = computed(() => {
 const rosterEmployees = computed(() => {
   let result = (employees.value || []).filter(e => e.is_active)
   
-  if (rosterSearch.value) {
-    const search = rosterSearch.value.toLowerCase()
-    result = result.filter(e => 
-      e.full_name?.toLowerCase().includes(search) ||
-      e.first_name?.toLowerCase().includes(search) ||
-      e.last_name?.toLowerCase().includes(search)
-    )
-  }
-  
   if (rosterPositionFilter.value) {
     result = result.filter(e => e.position?.id === rosterPositionFilter.value)
   }
@@ -123,8 +130,9 @@ function getWeekShiftCount(employeeId: string): number {
   return shifts.value.filter(s => s.employee_id === employeeId).length
 }
 
-// Get role color
-function getRoleColor(role: string): string {
+// Get role color - uses template color if available
+function getRoleColor(role: string, template?: ShiftTemplate): string {
+  if (template?.color) return template.color
   const r = (role || '').toLowerCase()
   if (r.includes('surgery') || r.includes('surg')) return '#ff00ff'
   if (r.includes('intern')) return '#ff99ff'
@@ -146,6 +154,108 @@ function getRoleColor(role: string): string {
   if (r.includes('admin')) return '#d0d0d0'
   return '#f5f5f5'
 }
+
+// Open shift edit dialog
+function openShiftEdit(tmpl: ShiftTemplate) {
+  editingShift.value = tmpl
+  editForm.value = {
+    role_name: tmpl.role_name,
+    name: tmpl.name,
+    raw_shift: tmpl.raw_shift || '',
+    start_time: tmpl.start_time,
+    end_time: tmpl.end_time,
+    color: tmpl.color || getRoleColor(tmpl.role_name)
+  }
+  editDialog.value = true
+}
+
+// Save shift template changes
+async function saveShiftEdit() {
+  if (!editingShift.value) return
+  
+  // Update local template
+  const idx = shiftTemplates.value.findIndex(t => t.id === editingShift.value!.id)
+  if (idx >= 0) {
+    shiftTemplates.value[idx] = {
+      ...shiftTemplates.value[idx],
+      role_name: editForm.value.role_name,
+      name: editForm.value.name,
+      raw_shift: editForm.value.raw_shift,
+      start_time: editForm.value.start_time,
+      end_time: editForm.value.end_time,
+      color: editForm.value.color
+    }
+  }
+  
+  // If not a default template (has UUID), save to DB
+  if (!editingShift.value.id.startsWith('d')) {
+    try {
+      await supabase
+        .from('shift_templates')
+        .update({
+          role_name: editForm.value.role_name,
+          name: editForm.value.name,
+          raw_shift: editForm.value.raw_shift,
+          start_time: editForm.value.start_time,
+          end_time: editForm.value.end_time
+        })
+        .eq('id', editingShift.value.id)
+      toast.success('Shift template updated')
+    } catch {
+      toast.error('Failed to save to database')
+    }
+  } else {
+    toast.success('Shift template updated locally')
+  }
+  
+  editDialog.value = false
+  editingShift.value = null
+}
+
+// PUBLISH WEEK - commits all draft shifts to employee schedules
+async function publishWeek() {
+  const draftShifts = shifts.value.filter(s => s.status === 'draft')
+  
+  if (draftShifts.length === 0) {
+    toast.warning('No draft shifts to publish')
+    return
+  }
+  
+  publishDialog.value = true
+}
+
+async function confirmPublish() {
+  isPublishing.value = true
+  
+  try {
+    const draftShifts = shifts.value.filter(s => s.status === 'draft')
+    
+    // Update all draft shifts to 'scheduled' status
+    const { error } = await supabase
+      .from('shifts')
+      .update({ status: 'scheduled' })
+      .in('id', draftShifts.map(s => s.id))
+    
+    if (error) throw error
+    
+    // Update local state
+    shifts.value = shifts.value.map(s => 
+      s.status === 'draft' ? { ...s, status: 'scheduled' } : s
+    )
+    
+    toast.success(`Published ${draftShifts.length} shifts to employee schedules!`)
+    publishDialog.value = false
+  } catch (err) {
+    console.error('Publish error:', err)
+    toast.error('Failed to publish week')
+  } finally {
+    isPublishing.value = false
+  }
+}
+
+// Get count of shifts by status
+const draftShiftCount = computed(() => shifts.value.filter(s => s.status === 'draft').length)
+const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'scheduled').length)
 
 // Load shift templates from DB or use defaults
 async function loadShiftTemplates() {
@@ -290,6 +400,24 @@ onMounted(async () => {
         <h1>Schedule Builder</h1>
         <v-chip color="error" size="x-small">ADMIN</v-chip>
       </div>
+      <div class="header-actions">
+        <v-chip v-if="draftShiftCount > 0" color="warning" size="small" variant="flat">
+          {{ draftShiftCount }} drafts
+        </v-chip>
+        <v-chip v-if="publishedShiftCount > 0" color="success" size="small" variant="flat">
+          {{ publishedShiftCount }} published
+        </v-chip>
+        <v-btn 
+          color="success" 
+          size="small" 
+          variant="flat"
+          :disabled="draftShiftCount === 0"
+          @click="publishWeek"
+        >
+          <v-icon start>mdi-send</v-icon>
+          PUBLISH WEEK
+        </v-btn>
+      </div>
       <div class="header-nav">
         <v-btn icon size="small" variant="text" @click="prevWeek"><v-icon>mdi-chevron-left</v-icon></v-btn>
         <v-btn size="small" variant="tonal" @click="goToday">TODAY</v-btn>
@@ -303,16 +431,6 @@ onMounted(async () => {
       <aside class="roster">
         <div class="roster-header">
           <div class="roster-title">TEAM ROSTER</div>
-          <v-text-field
-            v-model="rosterSearch"
-            placeholder="Search..."
-            density="compact"
-            variant="outlined"
-            hide-details
-            prepend-inner-icon="mdi-magnify"
-            clearable
-            class="roster-search"
-          />
           <v-select
             v-model="rosterPositionFilter"
             :items="positionOptions"
@@ -376,9 +494,14 @@ onMounted(async () => {
             </thead>
             <tbody>
               <tr v-for="tmpl in shiftTemplates" :key="tmpl.id" class="row-shift">
-                <td class="col-shift" :style="{ backgroundColor: getRoleColor(tmpl.role_name) }">
+                <td 
+                  class="col-shift col-shift-clickable" 
+                  :style="{ backgroundColor: tmpl.color || getRoleColor(tmpl.role_name, tmpl) }"
+                  @click="openShiftEdit(tmpl)"
+                >
                   <div class="shift-role">{{ tmpl.role_name }}</div>
                   <div class="shift-time">{{ tmpl.raw_shift }}</div>
+                  <v-icon class="shift-edit-icon" size="12">mdi-pencil</v-icon>
                 </td>
                 <template v-for="day in weekDays" :key="`cells-${tmpl.id}-${day.toISOString()}`">
                   <td 
@@ -408,6 +531,107 @@ onMounted(async () => {
         </div>
       </main>
     </div>
+
+    <!-- Edit Shift Dialog -->
+    <v-dialog v-model="editDialog" max-width="450">
+      <v-card>
+        <v-card-title class="text-h6">Edit Shift Template</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="editForm.role_name"
+            label="Role Name"
+            density="compact"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="editForm.name"
+            label="Short Name"
+            density="compact"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="editForm.raw_shift"
+            label="Shift Time Display (e.g., 9-5:30)"
+            density="compact"
+            variant="outlined"
+            class="mb-3"
+          />
+          <div class="d-flex gap-3 mb-3">
+            <v-text-field
+              v-model="editForm.start_time"
+              label="Start Time"
+              type="time"
+              density="compact"
+              variant="outlined"
+            />
+            <v-text-field
+              v-model="editForm.end_time"
+              label="End Time"
+              type="time"
+              density="compact"
+              variant="outlined"
+            />
+          </div>
+          <div class="color-picker-section">
+            <label class="text-caption text-grey-darken-1">Background Color</label>
+            <div class="color-options">
+              <button
+                v-for="color in ['#ff00ff', '#ff99ff', '#ffccff', '#ffff00', '#ffffcc', '#00ffff', '#99ffff', '#ccffff', '#00ff00', '#99ff99', '#ff9900', '#ffcc00', '#0099ff', '#e0e0e0', '#d0d0d0']"
+                :key="color"
+                type="button"
+                class="color-btn"
+                :class="{ active: editForm.color === color }"
+                :style="{ backgroundColor: color }"
+                @click="editForm.color = color"
+              />
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" @click="saveShiftEdit">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Publish Confirmation Dialog -->
+    <v-dialog v-model="publishDialog" max-width="450">
+      <v-card>
+        <v-card-title class="text-h6">
+          <v-icon color="success" class="mr-2">mdi-send</v-icon>
+          Publish Week Schedule
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-3">You are about to publish <strong>{{ draftShiftCount }}</strong> draft shifts for:</p>
+          <p class="text-subtitle-1 font-weight-bold mb-3">
+            Week {{ weekNum }}: {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+          </p>
+          <v-alert type="info" density="compact" variant="tonal" class="mb-0">
+            <strong>This will:</strong>
+            <ul class="mt-1 mb-0 pl-4">
+              <li>Make shifts visible on employee schedules</li>
+              <li>Enable attendance tracking for these shifts</li>
+              <li>Allow clock-in/out for reliability scoring</li>
+            </ul>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="publishDialog = false" :disabled="isPublishing">Cancel</v-btn>
+          <v-btn 
+            color="success" 
+            variant="flat" 
+            @click="confirmPublish"
+            :loading="isPublishing"
+          >
+            Publish {{ draftShiftCount }} Shifts
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -444,6 +668,11 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .week-label {
   font-weight: 500;
   padding: 0 12px;
@@ -474,12 +703,6 @@ onMounted(async () => {
   font-size: 11px;
   color: #666;
   margin-bottom: 6px;
-}
-.roster-search {
-  margin-bottom: 6px;
-}
-.roster-search :deep(.v-field) {
-  font-size: 11px;
 }
 .roster-filter :deep(.v-field) {
   font-size: 11px;
@@ -609,6 +832,24 @@ onMounted(async () => {
   font-size: 9px;
   color: #333;
 }
+.col-shift-clickable {
+  cursor: pointer;
+  position: relative;
+}
+.col-shift-clickable:hover {
+  filter: brightness(0.95);
+}
+.shift-edit-icon {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  color: #666;
+}
+.col-shift-clickable:hover .shift-edit-icon {
+  opacity: 1;
+}
 
 /* Cells */
 .col-cell {
@@ -668,5 +909,31 @@ onMounted(async () => {
 .grid-scroll::-webkit-scrollbar-thumb {
   background: #bbb;
   border-radius: 3px;
+}
+
+/* Color Picker */
+.color-picker-section {
+  margin-top: 8px;
+}
+.color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.color-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.color-btn:hover {
+  transform: scale(1.1);
+}
+.color-btn.active {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.3);
 }
 </style>
