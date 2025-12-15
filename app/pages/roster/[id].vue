@@ -914,9 +914,19 @@
                     <v-icon start size="20" color="teal">mdi-folder-account</v-icon>
                     Document Vault
                     <v-spacer />
-                    <v-chip size="x-small" variant="tonal" color="teal">
+                    <v-chip size="x-small" variant="tonal" color="teal" class="mr-2">
                       {{ documents.length }} files
                     </v-chip>
+                    <v-btn
+                      v-if="isAdmin"
+                      color="primary"
+                      size="small"
+                      variant="tonal"
+                      prepend-icon="mdi-plus"
+                      @click="showDocumentDialog = true"
+                    >
+                      Add Document
+                    </v-btn>
                   </v-card-title>
                   <v-card-text v-if="documents.length > 0">
                     <v-table density="compact" hover>
@@ -1430,6 +1440,57 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Document Upload Dialog -->
+    <v-dialog v-model="showDocumentDialog" max-width="500">
+      <v-card>
+        <v-card-title class="bg-teal text-white py-4">
+          <v-icon start>mdi-file-upload</v-icon>
+          Add Document
+        </v-card-title>
+        <v-card-text class="pt-6">
+          <v-select
+            v-model="documentForm.category"
+            :items="documentCategories"
+            item-title="title"
+            item-value="value"
+            label="Document Category *"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="documentForm.description"
+            label="Description (optional)"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-file-input
+            v-model="documentForm.file"
+            label="Select File *"
+            variant="outlined"
+            density="compact"
+            prepend-icon=""
+            prepend-inner-icon="mdi-paperclip"
+            show-size
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xls,.xlsx"
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showDocumentDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="savingDocument" 
+            :disabled="!documentForm.file || !documentForm.category"
+            @click="uploadDocument"
+          >
+            Upload
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -1528,6 +1589,24 @@ const assetForm = ref({
   expected_return_date: null as string | null,
   notes: ''
 })
+
+// Document upload state
+const showDocumentDialog = ref(false)
+const savingDocument = ref(false)
+const documentForm = ref({
+  category: 'general',
+  description: '',
+  file: null as File | null
+})
+const documentCategories = [
+  { title: 'Offer Letter', value: 'offer_letter' },
+  { title: 'Contract', value: 'contract' },
+  { title: 'Performance Review', value: 'performance_review' },
+  { title: 'Certification', value: 'certification' },
+  { title: 'License', value: 'license' },
+  { title: 'Training', value: 'training' },
+  { title: 'General', value: 'general' }
+]
 
 // ==========================================
 // COMPUTED
@@ -2376,6 +2455,56 @@ async function returnAsset(assetId: string) {
   } catch (err: any) {
     console.error('Failed to return asset:', err)
     toast.error('Failed to return asset')
+  }
+}
+
+async function uploadDocument() {
+  if (!documentForm.value.file) {
+    toast.error('Please select a file')
+    return
+  }
+  
+  savingDocument.value = true
+  try {
+    const file = documentForm.value.file
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${employeeId.value}/${Date.now()}_${documentForm.value.category}.${fileExt}`
+    
+    // Upload file to storage
+    const { error: uploadError } = await supabase.storage
+      .from('employee-docs')
+      .upload(fileName, file)
+    
+    if (uploadError) throw uploadError
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('employee-docs')
+      .getPublicUrl(fileName)
+    
+    // Insert document record
+    const { error: insertError } = await supabase
+      .from('employee_documents')
+      .insert({
+        employee_id: employeeId.value,
+        document_type: documentForm.value.category,
+        file_name: file.name,
+        file_url: urlData.publicUrl,
+        description: documentForm.value.description || null,
+        uploaded_by: userStore.employee?.id
+      })
+    
+    if (insertError) throw insertError
+    
+    await loadDocuments()
+    showDocumentDialog.value = false
+    documentForm.value = { category: 'general', description: '', file: null }
+    toast.success('Document uploaded successfully')
+  } catch (err: any) {
+    console.error('Failed to upload document:', err)
+    toast.error('Failed to upload document')
+  } finally {
+    savingDocument.value = false
   }
 }
 
