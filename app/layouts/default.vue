@@ -9,12 +9,11 @@ const sidebarCollapsed = ref(false)
 // Collapsible section states - all collapsed by default
 // NEW 3-TIER STRUCTURE: My Workspace (all), Management (manager+), Admin Ops (admin)
 const sections = ref({
-  myWorkspace: false,    // Personal: My Schedule, My Skills, My Growth, My Time Off
+  myWorkspace: false,    // Personal: My Schedule, My Skills, My Growth, My Time Off, My Training
   management: false,     // Manager+: Roster, Team Schedule, Recruiting, Approvals
   medOps: false,         // All users: Med Ops tools
   marketing: false,      // All/Admin: Marketing tools
-  adminOps: false,       // Admin only: Settings, Course Manager, Payroll
-  training: false        // All users: Academy
+  adminOps: false        // Admin only: Settings, Course Manager, Payroll, Skill Library
 })
 
 const toggleSection = (section: keyof typeof sections.value) => {
@@ -228,6 +227,10 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
                 My Growth
               </NuxtLink>
+              <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-orange-500/20">🎓</div>
+                My Training
+              </NuxtLink>
             </div>
           </div>
 
@@ -283,30 +286,6 @@ async function handleSignOut() {
               </div>
             </div>
           </template>
-
-          <!-- Section: Training (Collapsible) - ALL USERS -->
-          <div class="pt-2">
-            <button 
-              @click="toggleSection('training')"
-              class="section-header group"
-            >
-              <span>🎓 Training</span>
-              <svg 
-                class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': sections.training }"
-                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="section-content" :class="{ 'section-open': sections.training }">
-              <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
-                Academy
-              </NuxtLink>
-              <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📖</div>
-                Skill Library
-              </NuxtLink>
-            </div>
-          </div>
 
           <!-- Section: Med OPS (Collapsible) - ALL USERS -->
           <div class="pt-2">
@@ -403,6 +382,10 @@ async function handleSignOut() {
                 <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
                   Global Settings
+                </NuxtLink>
+                <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📖</div>
+                  Skill Library
                 </NuxtLink>
                 <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>

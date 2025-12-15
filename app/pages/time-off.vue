@@ -3,12 +3,13 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">{{ isAdmin ? 'Time Off Requests' : firstName + "'s Time Off" }}</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">{{ isAdmin ? 'Time Off Approvals' : firstName + "'s Time Off" }}</h1>
         <p class="text-body-1 text-grey-darken-1">
-          {{ isAdmin ? 'Manage team time off requests' : 'View and submit time off requests' }}
+          {{ isAdmin ? 'Review and approve team time off requests' : 'View and submit time off requests' }}
         </p>
       </div>
       <v-btn
+        v-if="!isAdmin"
         color="primary"
         prepend-icon="mdi-plus"
         @click="requestDialog = true"
