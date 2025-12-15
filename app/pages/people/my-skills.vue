@@ -218,7 +218,7 @@ const user = useSupabaseUser()
 const allSkills = ref<SkillLibraryItem[]>([])
 const employeeRatings = ref<Record<string, number>>({})
 const loading = ref(true)
-const openPanels = ref<number[]>([]) // All panels open by default
+const openPanels = ref<number[]>([]) // All panels collapsed by default
 
 // Computed
 const mergedSkills = computed(() => {
@@ -389,8 +389,7 @@ const fetchSkills = async () => {
       employeeRatings.value = ratingsMap
     }
     
-    // Open all panels by default
-    openPanels.value = Array.from({ length: skillsByCategory.value.length }, (_, i) => i)
+    // Panels start collapsed by default (openPanels is already empty)
   } catch (error) {
     console.error('Error fetching skills:', error)
   } finally {
