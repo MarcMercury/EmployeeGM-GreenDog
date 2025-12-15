@@ -177,7 +177,7 @@ const workedTimeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const displayedWorkedMinutes = ref(0)
 
 // Computed
-const employeeId = computed(() => userStore.currentEmployee?.id)
+const employeeId = computed(() => userStore.employee?.id)
 
 const punches = computed(() => opsStore.todayPunches)
 
