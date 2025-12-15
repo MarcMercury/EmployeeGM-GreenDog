@@ -3,9 +3,12 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">My Skills</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">{{ isViewingOther ? viewingEmployeeName + "'s Skills" : 'My Skills' }}</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Your personal skills scorecard and development tracker
+          {{ isViewingOther 
+            ? (isAdmin ? 'Click any skill rating to edit' : 'View skill ratings and proficiency') 
+            : 'Your personal skills scorecard and development tracker' 
+          }}
         </p>
       </div>
       <div class="d-flex align-center gap-2">
@@ -123,12 +126,14 @@
                   <div class="d-flex align-center gap-2">
                     <v-rating
                       :model-value="skill.rating"
-                      readonly
+                      :readonly="!canEditSkills"
+                      :hover="canEditSkills"
                       density="compact"
                       size="x-small"
                       color="amber"
                       empty-icon="mdi-star-outline"
                       full-icon="mdi-star"
+                      @update:model-value="(val) => updateSkillRating(skill, val)"
                     />
                     <v-chip 
                       v-if="skill.rating > 0"
@@ -138,6 +143,7 @@
                     >
                       {{ getLevelLabel(skill.rating) }}
                     </v-chip>
+                    <v-icon v-if="canEditSkills" size="14" color="grey" class="ml-1">mdi-pencil</v-icon>
                   </div>
                 </template>
               </v-list-item>
@@ -213,12 +219,23 @@ interface MergedSkill {
 
 const client = useSupabaseClient()
 const user = useSupabaseUser()
+const route = useRoute()
+const authStore = useAuthStore()
+const uiStore = useUIStore()
+
+// Check if viewing another employee's skills (via query param)
+const viewingEmployeeId = computed(() => route.query.employee as string | undefined)
+const isViewingOther = computed(() => !!viewingEmployeeId.value)
+const isAdmin = computed(() => authStore.isAdmin)
+const canEditSkills = computed(() => isAdmin.value && isViewingOther.value)
 
 // State
 const allSkills = ref<SkillLibraryItem[]>([])
 const employeeRatings = ref<Record<string, number>>({})
 const loading = ref(true)
 const openPanels = ref<number[]>([]) // All panels collapsed by default
+const currentEmployeeId = ref<string | null>(null)
+const viewingEmployeeName = ref('')
 
 // Computed
 const mergedSkills = computed(() => {
@@ -232,6 +249,7 @@ const mergedSkills = computed(() => {
 })
 
 const totalSkillsAvailable = computed(() => mergedSkills.value.length)
+const totalSkills = computed(() => ratedSkills.value.length)
 
 const ratedSkills = computed(() => mergedSkills.value.filter(s => s.rating > 0))
 
@@ -349,18 +367,40 @@ const formatDate = (dateStr: string) => {
 const fetchSkills = async () => {
   loading.value = true
   try {
-    // Get current user's employee record
-    const email = user.value?.email
-    if (!email) {
-      loading.value = false
-      return
-    }
+    let employeeId: string | null = null
     
-    const { data: employee } = await client
-      .from('employees')
-      .select('id')
-      .eq('email_work', email)
-      .single() as { data: { id: string } | null }
+    // If viewing another employee (admin viewing team member)
+    if (viewingEmployeeId.value) {
+      employeeId = viewingEmployeeId.value
+      currentEmployeeId.value = employeeId
+      
+      // Fetch employee name for display
+      const { data: empData } = await client
+        .from('employees')
+        .select('first_name, last_name')
+        .eq('id', employeeId)
+        .single()
+      
+      if (empData) {
+        viewingEmployeeName.value = `${empData.first_name} ${empData.last_name}`
+      }
+    } else {
+      // Get current user's employee record
+      const email = user.value?.email
+      if (!email) {
+        loading.value = false
+        return
+      }
+      
+      const { data: employee } = await client
+        .from('employees')
+        .select('id')
+        .eq('email_work', email)
+        .single() as { data: { id: string } | null }
+      
+      employeeId = employee?.id || null
+      currentEmployeeId.value = employeeId
+    }
     
     // Fetch ALL skills from library
     const { data: skillsData, error: skillsError } = await client
@@ -373,11 +413,11 @@ const fetchSkills = async () => {
     allSkills.value = skillsData || []
     
     // Fetch employee's skill levels if they have an employee record
-    if (employee) {
+    if (employeeId) {
       const { data: ratingsData, error: ratingsError } = await client
         .from('employee_skills')
         .select('skill_id, level')
-        .eq('employee_id', employee.id)
+        .eq('employee_id', employeeId)
       
       if (ratingsError) throw ratingsError
       
@@ -394,6 +434,35 @@ const fetchSkills = async () => {
     console.error('Error fetching skills:', error)
   } finally {
     loading.value = false
+  }
+}
+
+// Admin function to update a skill rating
+async function updateSkillRating(skill: MergedSkill, newLevel: number) {
+  if (!canEditSkills.value || !currentEmployeeId.value) return
+  
+  try {
+    // Upsert the skill rating
+    const { error } = await client
+      .from('employee_skills')
+      .upsert({
+        employee_id: currentEmployeeId.value,
+        skill_id: skill.skillId,
+        level: newLevel,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'employee_id,skill_id'
+      })
+    
+    if (error) throw error
+    
+    // Update local state
+    employeeRatings.value[skill.skillId] = newLevel
+    
+    uiStore.showSuccess(`Updated ${skill.name} to Level ${newLevel}`)
+  } catch (err) {
+    console.error('Error updating skill rating:', err)
+    uiStore.showError('Failed to update skill rating')
   }
 }
 
