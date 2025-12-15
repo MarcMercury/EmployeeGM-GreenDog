@@ -343,8 +343,12 @@ For more detailed information, consult the relevant articles in our database or 
 }
 
 function selectCategory(category: any) {
-  searchQuery.value = category.name
-  search()
+  // Filter by category instead of putting category name in search
+  searchQuery.value = ''
+  aiResponse.value = ''
+  searchResults.value = popularTopics.filter(t =>
+    t.category.toLowerCase() === category.name.toLowerCase()
+  )
 }
 
 function openArticle(article: any) {

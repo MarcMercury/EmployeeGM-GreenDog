@@ -213,7 +213,7 @@
               <template #prepend>
                 <v-icon color="primary">mdi-currency-usd</v-icon>
               </template>
-              <v-list-item-title>Budget</v-list-item-title>
+              <v-list-item-title>Anticipated Spend</v-list-item-title>
               <v-list-item-subtitle>${{ selectedEvent.budget.toLocaleString() }}</v-list-item-subtitle>
             </v-list-item>
 
@@ -459,7 +459,7 @@
               <v-col cols="6" sm="3">
                 <v-text-field
                   v-model.number="eventFormData.budget"
-                  label="Budget ($)"
+                  label="Anticipated Spend ($)"
                   type="number"
                   prepend-inner-icon="mdi-currency-usd"
                   variant="outlined"

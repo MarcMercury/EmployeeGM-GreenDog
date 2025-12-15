@@ -103,12 +103,32 @@
       </v-btn-toggle>
     </div>
 
+    <!-- Category Jump Navigation -->
+    <div v-if="viewMode === 'library'" class="mb-4">
+      <div class="text-caption text-grey mb-2">Jump to Category:</div>
+      <div class="d-flex flex-wrap gap-2">
+        <v-chip
+          v-for="cat in categories"
+          :key="cat"
+          :color="selectedCategory === cat ? 'primary' : undefined"
+          variant="outlined"
+          size="small"
+          clickable
+          @click="scrollToCategory(cat)"
+        >
+          {{ cat }}
+          <span class="ml-1 text-grey">({{ getSkillsByCategory(cat).length }})</span>
+        </v-chip>
+      </div>
+    </div>
+
     <!-- LIBRARY VIEW: Skills by Category -->
     <template v-if="viewMode === 'library'">
       <v-row>
         <v-col 
           v-for="category in categories" 
           :key="category"
+          :id="`category-${category.toLowerCase().replace(/\\s+/g, '-')}`"
           cols="12" 
           md="6"
         >
@@ -362,6 +382,7 @@ const supabase = useSupabaseClient()
 
 // View mode
 const viewMode = ref<'library' | 'employees'>('library')
+const selectedCategory = ref<string | null>(null)
 
 // Skill Library state
 const addSkillDialog = ref(false)
@@ -375,6 +396,16 @@ const skillForm = reactive({
   category: '',
   description: ''
 })
+
+// Category jump navigation
+function scrollToCategory(category: string) {
+  selectedCategory.value = category
+  const elementId = `category-${category.toLowerCase().replace(/\\s+/g, '-')}`
+  const element = document.getElementById(elementId)
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
 
 // Employee Ratings state
 const selectedEmployeeId = ref<string | null>(null)

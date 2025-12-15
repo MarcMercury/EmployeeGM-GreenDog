@@ -196,8 +196,9 @@
           />
           <v-row>
             <v-col cols="6">
-              <v-text-field
+              <v-select
                 v-model="courseForm.category"
+                :items="courseCategories"
                 label="Category"
                 variant="outlined"
               />
@@ -276,6 +277,21 @@ const deleteDialog = ref(false)
 const editingCourse = ref<TrainingCourse | null>(null)
 const courseToDelete = ref<TrainingCourse | null>(null)
 const saving = ref(false)
+
+// Course category options
+const courseCategories = [
+  'Compliance',
+  'Technical',
+  'Clinical',
+  'Leadership',
+  'Safety',
+  'Customer Service',
+  'Product Knowledge',
+  'Soft Skills',
+  'Onboarding',
+  'Continuing Education',
+  'Other'
+]
 
 const courseForm = reactive({
   title: '',

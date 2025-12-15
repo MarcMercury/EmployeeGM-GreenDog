@@ -434,6 +434,7 @@ async function submitRequest() {
       .insert({
         profile_id: profileId,
         employee_id: employeeId,
+        request_type: form.type,
         start_date: form.start_date,
         end_date: form.end_date,
         reason: form.reason || null,

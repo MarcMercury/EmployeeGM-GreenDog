@@ -78,11 +78,11 @@
             <v-card-text class="pa-2">
               <v-btn block variant="text" class="justify-start" :to="`/schedule?employee=${employee.id}`">
                 <v-icon start>mdi-calendar</v-icon>
-                My Schedule
+                {{ isOwnProfile ? 'My Schedule' : 'View Schedule' }}
               </v-btn>
               <v-btn block variant="text" class="justify-start" :to="`/people/my-skills?employee=${employee.id}`">
                 <v-icon start>mdi-lightbulb</v-icon>
-                My Skills
+                {{ isOwnProfile ? 'My Skills' : 'View Skills' }}
               </v-btn>
               <v-btn v-if="canViewSensitiveData" block variant="text" class="justify-start" disabled>
                 <v-icon start>mdi-cash</v-icon>
