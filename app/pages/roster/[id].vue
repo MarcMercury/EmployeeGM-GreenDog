@@ -238,15 +238,151 @@
         <!-- Tab Content Window -->
         <v-window v-model="activeTab">
           
-          <!-- TAB 1: OVERVIEW (Placeholder for Section 3) -->
+          <!-- TAB 1: OVERVIEW -->
           <v-window-item value="overview">
-            <v-card class="bg-white shadow-sm rounded-xl pa-6" elevation="0">
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-account-details</v-icon>
-                <h3 class="text-h6 text-grey mt-4">Overview Tab</h3>
-                <p class="text-body-2 text-grey">Section 3: Bio, Availability, Certifications</p>
-              </div>
-            </v-card>
+            <v-row>
+              <!-- Bio Section -->
+              <v-col cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="primary">mdi-account-details</v-icon>
+                    About
+                  </v-card-title>
+                  <v-card-text>
+                    <p v-if="bio" class="text-body-1 text-grey-darken-2" style="white-space: pre-wrap;">{{ bio }}</p>
+                    <p v-else class="text-body-2 text-grey font-italic">No bio provided</p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Availability Section -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="success">mdi-calendar-check</v-icon>
+                    Availability
+                  </v-card-title>
+                  <v-card-text>
+                    <!-- Weekly Availability Grid -->
+                    <div class="availability-grid">
+                      <div v-for="day in weekDays" :key="day.value" class="d-flex align-center mb-2">
+                        <div class="text-body-2 font-weight-medium" style="width: 100px;">{{ day.label }}</div>
+                        <v-chip 
+                          v-if="getAvailabilityForDay(day.value)" 
+                          size="small" 
+                          color="success" 
+                          variant="tonal"
+                        >
+                          {{ getAvailabilityForDay(day.value) }}
+                        </v-chip>
+                        <v-chip v-else size="small" color="grey" variant="outlined">
+                          Not Set
+                        </v-chip>
+                      </div>
+                    </div>
+
+                    <!-- Employment Details -->
+                    <v-divider class="my-4" />
+                    <div class="d-flex flex-wrap gap-2">
+                      <v-chip size="small" variant="tonal" color="primary">
+                        <v-icon start size="14">mdi-briefcase</v-icon>
+                        {{ formatEmploymentType(employee?.employment_type) }}
+                      </v-chip>
+                      <v-chip v-if="employee?.location?.name" size="small" variant="tonal" color="info">
+                        <v-icon start size="14">mdi-map-marker</v-icon>
+                        {{ employee.location.name }}
+                      </v-chip>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Professional Licenses Section -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="warning">mdi-card-account-details</v-icon>
+                    Professional Licenses
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" :color="expiringLicensesCount > 0 ? 'warning' : 'success'">
+                      {{ licenses.length }} on file
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list v-if="licenses.length > 0" density="compact" class="bg-transparent">
+                      <v-list-item v-for="license in licenses" :key="license.id" class="px-0">
+                        <template #prepend>
+                          <v-avatar size="32" :color="getLicenseStatusColor(license)" variant="tonal">
+                            <v-icon size="16">mdi-certificate</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title class="text-body-2 font-weight-medium">
+                          {{ license.license_type }}
+                        </v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">
+                          #{{ license.license_number || 'N/A' }}
+                          <span v-if="license.state"> • {{ license.state }}</span>
+                        </v-list-item-subtitle>
+                        <template #append>
+                          <div class="text-right">
+                            <v-chip 
+                              size="x-small" 
+                              :color="getLicenseStatusColor(license)"
+                              variant="flat"
+                            >
+                              {{ formatExpirationStatus(license) }}
+                            </v-chip>
+                            <div class="text-caption text-grey mt-1">
+                              {{ license.expiration_date ? formatDate(license.expiration_date) : 'No expiry' }}
+                            </div>
+                          </div>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                    <div v-else class="text-center py-4">
+                      <v-icon size="40" color="grey-lighten-2">mdi-card-account-details-outline</v-icon>
+                      <p class="text-caption text-grey mt-2">No licenses on file</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Certifications Section -->
+              <v-col cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="info">mdi-school</v-icon>
+                    Certifications & Training
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" color="info">
+                      {{ certifications.length }} earned
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="certifications.length > 0" class="d-flex flex-wrap gap-2">
+                      <v-chip 
+                        v-for="cert in certifications" 
+                        :key="cert.id"
+                        :color="getCertStatusColor(cert)"
+                        variant="tonal"
+                        size="small"
+                      >
+                        <v-icon start size="14">mdi-check-decagram</v-icon>
+                        {{ cert.certification?.name || cert.certification_id }}
+                        <template v-if="cert.expiration_date">
+                          <v-divider vertical class="mx-2" />
+                          <span class="text-caption">{{ formatDate(cert.expiration_date) }}</span>
+                        </template>
+                      </v-chip>
+                    </div>
+                    <div v-else class="text-center py-4">
+                      <v-icon size="40" color="grey-lighten-2">mdi-school-outline</v-icon>
+                      <p class="text-caption text-grey mt-2">No certifications on file</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
           <!-- TAB 2: COMPENSATION (Placeholder for Section 4) -->
@@ -379,11 +515,25 @@ const error = ref('')
 const employee = ref<any>(null)
 const profileEmail = ref('')
 const avatarUrl = ref('')
+const bio = ref('')
 const reliabilityScore = ref(100)
 const totalShifts = ref(0)
 const nextShift = ref<any>(null)
 const ptoBalances = ref<any[]>([])
 const emergencyContact = ref({ name: '', phone: '', relationship: '' })
+const licenses = ref<any[]>([])
+const certifications = ref<any[]>([])
+
+// Week days for availability
+const weekDays = [
+  { label: 'Monday', value: 'monday' },
+  { label: 'Tuesday', value: 'tuesday' },
+  { label: 'Wednesday', value: 'wednesday' },
+  { label: 'Thursday', value: 'thursday' },
+  { label: 'Friday', value: 'friday' },
+  { label: 'Saturday', value: 'saturday' },
+  { label: 'Sunday', value: 'sunday' }
+]
 
 // Tab state
 const activeTab = ref('overview')
@@ -414,6 +564,14 @@ const canViewSensitiveData = computed(() => {
 
 const totalPTOHours = computed(() => {
   return ptoBalances.value.reduce((sum, b) => sum + (b.balance_hours || 0), 0)
+})
+
+const expiringLicensesCount = computed(() => {
+  return licenses.value.filter(l => {
+    if (!l.expiration_date) return false
+    const daysUntil = differenceInDays(new Date(l.expiration_date), new Date())
+    return daysUntil <= 60 && daysUntil >= 0
+  }).length
 })
 
 const tenure = computed(() => {
@@ -489,6 +647,58 @@ function getReliabilityColor(score: number): string {
   return 'error'
 }
 
+function formatEmploymentType(type: string): string {
+  const typeMap: Record<string, string> = {
+    'full-time': 'Full Time',
+    'part-time': 'Part Time',
+    'contract': 'Contractor',
+    'per-diem': 'Per Diem',
+    'intern': 'Intern'
+  }
+  return typeMap[type] || type || 'Not Set'
+}
+
+function getAvailabilityForDay(day: string): string {
+  // For now, return employment type as availability indicator
+  // This can be enhanced when an availability table is added
+  const emp = employee.value
+  if (!emp) return ''
+  
+  // Default availability based on employment type
+  if (emp.employment_type === 'full-time') {
+    return day !== 'saturday' && day !== 'sunday' ? 'Available' : ''
+  }
+  return 'Flexible'
+}
+
+function getLicenseStatusColor(license: any): string {
+  if (!license.expiration_date) return 'grey'
+  const daysUntil = differenceInDays(new Date(license.expiration_date), new Date())
+  if (daysUntil < 0) return 'error'
+  if (daysUntil <= 30) return 'error'
+  if (daysUntil <= 60) return 'warning'
+  return 'success'
+}
+
+function formatExpirationStatus(license: any): string {
+  if (!license.expiration_date) return 'No Expiry'
+  const daysUntil = differenceInDays(new Date(license.expiration_date), new Date())
+  if (daysUntil < 0) return 'Expired'
+  if (daysUntil <= 30) return `${daysUntil}d left`
+  if (daysUntil <= 60) return 'Expiring Soon'
+  return 'Active'
+}
+
+function getCertStatusColor(cert: any): string {
+  if (cert.status === 'expired') return 'error'
+  if (cert.status === 'pending' || cert.status === 'renewal_pending') return 'warning'
+  if (!cert.expiration_date) return 'info'
+  const daysUntil = differenceInDays(new Date(cert.expiration_date), new Date())
+  if (daysUntil < 0) return 'error'
+  if (daysUntil <= 30) return 'warning'
+  return 'success'
+}
+
 // ==========================================
 // DATA LOADING
 // ==========================================
@@ -516,6 +726,13 @@ async function loadEmployeeData() {
     employee.value = emp
     profileEmail.value = emp.profile?.email || ''
     avatarUrl.value = emp.profile?.avatar_url || ''
+    bio.value = emp.profile?.bio || ''
+
+    // Load licenses and certifications for everyone (public info)
+    await Promise.all([
+      loadLicenses(),
+      loadCertifications()
+    ])
 
     // Load additional data only if user can view sensitive info
     if (canViewSensitiveData.value) {
@@ -612,6 +829,37 @@ async function loadPTOBalances() {
     ptoBalances.value = data || []
   } catch (err) {
     console.log('[Profile] PTO balances not available:', err)
+  }
+}
+
+async function loadLicenses() {
+  try {
+    const { data } = await supabase
+      .from('employee_licenses')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('expiration_date', { ascending: true })
+
+    licenses.value = data || []
+  } catch (err) {
+    console.log('[Profile] Licenses not available:', err)
+  }
+}
+
+async function loadCertifications() {
+  try {
+    const { data } = await supabase
+      .from('employee_certifications')
+      .select(`
+        *,
+        certification:certifications(id, name, code, issuing_authority)
+      `)
+      .eq('employee_id', employeeId.value)
+      .order('expiration_date', { ascending: true })
+
+    certifications.value = data || []
+  } catch (err) {
+    console.log('[Profile] Certifications not available:', err)
   }
 }
 
