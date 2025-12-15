@@ -280,6 +280,45 @@
             </div>
           </div>
 
+          <!-- External Links Section -->
+          <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mb-4">
+            <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item
+                v-for="(link, idx) in selectedEvent.external_links"
+                :key="idx"
+                :href="link.url"
+                target="_blank"
+                class="px-0"
+              >
+                <template #prepend>
+                  <v-icon color="primary" size="20">mdi-open-in-new</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ link.title }}</v-list-item-title>
+                <v-list-item-subtitle v-if="link.description" class="text-caption">{{ link.description }}</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <!-- Attachments Section -->
+          <div v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0" class="mb-4">
+            <p class="text-overline text-grey mb-2">ATTACHMENTS</p>
+            <div class="d-flex flex-wrap gap-2">
+              <v-chip
+                v-for="(att, idx) in selectedEvent.attachments"
+                :key="idx"
+                :href="att.url"
+                target="_blank"
+                color="primary"
+                variant="tonal"
+              >
+                <v-icon start size="16">mdi-file-document</v-icon>
+                {{ att.name }}
+                <v-icon end size="16">mdi-download</v-icon>
+              </v-chip>
+            </div>
+          </div>
+
           <v-divider class="my-4" />
 
           <!-- Lead Counter -->
@@ -540,6 +579,77 @@
                 />
               </v-col>
             </v-row>
+
+            <!-- External Links Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
+            <v-row>
+              <v-col cols="12">
+                <div v-for="(link, idx) in eventFormData.external_links" :key="idx" class="d-flex gap-2 mb-2">
+                  <v-text-field
+                    v-model="link.title"
+                    label="Link Title"
+                    variant="outlined"
+                    density="compact"
+                    style="flex: 1;"
+                    hide-details
+                  />
+                  <v-text-field
+                    v-model="link.url"
+                    label="URL"
+                    placeholder="https://..."
+                    prepend-inner-icon="mdi-link"
+                    variant="outlined"
+                    density="compact"
+                    style="flex: 2;"
+                    hide-details
+                  />
+                  <v-btn icon="mdi-delete" color="error" variant="text" @click="removeExternalLink(idx)" />
+                </div>
+                <v-btn variant="tonal" color="primary" size="small" prepend-icon="mdi-plus" @click="addExternalLink">
+                  Add Link
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <!-- Attachments Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">ATTACHMENTS</p>
+            <v-row>
+              <v-col cols="12">
+                <!-- Existing Attachments -->
+                <div v-if="eventFormData.attachments.length > 0" class="mb-3">
+                  <v-chip
+                    v-for="(att, idx) in eventFormData.attachments"
+                    :key="idx"
+                    closable
+                    class="mr-2 mb-2"
+                    color="primary"
+                    variant="tonal"
+                    @click:close="removeAttachment(idx)"
+                  >
+                    <v-icon start size="16">mdi-file-document</v-icon>
+                    {{ att.name }}
+                  </v-chip>
+                </div>
+                
+                <!-- File Upload -->
+                <v-file-input
+                  v-model="newAttachments"
+                  label="Upload Documents"
+                  variant="outlined"
+                  density="compact"
+                  multiple
+                  chips
+                  show-size
+                  prepend-icon=""
+                  prepend-inner-icon="mdi-paperclip"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif"
+                  hint="Supported: PDF, Word, Excel, PowerPoint, Images"
+                  persistent-hint
+                />
+              </v-col>
+            </v-row>
           </v-form>
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
@@ -640,6 +750,21 @@ interface MarketingEvent {
   post_event_notes: string | null
   actual_attendance: number | null
   leads_collected: number
+  attachments: EventAttachment[]
+  external_links: ExternalLink[]
+}
+
+interface EventAttachment {
+  name: string
+  url: string
+  file_type: string
+  uploaded_at: string
+}
+
+interface ExternalLink {
+  title: string
+  url: string
+  description?: string
 }
 
 interface Lead {
@@ -707,8 +832,13 @@ const eventFormData = reactive({
   status: 'planned',
   registration_required: false,
   registration_link: '',
-  notes: ''
+  notes: '',
+  attachments: [] as EventAttachment[],
+  external_links: [] as ExternalLink[]
 })
+
+// New attachments for upload
+const newAttachments = ref<File[]>([])
 
 const leadFormData = reactive({
   lead_name: '',
@@ -866,6 +996,7 @@ const openDrawer = (event: MarketingEvent) => {
 
 const openCreateDialog = () => {
   editMode.value = false
+  newAttachments.value = []
   Object.assign(eventFormData, {
     name: '',
     description: '',
@@ -885,7 +1016,9 @@ const openCreateDialog = () => {
     status: 'planned',
     registration_required: false,
     registration_link: '',
-    notes: ''
+    notes: '',
+    attachments: [],
+    external_links: []
   })
   eventDialog.value = true
 }
@@ -893,6 +1026,7 @@ const openCreateDialog = () => {
 const openEditDialog = () => {
   if (!selectedEvent.value) return
   editMode.value = true
+  newAttachments.value = []
   Object.assign(eventFormData, {
     name: selectedEvent.value.name,
     description: selectedEvent.value.description || '',
@@ -912,7 +1046,9 @@ const openEditDialog = () => {
     status: selectedEvent.value.status,
     registration_required: selectedEvent.value.registration_required || false,
     registration_link: selectedEvent.value.registration_link || '',
-    notes: selectedEvent.value.notes || ''
+    notes: selectedEvent.value.notes || '',
+    attachments: selectedEvent.value.attachments || [],
+    external_links: selectedEvent.value.external_links || []
   })
   eventDialog.value = true
 }
@@ -927,9 +1063,60 @@ const openAddLeadDialog = () => {
   leadDialog.value = true
 }
 
+// External links management
+const addExternalLink = () => {
+  eventFormData.external_links.push({ title: '', url: '', description: '' })
+}
+
+const removeExternalLink = (index: number) => {
+  eventFormData.external_links.splice(index, 1)
+}
+
+// Attachment management
+const removeAttachment = (index: number) => {
+  eventFormData.attachments.splice(index, 1)
+}
+
 const saveEvent = async () => {
   saving.value = true
   try {
+    // Upload any new attachments first
+    const uploadedAttachments: EventAttachment[] = [...eventFormData.attachments]
+    
+    if (newAttachments.value && newAttachments.value.length > 0) {
+      for (const file of newAttachments.value) {
+        const timestamp = Date.now()
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+        const filePath = `events/${timestamp}_${safeName}`
+        
+        const { data: uploadData, error: uploadError } = await client.storage
+          .from('marketing-events')
+          .upload(filePath, file)
+        
+        if (uploadError) {
+          console.error('Upload error:', uploadError)
+          continue
+        }
+        
+        // Get public URL
+        const { data: urlData } = client.storage
+          .from('marketing-events')
+          .getPublicUrl(filePath)
+        
+        uploadedAttachments.push({
+          name: file.name,
+          url: urlData.publicUrl,
+          file_type: file.type,
+          uploaded_at: new Date().toISOString()
+        })
+      }
+    }
+    
+    // Filter out empty links
+    const validLinks = eventFormData.external_links.filter(
+      link => link.title && link.url
+    )
+    
     const eventPayload = {
       name: eventFormData.name,
       description: eventFormData.description || null,
@@ -949,7 +1136,9 @@ const saveEvent = async () => {
       status: eventFormData.status,
       registration_required: eventFormData.registration_required,
       registration_link: eventFormData.registration_link || null,
-      notes: eventFormData.notes || null
+      notes: eventFormData.notes || null,
+      attachments: uploadedAttachments,
+      external_links: validLinks
     }
 
     if (editMode.value && selectedEvent.value) {
@@ -971,6 +1160,7 @@ const saveEvent = async () => {
 
     eventDialog.value = false
     drawer.value = false
+    newAttachments.value = []
     await fetchData()
   } catch (error) {
     console.error('Error saving event:', error)
