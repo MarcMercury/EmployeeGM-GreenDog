@@ -447,8 +447,8 @@ onMounted(async () => {
   
   // If user has an employee ID, redirect to the enhanced profile view
   if (userStore.employee?.id) {
-    console.log('[ProfilePage] Redirecting to /employees/', userStore.employee.id)
-    await navigateTo(`/employees/${userStore.employee.id}`, { replace: true })
+    console.log('[ProfilePage] Redirecting to /roster/', userStore.employee.id)
+    await navigateTo(`/roster/${userStore.employee.id}`, { replace: true })
     return
   }
   

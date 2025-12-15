@@ -716,6 +716,13 @@ definePageMeta({
 })
 
 const route = useRoute()
+
+// REDIRECT: This page is deprecated - redirect to new roster profile
+const employeeId = route.params.id as string
+if (employeeId) {
+  navigateTo(`/roster/${employeeId}`, { replace: true })
+}
+
 const router = useRouter()
 const authStore = useAuthStore()
 const userStore = useUserStore()
