@@ -404,11 +404,11 @@ function formatDate(dateStr: string): string {
 }
 
 function viewEmployee(id: string) {
-  router.push(`/employees/${id}`)
+  router.push(`/roster/${id}`)
 }
 
 function editEmployee(id: string) {
-  router.push(`/employees/${id}/edit`)
+  router.push(`/roster/${id}`)
 }
 
 function clearFilters() {

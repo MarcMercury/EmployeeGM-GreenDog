@@ -637,11 +637,11 @@ function clearFilters() {
 }
 
 function viewEmployee(id: string) {
-  router.push(`/employees/${id}`)
+  router.push(`/roster/${id}`)
 }
 
 function editEmployee(emp: any) {
-  router.push(`/employees/${emp.id}`)
+  router.push(`/roster/${emp.id}`)
 }
 
 async function refreshData() {

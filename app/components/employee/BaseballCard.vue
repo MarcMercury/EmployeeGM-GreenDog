@@ -87,7 +87,7 @@
       <v-btn 
         variant="text" 
         color="primary" 
-        :to="`/employees/${profile.id}`"
+        :to="`/roster/${profile.id}`"
         size="small"
       >
         View Profile
@@ -97,7 +97,7 @@
         v-if="isAdmin"
         variant="text" 
         color="secondary"
-        :to="`/employees/${profile.id}/edit`"
+        :to="`/roster/${profile.id}`"
         size="small"
       >
         Edit

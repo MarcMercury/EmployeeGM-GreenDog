@@ -108,7 +108,7 @@
           variant="text" 
           color="primary" 
           size="small"
-          :to="`/employees/${employee.id}`"
+          :to="`/roster/${employee.id}`"
           block
         >
           <v-icon start size="16">mdi-account</v-icon>

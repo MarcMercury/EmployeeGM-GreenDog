@@ -23,7 +23,7 @@
               icon="mdi-open-in-new" 
               variant="text" 
               size="small"
-              :to="`/employees/${employee.id}`"
+              :to="`/roster/${employee.id}`"
             />
             <v-btn 
               v-if="isAdmin"
