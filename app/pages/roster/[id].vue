@@ -790,37 +790,383 @@
             </v-row>
           </v-window-item>
 
-          <!-- TAB 4: HISTORY & NOTES (Placeholder for Section 6) -->
+          <!-- TAB 4: HISTORY & NOTES -->
           <v-window-item v-if="canViewSensitiveData" value="history">
-            <v-card class="bg-white shadow-sm rounded-xl pa-6" elevation="0">
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-history</v-icon>
-                <h3 class="text-h6 text-grey mt-4">History & Notes Tab</h3>
-                <p class="text-body-2 text-grey">Section 6: Timeline Feed</p>
-              </div>
-            </v-card>
+            <v-row>
+              <!-- Notes Section -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="primary">mdi-note-text</v-icon>
+                    HR Notes
+                    <v-spacer />
+                    <v-btn 
+                      v-if="isAdmin" 
+                      icon="mdi-plus" 
+                      size="x-small" 
+                      variant="tonal"
+                      color="primary"
+                      @click="showNoteDialog = true"
+                    />
+                  </v-card-title>
+                  <v-card-text v-if="notes.length > 0" style="max-height: 500px; overflow-y: auto;">
+                    <v-timeline density="compact" side="end">
+                      <v-timeline-item
+                        v-for="note in notes"
+                        :key="note.id"
+                        :dot-color="note.visibility === 'private' ? 'grey' : 'primary'"
+                        size="x-small"
+                      >
+                        <template #opposite>
+                          <span class="text-caption text-grey">
+                            {{ formatDate(note.created_at) }}
+                          </span>
+                        </template>
+                        <v-card variant="tonal" class="pa-3">
+                          <div class="d-flex align-center mb-2">
+                            <span class="text-body-2 font-weight-medium">
+                              {{ note.author?.preferred_name || note.author?.first_name || 'System' }}
+                              {{ note.author?.last_name?.charAt(0) || '' }}.
+                            </span>
+                            <v-chip 
+                              v-if="note.visibility === 'private'" 
+                              size="x-small" 
+                              variant="outlined" 
+                              color="grey" 
+                              class="ml-2"
+                            >
+                              <v-icon start size="10">mdi-lock</v-icon>
+                              Private
+                            </v-chip>
+                          </div>
+                          <p class="text-body-2 mb-0">{{ note.note }}</p>
+                        </v-card>
+                      </v-timeline-item>
+                    </v-timeline>
+                  </v-card-text>
+                  <v-card-text v-else class="text-center py-8">
+                    <v-icon size="48" color="grey-lighten-2">mdi-note-off-outline</v-icon>
+                    <p class="text-body-2 text-grey mt-2">No notes on file</p>
+                    <v-btn 
+                      v-if="isAdmin" 
+                      variant="tonal" 
+                      color="primary" 
+                      size="small" 
+                      class="mt-2"
+                      @click="showNoteDialog = true"
+                    >
+                      <v-icon start>mdi-plus</v-icon>
+                      Add First Note
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Audit Log / Activity Timeline -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="info">mdi-history</v-icon>
+                    Activity Log
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" color="info">
+                      Last 50
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text v-if="auditLogs.length > 0" style="max-height: 500px; overflow-y: auto;">
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item
+                        v-for="log in auditLogs"
+                        :key="log.id"
+                        class="px-0 mb-2"
+                      >
+                        <template #prepend>
+                          <v-avatar size="28" :color="getActionColor(log.action)" variant="tonal">
+                            <v-icon size="14">{{ getActionIcon(log.action) }}</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title class="text-body-2">
+                          <span class="font-weight-medium text-capitalize">{{ log.action?.toLowerCase() }}</span>
+                          <span v-if="log.entity_type" class="text-grey"> • {{ log.entity_type }}</span>
+                        </v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">
+                          {{ log.actor?.email || 'System' }} • {{ formatDate(log.occurred_at) }}
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                  <v-card-text v-else class="text-center py-8">
+                    <v-icon size="48" color="grey-lighten-2">mdi-history</v-icon>
+                    <p class="text-body-2 text-grey mt-2">No activity recorded</p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
-          <!-- TAB 5: DOCUMENTS (Placeholder for Section 6) -->
+          <!-- TAB 5: DOCUMENTS -->
           <v-window-item v-if="canViewSensitiveData" value="documents">
-            <v-card class="bg-white shadow-sm rounded-xl pa-6" elevation="0">
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-folder-account</v-icon>
-                <h3 class="text-h6 text-grey mt-4">Documents Tab</h3>
-                <p class="text-body-2 text-grey">Section 6: Document Vault</p>
-              </div>
-            </v-card>
+            <v-row>
+              <!-- Document Vault -->
+              <v-col cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="teal">mdi-folder-account</v-icon>
+                    Document Vault
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" color="teal">
+                      {{ documents.length }} files
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text v-if="documents.length > 0">
+                    <v-table density="compact" hover>
+                      <thead>
+                        <tr>
+                          <th class="text-left">Document</th>
+                          <th class="text-left">Category</th>
+                          <th class="text-left">Size</th>
+                          <th class="text-left">Uploaded</th>
+                          <th class="text-center" style="width: 80px;">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="doc in documents" :key="doc.id">
+                          <td>
+                            <div class="d-flex align-center">
+                              <v-avatar size="32" :color="getDocCategoryColor(doc.category)" variant="tonal" class="mr-2">
+                                <v-icon size="16">{{ getDocCategoryIcon(doc.category) }}</v-icon>
+                              </v-avatar>
+                              <div>
+                                <div class="text-body-2 font-weight-medium">{{ doc.file_name }}</div>
+                                <div v-if="doc.description" class="text-caption text-grey">{{ doc.description }}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <v-chip :color="getDocCategoryColor(doc.category)" size="x-small" variant="tonal">
+                              {{ formatDocCategory(doc.category) }}
+                            </v-chip>
+                          </td>
+                          <td class="text-caption text-grey">{{ formatFileSize(doc.file_size) }}</td>
+                          <td class="text-caption text-grey">{{ formatDate(doc.created_at) }}</td>
+                          <td class="text-center">
+                            <v-btn 
+                              v-if="doc.file_url"
+                              icon="mdi-download" 
+                              size="x-small" 
+                              variant="text"
+                              :href="doc.file_url"
+                              target="_blank"
+                            />
+                            <v-btn 
+                              v-if="doc.file_url"
+                              icon="mdi-open-in-new" 
+                              size="x-small" 
+                              variant="text"
+                              :href="doc.file_url"
+                              target="_blank"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                  <v-card-text v-else class="text-center py-8">
+                    <v-icon size="64" color="grey-lighten-2">mdi-folder-open-outline</v-icon>
+                    <p class="text-body-2 text-grey mt-2">No documents on file</p>
+                    <p class="text-caption text-grey">Documents can be uploaded via the admin portal</p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Document Categories Summary -->
+              <v-col cols="12" md="4">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="grey">mdi-chart-pie</v-icon>
+                    By Category
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item 
+                        v-for="cat in ['offer_letter', 'contract', 'performance_review', 'certification', 'license', 'training', 'general']" 
+                        :key="cat"
+                        class="px-0"
+                      >
+                        <template #prepend>
+                          <v-icon :color="getDocCategoryColor(cat)" size="18">{{ getDocCategoryIcon(cat) }}</v-icon>
+                        </template>
+                        <v-list-item-title class="text-body-2">
+                          {{ formatDocCategory(cat) }}
+                        </v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="text">
+                            {{ documents.filter(d => d.category === cat).length }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
-          <!-- TAB 6: ASSETS (Placeholder for Section 6) -->
+          <!-- TAB 6: ASSETS -->
           <v-window-item v-if="canViewSensitiveData" value="assets">
-            <v-card class="bg-white shadow-sm rounded-xl pa-6" elevation="0">
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-toolbox</v-icon>
-                <h3 class="text-h6 text-grey mt-4">Assets Tab</h3>
-                <p class="text-body-2 text-grey">Section 6: Inventory Table</p>
-              </div>
-            </v-card>
+            <v-row>
+              <!-- Active Assets -->
+              <v-col cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="warning">mdi-toolbox</v-icon>
+                    Assigned Assets
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" color="warning" class="mr-2">
+                      {{ activeAssets.length }} active
+                    </v-chip>
+                    <v-btn 
+                      v-if="isAdmin" 
+                      icon="mdi-plus" 
+                      size="x-small" 
+                      variant="tonal"
+                      color="primary"
+                      @click="showAssetDialog = true"
+                    />
+                  </v-card-title>
+                  <v-card-text v-if="activeAssets.length > 0">
+                    <v-table density="compact" hover>
+                      <thead>
+                        <tr>
+                          <th class="text-left">Asset</th>
+                          <th class="text-left">Type</th>
+                          <th class="text-left">Serial #</th>
+                          <th class="text-left">Checked Out</th>
+                          <th class="text-left">Return By</th>
+                          <th v-if="isAdmin" class="text-center" style="width: 100px;">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="asset in activeAssets" :key="asset.id">
+                          <td>
+                            <div class="d-flex align-center">
+                              <v-avatar size="32" :color="getAssetTypeColor(asset.asset_type)" variant="tonal" class="mr-2">
+                                <v-icon size="16">{{ getAssetTypeIcon(asset.asset_type) }}</v-icon>
+                              </v-avatar>
+                              <div>
+                                <div class="text-body-2 font-weight-medium">{{ asset.asset_name }}</div>
+                                <div v-if="asset.notes" class="text-caption text-grey">{{ asset.notes }}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <v-chip :color="getAssetTypeColor(asset.asset_type)" size="x-small" variant="tonal">
+                              {{ asset.asset_type }}
+                            </v-chip>
+                          </td>
+                          <td class="text-caption text-grey">{{ asset.serial_number || '—' }}</td>
+                          <td class="text-caption text-grey">{{ formatDate(asset.checked_out_at) }}</td>
+                          <td>
+                            <span v-if="asset.expected_return_date" class="text-caption text-grey">
+                              {{ formatDate(asset.expected_return_date) }}
+                            </span>
+                            <span v-else class="text-caption text-grey">—</span>
+                          </td>
+                          <td v-if="isAdmin" class="text-center">
+                            <v-btn 
+                              variant="tonal"
+                              color="success"
+                              size="x-small"
+                              @click="returnAsset(asset.id)"
+                            >
+                              <v-icon start size="14">mdi-keyboard-return</v-icon>
+                              Return
+                            </v-btn>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                  <v-card-text v-else class="text-center py-8">
+                    <v-icon size="48" color="grey-lighten-2">mdi-toolbox-outline</v-icon>
+                    <p class="text-body-2 text-grey mt-2">No assets currently assigned</p>
+                    <v-btn 
+                      v-if="isAdmin" 
+                      variant="tonal" 
+                      color="primary" 
+                      size="small" 
+                      class="mt-2"
+                      @click="showAssetDialog = true"
+                    >
+                      <v-icon start>mdi-plus</v-icon>
+                      Assign Asset
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Returned Assets History -->
+              <v-col v-if="returnedAssets.length > 0" cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="success">mdi-check-circle</v-icon>
+                    Return History
+                    <v-spacer />
+                    <v-chip size="x-small" variant="tonal" color="success">
+                      {{ returnedAssets.length }} returned
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item
+                        v-for="asset in returnedAssets"
+                        :key="asset.id"
+                        class="px-0"
+                      >
+                        <template #prepend>
+                          <v-avatar size="28" :color="getAssetTypeColor(asset.asset_type)" variant="tonal">
+                            <v-icon size="14">{{ getAssetTypeIcon(asset.asset_type) }}</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ asset.asset_name }}</v-list-item-title>
+                        <v-list-item-subtitle class="text-caption text-grey">
+                          Returned {{ formatDate(asset.returned_at) }}
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Asset Summary by Type -->
+              <v-col cols="12" :md="returnedAssets.length > 0 ? 6 : 4">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="grey">mdi-chart-bar</v-icon>
+                    By Type
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item 
+                        v-for="type in ['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other']" 
+                        :key="type"
+                        class="px-0"
+                      >
+                        <template #prepend>
+                          <v-icon :color="getAssetTypeColor(type)" size="18">{{ getAssetTypeIcon(type) }}</v-icon>
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ type }}</v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="text">
+                            {{ assets.filter(a => a.asset_type === type && !a.returned_at).length }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
         </v-window>
@@ -974,6 +1320,116 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Add Note Dialog -->
+    <v-dialog v-model="showNoteDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          <v-icon start color="primary">mdi-note-plus</v-icon>
+          Add HR Note
+        </v-card-title>
+        <v-card-text>
+          <v-textarea
+            v-model="noteForm.note"
+            label="Note"
+            variant="outlined"
+            rows="4"
+            placeholder="Enter note content..."
+            counter
+          />
+          <v-select
+            v-model="noteForm.visibility"
+            :items="[
+              { title: 'Private (Admins Only)', value: 'private' },
+              { title: 'Visible to Employee', value: 'employee' }
+            ]"
+            item-title="title"
+            item-value="value"
+            label="Visibility"
+            variant="outlined"
+            density="compact"
+            class="mt-3"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showNoteDialog = false">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="savingNote"
+            :disabled="!noteForm.note.trim()"
+            @click="saveNote"
+          >
+            <v-icon start>mdi-content-save</v-icon>
+            Save Note
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Assign Asset Dialog -->
+    <v-dialog v-model="showAssetDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          <v-icon start color="warning">mdi-package-variant-plus</v-icon>
+          Assign Asset
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="assetForm.asset_name"
+            label="Asset Name"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., Office Key #3, MacBook Pro"
+          />
+          <v-select
+            v-model="assetForm.asset_type"
+            :items="['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other']"
+            label="Asset Type"
+            variant="outlined"
+            density="compact"
+            class="mt-3"
+          />
+          <v-text-field
+            v-model="assetForm.serial_number"
+            label="Serial Number (Optional)"
+            variant="outlined"
+            density="compact"
+            class="mt-3"
+          />
+          <v-text-field
+            v-model="assetForm.expected_return_date"
+            label="Expected Return Date (Optional)"
+            type="date"
+            variant="outlined"
+            density="compact"
+            class="mt-3"
+          />
+          <v-textarea
+            v-model="assetForm.notes"
+            label="Notes (Optional)"
+            variant="outlined"
+            rows="2"
+            class="mt-3"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAssetDialog = false">Cancel</v-btn>
+          <v-btn
+            color="warning"
+            variant="flat"
+            :loading="savingAsset"
+            :disabled="!assetForm.asset_name.trim()"
+            @click="saveAsset"
+          >
+            <v-icon start>mdi-check</v-icon>
+            Assign
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -1016,6 +1472,10 @@ const compensation = ref<any>(null)
 const skills = ref<any[]>([])
 const mentorships = ref<any[]>([])
 const skillCategories = ref<string[]>([])
+const notes = ref<any[]>([])
+const documents = ref<any[]>([])
+const assets = ref<any[]>([])
+const auditLogs = ref<any[]>([])
 
 // Week days for availability
 const weekDays = [
@@ -1037,6 +1497,10 @@ const deleteConfirmText = ref('')
 const deleting = ref(false)
 const showCompensationDialog = ref(false)
 const savingCompensation = ref(false)
+const showNoteDialog = ref(false)
+const savingNote = ref(false)
+const showAssetDialog = ref(false)
+const savingAsset = ref(false)
 
 // Compensation form
 const compensationForm = ref({
@@ -1048,6 +1512,21 @@ const compensationForm = ref({
   ce_budget_total: 0,
   ce_budget_used: 0,
   effective_date: new Date().toISOString().split('T')[0]
+})
+
+// Note form
+const noteForm = ref({
+  note: '',
+  visibility: 'private'
+})
+
+// Asset form
+const assetForm = ref({
+  asset_name: '',
+  asset_type: 'Badge',
+  serial_number: '',
+  expected_return_date: null as string | null,
+  notes: ''
 })
 
 // ==========================================
@@ -1117,6 +1596,14 @@ const masteredSkills = computed(() => {
 
 const activeMentorships = computed(() => {
   return mentorships.value.filter(m => m.status === 'active')
+})
+
+const activeAssets = computed(() => {
+  return assets.value.filter(a => !a.returned_at)
+})
+
+const returnedAssets = computed(() => {
+  return assets.value.filter(a => a.returned_at)
 })
 
 const tenure = computed(() => {
@@ -1315,6 +1802,114 @@ function getMentorshipStatusColor(status: string): string {
   return colors[status] || 'grey'
 }
 
+function getDocCategoryIcon(category: string): string {
+  const icons: Record<string, string> = {
+    'general': 'mdi-file-document',
+    'offer_letter': 'mdi-file-sign',
+    'contract': 'mdi-file-certificate',
+    'performance_review': 'mdi-file-chart',
+    'certification': 'mdi-certificate',
+    'license': 'mdi-card-account-details',
+    'training': 'mdi-school',
+    'disciplinary': 'mdi-file-alert',
+    'other': 'mdi-file'
+  }
+  return icons[category] || 'mdi-file'
+}
+
+function getDocCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    'general': 'grey',
+    'offer_letter': 'success',
+    'contract': 'primary',
+    'performance_review': 'info',
+    'certification': 'warning',
+    'license': 'purple',
+    'training': 'teal',
+    'disciplinary': 'error',
+    'other': 'grey'
+  }
+  return colors[category] || 'grey'
+}
+
+function formatDocCategory(category: string): string {
+  const labels: Record<string, string> = {
+    'general': 'General',
+    'offer_letter': 'Offer Letter',
+    'contract': 'Contract',
+    'performance_review': 'Performance Review',
+    'certification': 'Certification',
+    'license': 'License',
+    'training': 'Training',
+    'disciplinary': 'Disciplinary',
+    'other': 'Other'
+  }
+  return labels[category] || category
+}
+
+function getAssetTypeIcon(type: string): string {
+  const icons: Record<string, string> = {
+    'Key': 'mdi-key',
+    'Badge': 'mdi-badge-account',
+    'Device': 'mdi-cellphone',
+    'Equipment': 'mdi-wrench',
+    'Uniform': 'mdi-tshirt-crew',
+    'Other': 'mdi-package-variant'
+  }
+  return icons[type] || 'mdi-package-variant'
+}
+
+function getAssetTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    'Key': 'amber',
+    'Badge': 'primary',
+    'Device': 'info',
+    'Equipment': 'teal',
+    'Uniform': 'purple',
+    'Other': 'grey'
+  }
+  return colors[type] || 'grey'
+}
+
+function formatFileSize(bytes: number): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function getActionIcon(action: string): string {
+  const icons: Record<string, string> = {
+    'created': 'mdi-plus-circle',
+    'updated': 'mdi-pencil',
+    'deleted': 'mdi-delete',
+    'INSERT': 'mdi-plus-circle',
+    'UPDATE': 'mdi-pencil',
+    'DELETE': 'mdi-delete',
+    'note_added': 'mdi-note-plus',
+    'document_uploaded': 'mdi-file-upload',
+    'asset_assigned': 'mdi-package-variant-plus',
+    'asset_returned': 'mdi-package-variant-closed'
+  }
+  return icons[action] || 'mdi-information'
+}
+
+function getActionColor(action: string): string {
+  const colors: Record<string, string> = {
+    'created': 'success',
+    'updated': 'info',
+    'deleted': 'error',
+    'INSERT': 'success',
+    'UPDATE': 'info',
+    'DELETE': 'error',
+    'note_added': 'primary',
+    'document_uploaded': 'teal',
+    'asset_assigned': 'warning',
+    'asset_returned': 'success'
+  }
+  return colors[action] || 'grey'
+}
+
 // ==========================================
 // DATA LOADING
 // ==========================================
@@ -1358,7 +1953,11 @@ async function loadEmployeeData() {
         loadReliabilityScore(),
         loadNextShift(),
         loadPTOBalances(),
-        loadCompensation()
+        loadCompensation(),
+        loadNotes(),
+        loadDocuments(),
+        loadAssets(),
+        loadAuditLogs()
       ])
     } else {
       // Still load next shift for basic view
@@ -1562,6 +2161,77 @@ async function loadMentorships() {
   }
 }
 
+async function loadNotes() {
+  try {
+    const { data } = await supabase
+      .from('employee_notes')
+      .select(`
+        id,
+        note,
+        visibility,
+        created_at,
+        author:employees!employee_notes_author_employee_id_fkey(id, first_name, last_name, preferred_name)
+      `)
+      .eq('employee_id', employeeId.value)
+      .order('created_at', { ascending: false })
+
+    notes.value = data || []
+  } catch (err) {
+    console.log('[Profile] Notes not available:', err)
+  }
+}
+
+async function loadDocuments() {
+  try {
+    const { data } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('created_at', { ascending: false })
+
+    documents.value = data || []
+  } catch (err) {
+    console.log('[Profile] Documents not available:', err)
+  }
+}
+
+async function loadAssets() {
+  try {
+    const { data } = await supabase
+      .from('employee_assets')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .order('checked_out_at', { ascending: false })
+
+    assets.value = data || []
+  } catch (err) {
+    console.log('[Profile] Assets not available:', err)
+  }
+}
+
+async function loadAuditLogs() {
+  try {
+    // Load audit logs related to this employee
+    const { data } = await supabase
+      .from('audit_logs')
+      .select(`
+        id,
+        action,
+        entity_type,
+        metadata,
+        occurred_at,
+        actor:profiles!audit_logs_actor_profile_id_fkey(id, email)
+      `)
+      .eq('entity_id', employeeId.value)
+      .order('occurred_at', { ascending: false })
+      .limit(50)
+
+    auditLogs.value = data || []
+  } catch (err) {
+    console.log('[Profile] Audit logs not available:', err)
+  }
+}
+
 // ==========================================
 // ACTIONS
 // ==========================================
@@ -1628,6 +2298,84 @@ async function saveCompensation() {
     toast.error('Failed to save compensation')
   } finally {
     savingCompensation.value = false
+  }
+}
+
+async function saveNote() {
+  if (!noteForm.value.note.trim()) return
+  
+  savingNote.value = true
+  try {
+    // Get current employee id as author
+    const authorId = userStore.employee?.id
+    
+    const { error: err } = await supabase
+      .from('employee_notes')
+      .insert({
+        employee_id: employeeId.value,
+        author_employee_id: authorId,
+        note: noteForm.value.note.trim(),
+        visibility: noteForm.value.visibility
+      })
+    
+    if (err) throw err
+    
+    await loadNotes()
+    showNoteDialog.value = false
+    noteForm.value = { note: '', visibility: 'private' }
+    toast.success('Note added successfully')
+  } catch (err: any) {
+    console.error('Failed to save note:', err)
+    toast.error('Failed to save note')
+  } finally {
+    savingNote.value = false
+  }
+}
+
+async function saveAsset() {
+  if (!assetForm.value.asset_name.trim()) return
+  
+  savingAsset.value = true
+  try {
+    const { error: err } = await supabase
+      .from('employee_assets')
+      .insert({
+        employee_id: employeeId.value,
+        asset_name: assetForm.value.asset_name.trim(),
+        asset_type: assetForm.value.asset_type,
+        serial_number: assetForm.value.serial_number || null,
+        expected_return_date: assetForm.value.expected_return_date || null,
+        notes: assetForm.value.notes || null
+      })
+    
+    if (err) throw err
+    
+    await loadAssets()
+    showAssetDialog.value = false
+    assetForm.value = { asset_name: '', asset_type: 'Badge', serial_number: '', expected_return_date: null, notes: '' }
+    toast.success('Asset assigned successfully')
+  } catch (err: any) {
+    console.error('Failed to save asset:', err)
+    toast.error('Failed to assign asset')
+  } finally {
+    savingAsset.value = false
+  }
+}
+
+async function returnAsset(assetId: string) {
+  try {
+    const { error: err } = await supabase
+      .from('employee_assets')
+      .update({ returned_at: new Date().toISOString() })
+      .eq('id', assetId)
+    
+    if (err) throw err
+    
+    await loadAssets()
+    toast.success('Asset marked as returned')
+  } catch (err: any) {
+    console.error('Failed to return asset:', err)
+    toast.error('Failed to return asset')
   }
 }
 
