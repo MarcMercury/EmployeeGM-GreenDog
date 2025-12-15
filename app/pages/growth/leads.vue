@@ -84,6 +84,19 @@
           </div>
         </template>
 
+        <template #item.event_source="{ item }">
+          <v-chip 
+            v-if="item.source_event?.name" 
+            size="small" 
+            variant="tonal" 
+            color="primary"
+            prepend-icon="mdi-calendar-star"
+          >
+            {{ item.source_event.name }}
+          </v-chip>
+          <span v-else class="text-grey text-caption">Direct</span>
+        </template>
+
         <template #item.source="{ item }">
           <v-chip v-if="item.source" size="small" variant="tonal" color="secondary">
             {{ item.source }}
@@ -289,6 +302,7 @@ definePageMeta({
 interface Lead {
   id: string
   event_id: string | null
+  source_event_id: string | null
   lead_name: string
   email: string | null
   phone: string | null
@@ -296,6 +310,7 @@ interface Lead {
   status: string
   notes: string | null
   created_at: string
+  source_event?: { id: string; name: string } | null
 }
 
 interface Event {
@@ -344,6 +359,7 @@ const statusOptions = [
 
 const headers = [
   { title: 'Name', key: 'lead_name', sortable: true },
+  { title: 'Event Source', key: 'event_source', sortable: true },
   { title: 'Source', key: 'source', sortable: true },
   { title: 'Contact', key: 'contact', sortable: false },
   { title: 'Status', key: 'status', sortable: true },
@@ -566,7 +582,10 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [leadsRes, eventsRes] = await Promise.all([
-      client.from('marketing_leads').select('*').order('created_at', { ascending: false }),
+      client.from('marketing_leads').select(`
+        *,
+        source_event:source_event_id(id, name)
+      `).order('created_at', { ascending: false }),
       client.from('marketing_events').select('id, name').order('name')
     ])
 

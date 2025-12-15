@@ -94,6 +94,40 @@
             />
           </div>
 
+          <!-- Pet Name -->
+          <div class="mb-5">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Pet Name <span class="text-slate-500">(optional)</span>
+            </label>
+            <input 
+              v-model="form.pet_name"
+              type="text"
+              placeholder="Your pet's name"
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition"
+            />
+          </div>
+
+          <!-- Interested In (Service) -->
+          <div class="mb-5">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Interested In
+            </label>
+            <select 
+              v-model="form.interested_in"
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
+            >
+              <option value="">Select a service...</option>
+              <option value="wellness_exam">Wellness Exam</option>
+              <option value="vaccinations">Vaccinations</option>
+              <option value="dental_care">Dental Care</option>
+              <option value="surgery">Surgery</option>
+              <option value="grooming">Grooming</option>
+              <option value="boarding">Boarding</option>
+              <option value="emergency_care">Emergency Care</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
           <!-- Company (Optional) -->
           <div class="mb-5">
             <label class="block text-slate-300 text-sm font-medium mb-2">
@@ -187,6 +221,8 @@ const form = ref({
   last_name: '',
   email: '',
   phone: '',
+  pet_name: '',
+  interested_in: '',
   company: '',
   interest_level: 'learning_more',
   notes: ''
@@ -229,6 +265,13 @@ async function submitForm() {
     // Create full name from first + last
     const leadName = `${form.value.first_name} ${form.value.last_name}`.trim()
     
+    // Build notes with pet name and interested in service
+    const noteParts = []
+    if (form.value.pet_name) noteParts.push(`Pet: ${form.value.pet_name}`)
+    if (form.value.interested_in) noteParts.push(`Interested In: ${form.value.interested_in.replace(/_/g, ' ')}`)
+    if (form.value.notes) noteParts.push(form.value.notes)
+    const combinedNotes = noteParts.join(' | ') || null
+    
     const { error } = await supabase
       .from('marketing_leads')
       .insert({
@@ -239,7 +282,7 @@ async function submitForm() {
         phone: form.value.phone || null,
         company: form.value.company || null,
         interest_level: form.value.interest_level,
-        notes: form.value.notes || null,
+        notes: combinedNotes,
         source_event_id: eventId.value,
         event_id: eventId.value, // Also set event_id for backwards compat
         source: 'event_qr',

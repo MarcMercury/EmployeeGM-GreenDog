@@ -243,17 +243,30 @@
               />
             </div>
             
-            <!-- QR Code Display -->
+            <!-- QR Code Display using qrcode.vue -->
             <div class="d-flex justify-center mb-3">
-              <div class="bg-white pa-3 rounded-lg" style="width: fit-content;">
-                <img 
-                  :src="getQrCodeUrl(selectedEvent.id)" 
-                  :alt="`QR code for ${selectedEvent.name}`"
-                  width="150"
-                  height="150"
-                  class="d-block"
+              <div class="bg-white pa-4 rounded-lg" style="width: fit-content;">
+                <QrcodeVue 
+                  :value="getLeadCaptureUrl(selectedEvent.id)"
+                  :size="200"
+                  level="M"
+                  render-as="canvas"
+                  :id="`qr-canvas-${selectedEvent.id}`"
                 />
               </div>
+            </div>
+            
+            <!-- Download QR Button -->
+            <div class="d-flex justify-center mb-3">
+              <v-btn
+                color="primary"
+                variant="tonal"
+                prepend-icon="mdi-download"
+                size="small"
+                @click="downloadQrCode(selectedEvent)"
+              >
+                Download QR Code
+              </v-btn>
             </div>
             
             <!-- Lead Capture URL -->
@@ -721,6 +734,8 @@
 </template>
 
 <script setup lang="ts">
+import QrcodeVue from 'qrcode.vue'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'admin-only']
@@ -987,6 +1002,24 @@ const copyLeadCaptureUrl = async () => {
     console.error('Failed to copy:', err)
     showNotification('Failed to copy URL', 'error')
   }
+}
+
+const downloadQrCode = (event: MarketingEvent) => {
+  const canvas = document.getElementById(`qr-canvas-${event.id}`) as HTMLCanvasElement
+  if (!canvas) {
+    showNotification('Could not generate QR code', 'error')
+    return
+  }
+  
+  // Create download link
+  const link = document.createElement('a')
+  link.download = `QR-${event.name.replace(/[^a-zA-Z0-9]/g, '_')}.png`
+  link.href = canvas.toDataURL('image/png')
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  showNotification('QR code downloaded!')
 }
 
 const openDrawer = (event: MarketingEvent) => {
