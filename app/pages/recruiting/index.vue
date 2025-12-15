@@ -173,7 +173,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth', 'admin-only']
 })
 
 interface Candidate {
@@ -184,8 +184,9 @@ interface Candidate {
   status: string
   applied_at: string
   onboarding_complete: boolean
-  job_positions?: { title: string }
-  candidate_skills?: { skill_level: number }[]
+  target_position_id?: string
+  job_positions?: { title: string } | null
+  candidate_skills?: { rating: number }[]
   onboarding_checklist?: {
     contract_sent: boolean
     contract_signed: boolean
@@ -263,7 +264,7 @@ const getSkillMatch = (candidate: Candidate) => {
   // Calculate skill match based on candidate skills vs position requirements
   // For now, return a mock value based on skills count
   if (!candidate.candidate_skills?.length) return 0
-  const avgLevel = candidate.candidate_skills.reduce((sum, s) => sum + s.skill_level, 0) / candidate.candidate_skills.length
+  const avgLevel = candidate.candidate_skills.reduce((sum, s) => sum + (s.rating || 0), 0) / candidate.candidate_skills.length
   return Math.round(avgLevel * 20) // Convert 1-5 to percentage
 }
 
@@ -289,7 +290,7 @@ const fetchCandidates = async () => {
       .select(`
         *,
         job_positions:target_position_id(title),
-        candidate_skills(skill_level)
+        candidate_skills(rating)
       `)
       .order('applied_at', { ascending: false })
 
