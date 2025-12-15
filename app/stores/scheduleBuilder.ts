@@ -167,7 +167,6 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
             status,
             is_published,
             is_open_shift,
-            version,
             locations:location_id ( name )
           `)
           .gte('start_at', weekStart.toISOString())
@@ -553,14 +552,13 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
             role_required: shift.role_required,
             status: shift.status || 'draft',
             is_published: false,
-            is_open_shift: !shift.employee_id,
-            version: 1 // Initial version
+            is_open_shift: !shift.employee_id
           }))
 
           const insertResult = await withRetry(async () => {
             return await (client.from('shifts') as ReturnType<typeof client.from>)
               .insert(insertData)
-              .select('id, version')
+              .select('id')
           })
 
           if (insertResult.error) throw insertResult.error
@@ -570,14 +568,14 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
             newShifts.forEach((shift, idx) => {
               if (insertResult.data[idx]) {
                 shift.id = insertResult.data[idx].id
-                shift.version = insertResult.data[idx].version || 1
+                shift.version = 1
                 ;(shift as any).is_new = false
               }
             })
           }
         }
 
-        // 2. Update changed existing shifts with optimistic locking
+        // 2. Update changed existing shifts
         const changedShifts = this.draftShifts.filter(draft => {
           if ((draft as any).is_new) return false
           const db = this.dbShifts.find(s => s.id === draft.id)
@@ -586,87 +584,26 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
                  draft.status !== db.status
         })
 
-        const conflictedShiftIds: string[] = []
-
         for (const shift of changedShifts) {
-          // Use optimistic locking: only update if version matches
+          // Simple update without version checking (version column may not exist)
           const updateResult = await withRetry(async () => {
-            // First, check current version
-            const { data: currentData, error: checkError } = await client
-              .from('shifts')
-              .select('version')
-              .eq('id', shift.id)
-              .single()
-
-            if (checkError) throw checkError
-
-            const serverVersion = currentData?.version || 1
-            const expectedVersion = shift.version || 1
-
-            // Version mismatch - someone else modified this shift
-            if (serverVersion !== expectedVersion) {
-              throw new VersionConflictError('shift', shift.id, expectedVersion, serverVersion)
-            }
-
-            // Version matches - safe to update with version increment
             return await (client.from('shifts') as ReturnType<typeof client.from>)
               .update({
                 employee_id: shift.employee_id,
                 status: shift.status,
                 is_open_shift: !shift.employee_id,
-                updated_at: new Date().toISOString(),
-                version: serverVersion + 1 // Increment version
+                updated_at: new Date().toISOString()
               })
               .eq('id', shift.id)
-              .eq('version', serverVersion) // Double-check version in update
-              .select('version')
+              .select('id')
           }, {
             maxRetries: 2,
-            // Don't retry version conflicts
             retryIf: (err) => !isVersionConflict(err)
           })
 
           if (updateResult.error) {
-            if (isVersionConflict(updateResult.error)) {
-              conflictedShiftIds.push(shift.id)
-              console.warn('[ScheduleBuilder] Version conflict for shift:', shift.id)
-            } else {
-              throw updateResult.error
-            }
-          } else if (updateResult.data?.[0]) {
-            // Update local version
-            shift.version = updateResult.data[0].version
+            throw updateResult.error
           }
-        }
-
-        // Report conflicts
-        if (conflictedShiftIds.length > 0) {
-          // Reload conflicted shifts to get latest data
-          const { data: refreshedShifts } = await client
-            .from('shifts')
-            .select('id, employee_id, status, version')
-            .in('id', conflictedShiftIds)
-
-          if (refreshedShifts) {
-            refreshedShifts.forEach((rs: any) => {
-              // Update dbShifts with server state
-              const dbIndex = this.dbShifts.findIndex(s => s.id === rs.id)
-              if (dbIndex >= 0) {
-                this.dbShifts[dbIndex].employee_id = rs.employee_id
-                this.dbShifts[dbIndex].status = rs.status
-                this.dbShifts[dbIndex].version = rs.version
-              }
-              
-              // Add to conflict list
-              this.versionConflicts.push({
-                shiftId: rs.id,
-                serverVersion: rs.version
-              })
-            })
-          }
-
-          this.error = `${conflictedShiftIds.length} shift(s) were modified by another user. Please resolve conflicts.`
-          return false
         }
 
         // Sync db state
