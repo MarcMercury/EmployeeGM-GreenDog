@@ -385,15 +385,206 @@
             </v-row>
           </v-window-item>
 
-          <!-- TAB 2: COMPENSATION (Placeholder for Section 4) -->
+          <!-- TAB 2: COMPENSATION (Admin/Self Only) -->
           <v-window-item v-if="canViewSensitiveData" value="compensation">
-            <v-card class="bg-white shadow-sm rounded-xl pa-6" elevation="0">
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey-lighten-2">mdi-cash</v-icon>
-                <h3 class="text-h6 text-grey mt-4">Compensation Tab</h3>
-                <p class="text-body-2 text-grey">Section 4: Pay Details, CE Budget, Benefits</p>
-              </div>
-            </v-card>
+            <v-row>
+              <!-- Pay Details Widget -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="success">mdi-cash</v-icon>
+                    Pay Details
+                    <v-spacer />
+                    <v-btn 
+                      v-if="isAdmin" 
+                      icon="mdi-pencil" 
+                      size="x-small" 
+                      variant="text"
+                      @click="showCompensationDialog = true"
+                    />
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="compensation">
+                      <!-- Pay Rate Display -->
+                      <div class="pay-rate-display text-center py-4 mb-4 bg-grey-lighten-4 rounded-lg">
+                        <div class="text-h3 font-weight-bold text-success">
+                          ${{ formatPayRate(compensation.pay_rate) }}
+                        </div>
+                        <div class="text-body-2 text-grey">
+                          {{ compensation.pay_type === 'Hourly' ? 'per hour' : 'per year' }}
+                        </div>
+                      </div>
+
+                      <!-- Details List -->
+                      <v-list density="compact" class="bg-transparent">
+                        <v-list-item class="px-0">
+                          <template #prepend>
+                            <v-icon size="18" color="grey">mdi-briefcase-variant</v-icon>
+                          </template>
+                          <v-list-item-title class="text-body-2">Pay Type</v-list-item-title>
+                          <template #append>
+                            <span class="text-body-2 font-weight-medium">{{ compensation.pay_type || 'Not Set' }}</span>
+                          </template>
+                        </v-list-item>
+                        <v-list-item class="px-0">
+                          <template #prepend>
+                            <v-icon size="18" color="grey">mdi-account-group</v-icon>
+                          </template>
+                          <v-list-item-title class="text-body-2">Employment Status</v-list-item-title>
+                          <template #append>
+                            <v-chip size="x-small" variant="tonal" color="primary">
+                              {{ compensation.employment_status || 'Not Set' }}
+                            </v-chip>
+                          </template>
+                        </v-list-item>
+                        <v-list-item class="px-0">
+                          <template #prepend>
+                            <v-icon size="18" color="grey">mdi-calendar-check</v-icon>
+                          </template>
+                          <v-list-item-title class="text-body-2">Effective Date</v-list-item-title>
+                          <template #append>
+                            <span class="text-body-2">{{ formatDate(compensation.effective_date) }}</span>
+                          </template>
+                        </v-list-item>
+                      </v-list>
+                    </div>
+                    <div v-else class="text-center py-6">
+                      <v-icon size="48" color="grey-lighten-2">mdi-cash-remove</v-icon>
+                      <p class="text-body-2 text-grey mt-2">No compensation data</p>
+                      <v-btn 
+                        v-if="isAdmin" 
+                        variant="tonal" 
+                        color="primary" 
+                        size="small" 
+                        class="mt-2"
+                        @click="showCompensationDialog = true"
+                      >
+                        <v-icon start>mdi-plus</v-icon>
+                        Add Compensation
+                      </v-btn>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- CE Budget Tracker Widget -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="info">mdi-school</v-icon>
+                    CE Budget ({{ currentYear }})
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="compensation && compensation.ce_budget_total > 0">
+                      <!-- Progress Display -->
+                      <div class="ce-progress mb-4">
+                        <div class="d-flex justify-space-between mb-2">
+                          <span class="text-body-2">Budget Used</span>
+                          <span class="text-body-2 font-weight-bold">
+                            ${{ (compensation.ce_budget_used || 0).toFixed(2) }} / ${{ compensation.ce_budget_total.toFixed(2) }}
+                          </span>
+                        </div>
+                        <v-progress-linear
+                          :model-value="ceUsagePercent"
+                          :color="ceUsagePercent > 80 ? 'warning' : 'success'"
+                          height="12"
+                          rounded
+                        />
+                        <div class="d-flex justify-space-between mt-2">
+                          <span class="text-caption text-grey">
+                            {{ ceUsagePercent.toFixed(0) }}% used
+                          </span>
+                          <span :class="ceRemaining < 100 ? 'text-warning' : 'text-success'" class="text-caption font-weight-bold">
+                            ${{ ceRemaining.toFixed(2) }} remaining
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- Quick Stats -->
+                      <v-divider class="my-3" />
+                      <div class="d-flex justify-space-around text-center">
+                        <div>
+                          <div class="text-h6 font-weight-bold text-success">${{ compensation.ce_budget_total.toFixed(0) }}</div>
+                          <div class="text-caption text-grey">Total Budget</div>
+                        </div>
+                        <div>
+                          <div class="text-h6 font-weight-bold text-warning">${{ (compensation.ce_budget_used || 0).toFixed(0) }}</div>
+                          <div class="text-caption text-grey">Spent</div>
+                        </div>
+                        <div>
+                          <div class="text-h6 font-weight-bold" :class="ceRemaining < 100 ? 'text-error' : 'text-info'">${{ ceRemaining.toFixed(0) }}</div>
+                          <div class="text-caption text-grey">Available</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="text-center py-6">
+                      <v-icon size="48" color="grey-lighten-2">mdi-school-outline</v-icon>
+                      <p class="text-body-2 text-grey mt-2">No CE budget set</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Benefits Widget -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="purple">mdi-heart-pulse</v-icon>
+                    Benefits
+                  </v-card-title>
+                  <v-card-text>
+                    <div class="d-flex align-center justify-space-between mb-4">
+                      <span class="text-body-1">Enrolled in Benefits</span>
+                      <v-chip 
+                        :color="compensation?.benefits_enrolled ? 'success' : 'grey'" 
+                        variant="flat"
+                        size="small"
+                      >
+                        <v-icon start size="14">{{ compensation?.benefits_enrolled ? 'mdi-check' : 'mdi-close' }}</v-icon>
+                        {{ compensation?.benefits_enrolled ? 'Yes' : 'No' }}
+                      </v-chip>
+                    </div>
+                    
+                    <v-divider class="my-3" />
+                    
+                    <div>
+                      <div class="text-overline text-grey mb-1">BONUS PLAN</div>
+                      <p v-if="compensation?.bonus_plan_details" class="text-body-2">
+                        {{ compensation.bonus_plan_details }}
+                      </p>
+                      <p v-else class="text-body-2 text-grey font-italic">
+                        No bonus plan on record
+                      </p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Admin Actions Card -->
+              <v-col v-if="isAdmin" cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="warning">mdi-shield-account</v-icon>
+                    Admin Actions
+                  </v-card-title>
+                  <v-card-text>
+                    <v-btn 
+                      block 
+                      variant="tonal" 
+                      color="primary" 
+                      class="mb-2"
+                      @click="showCompensationDialog = true"
+                    >
+                      <v-icon start>mdi-pencil</v-icon>
+                      Edit Compensation
+                    </v-btn>
+                    <p class="text-caption text-grey text-center mt-2">
+                      Last updated: {{ compensation?.updated_at ? formatDate(compensation.updated_at) : 'Never' }}
+                    </p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
           </v-window-item>
 
           <!-- TAB 3: GROWTH & SKILLS (Placeholder for Section 5) -->
@@ -485,6 +676,112 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Compensation Edit Dialog -->
+    <v-dialog v-model="showCompensationDialog" max-width="600">
+      <v-card>
+        <v-card-title>
+          <v-icon start color="success">mdi-cash</v-icon>
+          Edit Compensation
+        </v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="compensationForm.pay_type"
+                :items="['Hourly', 'Salary']"
+                label="Pay Type"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model.number="compensationForm.pay_rate"
+                label="Pay Rate"
+                type="number"
+                :prefix="compensationForm.pay_type === 'Hourly' ? '$/hr' : '$/yr'"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="compensationForm.employment_status"
+                :items="['Full Time', 'Part Time', 'Contractor', 'Per Diem']"
+                label="Employment Status"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="compensationForm.effective_date"
+                label="Effective Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-switch
+                v-model="compensationForm.benefits_enrolled"
+                label="Enrolled in Benefits"
+                color="success"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="compensationForm.bonus_plan_details"
+                label="Bonus Plan Details"
+                placeholder="e.g., Quarterly Production Bonus"
+                variant="outlined"
+                density="compact"
+                rows="2"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-divider class="mb-4" />
+              <div class="text-subtitle-2 mb-3">CE Budget</div>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model.number="compensationForm.ce_budget_total"
+                label="Total Budget"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model.number="compensationForm.ce_budget_used"
+                label="Amount Used"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showCompensationDialog = false">Cancel</v-btn>
+          <v-btn
+            color="success"
+            variant="flat"
+            :loading="savingCompensation"
+            @click="saveCompensation"
+          >
+            <v-icon start>mdi-content-save</v-icon>
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -523,6 +820,7 @@ const ptoBalances = ref<any[]>([])
 const emergencyContact = ref({ name: '', phone: '', relationship: '' })
 const licenses = ref<any[]>([])
 const certifications = ref<any[]>([])
+const compensation = ref<any>(null)
 
 // Week days for availability
 const weekDays = [
@@ -542,6 +840,20 @@ const activeTab = ref('overview')
 const showDeleteDialog = ref(false)
 const deleteConfirmText = ref('')
 const deleting = ref(false)
+const showCompensationDialog = ref(false)
+const savingCompensation = ref(false)
+
+// Compensation form
+const compensationForm = ref({
+  pay_type: 'Hourly',
+  pay_rate: 0,
+  employment_status: 'Full Time',
+  benefits_enrolled: false,
+  bonus_plan_details: '',
+  ce_budget_total: 0,
+  ce_budget_used: 0,
+  effective_date: new Date().toISOString().split('T')[0]
+})
 
 // ==========================================
 // COMPUTED
@@ -572,6 +884,16 @@ const expiringLicensesCount = computed(() => {
     const daysUntil = differenceInDays(new Date(l.expiration_date), new Date())
     return daysUntil <= 60 && daysUntil >= 0
   }).length
+})
+
+const ceUsagePercent = computed(() => {
+  if (!compensation.value || !compensation.value.ce_budget_total) return 0
+  return ((compensation.value.ce_budget_used || 0) / compensation.value.ce_budget_total) * 100
+})
+
+const ceRemaining = computed(() => {
+  if (!compensation.value) return 0
+  return (compensation.value.ce_budget_total || 0) - (compensation.value.ce_budget_used || 0)
 })
 
 const tenure = computed(() => {
@@ -699,6 +1021,16 @@ function getCertStatusColor(cert: any): string {
   return 'success'
 }
 
+function formatPayRate(rate: number | null): string {
+  if (!rate) return '0.00'
+  if (rate >= 1000) {
+    // Salary - format with commas
+    return rate.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  }
+  // Hourly - format with 2 decimals
+  return rate.toFixed(2)
+}
+
 // ==========================================
 // DATA LOADING
 // ==========================================
@@ -739,7 +1071,8 @@ async function loadEmployeeData() {
       await Promise.all([
         loadReliabilityScore(),
         loadNextShift(),
-        loadPTOBalances()
+        loadPTOBalances(),
+        loadCompensation()
       ])
     } else {
       // Still load next shift for basic view
@@ -863,6 +1196,34 @@ async function loadCertifications() {
   }
 }
 
+async function loadCompensation() {
+  try {
+    const { data } = await supabase
+      .from('employee_compensation')
+      .select('*')
+      .eq('employee_id', employeeId.value)
+      .single()
+
+    compensation.value = data
+    
+    // Populate form if data exists
+    if (data) {
+      compensationForm.value = {
+        pay_type: data.pay_type || 'Hourly',
+        pay_rate: data.pay_rate || 0,
+        employment_status: data.employment_status || 'Full Time',
+        benefits_enrolled: data.benefits_enrolled || false,
+        bonus_plan_details: data.bonus_plan_details || '',
+        ce_budget_total: data.ce_budget_total || 0,
+        ce_budget_used: data.ce_budget_used || 0,
+        effective_date: data.effective_date || new Date().toISOString().split('T')[0]
+      }
+    }
+  } catch (err) {
+    console.log('[Profile] Compensation not available:', err)
+  }
+}
+
 // ==========================================
 // ACTIONS
 // ==========================================
@@ -888,6 +1249,47 @@ async function archiveEmployee() {
     toast.error('Failed to archive employee')
   } finally {
     deleting.value = false
+  }
+}
+
+async function saveCompensation() {
+  savingCompensation.value = true
+  try {
+    const compData = {
+      employee_id: employeeId.value,
+      pay_type: compensationForm.value.pay_type,
+      pay_rate: compensationForm.value.pay_rate,
+      employment_status: compensationForm.value.employment_status,
+      benefits_enrolled: compensationForm.value.benefits_enrolled,
+      bonus_plan_details: compensationForm.value.bonus_plan_details || null,
+      ce_budget_total: compensationForm.value.ce_budget_total,
+      ce_budget_used: compensationForm.value.ce_budget_used,
+      effective_date: compensationForm.value.effective_date
+    }
+
+    if (compensation.value) {
+      // Update existing
+      const { error: err } = await supabase
+        .from('employee_compensation')
+        .update(compData)
+        .eq('id', compensation.value.id)
+      if (err) throw err
+    } else {
+      // Insert new
+      const { error: err } = await supabase
+        .from('employee_compensation')
+        .insert(compData)
+      if (err) throw err
+    }
+
+    await loadCompensation()
+    showCompensationDialog.value = false
+    toast.success('Compensation updated successfully')
+  } catch (err: any) {
+    console.error('Failed to save compensation:', err)
+    toast.error('Failed to save compensation')
+  } finally {
+    savingCompensation.value = false
   }
 }
 
