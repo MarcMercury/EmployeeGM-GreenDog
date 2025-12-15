@@ -22,6 +22,7 @@ interface ShiftTemplate {
   start_time: string
   end_time: string
   color?: string
+  isBreak?: boolean // Visual separator row
 }
 
 // Composables
@@ -37,6 +38,16 @@ const isLoading = ref(true)
 
 // Roster filters
 const rosterPositionFilter = ref<string | null>(null)
+
+// Location filters - track which locations are visible
+const visibleLocationIds = ref<Set<string>>(new Set())
+
+// Initialize visible locations when locations load
+watch(() => locations.value, (locs) => {
+  if (locs?.length && visibleLocationIds.value.size === 0) {
+    visibleLocationIds.value = new Set(locs.map(l => l.id))
+  }
+}, { immediate: true })
 
 // Drag state
 const draggedEmployee = ref<any>(null)
@@ -58,7 +69,7 @@ const editForm = ref({
 const isPublishing = ref(false)
 const publishDialog = ref(false)
 
-// Default shift templates
+// Default shift templates (with section breaks)
 const defaultShiftTemplates: ShiftTemplate[] = [
   { id: 'd1', role_name: 'VET-SURGERY', name: 'Surgeon', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ff00ff' },
   { id: 'd2', role_name: 'Intern', name: 'Intern', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99ff' },
@@ -66,19 +77,23 @@ const defaultShiftTemplates: ShiftTemplate[] = [
   { id: 'd4', role_name: 'Surgery Lead', name: 'Surg Lead', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ff66cc' },
   { id: 'd5', role_name: 'Surgery Tech 1', name: 'Surg Tech 1', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99cc' },
   { id: 'd6', role_name: 'Surgery Tech 2', name: 'Surg Tech 2', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffcccc' },
+  { id: 'break1', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
   { id: 'd7', role_name: 'VET-AP', name: 'AP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ffff00' },
   { id: 'd8', role_name: 'AP Lead', name: 'AP Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffff66' },
   { id: 'd9', role_name: 'AP Tech', name: 'AP Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffffcc' },
+  { id: 'break2', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
   { id: 'd10', role_name: 'VET-NAP', name: 'NAP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ffff' },
   { id: 'd11', role_name: 'DA - NAP', name: 'DA NAP', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#66ffff' },
   { id: 'd12', role_name: 'DA - TRAINING', name: 'DA Training', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#99ffff' },
   { id: 'd13', role_name: 'Clinic Tech', name: 'Clinic Tech', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ccffff' },
   { id: 'd14', role_name: 'Float/Lead', name: 'Float Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffcc00' },
   { id: 'd15', role_name: 'Dentals', name: 'Dentals', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff9900' },
+  { id: 'break3', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
   { id: 'd16', role_name: 'VET-IM', name: 'IM Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff00' },
   { id: 'd17', role_name: 'IM Tech/DA', name: 'IM Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#99ff99' },
   { id: 'd18', role_name: 'VET-EXOTICS', name: 'Exotics Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff99' },
   { id: 'd19', role_name: 'Exotics Tech', name: 'Exotics Tech', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#99ffcc' },
+  { id: 'break4', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
   { id: 'd20', role_name: 'VET-MPMV', name: 'MPMV Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#0099ff' },
   { id: 'd21', role_name: 'Manager', name: 'Manager', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#e0e0e0' },
   { id: 'd22', role_name: 'In House Admin', name: 'Admin', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#d0d0d0' },
@@ -105,8 +120,31 @@ function getLocAbbrev(name: string): string {
   return name?.substring(0, 3).toUpperCase() || '???'
 }
 
-// Active locations
-const activeLocations = computed(() => locations.value || [])
+// Active locations - filtered by visibility toggle
+const activeLocations = computed(() => {
+  const all = locations.value || []
+  if (visibleLocationIds.value.size === 0) return all
+  return all.filter(loc => visibleLocationIds.value.has(loc.id))
+})
+
+// Toggle location visibility
+function toggleLocation(locId: string) {
+  const newSet = new Set(visibleLocationIds.value)
+  if (newSet.has(locId)) {
+    // Don't allow hiding all locations
+    if (newSet.size > 1) {
+      newSet.delete(locId)
+    }
+  } else {
+    newSet.add(locId)
+  }
+  visibleLocationIds.value = newSet
+}
+
+// Check if location is visible
+function isLocationVisible(locId: string): boolean {
+  return visibleLocationIds.value.has(locId)
+}
 
 // Position options for filter
 const positionOptions = computed(() => {
@@ -157,6 +195,7 @@ function getRoleColor(role: string, template?: ShiftTemplate): string {
 
 // Open shift edit dialog
 function openShiftEdit(tmpl: ShiftTemplate) {
+  if (tmpl.isBreak) return // Don't edit breaks
   editingShift.value = tmpl
   editForm.value = {
     role_name: tmpl.role_name,
@@ -167,6 +206,28 @@ function openShiftEdit(tmpl: ShiftTemplate) {
     color: tmpl.color || getRoleColor(tmpl.role_name)
   }
   editDialog.value = true
+}
+
+// Insert a section break after a shift
+function insertBreakAfter(tmplId: string) {
+  const idx = shiftTemplates.value.findIndex(t => t.id === tmplId)
+  if (idx >= 0) {
+    const breakId = `break-${Date.now()}`
+    shiftTemplates.value.splice(idx + 1, 0, {
+      id: breakId,
+      role_name: '',
+      name: '',
+      raw_shift: null,
+      start_time: '',
+      end_time: '',
+      isBreak: true
+    })
+  }
+}
+
+// Remove a section break
+function removeBreak(breakId: string) {
+  shiftTemplates.value = shiftTemplates.value.filter(t => t.id !== breakId)
 }
 
 // Save shift template changes
@@ -426,6 +487,23 @@ onMounted(async () => {
       </div>
     </header>
 
+    <!-- Location Filter Bar -->
+    <div class="location-bar">
+      <span class="location-label">LOCATIONS:</span>
+      <div class="location-toggles">
+        <button
+          v-for="loc in locations"
+          :key="loc.id"
+          type="button"
+          class="loc-toggle"
+          :class="{ active: isLocationVisible(loc.id) }"
+          @click="toggleLocation(loc.id)"
+        >
+          {{ getLocAbbrev(loc.name) }}
+        </button>
+      </div>
+    </div>
+
     <div class="main-layout">
       <!-- LEFT: Roster Sidebar -->
       <aside class="roster">
@@ -493,39 +571,61 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="tmpl in shiftTemplates" :key="tmpl.id" class="row-shift">
-                <td 
-                  class="col-shift col-shift-clickable" 
-                  :style="{ backgroundColor: tmpl.color || getRoleColor(tmpl.role_name, tmpl) }"
-                  @click="openShiftEdit(tmpl)"
-                >
-                  <div class="shift-role">{{ tmpl.role_name }}</div>
-                  <div class="shift-time">{{ tmpl.raw_shift }}</div>
-                  <v-icon class="shift-edit-icon" size="12">mdi-pencil</v-icon>
-                </td>
-                <template v-for="day in weekDays" :key="`cells-${tmpl.id}-${day.toISOString()}`">
-                  <td 
-                    v-for="loc in activeLocations"
-                    :key="getCellKey(tmpl.id, day, loc.id)"
-                    class="col-cell"
-                    :class="{ 
-                      'drag-over': dragOverCell === getCellKey(tmpl.id, day, loc.id),
-                      'has-emp': getCellAssignment(tmpl, day, loc.id),
-                      'today': isSameDay(day, new Date())
-                    }"
-                    @dragover="onDragOver(getCellKey(tmpl.id, day, loc.id), $event)"
-                    @dragleave="onDragLeave"
-                    @drop="onDrop(tmpl, day, loc.id, $event)"
-                  >
-                    <template v-if="getCellAssignment(tmpl, day, loc.id)">
-                      <div class="cell-emp">
-                        <span>{{ getCellAssignment(tmpl, day, loc.id)?.employees?.first_name }}</span>
-                        <button class="cell-remove" @click="removeAssignment(getCellAssignment(tmpl, day, loc.id)!.id)">×</button>
-                      </div>
-                    </template>
+              <template v-for="(tmpl, tmplIdx) in shiftTemplates" :key="tmpl.id">
+                <!-- Section Break Row -->
+                <tr v-if="tmpl.isBreak" class="row-break">
+                  <td class="col-break-shift">
+                    <button class="break-remove" @click="removeBreak(tmpl.id)" title="Remove break">×</button>
                   </td>
-                </template>
-              </tr>
+                  <td 
+                    v-for="day in weekDays" 
+                    :key="`break-${tmpl.id}-${day.toISOString()}`"
+                    :colspan="activeLocations.length"
+                    class="col-break"
+                  ></td>
+                </tr>
+                <!-- Regular Shift Row -->
+                <tr v-else class="row-shift">
+                  <td 
+                    class="col-shift col-shift-clickable" 
+                    :style="{ backgroundColor: tmpl.color || getRoleColor(tmpl.role_name, tmpl) }"
+                    @click="openShiftEdit(tmpl)"
+                  >
+                    <div class="shift-role">{{ tmpl.role_name }}</div>
+                    <div class="shift-time">{{ tmpl.raw_shift }}</div>
+                    <v-icon class="shift-edit-icon" size="12">mdi-pencil</v-icon>
+                    <button 
+                      class="add-break-btn" 
+                      @click.stop="insertBreakAfter(tmpl.id)" 
+                      title="Add section break below"
+                    >
+                      <v-icon size="10">mdi-minus</v-icon>
+                    </button>
+                  </td>
+                  <template v-for="day in weekDays" :key="`cells-${tmpl.id}-${day.toISOString()}`">
+                    <td 
+                      v-for="loc in activeLocations"
+                      :key="getCellKey(tmpl.id, day, loc.id)"
+                      class="col-cell"
+                      :class="{ 
+                        'drag-over': dragOverCell === getCellKey(tmpl.id, day, loc.id),
+                        'has-emp': getCellAssignment(tmpl, day, loc.id),
+                        'today': isSameDay(day, new Date())
+                      }"
+                      @dragover="onDragOver(getCellKey(tmpl.id, day, loc.id), $event)"
+                      @dragleave="onDragLeave"
+                      @drop="onDrop(tmpl, day, loc.id, $event)"
+                    >
+                      <template v-if="getCellAssignment(tmpl, day, loc.id)">
+                        <div class="cell-emp">
+                          <span>{{ getCellAssignment(tmpl, day, loc.id)?.employees?.first_name }}</span>
+                          <button class="cell-remove" @click="removeAssignment(getCellAssignment(tmpl, day, loc.id)!.id)">×</button>
+                        </div>
+                      </template>
+                    </td>
+                  </template>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -676,6 +776,45 @@ onMounted(async () => {
 .week-label {
   font-weight: 500;
   padding: 0 12px;
+}
+
+/* Location Filter Bar */
+.location-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid #ddd;
+}
+.location-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+}
+.location-toggles {
+  display: flex;
+  gap: 4px;
+}
+.loc-toggle {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.loc-toggle:hover {
+  border-color: #1976d2;
+  color: #1976d2;
+}
+.loc-toggle.active {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #fff;
 }
 
 /* Main Layout */
@@ -849,6 +988,74 @@ onMounted(async () => {
 }
 .col-shift-clickable:hover .shift-edit-icon {
   opacity: 1;
+}
+.add-break-btn {
+  position: absolute;
+  bottom: 1px;
+  right: 4px;
+  width: 16px;
+  height: 10px;
+  background: #888;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+.col-shift-clickable:hover .add-break-btn {
+  opacity: 0.6;
+}
+.add-break-btn:hover {
+  opacity: 1 !important;
+  background: #555;
+}
+
+/* Section Break Rows */
+.row-break {
+  height: 8px !important;
+}
+.col-break-shift {
+  min-width: 100px;
+  max-width: 120px;
+  background: #666 !important;
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  height: 8px !important;
+  padding: 0 !important;
+  border: none !important;
+  position: relative;
+}
+.col-break {
+  background: #666 !important;
+  height: 8px !important;
+  padding: 0 !important;
+  border-top: none !important;
+  border-bottom: none !important;
+}
+.break-remove {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  line-height: 1;
+}
+.row-break:hover .break-remove {
+  opacity: 0.7;
+}
+.break-remove:hover {
+  opacity: 1 !important;
 }
 
 /* Cells */
