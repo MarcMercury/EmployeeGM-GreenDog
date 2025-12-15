@@ -395,6 +395,10 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
                 </NuxtLink>
+                <NuxtLink to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
+                  Master Roster
+                </NuxtLink>
               </div>
             </div>
           </template>
