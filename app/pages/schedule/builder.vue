@@ -1,77 +1,35 @@
 <script setup lang="ts">
 /**
- * Schedule Builder - The "Cockpit"
+ * Schedule Builder - Spreadsheet Style
  * 
- * LAYOUT:
- * - LEFT: Employee Roster (drag source)
- * - CENTER: Calendar grid with Shift Templates as ROWS
- * - Days of week as columns
+ * LAYOUT (matches Excel reference):
+ * - Column 1: Employee Name
+ * - Column 2: Wk# (shift count this week)
+ * - Column 3: Hrs (total hours)
+ * - Column 4: Role (position/department)
+ * - Column 5: Shift (default shift time)
+ * - Columns 6+: Days of week with location sub-columns
  */
-import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 
 definePageMeta({
   middleware: ['auth', 'admin-only'],
   layout: 'default'
 })
 
-// Types
-interface ShiftTemplate {
-  id: string
-  role_name: string
-  name: string
-  raw_shift: string | null
-  start_time: string
-  end_time: string
-  is_remote: boolean
-  is_active: boolean
-}
-
-interface GridShift {
-  id: string
-  templateId: string
-  date: string
-  locationId: string
-  employeeId: string | null
-  employeeName: string | null
-  status: string
-}
-
-// Stores and composables
-const scheduleStore = useScheduleBuilderStore()
-const { employees, locations, isAdmin } = useAppData()
+// Composables
+const { employees, locations } = useAppData()
 const toast = useToast()
 const supabase = useSupabaseClient()
 
-// --- State ---
-const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 1 }))
-const shiftTemplates = ref<ShiftTemplate[]>([])
-const gridShifts = ref<GridShift[]>([])
+// State
+const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 0 })) // Sunday start like Excel
+const shifts = ref<any[]>([])
 const isLoading = ref(true)
+const editingCell = ref<string | null>(null)
+const editingShift = ref<string | null>(null)
 
-// Default shift templates if none in DB
-const defaultShiftTemplates: ShiftTemplate[] = [
-  { id: 'default-1', role_name: 'Veterinarian', name: 'Morning Vet', raw_shift: '8am-4pm', start_time: '08:00', end_time: '16:00', is_remote: false, is_active: true },
-  { id: 'default-2', role_name: 'Veterinarian', name: 'Afternoon Vet', raw_shift: '10am-6pm', start_time: '10:00', end_time: '18:00', is_remote: false, is_active: true },
-  { id: 'default-3', role_name: 'Vet Tech', name: 'Morning Tech', raw_shift: '7am-3pm', start_time: '07:00', end_time: '15:00', is_remote: false, is_active: true },
-  { id: 'default-4', role_name: 'Vet Tech', name: 'Day Tech', raw_shift: '9am-5pm', start_time: '09:00', end_time: '17:00', is_remote: false, is_active: true },
-  { id: 'default-5', role_name: 'Vet Assistant', name: 'Assistant AM', raw_shift: '8am-4pm', start_time: '08:00', end_time: '16:00', is_remote: false, is_active: true },
-  { id: 'default-6', role_name: 'Vet Assistant', name: 'Assistant PM', raw_shift: '12pm-8pm', start_time: '12:00', end_time: '20:00', is_remote: false, is_active: true },
-  { id: 'default-7', role_name: 'Client Service', name: 'Front Desk AM', raw_shift: '7am-3pm', start_time: '07:00', end_time: '15:00', is_remote: false, is_active: true },
-  { id: 'default-8', role_name: 'Client Service', name: 'Front Desk PM', raw_shift: '11am-7pm', start_time: '11:00', end_time: '19:00', is_remote: false, is_active: true },
-]
-
-// Sidebar filters
-const employeeSearch = ref('')
-
-// Drag state
-const draggedEmployee = ref<any>(null)
-const dragOverCellKey = ref<string | null>(null)
-
-// Dialogs
-const showLocationPicker = ref(false)
-const visibleLocations = ref<string[]>([])
-
-// --- Computed ---
+// Week days (Sun-Sat to match screenshot)
 const weekDays = computed(() => {
   const days = []
   for (let i = 0; i < 7; i++) {
@@ -80,458 +38,329 @@ const weekDays = computed(() => {
   return days
 })
 
-const filteredEmployees = computed(() => {
-  let result = (employees.value || []).filter(e => e.is_active)
-  
-  if (employeeSearch.value) {
-    const search = employeeSearch.value.toLowerCase()
-    result = result.filter(e => 
-      e.full_name?.toLowerCase().includes(search) ||
-      (e.position?.title || '').toLowerCase().includes(search)
-    )
-  }
-  
-  return result
+// Active locations for columns
+const activeLocations = computed(() => locations.value || [])
+
+// Employee data with shift info
+const employeeRows = computed(() => {
+  return (employees.value || [])
+    .filter(e => e.is_active)
+    .map(emp => {
+      const empShifts = shifts.value.filter(s => s.employee_id === emp.id)
+      const weekHours = empShifts.reduce((acc, s) => {
+        if (s.start_at && s.end_at) {
+          const start = new Date(s.start_at)
+          const end = new Date(s.end_at)
+          return acc + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+        }
+        return acc
+      }, 0)
+      
+      return {
+        id: emp.id,
+        name: `${emp.first_name} ${emp.last_name}`,
+        shortName: `${emp.first_name} ${emp.last_name?.charAt(0)}.`,
+        role: emp.position?.title || '',
+        shift: emp.default_shift || '9-5:30 (8)',
+        shiftCount: empShifts.length,
+        hours: Math.round(weekHours),
+        color: getRoleColor(emp.position?.title || '')
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
 
-const activeLocations = computed(() => {
-  const locs = locations.value || []
-  if (visibleLocations.value.length === 0) return locs
-  return locs.filter(l => visibleLocations.value.includes(l.id))
-})
-
-const getEmployeeShiftCount = (employeeId: string): number => {
-  return gridShifts.value.filter(s => s.employeeId === employeeId).length
+// Get role-based color
+function getRoleColor(role: string): string {
+  const r = role.toLowerCase()
+  if (r.includes('vet') && (r.includes('surgery') || r.includes('surg'))) return '#ff00ff'
+  if (r.includes('vet') && r.includes('intern')) return '#ff99ff'
+  if (r.includes('extern') || r.includes('student')) return '#ffccff'
+  if (r.includes('surgery lead')) return '#ff66ff'
+  if (r.includes('surgery tech')) return '#ff99ff'
+  if (r.includes('vet') && r.includes('ap')) return '#ffff00'
+  if (r.includes('ap lead')) return '#ffff66'
+  if (r.includes('ap tech')) return '#ffffcc'
+  if (r.includes('vet') && r.includes('nap')) return '#00ffff'
+  if (r.includes('da ') || r.includes('doctor')) return '#99ffff'
+  if (r.includes('da train')) return '#66ffff'
+  if (r.includes('clinic tech')) return '#ccffff'
+  if (r.includes('float') || r.includes('lead')) return '#ffcc00'
+  if (r.includes('dental')) return '#ff9900'
+  if (r.includes('vet') && r.includes('im')) return '#00ff00'
+  if (r.includes('im tech')) return '#99ff99'
+  if (r.includes('vet') && r.includes('exotic')) return '#00ff99'
+  if (r.includes('exotic tech')) return '#99ffcc'
+  if (r.includes('vet') && r.includes('mpmv')) return '#0099ff'
+  if (r.includes('manager')) return '#ffffff'
+  if (r.includes('admin')) return '#e0e0e0'
+  if (r.includes('inventory')) return '#cccccc'
+  return '#ffffff'
 }
 
-// --- Load Data ---
-const loadShiftTemplates = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('shift_templates')
-      .select('*')
-      .eq('is_active', true)
-      .order('start_time')
-      .order('role_name')
-    
-    if (error) {
-      console.warn('Error loading shift templates:', error)
-      shiftTemplates.value = defaultShiftTemplates
-    } else if (!data || data.length === 0) {
-      console.log('No shift templates in DB, using defaults')
-      shiftTemplates.value = defaultShiftTemplates
-    } else {
-      shiftTemplates.value = data
-    }
-  } catch (err) {
-    console.error('Error loading shift templates:', err)
-    shiftTemplates.value = defaultShiftTemplates
-  }
+// Get shift for a specific cell
+function getShiftForCell(employeeId: string, date: Date, locationId: string) {
+  const dateStr = format(date, 'yyyy-MM-dd')
+  return shifts.value.find(s => 
+    s.employee_id === employeeId &&
+    s.location_id === locationId &&
+    s.start_at?.startsWith(dateStr)
+  )
 }
 
-const loadWeekShifts = async () => {
+// Check if employee is scheduled at any location on this day
+function isScheduledOnDay(employeeId: string, date: Date, locationId: string): boolean {
+  return !!getShiftForCell(employeeId, date, locationId)
+}
+
+// Load shifts for current week
+async function loadShifts() {
   isLoading.value = true
   try {
     const weekEnd = addDays(currentWeekStart.value, 7)
-    
     const { data, error } = await supabase
       .from('shifts')
-      .select(`
-        id,
-        start_at,
-        end_at,
-        location_id,
-        employee_id,
-        role_required,
-        status,
-        employees:employee_id ( first_name, last_name )
-      `)
+      .select('*')
       .gte('start_at', currentWeekStart.value.toISOString())
       .lt('start_at', weekEnd.toISOString())
-      .order('start_at')
-
-    if (error) {
-      console.warn('Error loading shifts:', error)
-      gridShifts.value = []
-    } else {
-      // Map DB shifts to grid shifts
-      gridShifts.value = (data || []).map((s: any) => ({
-        id: s.id,
-        templateId: '', // We'll match by time/role
-        date: s.start_at?.split('T')[0] || '',
-        locationId: s.location_id,
-        employeeId: s.employee_id,
-        employeeName: s.employees ? `${s.employees.first_name} ${s.employees.last_name?.charAt(0)}.` : null,
-        status: s.status
-      }))
-    }
+    
+    if (error) throw error
+    shifts.value = data || []
   } catch (err) {
-    console.error('Error loading week shifts:', err)
-    gridShifts.value = []
+    console.error('Error loading shifts:', err)
+    shifts.value = []
   } finally {
     isLoading.value = false
   }
 }
 
-// --- Grid Helpers ---
-const getCellKey = (templateId: string, locationId: string, dateStr: string): string => {
-  return `${templateId}-${locationId}-${dateStr}`
-}
-
-const getShiftForCell = (templateId: string, locationId: string, dateStr: string): GridShift | null => {
-  const template = shiftTemplates.value.find(t => t.id === templateId)
-  if (!template) return null
+// Toggle shift assignment
+async function toggleShift(employeeId: string, date: Date, locationId: string) {
+  const existing = getShiftForCell(employeeId, date, locationId)
+  const emp = employeeRows.value.find(e => e.id === employeeId)
   
-  return gridShifts.value.find(s => 
-    s.locationId === locationId &&
-    s.date === dateStr
-  ) || null
-}
-
-// --- Drag & Drop ---
-const handleDragStart = (employee: any, event: DragEvent) => {
-  draggedEmployee.value = employee
-  event.dataTransfer?.setData('text/plain', employee.id)
-}
-
-const handleDragEnd = () => {
-  draggedEmployee.value = null
-  dragOverCellKey.value = null
-}
-
-const handleDragOverCell = (cellKey: string, event: DragEvent) => {
-  event.preventDefault()
-  dragOverCellKey.value = cellKey
-}
-
-const handleDragLeaveCell = () => {
-  dragOverCellKey.value = null
-}
-
-const handleDropOnCell = async (template: ShiftTemplate, locationId: string, date: Date, event: DragEvent) => {
-  event.preventDefault()
-  
-  if (!draggedEmployee.value) return
-  
-  const dateStr = format(date, 'yyyy-MM-dd')
-  const cellKey = getCellKey(template.id, locationId, dateStr)
-  
-  // Create shift datetime
-  const startDateTime = `${dateStr}T${template.start_time}:00`
-  const endDateTime = `${dateStr}T${template.end_time}:00`
-  
-  try {
-    // Check if shift already exists
-    let existingShift = gridShifts.value.find(s => 
-      s.locationId === locationId && s.date === dateStr
-    )
-    
-    if (existingShift) {
-      // Update existing shift
+  if (existing) {
+    // Remove shift
+    try {
       const { error } = await supabase
         .from('shifts')
-        .update({ 
-          employee_id: draggedEmployee.value.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingShift.id)
+        .delete()
+        .eq('id', existing.id)
       
       if (error) throw error
-      
-      existingShift.employeeId = draggedEmployee.value.id
-      existingShift.employeeName = `${draggedEmployee.value.first_name} ${draggedEmployee.value.last_name?.charAt(0)}.`
-    } else {
-      // Create new shift
+      shifts.value = shifts.value.filter(s => s.id !== existing.id)
+    } catch (err) {
+      console.error('Error removing shift:', err)
+      toast.error('Failed to remove shift')
+    }
+  } else {
+    // Add shift - parse employee's default shift time
+    const shiftTime = emp?.shift || '9-5:30'
+    const [startStr, endStr] = shiftTime.replace(/\s*\(\d+\)/, '').split('-')
+    
+    const startHour = parseTimeToHour(startStr)
+    const endHour = parseTimeToHour(endStr)
+    
+    const dateStr = format(date, 'yyyy-MM-dd')
+    const startAt = `${dateStr}T${String(startHour).padStart(2, '0')}:00:00`
+    const endAt = `${dateStr}T${String(endHour).padStart(2, '0')}:00:00`
+    
+    try {
       const { data, error } = await supabase
         .from('shifts')
         .insert({
+          employee_id: employeeId,
           location_id: locationId,
-          employee_id: draggedEmployee.value.id,
-          start_at: startDateTime,
-          end_at: endDateTime,
-          role_required: template.role_name,
-          status: 'draft',
-          is_open_shift: false
+          start_at: startAt,
+          end_at: endAt,
+          status: 'draft'
         })
-        .select('id')
+        .select()
         .single()
       
       if (error) throw error
-      
-      gridShifts.value.push({
-        id: data.id,
-        templateId: template.id,
-        date: dateStr,
-        locationId: locationId,
-        employeeId: draggedEmployee.value.id,
-        employeeName: `${draggedEmployee.value.first_name} ${draggedEmployee.value.last_name?.charAt(0)}.`,
-        status: 'draft'
-      })
+      shifts.value.push(data)
+    } catch (err) {
+      console.error('Error adding shift:', err)
+      toast.error('Failed to add shift')
     }
-    
-    toast.success(`Assigned ${draggedEmployee.value.first_name}`)
-  } catch (err: any) {
-    console.error('Error assigning shift:', err)
-    toast.error('Failed to assign shift')
-  }
-  
-  handleDragEnd()
-}
-
-const unassignFromCell = async (shift: GridShift) => {
-  try {
-    const { error } = await supabase
-      .from('shifts')
-      .update({ employee_id: null })
-      .eq('id', shift.id)
-    
-    if (error) throw error
-    
-    shift.employeeId = null
-    shift.employeeName = null
-    toast.info('Employee unassigned')
-  } catch (err) {
-    console.error('Error unassigning:', err)
-    toast.error('Failed to unassign')
   }
 }
 
-// --- Week Navigation ---
-const previousWeek = () => {
+function parseTimeToHour(timeStr: string): number {
+  const cleaned = timeStr.trim().toLowerCase()
+  let hour = parseInt(cleaned)
+  if (cleaned.includes(':')) {
+    hour = parseInt(cleaned.split(':')[0])
+  }
+  // Assume PM for times < 7
+  if (hour < 7) hour += 12
+  return hour
+}
+
+// Edit shift time for employee
+function startEditShift(employeeId: string) {
+  editingShift.value = employeeId
+}
+
+async function saveShift(employeeId: string, newShift: string) {
+  // This would save to employee's default_shift field
+  // For now just update local state
+  const emp = employees.value?.find(e => e.id === employeeId)
+  if (emp) {
+    (emp as any).default_shift = newShift
+  }
+  editingShift.value = null
+}
+
+// Navigation
+function previousWeek() {
   currentWeekStart.value = addDays(currentWeekStart.value, -7)
 }
 
-const nextWeek = () => {
+function nextWeek() {
   currentWeekStart.value = addDays(currentWeekStart.value, 7)
 }
 
-const goToToday = () => {
-  currentWeekStart.value = startOfWeek(new Date(), { weekStartsOn: 1 })
+function goToToday() {
+  currentWeekStart.value = startOfWeek(new Date(), { weekStartsOn: 0 })
 }
 
-// --- Lifecycle ---
-watch(currentWeekStart, () => {
-  loadWeekShifts()
+// Get week number
+const weekNumber = computed(() => {
+  const start = new Date(currentWeekStart.value.getFullYear(), 0, 1)
+  const diff = currentWeekStart.value.getTime() - start.getTime()
+  return Math.ceil((diff / (1000 * 60 * 60 * 24) + 1) / 7)
 })
 
-onMounted(async () => {
-  visibleLocations.value = (locations.value || []).map(l => l.id)
-  await loadShiftTemplates()
-  await loadWeekShifts()
-})
+// Watch for week changes
+watch(currentWeekStart, loadShifts)
+
+onMounted(loadShifts)
 </script>
 
 <template>
   <div class="schedule-builder">
-    <!-- Header -->
-    <header class="builder-header">
+    <!-- Compact Header -->
+    <div class="header-bar">
       <div class="header-left">
-        <h1 class="text-h5 font-weight-bold">Schedule Builder</h1>
-        <v-chip color="error" variant="flat" size="x-small" class="ml-2">ADMIN</v-chip>
+        <span class="title">Schedule Builder</span>
+        <v-chip color="red" size="x-small" class="ml-1">ADMIN</v-chip>
       </div>
-
       <div class="header-center">
-        <v-btn icon="mdi-chevron-left" size="small" variant="text" @click="previousWeek" />
-        <v-btn variant="tonal" size="small" class="mx-2" @click="goToToday">TODAY</v-btn>
-        <span class="week-label">
-          {{ format(currentWeekStart, 'MMM d') }} – {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
+        <v-btn icon size="x-small" variant="text" @click="previousWeek">
+          <v-icon size="16">mdi-chevron-left</v-icon>
+        </v-btn>
+        <span class="week-info">
+          WEEK {{ weekNumber }} | {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
         </span>
-        <v-btn icon="mdi-chevron-right" size="small" variant="text" @click="nextWeek" />
+        <v-btn icon size="x-small" variant="text" @click="nextWeek">
+          <v-icon size="16">mdi-chevron-right</v-icon>
+        </v-btn>
+        <v-btn size="x-small" variant="tonal" class="ml-2" @click="goToToday">RTD</v-btn>
       </div>
-
       <div class="header-right">
-        <v-btn variant="text" size="small" prepend-icon="mdi-auto-fix">
-          AUTO-FILL
-        </v-btn>
-        <v-btn variant="text" size="small" prepend-icon="mdi-map-marker" @click="showLocationPicker = true">
-          LOCATIONS
-        </v-btn>
+        <span class="text-caption">{{ format(currentWeekStart, 'MMMM').toUpperCase() }}</span>
       </div>
-    </header>
-
-    <!-- Main Layout -->
-    <div class="builder-body">
-      <!-- LEFT: Employee Roster -->
-      <aside class="employee-roster">
-        <div class="roster-header">
-          <span class="text-subtitle-2 font-weight-bold">TEAM ROSTER</span>
-          <v-chip size="x-small" class="ml-2">{{ filteredEmployees.length }}</v-chip>
-        </div>
-        
-        <div class="roster-search">
-          <v-text-field
-            v-model="employeeSearch"
-            placeholder="Search employees..."
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-          />
-        </div>
-
-        <div class="roster-list">
-          <div
-            v-for="emp in filteredEmployees"
-            :key="emp.id"
-            class="roster-employee"
-            draggable="true"
-            @dragstart="handleDragStart(emp, $event)"
-            @dragend="handleDragEnd"
-          >
-            <v-avatar size="32" :color="emp.avatar_url ? undefined : 'primary'" class="mr-2">
-              <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
-              <span v-else class="text-white text-caption font-weight-bold">{{ emp.initials }}</span>
-            </v-avatar>
-            <div class="employee-info">
-              <div class="employee-name">{{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.</div>
-              <div class="employee-role">{{ emp.position?.title || 'Staff' }}</div>
-            </div>
-            <v-chip size="x-small" variant="tonal" :color="getEmployeeShiftCount(emp.id) > 0 ? 'primary' : 'grey'">
-              {{ getEmployeeShiftCount(emp.id) }}
-            </v-chip>
-          </div>
-          
-          <div v-if="filteredEmployees.length === 0" class="text-center py-8 text-grey">
-            No employees found
-          </div>
-        </div>
-      </aside>
-
-      <!-- CENTER: Schedule Grid -->
-      <main class="schedule-grid">
-        <!-- Loading Overlay -->
-        <div v-if="isLoading" class="loading-overlay">
-          <v-progress-circular indeterminate color="primary" size="48" />
-        </div>
-
-        <!-- Grid Container -->
-        <div class="grid-container">
-          <!-- Header Row: Days -->
-          <div class="grid-row grid-header">
-            <div class="grid-cell shift-label-cell header-cell">
-              <span class="text-caption font-weight-bold">SHIFTS</span>
-            </div>
-            <div 
-              v-for="day in weekDays" 
-              :key="day.toISOString()"
-              class="grid-cell day-header-cell"
-              :class="{ 'is-today': isSameDay(day, new Date()) }"
-            >
-              <div class="day-name">{{ format(day, 'EEE') }}</div>
-              <div class="day-date">{{ format(day, 'M/d') }}</div>
-            </div>
-          </div>
-
-          <!-- Location Sub-Header -->
-          <div class="grid-row location-header">
-            <div class="grid-cell shift-label-cell">
-              <!-- Empty corner -->
-            </div>
-            <div 
-              v-for="day in weekDays" 
-              :key="`loc-${day.toISOString()}`"
-              class="grid-cell location-cells"
-            >
-              <div 
-                v-for="loc in activeLocations" 
-                :key="`${day.toISOString()}-${loc.id}`"
-                class="location-label"
-              >
-                {{ loc.name?.substring(0, 6) }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Shift Template Rows -->
-          <div 
-            v-for="template in shiftTemplates"
-            :key="template.id"
-            class="grid-row shift-row"
-          >
-            <!-- Shift Label -->
-            <div class="grid-cell shift-label-cell">
-              <div class="shift-label">
-                <span class="shift-role">{{ template.role_name }}</span>
-                <span class="shift-time">{{ template.raw_shift || `${template.start_time}-${template.end_time}` }}</span>
-              </div>
-            </div>
-
-            <!-- Day Cells -->
-            <div 
-              v-for="day in weekDays" 
-              :key="`${template.id}-${day.toISOString()}`"
-              class="grid-cell day-cells"
-            >
-              <!-- Location sub-cells -->
-              <div 
-                v-for="loc in activeLocations"
-                :key="getCellKey(template.id, loc.id, format(day, 'yyyy-MM-dd'))"
-                class="schedule-cell"
-                :class="{ 
-                  'drag-over': dragOverCellKey === getCellKey(template.id, loc.id, format(day, 'yyyy-MM-dd')),
-                  'has-employee': getShiftForCell(template.id, loc.id, format(day, 'yyyy-MM-dd'))?.employeeId
-                }"
-                @dragover="handleDragOverCell(getCellKey(template.id, loc.id, format(day, 'yyyy-MM-dd')), $event)"
-                @dragleave="handleDragLeaveCell"
-                @drop="handleDropOnCell(template, loc.id, day, $event)"
-              >
-                <template v-if="getShiftForCell(template.id, loc.id, format(day, 'yyyy-MM-dd'))?.employeeId">
-                  <div class="cell-assigned">
-                    <span class="assigned-name">
-                      {{ getShiftForCell(template.id, loc.id, format(day, 'yyyy-MM-dd'))?.employeeName }}
-                    </span>
-                    <v-btn 
-                      icon="mdi-close" 
-                      size="x-small" 
-                      variant="text"
-                      density="compact"
-                      class="remove-btn"
-                      @click.stop="unassignFromCell(getShiftForCell(template.id, loc.id, format(day, 'yyyy-MM-dd'))!)"
-                    />
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="cell-empty">
-                    <v-icon size="12" color="grey-lighten-2">mdi-plus</v-icon>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div v-if="shiftTemplates.length === 0" class="empty-state">
-            <v-icon size="64" color="grey-lighten-2">mdi-calendar-blank</v-icon>
-            <p class="text-grey mt-4">No shift templates configured</p>
-          </div>
-        </div>
-      </main>
     </div>
 
-    <!-- Location Picker Dialog -->
-    <v-dialog v-model="showLocationPicker" max-width="400">
-      <v-card>
-        <v-card-title>Show/Hide Locations</v-card-title>
-        <v-card-text>
-          <v-checkbox
-            v-for="loc in locations"
-            :key="loc.id"
-            v-model="visibleLocations"
-            :value="loc.id"
-            :label="loc.name"
-            density="compact"
-            hide-details
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-btn variant="text" @click="visibleLocations = []">Hide All</v-btn>
-          <v-btn variant="text" @click="visibleLocations = (locations || []).map(l => l.id)">Show All</v-btn>
-          <v-spacer />
-          <v-btn color="primary" @click="showLocationPicker = false">Done</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Loading -->
+    <div v-if="isLoading" class="loading">
+      <v-progress-circular indeterminate size="24" />
+    </div>
+
+    <!-- Main Grid -->
+    <div v-else class="grid-wrapper">
+      <table class="schedule-table">
+        <!-- Header Row 1: Day Names -->
+        <thead>
+          <tr class="header-row-days">
+            <th class="col-employee sticky-col">Employee</th>
+            <th class="col-wk">Wk{{ weekNumber }}</th>
+            <th class="col-hrs">Hrs</th>
+            <th class="col-role">Role</th>
+            <th class="col-shift">Shift</th>
+            <th 
+              v-for="day in weekDays" 
+              :key="day.toISOString()"
+              :colspan="activeLocations.length"
+              class="col-day"
+              :class="{ 'is-today': isSameDay(day, new Date()) }"
+            >
+              {{ format(day, 'EEEE').toUpperCase() }}
+              <div class="day-date">{{ format(day, 'd') }}</div>
+            </th>
+          </tr>
+          <!-- Header Row 2: Location Names -->
+          <tr class="header-row-locs">
+            <th class="col-employee sticky-col"></th>
+            <th class="col-wk"></th>
+            <th class="col-hrs"></th>
+            <th class="col-role"></th>
+            <th class="col-shift"></th>
+            <template v-for="day in weekDays" :key="`loc-${day.toISOString()}`">
+              <th 
+                v-for="loc in activeLocations" 
+                :key="`${day.toISOString()}-${loc.id}`"
+                class="col-loc"
+              >
+                {{ loc.name?.substring(0, 6).toUpperCase() }}
+              </th>
+            </template>
+          </tr>
+        </thead>
+        <!-- Body: Employee Rows -->
+        <tbody>
+          <tr 
+            v-for="emp in employeeRows" 
+            :key="emp.id"
+            class="employee-row"
+          >
+            <td class="col-employee sticky-col">{{ emp.shortName }}</td>
+            <td class="col-wk">{{ emp.shiftCount }}</td>
+            <td class="col-hrs">{{ emp.hours }}</td>
+            <td 
+              class="col-role" 
+              :style="{ backgroundColor: emp.color }"
+            >
+              {{ emp.role }}
+            </td>
+            <td 
+              class="col-shift"
+              @dblclick="startEditShift(emp.id)"
+            >
+              <template v-if="editingShift === emp.id">
+                <input 
+                  :value="emp.shift"
+                  class="shift-input"
+                  @blur="saveShift(emp.id, ($event.target as HTMLInputElement).value)"
+                  @keyup.enter="saveShift(emp.id, ($event.target as HTMLInputElement).value)"
+                  autofocus
+                />
+              </template>
+              <template v-else>
+                {{ emp.shift }}
+              </template>
+            </td>
+            <!-- Day/Location cells -->
+            <template v-for="day in weekDays" :key="`cells-${emp.id}-${day.toISOString()}`">
+              <td 
+                v-for="loc in activeLocations"
+                :key="`${emp.id}-${day.toISOString()}-${loc.id}`"
+                class="col-cell"
+                :class="{ 
+                  'is-assigned': isScheduledOnDay(emp.id, day, loc.id),
+                  'is-today': isSameDay(day, new Date())
+                }"
+                @click="toggleShift(emp.id, day, loc.id)"
+              >
+                <span v-if="isScheduledOnDay(emp.id, day, loc.id)" class="assigned-marker">✓</span>
+              </td>
+            </template>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -540,342 +369,216 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 64px);
-  background: #f8f9fa;
+  background: #1a1a2e;
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  font-size: 11px;
 }
 
 /* Header */
-.builder-header {
+.header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: white;
-  border-bottom: 2px solid #e0e0e0;
+  padding: 4px 8px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
   flex-shrink: 0;
 }
 
-.header-left, .header-center, .header-right {
-  display: flex;
-  align-items: center;
+.title {
+  font-weight: 700;
+  font-size: 13px;
 }
 
-.week-label {
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.week-info {
   font-weight: 600;
-  font-size: 0.95rem;
-  min-width: 200px;
-  text-align: center;
-  color: #333;
+  font-size: 11px;
+  padding: 0 8px;
 }
 
-/* Body Layout */
-.builder-body {
-  display: flex;
+.loading {
   flex: 1;
-  overflow: hidden;
-}
-
-/* LEFT: Employee Roster */
-.employee-roster {
-  width: 260px;
-  background: white;
-  border-right: 2px solid #e0e0e0;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.roster-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e0e0e0;
-  display: flex;
-  align-items: center;
-  background: #f5f5f5;
-}
-
-.roster-search {
-  padding: 12px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.roster-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.roster-employee {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: grab;
-  transition: all 0.2s;
-  margin-bottom: 4px;
-  border: 1px solid transparent;
-}
-
-.roster-employee:hover {
-  background: #e3f2fd;
-  border-color: #90caf9;
-}
-
-.roster-employee:active {
-  cursor: grabbing;
-  background: #bbdefb;
-}
-
-.employee-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.employee-name {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: #333;
-}
-
-.employee-role {
-  font-size: 0.75rem;
-  color: #666;
-}
-
-/* CENTER: Schedule Grid */
-.schedule-grid {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-}
-
-.loading-overlay {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.9);
+}
+
+/* Grid Wrapper */
+.grid-wrapper {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Table */
+.schedule-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Header Rows */
+.header-row-days th,
+.header-row-locs th {
+  background: #0f3460;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 4px;
+  border: 1px solid #1a1a2e;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
   z-index: 10;
 }
 
-.grid-container {
-  display: flex;
-  flex-direction: column;
-  min-width: fit-content;
-}
-
-/* Grid Rows */
-.grid-row {
-  display: flex;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.grid-row.grid-header {
-  background: white;
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  border-bottom: 2px solid #bdbdbd;
-}
-
-.grid-row.location-header {
-  background: #f5f5f5;
-  position: sticky;
-  top: 52px;
-  z-index: 4;
-}
-
-.grid-row.shift-row {
-  background: white;
-}
-
-.grid-row.shift-row:nth-child(odd) {
-  background: #fafafa;
-}
-
-.grid-row.shift-row:hover {
-  background: #f0f7ff;
-}
-
-/* Grid Cells */
-.grid-cell {
-  border-right: 1px solid #e0e0e0;
-  flex-shrink: 0;
-}
-
-.grid-cell:last-child {
-  border-right: none;
-}
-
-.shift-label-cell {
-  width: 140px;
-  min-width: 140px;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  background: #fafafa;
-  border-right: 2px solid #bdbdbd;
-}
-
-.shift-label-cell.header-cell {
-  background: #f5f5f5;
-}
-
-.shift-label {
-  display: flex;
-  flex-direction: column;
-}
-
-.shift-role {
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: #333;
-}
-
-.shift-time {
-  font-size: 0.65rem;
-  color: #666;
-}
-
-.day-header-cell {
-  width: calc((100% - 140px) / 7);
-  min-width: 120px;
-  padding: 8px;
-  text-align: center;
-}
-
-.day-header-cell.is-today {
-  background: #e3f2fd;
-}
-
-.day-name {
-  font-weight: 700;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  color: #333;
+.header-row-locs th {
+  top: 28px;
+  font-size: 9px;
+  color: #aaa;
 }
 
 .day-date {
-  font-size: 0.75rem;
-  color: #666;
+  font-size: 10px;
+  font-weight: 400;
 }
 
-.location-cells {
-  width: calc((100% - 140px) / 7);
+.col-day.is-today {
+  background: #1e5128 !important;
+}
+
+/* Sticky Employee Column */
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: #16213e;
+}
+
+/* Column Widths */
+.col-employee {
   min-width: 120px;
-  display: flex;
+  max-width: 120px;
+  text-align: left;
+  padding: 2px 4px;
+  font-weight: 500;
 }
 
-.location-label {
-  flex: 1;
+.col-wk, .col-hrs {
+  width: 30px;
+  min-width: 30px;
   text-align: center;
-  font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: #888;
-  padding: 4px 2px;
-  border-right: 1px solid #eee;
-}
-
-.location-label:last-child {
-  border-right: none;
-}
-
-.day-cells {
-  width: calc((100% - 140px) / 7);
-  min-width: 120px;
-  display: flex;
-}
-
-.schedule-cell {
-  flex: 1;
-  min-height: 40px;
-  border-right: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.schedule-cell:last-child {
-  border-right: none;
-}
-
-.schedule-cell:hover {
-  background: #e3f2fd;
-}
-
-.schedule-cell.drag-over {
-  background: #bbdefb;
-  box-shadow: inset 0 0 0 2px #1976d2;
-}
-
-.schedule-cell.has-employee {
-  background: #e8f5e9;
-}
-
-.cell-empty {
-  opacity: 0.3;
-}
-
-.schedule-cell:hover .cell-empty {
-  opacity: 0.7;
-}
-
-.cell-assigned {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
   padding: 2px;
-  position: relative;
 }
 
-.assigned-name {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #2e7d32;
+.col-role {
+  min-width: 100px;
+  max-width: 120px;
   text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 2px 4px;
+  font-weight: 600;
+  font-size: 10px;
+  color: #000;
 }
 
-.remove-btn {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0;
+.col-shift {
+  min-width: 70px;
+  max-width: 80px;
+  text-align: center;
+  padding: 2px 4px;
+  font-size: 10px;
 }
 
-.schedule-cell:hover .remove-btn {
-  opacity: 1;
+.col-loc {
+  min-width: 50px;
+  max-width: 60px;
+  font-size: 8px;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px;
+.col-cell {
+  min-width: 50px;
+  max-width: 60px;
+  height: 22px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.1s;
 }
 
-/* Scrollbars */
-.roster-list::-webkit-scrollbar,
-.schedule-grid::-webkit-scrollbar {
+/* Employee Rows */
+.employee-row {
+  border-bottom: 1px solid #1a1a2e;
+}
+
+.employee-row:nth-child(odd) {
+  background: #16213e;
+}
+
+.employee-row:nth-child(even) {
+  background: #1a1a2e;
+}
+
+.employee-row td {
+  border: 1px solid #0f3460;
+  padding: 1px 2px;
+}
+
+.employee-row:hover {
+  background: #1e3a5f;
+}
+
+/* Cell States */
+.col-cell:hover {
+  background: #2d4a6f !important;
+}
+
+.col-cell.is-assigned {
+  background: #2e7d32 !important;
+}
+
+.col-cell.is-today {
+  border-left: 2px solid #4caf50;
+  border-right: 2px solid #4caf50;
+}
+
+.assigned-marker {
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* Shift Input */
+.shift-input {
+  width: 100%;
+  background: #fff;
+  color: #000;
+  border: none;
+  padding: 1px 2px;
+  font-size: 10px;
+  text-align: center;
+}
+
+/* Scrollbar */
+.grid-wrapper::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-.roster-list::-webkit-scrollbar-thumb,
-.schedule-grid::-webkit-scrollbar-thumb {
-  background: #ccc;
+.grid-wrapper::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.grid-wrapper::-webkit-scrollbar-thumb {
+  background: #0f3460;
   border-radius: 4px;
 }
 
-.roster-list::-webkit-scrollbar-thumb:hover,
-.schedule-grid::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
+.grid-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #1e5128;
 }
 </style>
