@@ -596,7 +596,7 @@
         <v-card-actions class="px-6 pb-4">
           <v-spacer />
           <v-btn variant="text" @click="leadDialog = false">Cancel</v-btn>
-          <v-btn color="secondary" :loading="savingLead" :disabled="!leadFormValid" @click="saveLead">
+          <v-btn color="primary" :loading="savingLead" :disabled="!leadFormValid" @click="saveLead">
             Add Lead
           </v-btn>
         </v-card-actions>
