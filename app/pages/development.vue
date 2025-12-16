@@ -768,21 +768,32 @@
             />
           </div>
 
-          <!-- Skills to Review -->
+          <!-- Skill Categories to Review -->
           <div class="mb-6">
-            <div class="text-subtitle-2 font-weight-bold mb-2">Skills You'd Like Reviewed</div>
-            <v-autocomplete
-              v-model="reviewRequest.skillIds"
-              :items="availableSkillsForReview"
-              item-title="name"
-              item-value="id"
-              label="Select skills for review"
+            <div class="text-subtitle-2 font-weight-bold mb-2">Skill Categories to Review</div>
+            <v-select
+              v-model="reviewRequest.skillCategories"
+              :items="skillCategoryOptions"
+              label="Select skill categories"
               multiple
               chips
               closable-chips
               variant="outlined"
               density="comfortable"
-              hint="Choose skills you'd like your manager to assess and provide feedback on"
+              hint="Choose general skill areas you'd like assessed"
+              persistent-hint
+            />
+          </div>
+
+          <!-- Specific Skills Write-In -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Specific Skills (Optional)</div>
+            <v-text-field
+              v-model="reviewRequest.specificSkills"
+              label="Enter specific skills"
+              variant="outlined"
+              density="comfortable"
+              hint="List any specific skills not covered by categories above"
               persistent-hint
             />
           </div>
@@ -911,7 +922,8 @@ const showRequestReviewDialog = ref(false)
 const submittingReviewRequest = ref(false)
 const reviewRequest = reactive({
   topics: [] as string[],
-  skillIds: [] as string[],
+  skillCategories: [] as string[],
+  specificSkills: '',
   notes: '',
   dueDate: ''
 })
@@ -1082,14 +1094,24 @@ const pendingTeamReviewsCount = computed(() => {
   return directReportReviews.value.filter(r => r.current_stage === 'manager_review').length
 })
 
-// Available skills for review selection (user's current skills)
-const availableSkillsForReview = computed(() => {
-  if (!mySkills.value || mySkills.value.length === 0) return []
-  return mySkills.value.map(s => ({
-    id: s.skill_id || s.id,
-    name: s.skill?.name || s.name || 'Unknown Skill'
-  }))
-})
+// Skill category options for review selection
+const skillCategoryOptions = [
+  'Clinical Skills',
+  'Diagnostics & Imaging',
+  'Surgical & Procedural',
+  'Emergency & Critical Care',
+  'Pharmacy & Treatment',
+  'Specialty Skills',
+  'Client Service',
+  'Operations & Admin',
+  'HR / People Ops',
+  'Practice Management',
+  'Training & Education',
+  'Leadership Skills',
+  'Financial Skills',
+  'Technology Skills',
+  'Soft Skills'
+]
 
 // Min date for review request (today)
 const minReviewDate = computed(() => {
@@ -1393,14 +1415,20 @@ async function submitReviewRequest() {
       throw new Error('Could not identify current employee')
     }
 
+    // Combine skill categories and specific skills into notes/metadata
+    const skillsInfo = [
+      ...reviewRequest.skillCategories,
+      reviewRequest.specificSkills ? `Other: ${reviewRequest.specificSkills}` : ''
+    ].filter(Boolean)
+
     const { error } = await client
       .from('review_requests')
       .insert({
         employee_id: employeeId,
         request_type: 'self_initiated',
-        topics_to_cover: reviewRequest.topics,
-        skills_to_review: reviewRequest.skillIds.length > 0 ? reviewRequest.skillIds : null,
-        additional_notes: reviewRequest.notes || null,
+        topics: reviewRequest.topics,
+        skill_categories: reviewRequest.skillCategories.length > 0 ? reviewRequest.skillCategories : null,
+        notes: [reviewRequest.notes, reviewRequest.specificSkills ? `Specific skills: ${reviewRequest.specificSkills}` : ''].filter(Boolean).join('\n') || null,
         due_date: reviewRequest.dueDate || null,
         status: 'pending'
       })
@@ -1409,7 +1437,8 @@ async function submitReviewRequest() {
 
     // Reset form
     reviewRequest.topics = []
-    reviewRequest.skillIds = []
+    reviewRequest.skillCategories = []
+    reviewRequest.specificSkills = ''
     reviewRequest.notes = ''
     reviewRequest.dueDate = ''
     

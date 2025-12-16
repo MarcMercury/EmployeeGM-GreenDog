@@ -1260,20 +1260,31 @@
             />
           </div>
 
-          <!-- Skills to Review -->
+          <!-- Skill Categories to Review -->
           <div class="mb-6">
-            <div class="text-subtitle-2 font-weight-bold mb-2">Skills to Assess</div>
-            <v-autocomplete
-              v-model="reviewRequest.skillIds"
-              :items="employeeSkillsForReview"
-              item-title="name"
-              item-value="id"
-              label="Select skills to review"
+            <div class="text-subtitle-2 font-weight-bold mb-2">Skill Categories to Assess</div>
+            <v-select
+              v-model="reviewRequest.skillCategories"
+              :items="skillCategoryOptionsForReview"
+              label="Select skill categories"
               multiple
               chips
               closable-chips
               variant="outlined"
               density="comfortable"
+            />
+          </div>
+
+          <!-- Specific Skills Write-In -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Specific Skills (Optional)</div>
+            <v-text-field
+              v-model="reviewRequest.specificSkills"
+              label="Enter specific skills to assess"
+              variant="outlined"
+              density="comfortable"
+              hint="List any specific skills not covered by categories above"
+              persistent-hint
             />
           </div>
 
@@ -1706,7 +1717,8 @@ const showRequestReviewDialog = ref(false)
 const submittingReviewRequest = ref(false)
 const reviewRequest = reactive({
   topics: [] as string[],
-  skillIds: [] as string[],
+  skillCategories: [] as string[],
+  specificSkills: '',
   notes: '',
   dueDate: ''
 })
@@ -1723,7 +1735,23 @@ const reviewTopicSuggestions = [
   'Professional Development'
 ]
 const minReviewDate = computed(() => new Date().toISOString().split('T')[0])
-const employeeSkillsForReview = computed(() => skills.value.map(s => ({ id: s.id, name: s.skill_name || s.name })))
+const skillCategoryOptionsForReview = [
+  'Clinical Skills',
+  'Diagnostics & Imaging',
+  'Surgical & Procedural',
+  'Emergency & Critical Care',
+  'Pharmacy & Treatment',
+  'Specialty Skills',
+  'Client Service',
+  'Operations & Admin',
+  'HR / People Ops',
+  'Practice Management',
+  'Training & Education',
+  'Leadership Skills',
+  'Financial Skills',
+  'Technology Skills',
+  'Soft Skills'
+]
 
 // ==========================================
 // COMPUTED
@@ -2641,8 +2669,8 @@ async function submitAdminReviewRequest() {
         requested_by_employee_id: userStore.employee?.id,
         request_type: 'admin_initiated',
         topics: reviewRequest.topics,
-        skill_ids: reviewRequest.skillIds.length > 0 ? reviewRequest.skillIds : null,
-        notes: reviewRequest.notes || null,
+        skill_categories: reviewRequest.skillCategories.length > 0 ? reviewRequest.skillCategories : null,
+        notes: [reviewRequest.notes, reviewRequest.specificSkills ? `Specific skills: ${reviewRequest.specificSkills}` : ''].filter(Boolean).join('\n') || null,
         due_date: reviewRequest.dueDate || null,
         status: 'pending'
       })
@@ -2651,7 +2679,8 @@ async function submitAdminReviewRequest() {
     
     // Reset form
     reviewRequest.topics = []
-    reviewRequest.skillIds = []
+    reviewRequest.skillCategories = []
+    reviewRequest.specificSkills = ''
     reviewRequest.notes = ''
     reviewRequest.dueDate = ''
     showRequestReviewDialog.value = false
