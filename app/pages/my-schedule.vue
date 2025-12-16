@@ -91,11 +91,6 @@
               @request-drop="openDropDialog"
             />
           </v-col>
-
-          <!-- Time Off Requests Quick View -->
-          <v-col cols="12">
-            <OperationsTimeOffRequestCard />
-          </v-col>
         </v-row>
       </v-window-item>
 

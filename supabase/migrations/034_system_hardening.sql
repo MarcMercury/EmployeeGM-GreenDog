@@ -7,27 +7,27 @@
 -- 1. MISSING RLS POLICIES: Ensure all tables have proper RLS
 -- =====================================================
 
--- PTO Balances: Users should view their own
-DROP POLICY IF EXISTS "Users can view own pto balances" ON public.pto_balances;
-CREATE POLICY "Users can view own pto balances" ON public.pto_balances 
+-- Employee Time Off Balances: Users should view their own
+DROP POLICY IF EXISTS "Users can view own pto balances" ON public.employee_time_off_balances;
+CREATE POLICY "Users can view own pto balances" ON public.employee_time_off_balances 
   FOR SELECT 
   USING (employee_id = public.current_employee_id() OR public.is_admin());
 
-DROP POLICY IF EXISTS "Admins can manage pto balances" ON public.pto_balances;
-CREATE POLICY "Admins can manage pto balances" ON public.pto_balances 
+DROP POLICY IF EXISTS "Admins can manage pto balances" ON public.employee_time_off_balances;
+CREATE POLICY "Admins can manage pto balances" ON public.employee_time_off_balances 
   FOR ALL 
   USING (public.is_admin());
 
--- Shift Assignments: Users can view their own
-ALTER TABLE IF EXISTS public.shift_assignments ENABLE ROW LEVEL SECURITY;
+-- Shifts: Users can view their own
+ALTER TABLE IF EXISTS public.shifts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view own shift assignments" ON public.shift_assignments;
-CREATE POLICY "Users can view own shift assignments" ON public.shift_assignments 
+DROP POLICY IF EXISTS "Users can view own shift assignments" ON public.shifts;
+CREATE POLICY "Users can view own shift assignments" ON public.shifts 
   FOR SELECT 
   USING (employee_id = public.current_employee_id() OR public.is_admin());
 
-DROP POLICY IF EXISTS "Admins can manage shift assignments" ON public.shift_assignments;
-CREATE POLICY "Admins can manage shift assignments" ON public.shift_assignments 
+DROP POLICY IF EXISTS "Admins can manage shift assignments" ON public.shifts;
+CREATE POLICY "Admins can manage shift assignments" ON public.shifts 
   FOR ALL 
   USING (public.is_admin());
 
@@ -189,10 +189,10 @@ CREATE INDEX IF NOT EXISTS idx_employees_profile ON public.employees(profile_id)
 CREATE INDEX IF NOT EXISTS idx_employees_status ON public.employees(employment_status);
 
 -- Shifts: Time-based queries
-CREATE INDEX IF NOT EXISTS idx_shifts_date ON public.shifts(shift_date);
+CREATE INDEX IF NOT EXISTS idx_shifts_start_at ON public.shifts(start_at);
 CREATE INDEX IF NOT EXISTS idx_shifts_employee ON public.shifts(employee_id);
 CREATE INDEX IF NOT EXISTS idx_shifts_location ON public.shifts(location_id);
-CREATE INDEX IF NOT EXISTS idx_shifts_date_employee ON public.shifts(shift_date, employee_id);
+CREATE INDEX IF NOT EXISTS idx_shifts_start_employee ON public.shifts(start_at, employee_id);
 
 -- Time off requests: Employee + status
 CREATE INDEX IF NOT EXISTS idx_time_off_employee ON public.time_off_requests(employee_id);

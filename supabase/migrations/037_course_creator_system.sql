@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.courses (
   title text NOT NULL,
   description text,
   cover_image_url text,
-  skill_id uuid REFERENCES public.skills(id) ON DELETE SET NULL,
+  skill_id uuid REFERENCES public.skill_library(id) ON DELETE SET NULL,
   est_minutes integer DEFAULT 15,
   is_published boolean DEFAULT false,
   created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,

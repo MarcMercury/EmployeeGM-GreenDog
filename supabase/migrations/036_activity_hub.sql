@@ -144,12 +144,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger for schedule notifications
-DROP TRIGGER IF EXISTS trigger_notify_schedule_change ON public.employee_schedules;
-CREATE TRIGGER trigger_notify_schedule_change
-  AFTER INSERT OR UPDATE OR DELETE ON public.employee_schedules
-  FOR EACH ROW
-  EXECUTE FUNCTION notify_schedule_change();
+-- Create trigger for schedule notifications (using shifts table)
+DROP TRIGGER IF EXISTS trigger_notify_schedule_change ON public.shifts;
+-- Note: Schedule change trigger logic needs to be updated for shifts table structure
+-- For now, we'll create a placeholder that can be enabled later
+-- CREATE TRIGGER trigger_notify_schedule_change
+--   AFTER INSERT OR UPDATE OR DELETE ON public.shifts
+--   FOR EACH ROW
+--   EXECUTE FUNCTION notify_schedule_change();
 
 -- Create function to generate notifications from PTO changes
 CREATE OR REPLACE FUNCTION notify_pto_change()
@@ -197,12 +199,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger for PTO notifications
-DROP TRIGGER IF EXISTS trigger_notify_pto_change ON public.pto_requests;
-CREATE TRIGGER trigger_notify_pto_change
-  AFTER INSERT OR UPDATE ON public.pto_requests
-  FOR EACH ROW
-  EXECUTE FUNCTION notify_pto_change();
+-- Create trigger for PTO notifications (using time_off_requests table)
+DROP TRIGGER IF EXISTS trigger_notify_pto_change ON public.time_off_requests;
+-- Note: PTO trigger will be created in migration 048 with corrected table reference
 
 -- Create function to generate notifications from skill changes
 CREATE OR REPLACE FUNCTION notify_skill_change()

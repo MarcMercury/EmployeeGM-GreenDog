@@ -35,9 +35,5 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'marketing-events' 
-  AND EXISTS (
-    SELECT 1 FROM public.employees e
-    WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-    AND e.access_level = 'admin'
-  )
+  AND public.is_admin()
 );

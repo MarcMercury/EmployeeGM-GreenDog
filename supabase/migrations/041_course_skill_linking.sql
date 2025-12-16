@@ -29,29 +29,13 @@ COMMENT ON COLUMN public.training_courses.skill_level_awarded IS 'The skill leve
 -- Anyone can view active courses
 DROP POLICY IF EXISTS "Anyone can view active courses" ON public.training_courses;
 CREATE POLICY "Anyone can view active courses" ON public.training_courses
-  FOR SELECT USING (is_active = true OR EXISTS (
-    SELECT 1 FROM public.employees e
-    WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-    AND e.access_level IN ('admin', 'manager')
-  ));
+  FOR SELECT USING (is_active = true OR public.is_admin());
 
 -- Admins can manage courses
 DROP POLICY IF EXISTS "Admins can manage courses" ON public.training_courses;
 CREATE POLICY "Admins can manage courses" ON public.training_courses
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM public.employees e
-      WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-      AND e.access_level = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees e
-      WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-      AND e.access_level = 'admin'
-    )
-  );
+  FOR ALL USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 -- =====================================================
 -- Update employee_skills RLS for admin editing
@@ -60,31 +44,13 @@ CREATE POLICY "Admins can manage courses" ON public.training_courses
 -- Allow admins to update any employee's skills
 DROP POLICY IF EXISTS "Admins can update any employee skills" ON public.employee_skills;
 CREATE POLICY "Admins can update any employee skills" ON public.employee_skills
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.employees e
-      WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-      AND e.access_level = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees e
-      WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-      AND e.access_level = 'admin'
-    )
-  );
+  FOR UPDATE USING (public.is_admin())
+  WITH CHECK (public.is_admin());
 
 -- Allow admins to insert skills for any employee
 DROP POLICY IF EXISTS "Admins can insert any employee skills" ON public.employee_skills;
 CREATE POLICY "Admins can insert any employee skills" ON public.employee_skills
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.employees e
-      WHERE e.id = (SELECT id FROM public.employees WHERE email_work = auth.jwt() ->> 'email')
-      AND e.access_level = 'admin'
-    )
-  );
+  FOR INSERT WITH CHECK (public.is_admin());
 
 -- Function to auto-update skill level when course is completed
 CREATE OR REPLACE FUNCTION public.apply_course_skill_advancement()

@@ -111,8 +111,7 @@ BEGIN
     action_category,
     old_values,
     new_values,
-    changes,
-    created_at
+    changes
   ) VALUES (
     v_actor_id,
     v_actor_email,

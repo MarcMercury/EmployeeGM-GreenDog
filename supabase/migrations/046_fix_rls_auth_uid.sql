@@ -33,72 +33,92 @@ FOR SELECT USING (
 );
 
 -- ============================================
--- FIX 2: course_sections table
+-- FIX 2: course_sections table (if exists)
 -- ============================================
-DROP POLICY IF EXISTS "Admin Full Access" ON public.course_sections;
-DROP POLICY IF EXISTS "Authenticated View" ON public.course_sections;
-
-CREATE POLICY "Admin Full Access" ON public.course_sections
-FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles 
-        WHERE profiles.auth_user_id = auth.uid() AND profiles.role = 'admin'
-    )
-);
-
-CREATE POLICY "Authenticated View" ON public.course_sections
-FOR SELECT USING (auth.role() = 'authenticated');
-
--- ============================================
--- FIX 3: course_lessons table
--- ============================================
-DROP POLICY IF EXISTS "Admin Full Access" ON public.course_lessons;
-DROP POLICY IF EXISTS "Authenticated View" ON public.course_lessons;
-
-CREATE POLICY "Admin Full Access" ON public.course_lessons
-FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles 
-        WHERE profiles.auth_user_id = auth.uid() AND profiles.role = 'admin'
-    )
-);
-
-CREATE POLICY "Authenticated View" ON public.course_lessons
-FOR SELECT USING (auth.role() = 'authenticated');
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'course_sections' AND table_schema = 'public') THEN
+        DROP POLICY IF EXISTS "Admin Full Access" ON public.course_sections;
+        DROP POLICY IF EXISTS "Authenticated View" ON public.course_sections;
+        
+        EXECUTE 'CREATE POLICY "Admin Full Access" ON public.course_sections
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE profiles.auth_user_id = auth.uid() AND profiles.role = ''admin''
+            )
+        )';
+        
+        EXECUTE 'CREATE POLICY "Authenticated View" ON public.course_sections
+        FOR SELECT USING (auth.role() = ''authenticated'')';
+    END IF;
+END $$;
 
 -- ============================================
--- FIX 4: lesson_content table
+-- FIX 3: course_lessons table (if exists)
 -- ============================================
-DROP POLICY IF EXISTS "Admin Full Access" ON public.lesson_content;
-DROP POLICY IF EXISTS "Authenticated View" ON public.lesson_content;
-
-CREATE POLICY "Admin Full Access" ON public.lesson_content
-FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles 
-        WHERE profiles.auth_user_id = auth.uid() AND profiles.role = 'admin'
-    )
-);
-
-CREATE POLICY "Authenticated View" ON public.lesson_content
-FOR SELECT USING (auth.role() = 'authenticated');
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'course_lessons' AND table_schema = 'public') THEN
+        DROP POLICY IF EXISTS "Admin Full Access" ON public.course_lessons;
+        DROP POLICY IF EXISTS "Authenticated View" ON public.course_lessons;
+        
+        EXECUTE 'CREATE POLICY "Admin Full Access" ON public.course_lessons
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE profiles.auth_user_id = auth.uid() AND profiles.role = ''admin''
+            )
+        )';
+        
+        EXECUTE 'CREATE POLICY "Authenticated View" ON public.course_lessons
+        FOR SELECT USING (auth.role() = ''authenticated'')';
+    END IF;
+END $$;
 
 -- ============================================
--- FIX 5: lesson_quizzes table
+-- FIX 4: lesson_content table (if exists)
 -- ============================================
-DROP POLICY IF EXISTS "Admin Full Access" ON public.lesson_quizzes;
-DROP POLICY IF EXISTS "Authenticated View" ON public.lesson_quizzes;
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'lesson_content' AND table_schema = 'public') THEN
+        DROP POLICY IF EXISTS "Admin Full Access" ON public.lesson_content;
+        DROP POLICY IF EXISTS "Authenticated View" ON public.lesson_content;
+        
+        EXECUTE 'CREATE POLICY "Admin Full Access" ON public.lesson_content
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE profiles.auth_user_id = auth.uid() AND profiles.role = ''admin''
+            )
+        )';
+        
+        EXECUTE 'CREATE POLICY "Authenticated View" ON public.lesson_content
+        FOR SELECT USING (auth.role() = ''authenticated'')';
+    END IF;
+END $$;
 
-CREATE POLICY "Admin Full Access" ON public.lesson_quizzes
-FOR ALL USING (
-    EXISTS (
-        SELECT 1 FROM public.profiles 
-        WHERE profiles.auth_user_id = auth.uid() AND profiles.role = 'admin'
-    )
-);
-
-CREATE POLICY "Authenticated View" ON public.lesson_quizzes
-FOR SELECT USING (auth.role() = 'authenticated');
+-- ============================================
+-- FIX 5: lesson_quizzes table (if exists)
+-- ============================================
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'lesson_quizzes' AND table_schema = 'public') THEN
+        DROP POLICY IF EXISTS "Admin Full Access" ON public.lesson_quizzes;
+        DROP POLICY IF EXISTS "Authenticated View" ON public.lesson_quizzes;
+        
+        EXECUTE 'CREATE POLICY "Admin Full Access" ON public.lesson_quizzes
+        FOR ALL USING (
+            EXISTS (
+                SELECT 1 FROM public.profiles 
+                WHERE profiles.auth_user_id = auth.uid() AND profiles.role = ''admin''
+            )
+        )';
+        
+        EXECUTE 'CREATE POLICY "Authenticated View" ON public.lesson_quizzes
+        FOR SELECT USING (auth.role() = ''authenticated'')';
+    END IF;
+END $$;
 
 -- ============================================
 -- FIX 6: course_skill_awards table (if exists)

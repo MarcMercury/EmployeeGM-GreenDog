@@ -30,10 +30,21 @@ const { employees, locations, positions } = useAppData()
 const toast = useToast()
 const supabase = useSupabaseClient()
 
+// Types for Time Off
+interface TimeOffRequest {
+  id: string
+  employee_id: string
+  start_date: string
+  end_date: string
+  status: 'pending' | 'approved' | 'denied' | 'cancelled'
+  employees?: { first_name: string; last_name: string }
+}
+
 // State
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 0 }))
 const shiftTemplates = ref<ShiftTemplate[]>([])
 const shifts = ref<any[]>([])
+const timeOffRequests = ref<TimeOffRequest[]>([])
 const isLoading = ref(true)
 
 // Roster filters
@@ -358,6 +369,42 @@ async function loadShifts() {
   }
 }
 
+// Load time off requests for current week (approved or pending)
+async function loadTimeOffRequests() {
+  try {
+    const weekEnd = addDays(currentWeekStart.value, 6)
+    const weekStartStr = format(currentWeekStart.value, 'yyyy-MM-dd')
+    const weekEndStr = format(weekEnd, 'yyyy-MM-dd')
+    
+    const { data, error } = await supabase
+      .from('time_off_requests')
+      .select(`*, employees:employee_id(first_name, last_name)`)
+      .in('status', ['approved', 'pending'])
+      .or(`start_date.lte.${weekEndStr},end_date.gte.${weekStartStr}`)
+    
+    if (error) throw error
+    timeOffRequests.value = data || []
+  } catch (err) {
+    console.error('Load time off error:', err)
+    timeOffRequests.value = []
+  }
+}
+
+// Check if employee has time off on a specific date
+function hasTimeOffOnDate(employeeId: string, date: Date): TimeOffRequest | null {
+  const dateStr = format(date, 'yyyy-MM-dd')
+  return timeOffRequests.value.find(req => 
+    req.employee_id === employeeId &&
+    dateStr >= req.start_date &&
+    dateStr <= req.end_date
+  ) || null
+}
+
+// Get time off status badge color
+function getTimeOffBadgeColor(status: string): string {
+  return status === 'approved' ? 'error' : 'warning'
+}
+
 // Get cell key
 function getCellKey(shiftId: string, date: Date, locId: string): string {
   return `${shiftId}-${format(date, 'yyyy-MM-dd')}-${locId}`
@@ -400,6 +447,13 @@ async function onDrop(template: ShiftTemplate, date: Date, locId: string, e: Dra
   const dateStr = format(date, 'yyyy-MM-dd')
   const startAt = `${dateStr}T${template.start_time}:00`
   const endAt = `${dateStr}T${template.end_time}:00`
+  
+  // Check for time off conflict
+  const timeOffConflict = hasTimeOffOnDate(draggedEmployee.value.id, date)
+  if (timeOffConflict) {
+    const statusLabel = timeOffConflict.status === 'approved' ? 'APPROVED' : 'pending'
+    toast.warning(`⚠️ ${draggedEmployee.value.first_name} has ${statusLabel} time off on ${format(date, 'MMM d')}`)
+  }
   
   try {
     const { data, error } = await supabase
@@ -446,10 +500,13 @@ const weekNum = computed(() => {
   return Math.ceil(((currentWeekStart.value.getTime() - start.getTime()) / 86400000 + 1) / 7)
 })
 
-watch(currentWeekStart, loadShifts)
+watch(currentWeekStart, () => {
+  loadShifts()
+  loadTimeOffRequests()
+})
 onMounted(async () => {
   await loadShiftTemplates()
-  await loadShifts()
+  await Promise.all([loadShifts(), loadTimeOffRequests()])
 })
 </script>
 
@@ -610,14 +667,23 @@ onMounted(async () => {
                       :class="{ 
                         'drag-over': dragOverCell === getCellKey(tmpl.id, day, loc.id),
                         'has-emp': getCellAssignment(tmpl, day, loc.id),
-                        'today': isSameDay(day, new Date())
+                        'today': isSameDay(day, new Date()),
+                        'time-off-conflict': getCellAssignment(tmpl, day, loc.id) && hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day),
+                        'time-off-approved': getCellAssignment(tmpl, day, loc.id) && hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved'
                       }"
                       @dragover="onDragOver(getCellKey(tmpl.id, day, loc.id), $event)"
                       @dragleave="onDragLeave"
                       @drop="onDrop(tmpl, day, loc.id, $event)"
                     >
                       <template v-if="getCellAssignment(tmpl, day, loc.id)">
-                        <div class="cell-emp">
+                        <div class="cell-emp" :class="{ 'has-warning': hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day) }">
+                          <v-icon 
+                            v-if="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)"
+                            size="10" 
+                            :color="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'error' : 'warning'"
+                            class="time-off-icon"
+                            :title="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'APPROVED Time Off!' : 'Pending Time Off Request'"
+                          >mdi-calendar-alert</v-icon>
                           <span>{{ getCellAssignment(tmpl, day, loc.id)?.employees?.first_name }}</span>
                           <button class="cell-remove" @click="removeAssignment(getCellAssignment(tmpl, day, loc.id)!.id)">×</button>
                         </div>
@@ -1076,6 +1142,14 @@ onMounted(async () => {
 .col-cell.has-emp {
   background: #c8e6c9;
 }
+.col-cell.time-off-conflict {
+  background: #fff3e0 !important;
+  border: 2px solid #ff9800 !important;
+}
+.col-cell.time-off-approved {
+  background: #ffebee !important;
+  border: 2px solid #f44336 !important;
+}
 .col-cell.today {
   border-left: 2px solid #4caf50;
   border-right: 2px solid #4caf50;
@@ -1088,6 +1162,18 @@ onMounted(async () => {
   font-weight: 600;
   color: #2e7d32;
   position: relative;
+  gap: 2px;
+}
+.cell-emp.has-warning {
+  color: #e65100;
+}
+.time-off-icon {
+  flex-shrink: 0;
+  animation: pulse-warning 1.5s ease-in-out infinite;
+}
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 .cell-remove {
   position: absolute;
