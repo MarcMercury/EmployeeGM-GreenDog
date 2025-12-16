@@ -271,10 +271,6 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
                   Interviews
                 </NuxtLink>
-                <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📚</div>
-                  Skills Management
-                </NuxtLink>
                 <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
                   Skill Stats
