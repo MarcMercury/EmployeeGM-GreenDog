@@ -1,201 +1,388 @@
 <template>
   <div class="my-schedule-page">
     <!-- Page Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="page-header">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">My Schedule</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">My Schedule & Time Off</h1>
         <p class="text-body-1 text-grey-darken-1">
           {{ todayFormatted }} • {{ currentGreeting }}
         </p>
       </div>
+      <v-btn
+        color="primary"
+        prepend-icon="mdi-plus"
+        @click="requestDialog = true"
+        class="d-none d-sm-flex"
+      >
+        Request Time Off
+      </v-btn>
+      <v-btn
+        color="primary"
+        icon="mdi-plus"
+        @click="requestDialog = true"
+        class="d-flex d-sm-none"
+        size="small"
+      />
     </div>
 
-    <v-row>
-      <!-- Left Column - Time Clock -->
-      <v-col cols="12" md="4">
-        <OperationsTimeClock />
-        
-        <!-- Reliability Score Card -->
-        <v-card rounded="lg" class="mt-4">
-          <v-card-title class="d-flex align-center">
-            <v-icon color="primary" class="mr-2">mdi-chart-arc</v-icon>
-            Reliability Score
-          </v-card-title>
-          <v-card-text class="text-center">
-            <v-progress-circular
-              :model-value="reliabilityScore"
-              :size="120"
-              :width="12"
-              :color="getReliabilityColor(reliabilityScore)"
-            >
-              <div class="text-center">
-                <div class="text-h4 font-weight-bold">{{ reliabilityScore }}%</div>
-                <div class="text-caption text-grey">Score</div>
-              </div>
-            </v-progress-circular>
-            
-            <div class="mt-4">
-              <v-chip 
-                :color="getReliabilityColor(reliabilityScore)" 
-                variant="tonal"
-                class="mb-2"
-              >
-                {{ getReliabilityLabel(reliabilityScore) }}
-              </v-chip>
-            </div>
-            
-            <v-list density="compact" class="mt-2 bg-transparent">
-              <v-list-item>
-                <template #prepend>
-                  <v-icon color="success" size="small">mdi-check-circle</v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">On-time arrivals</v-list-item-title>
-                <template #append>
-                  <span class="font-weight-medium">{{ reliabilityStats.onTime }}</span>
-                </template>
-              </v-list-item>
-              <v-list-item>
-                <template #prepend>
-                  <v-icon color="warning" size="small">mdi-clock-alert</v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">Late arrivals</v-list-item-title>
-                <template #append>
-                  <span class="font-weight-medium">{{ reliabilityStats.late }}</span>
-                </template>
-              </v-list-item>
-              <v-list-item>
-                <template #prepend>
-                  <v-icon color="error" size="small">mdi-close-circle</v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">Absences</v-list-item-title>
-                <template #append>
-                  <span class="font-weight-medium">{{ reliabilityStats.absences }}</span>
-                </template>
-              </v-list-item>
-            </v-list>
+    <!-- Quick Stats Row - Mobile Friendly -->
+    <div class="stats-scroll mb-4">
+      <div class="stats-row">
+        <v-card variant="tonal" color="primary" rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="20" class="mb-1">mdi-clock-check-outline</v-icon>
+            <div class="text-h6 font-weight-bold">{{ weeklyHours.toFixed(1) }}h</div>
+            <div class="text-caption">This Week</div>
           </v-card-text>
         </v-card>
-
-        <!-- PTO Balance Card -->
-        <v-card rounded="lg" class="mt-4">
-          <v-card-title class="d-flex align-center">
-            <v-icon color="info" class="mr-2">mdi-beach</v-icon>
-            PTO Balance
-          </v-card-title>
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="6">
-                <div class="text-center pa-3 bg-blue-lighten-5 rounded-lg">
-                  <div class="text-h4 font-weight-bold text-primary">{{ ptoBalance.available }}</div>
-                  <div class="text-caption">Days Available</div>
-                </div>
-              </v-col>
-              <v-col cols="6">
-                <div class="text-center pa-3 bg-green-lighten-5 rounded-lg">
-                  <div class="text-h4 font-weight-bold text-success">{{ ptoBalance.used }}</div>
-                  <div class="text-caption">Days Used</div>
-                </div>
-              </v-col>
-            </v-row>
-            
-            <div class="mt-4">
-              <div class="d-flex justify-space-between text-caption mb-1">
-                <span>Used: {{ ptoBalance.used }} days</span>
-                <span>Total: {{ ptoBalance.total }} days</span>
-              </div>
-              <v-progress-linear
-                :model-value="(ptoBalance.used / ptoBalance.total) * 100"
-                color="primary"
-                height="8"
-                rounded
-              />
-            </div>
-
-            <v-divider class="my-4" />
-
-            <div class="text-caption text-grey mb-2">Upcoming Time Off</div>
-            <div v-if="upcomingTimeOff.length === 0" class="text-body-2 text-grey">
-              No upcoming time off scheduled
-            </div>
-            <v-list v-else density="compact" class="bg-transparent">
-              <v-list-item v-for="pto in upcomingTimeOff" :key="pto.id" class="px-0">
-                <template #prepend>
-                  <v-icon size="small" :color="getTimeOffStatusColor(pto.status)">
-                    {{ getTimeOffStatusIcon(pto.status) }}
-                  </v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">
-                  {{ formatDateRange(pto.start_date, pto.end_date) }}
-                </v-list-item-title>
-                <template #append>
-                  <v-chip size="x-small" :color="getTimeOffStatusColor(pto.status)">
-                    {{ pto.status }}
-                  </v-chip>
-                </template>
-              </v-list-item>
-            </v-list>
+        <v-card variant="tonal" color="success" rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="20" class="mb-1">mdi-calendar-check</v-icon>
+            <div class="text-h6 font-weight-bold">{{ upcomingShiftCount }}</div>
+            <div class="text-caption">Upcoming</div>
           </v-card-text>
         </v-card>
-      </v-col>
+        <v-card variant="tonal" color="warning" rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="20" class="mb-1">mdi-clock-alert-outline</v-icon>
+            <div class="text-h6 font-weight-bold">{{ pendingRequests.length }}</div>
+            <div class="text-caption">Pending</div>
+          </v-card-text>
+        </v-card>
+        <v-card variant="tonal" color="info" rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="20" class="mb-1">mdi-beach</v-icon>
+            <div class="text-h6 font-weight-bold">{{ ptoBalance.available }}</div>
+            <div class="text-caption">PTO Left</div>
+          </v-card-text>
+        </v-card>
+      </div>
+    </div>
 
-      <!-- Right Column - Schedule & Requests -->
-      <v-col cols="12" md="8">
+    <!-- Main Content Tabs -->
+    <v-tabs v-model="activeTab" color="primary" class="mb-4">
+      <v-tab value="schedule">
+        <v-icon start>mdi-calendar</v-icon>
+        <span class="d-none d-sm-inline">Schedule</span>
+      </v-tab>
+      <v-tab value="timeoff">
+        <v-icon start>mdi-beach</v-icon>
+        <span class="d-none d-sm-inline">Time Off</span>
+      </v-tab>
+      <v-tab value="reliability">
+        <v-icon start>mdi-chart-arc</v-icon>
+        <span class="d-none d-sm-inline">Reliability</span>
+      </v-tab>
+    </v-tabs>
+
+    <v-window v-model="activeTab">
+      <!-- SCHEDULE TAB -->
+      <v-window-item value="schedule">
         <v-row>
+          <!-- Time Clock -->
+          <v-col cols="12" md="4">
+            <OperationsTimeClock />
+          </v-col>
+
           <!-- Upcoming Shifts -->
-          <v-col cols="12">
+          <v-col cols="12" md="8">
             <OperationsUpcomingShifts 
               @request-swap="openSwapDialog"
               @request-drop="openDropDialog"
             />
           </v-col>
 
-          <!-- Time Off Requests -->
+          <!-- Time Off Requests Quick View -->
           <v-col cols="12">
             <OperationsTimeOffRequestCard />
           </v-col>
         </v-row>
-      </v-col>
-    </v-row>
+      </v-window-item>
 
-    <!-- Quick Stats Row -->
-    <v-row class="mt-4">
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="primary" rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="24" class="mb-1">mdi-clock-check-outline</v-icon>
-            <div class="text-h5 font-weight-bold">{{ weeklyHours.toFixed(1) }}h</div>
-            <div class="text-caption">This Week</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="success" rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="24" class="mb-1">mdi-calendar-check</v-icon>
-            <div class="text-h5 font-weight-bold">{{ upcomingShiftCount }}</div>
-            <div class="text-caption">Upcoming Shifts</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="warning" rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="24" class="mb-1">mdi-clock-alert-outline</v-icon>
-            <div class="text-h5 font-weight-bold">{{ pendingRequestCount }}</div>
-            <div class="text-caption">Pending Requests</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="info" rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="24" class="mb-1">mdi-beach</v-icon>
-            <div class="text-h5 font-weight-bold">{{ ptoBalance.available }}</div>
-            <div class="text-caption">PTO Days Left</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+      <!-- TIME OFF TAB -->
+      <v-window-item value="timeoff">
+        <v-row>
+          <!-- PTO Summary Cards -->
+          <v-col cols="12" sm="6" md="4">
+            <v-card rounded="lg" class="h-100">
+              <v-card-text class="text-center">
+                <v-progress-circular
+                  :model-value="ptoUsedPercentage"
+                  :size="100"
+                  :width="10"
+                  color="primary"
+                  class="mb-3"
+                >
+                  <div>
+                    <div class="text-h5 font-weight-bold">{{ ptoBalance.available }}</div>
+                    <div class="text-caption">Days Left</div>
+                  </div>
+                </v-progress-circular>
+                <div class="text-subtitle-1 font-weight-medium">PTO Balance</div>
+                <div class="text-body-2 text-grey">
+                  {{ ptoBalance.used }} used of {{ ptoBalance.total }} days
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          
+          <v-col cols="12" sm="6" md="4">
+            <v-card rounded="lg" class="h-100">
+              <v-card-text>
+                <div class="d-flex align-center mb-4">
+                  <v-icon color="warning" size="32" class="mr-3">mdi-clock-outline</v-icon>
+                  <div>
+                    <div class="text-h5 font-weight-bold">{{ pendingRequests.length }}</div>
+                    <div class="text-body-2 text-grey">Pending Requests</div>
+                  </div>
+                </div>
+                <v-divider class="mb-3" />
+                <div class="text-caption text-grey mb-2">Awaiting Approval</div>
+                <template v-if="pendingRequests.length > 0">
+                  <div v-for="req in pendingRequests.slice(0, 2)" :key="req.id" class="text-body-2 mb-1">
+                    {{ formatDateRange(req.start_date, req.end_date) }}
+                  </div>
+                </template>
+                <div v-else class="text-body-2 text-grey-lighten-1">No pending requests</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          
+          <v-col cols="12" sm="12" md="4">
+            <v-card rounded="lg" class="h-100">
+              <v-card-text>
+                <div class="d-flex align-center mb-4">
+                  <v-icon color="success" size="32" class="mr-3">mdi-calendar-check</v-icon>
+                  <div>
+                    <div class="text-h5 font-weight-bold">{{ approvedRequests.length }}</div>
+                    <div class="text-body-2 text-grey">Approved This Year</div>
+                  </div>
+                </div>
+                <v-divider class="mb-3" />
+                <div class="text-caption text-grey mb-2">Next Time Off</div>
+                <template v-if="nextTimeOff">
+                  <div class="text-body-2 font-weight-medium">
+                    {{ formatDateRange(nextTimeOff.start_date, nextTimeOff.end_date) }}
+                  </div>
+                  <div class="text-caption text-grey">
+                    {{ getDaysUntil(nextTimeOff.start_date) }} days away
+                  </div>
+                </template>
+                <div v-else class="text-body-2 text-grey-lighten-1">No upcoming time off</div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- PTO Breakdown -->
+          <v-col cols="12">
+            <v-card rounded="lg">
+              <v-card-title class="text-subtitle-1">PTO Breakdown by Type</v-card-title>
+              <v-card-text>
+                <div class="pto-types-grid">
+                  <div 
+                    v-for="type in ptoTypes" 
+                    :key="type.name" 
+                    class="pto-type-item"
+                    :style="{ backgroundColor: `${type.color}20` }"
+                  >
+                    <v-icon :color="type.color" size="20" class="mb-1">{{ type.icon }}</v-icon>
+                    <div class="text-body-1 font-weight-bold">{{ type.available }}</div>
+                    <div class="text-caption">{{ type.name }}</div>
+                    <div class="text-caption text-grey">of {{ type.total }}</div>
+                  </div>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- Request History -->
+          <v-col cols="12">
+            <v-card rounded="lg">
+              <v-card-title class="d-flex flex-wrap align-center justify-space-between gap-2">
+                <span class="text-subtitle-1">Request History</span>
+                <v-chip-group v-model="statusFilter" mandatory selected-class="text-primary">
+                  <v-chip value="all" size="small" variant="outlined">All</v-chip>
+                  <v-chip value="pending" size="small" variant="outlined">Pending</v-chip>
+                  <v-chip value="approved" size="small" variant="outlined">Approved</v-chip>
+                </v-chip-group>
+              </v-card-title>
+              
+              <v-card-text v-if="loadingRequests" class="text-center py-8">
+                <v-progress-circular indeterminate color="primary" />
+              </v-card-text>
+              
+              <v-card-text v-else-if="filteredRequests.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-calendar-blank</v-icon>
+                <p class="text-body-2 text-grey mt-2">No requests found</p>
+              </v-card-text>
+
+              <v-list v-else lines="two" class="py-0">
+                <v-list-item
+                  v-for="request in filteredRequests"
+                  :key="request.id"
+                  class="py-3"
+                >
+                  <template #prepend>
+                    <v-avatar :color="getStatusColor(request.status)" size="40">
+                      <v-icon color="white" size="20">{{ getStatusIcon(request.status) }}</v-icon>
+                    </v-avatar>
+                  </template>
+
+                  <v-list-item-title class="font-weight-medium">
+                    {{ formatDateRange(request.start_date, request.end_date) }}
+                  </v-list-item-title>
+                  
+                  <v-list-item-subtitle>
+                    {{ getDaysCount(request) }} day{{ getDaysCount(request) !== 1 ? 's' : '' }}
+                    • {{ request.request_type || 'PTO' }}
+                  </v-list-item-subtitle>
+
+                  <template #append>
+                    <div class="d-flex align-center gap-2">
+                      <v-chip :color="getStatusColor(request.status)" size="small" variant="flat">
+                        {{ request.status }}
+                      </v-chip>
+                      <v-btn
+                        v-if="request.status === 'pending'"
+                        icon="mdi-close"
+                        size="x-small"
+                        color="error"
+                        variant="text"
+                        @click="cancelRequest(request.id)"
+                        title="Cancel"
+                      />
+                    </div>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <!-- RELIABILITY TAB -->
+      <v-window-item value="reliability">
+        <v-row>
+          <!-- Reliability Score -->
+          <v-col cols="12" md="6">
+            <v-card rounded="lg">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="primary" class="mr-2">mdi-chart-arc</v-icon>
+                Reliability Score
+              </v-card-title>
+              <v-card-text class="text-center">
+                <v-progress-circular
+                  :model-value="reliabilityScore"
+                  :size="140"
+                  :width="14"
+                  :color="getReliabilityColor(reliabilityScore)"
+                >
+                  <div class="text-center">
+                    <div class="text-h3 font-weight-bold">{{ reliabilityScore }}%</div>
+                    <div class="text-caption text-grey">Score</div>
+                  </div>
+                </v-progress-circular>
+                
+                <div class="mt-4">
+                  <v-chip 
+                    :color="getReliabilityColor(reliabilityScore)" 
+                    variant="tonal"
+                    size="large"
+                  >
+                    {{ getReliabilityLabel(reliabilityScore) }}
+                  </v-chip>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- Reliability Stats -->
+          <v-col cols="12" md="6">
+            <v-card rounded="lg" class="h-100">
+              <v-card-title>Attendance Breakdown</v-card-title>
+              <v-card-text>
+                <v-list density="comfortable" class="bg-transparent">
+                  <v-list-item>
+                    <template #prepend>
+                      <v-avatar color="success" size="40">
+                        <v-icon color="white">mdi-check-circle</v-icon>
+                      </v-avatar>
+                    </template>
+                    <v-list-item-title class="font-weight-medium">On-time Arrivals</v-list-item-title>
+                    <v-list-item-subtitle>Arrived on time or early</v-list-item-subtitle>
+                    <template #append>
+                      <span class="text-h6 font-weight-bold text-success">{{ reliabilityStats.onTime }}</span>
+                    </template>
+                  </v-list-item>
+                  <v-list-item>
+                    <template #prepend>
+                      <v-avatar color="warning" size="40">
+                        <v-icon color="white">mdi-clock-alert</v-icon>
+                      </v-avatar>
+                    </template>
+                    <v-list-item-title class="font-weight-medium">Late Arrivals</v-list-item-title>
+                    <v-list-item-subtitle>Arrived after scheduled time</v-list-item-subtitle>
+                    <template #append>
+                      <span class="text-h6 font-weight-bold text-warning">{{ reliabilityStats.late }}</span>
+                    </template>
+                  </v-list-item>
+                  <v-list-item>
+                    <template #prepend>
+                      <v-avatar color="error" size="40">
+                        <v-icon color="white">mdi-close-circle</v-icon>
+                      </v-avatar>
+                    </template>
+                    <v-list-item-title class="font-weight-medium">Absences</v-list-item-title>
+                    <v-list-item-subtitle>Missed scheduled shifts</v-list-item-subtitle>
+                    <template #append>
+                      <span class="text-h6 font-weight-bold text-error">{{ reliabilityStats.absences }}</span>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- PTO Balance Card -->
+          <v-col cols="12">
+            <v-card rounded="lg">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="info" class="mr-2">mdi-beach</v-icon>
+                PTO Balance Overview
+              </v-card-title>
+              <v-card-text>
+                <v-row dense>
+                  <v-col cols="6" sm="3">
+                    <div class="text-center pa-4 bg-blue-lighten-5 rounded-lg">
+                      <div class="text-h4 font-weight-bold text-primary">{{ ptoBalance.available }}</div>
+                      <div class="text-caption">Days Available</div>
+                    </div>
+                  </v-col>
+                  <v-col cols="6" sm="3">
+                    <div class="text-center pa-4 bg-green-lighten-5 rounded-lg">
+                      <div class="text-h4 font-weight-bold text-success">{{ ptoBalance.used }}</div>
+                      <div class="text-caption">Days Used</div>
+                    </div>
+                  </v-col>
+                  <v-col cols="6" sm="3">
+                    <div class="text-center pa-4 bg-amber-lighten-5 rounded-lg">
+                      <div class="text-h4 font-weight-bold text-amber-darken-2">{{ ptoBalance.total }}</div>
+                      <div class="text-caption">Total Annual</div>
+                    </div>
+                  </v-col>
+                  <v-col cols="6" sm="3">
+                    <div class="text-center pa-4 bg-purple-lighten-5 rounded-lg">
+                      <div class="text-h4 font-weight-bold text-purple">{{ Math.round((ptoBalance.used / ptoBalance.total) * 100) }}%</div>
+                      <div class="text-caption">Used</div>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+    </v-window>
 
     <!-- Swap Shift Dialog -->
     <v-dialog v-model="swapDialog" max-width="500">
@@ -266,10 +453,67 @@
       </v-card>
     </v-dialog>
 
+    <!-- Request Time Off Dialog -->
+    <v-dialog v-model="requestDialog" max-width="500">
+      <v-card>
+        <v-card-title>Request Time Off</v-card-title>
+        <v-card-text>
+          <v-form ref="formRef">
+            <v-select
+              v-model="form.type"
+              :items="ptoTypeOptions"
+              label="Type"
+              variant="outlined"
+              class="mb-3"
+            />
+            <v-row>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="form.start_date"
+                  label="Start Date"
+                  type="date"
+                  variant="outlined"
+                  :rules="[v => !!v || 'Required']"
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="form.end_date"
+                  label="End Date"
+                  type="date"
+                  variant="outlined"
+                  :rules="[v => !!v || 'Required']"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.reason"
+                  label="Reason (optional)"
+                  variant="outlined"
+                  rows="3"
+                  hint="Briefly describe the reason for your time off request"
+                />
+              </v-col>
+            </v-row>
+            
+            <v-alert v-if="form.start_date && form.end_date" type="info" variant="tonal" class="mt-3">
+              This request is for <strong>{{ calculateDays }} day{{ calculateDays !== 1 ? 's' : '' }}</strong>.
+              You'll have <strong>{{ ptoBalance.available - calculateDays }}</strong> days remaining.
+            </v-alert>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="requestDialog = false">Cancel</v-btn>
+          <v-btn color="primary" @click="submitTimeOffRequest" :loading="submittingRequest">Submit Request</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Success Snackbar -->
-    <v-snackbar v-model="showSuccess" color="success" location="top">
-      <v-icon class="mr-2">mdi-check-circle</v-icon>
-      {{ successMessage }}
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" location="top" :timeout="3000">
+      <v-icon class="mr-2">{{ snackbar.color === 'success' ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
+      {{ snackbar.message }}
     </v-snackbar>
   </div>
 </template>
@@ -277,24 +521,36 @@
 <script setup lang="ts">
 import type { Shift } from '~/stores/operations'
 
-// Middleware
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
 })
 
 useHead({
-  title: 'My Schedule'
+  title: 'My Schedule & Time Off'
 })
 
 // Stores
 const opsStore = useOperationsStore()
 const userStore = useUserStore()
 const employeeStore = useEmployeeStore()
-const toast = useToast()
+const authStore = useAuthStore()
 const supabase = useSupabaseClient()
+const route = useRoute()
 
-// State
+// Tabs - check for query param
+const activeTab = ref('schedule')
+
+// Initialize tab from query param
+onMounted(() => {
+  if (route.query.tab === 'timeoff') {
+    activeTab.value = 'timeoff'
+  } else if (route.query.tab === 'reliability') {
+    activeTab.value = 'reliability'
+  }
+})
+
+// Schedule State
 const myShifts = ref<Shift[]>([])
 const swapDialog = ref(false)
 const dropDialog = ref(false)
@@ -303,11 +559,30 @@ const dropShift = ref<Shift | null>(null)
 const swapTargetEmployee = ref<string | null>(null)
 const dropReason = ref('')
 const isSubmittingChange = ref(false)
-const showSuccess = ref(false)
-const successMessage = ref('')
-const upcomingTimeOff = ref<any[]>([])
 
-// Reliability stats (simulated - would come from database in production)
+// Time Off State
+const requestDialog = ref(false)
+const loadingRequests = ref(true)
+const submittingRequest = ref(false)
+const statusFilter = ref('all')
+const allRequests = ref<any[]>([])
+const formRef = ref()
+
+const form = reactive({
+  type: 'PTO',
+  start_date: '',
+  end_date: '',
+  reason: ''
+})
+
+// Snackbar
+const snackbar = reactive({
+  show: false,
+  message: '',
+  color: 'success'
+})
+
+// Reliability stats
 const reliabilityStats = ref({
   onTime: 45,
   late: 3,
@@ -326,6 +601,18 @@ const ptoBalance = ref({
   used: 3,
   total: 15
 })
+
+// PTO Types
+const ptoTypes = ref([
+  { name: 'PTO', total: 10, available: 7, icon: 'mdi-beach', color: '#2196F3' },
+  { name: 'Sick', total: 5, available: 5, icon: 'mdi-hospital', color: '#F44336' },
+  { name: 'Personal', total: 3, available: 2, icon: 'mdi-account', color: '#9C27B0' },
+  { name: 'Floating', total: 2, available: 1, icon: 'mdi-calendar-star', color: '#FF9800' },
+  { name: 'Bereavement', total: 3, available: 3, icon: 'mdi-heart', color: '#607D8B' },
+  { name: 'Jury Duty', total: 5, available: 5, icon: 'mdi-gavel', color: '#795548' }
+])
+
+const ptoTypeOptions = computed(() => ptoTypes.value.map(t => t.name))
 
 // Computed
 const todayFormatted = computed(() => {
@@ -346,7 +633,6 @@ const currentGreeting = computed(() => {
 })
 
 const weeklyHours = computed(() => {
-  // Calculate weekly hours from myShifts
   const now = new Date()
   const weekStart = new Date(now.setDate(now.getDate() - now.getDay()))
   const weekEnd = new Date(weekStart)
@@ -361,8 +647,33 @@ const weeklyHours = computed(() => {
     return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
   }, 0)
 })
+
 const upcomingShiftCount = computed(() => myShifts.value.filter(s => new Date(s.start_at) > new Date()).length)
-const pendingRequestCount = computed(() => 0) // Placeholder until we have time off requests
+
+const ptoUsedPercentage = computed(() => (ptoBalance.value.used / ptoBalance.value.total) * 100)
+
+const pendingRequests = computed(() => allRequests.value.filter(r => r.status === 'pending'))
+const approvedRequests = computed(() => allRequests.value.filter(r => r.status === 'approved'))
+
+const nextTimeOff = computed(() => {
+  const future = approvedRequests.value
+    .filter(r => new Date(r.start_date) > new Date())
+    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+  return future[0] || null
+})
+
+const filteredRequests = computed(() => {
+  if (statusFilter.value === 'all') return allRequests.value
+  return allRequests.value.filter(r => r.status === statusFilter.value)
+})
+
+const calculateDays = computed(() => {
+  if (!form.start_date || !form.end_date) return 0
+  const start = new Date(form.start_date)
+  const end = new Date(form.end_date)
+  const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  return Math.max(1, diff)
+})
 
 const availableEmployees = computed(() => {
   return employeeStore.employees?.map((e: any) => ({
@@ -389,7 +700,7 @@ function getReliabilityLabel(score: number) {
   return 'At Risk'
 }
 
-function getTimeOffStatusColor(status: string) {
+function getStatusColor(status: string) {
   switch (status) {
     case 'approved': return 'success'
     case 'pending': return 'warning'
@@ -398,7 +709,7 @@ function getTimeOffStatusColor(status: string) {
   }
 }
 
-function getTimeOffStatusIcon(status: string) {
+function getStatusIcon(status: string) {
   switch (status) {
     case 'approved': return 'mdi-check-circle'
     case 'pending': return 'mdi-clock'
@@ -411,7 +722,24 @@ function formatDateRange(start: string, end: string) {
   const startDate = new Date(start)
   const endDate = new Date(end)
   const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', options)}`
+  
+  if (startDate.getTime() === endDate.getTime()) {
+    return startDate.toLocaleDateString('en-US', { ...options, year: 'numeric' })
+  }
+  return `${startDate.toLocaleDateString('en-US', options)} - ${endDate.toLocaleDateString('en-US', { ...options, year: 'numeric' })}`
+}
+
+function getDaysCount(request: any) {
+  const start = new Date(request.start_date)
+  const end = new Date(request.end_date)
+  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+}
+
+function getDaysUntil(dateStr: string) {
+  const date = new Date(dateStr)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function formatShiftInfo(shift: Shift) {
@@ -444,14 +772,16 @@ async function submitSwapRequest() {
   if (!swapShift.value || !swapTargetEmployee.value) return
   isSubmittingChange.value = true
   try {
-    // Implement swap request logic here
-    await new Promise(resolve => setTimeout(resolve, 500)) // Simulated
-    successMessage.value = 'Swap request submitted successfully!'
-    showSuccess.value = true
+    await new Promise(resolve => setTimeout(resolve, 500))
+    snackbar.message = 'Swap request submitted successfully!'
+    snackbar.color = 'success'
+    snackbar.show = true
     swapDialog.value = false
   } catch (err) {
     console.error('Swap request failed:', err)
-    toast.error('Failed to submit swap request')
+    snackbar.message = 'Failed to submit swap request'
+    snackbar.color = 'error'
+    snackbar.show = true
   } finally {
     isSubmittingChange.value = false
   }
@@ -461,36 +791,114 @@ async function submitDropRequest() {
   if (!dropShift.value) return
   isSubmittingChange.value = true
   try {
-    // Implement drop request logic here
-    await new Promise(resolve => setTimeout(resolve, 500)) // Simulated
-    successMessage.value = 'Drop request submitted successfully!'
-    showSuccess.value = true
+    await new Promise(resolve => setTimeout(resolve, 500))
+    snackbar.message = 'Drop request submitted successfully!'
+    snackbar.color = 'success'
+    snackbar.show = true
     dropDialog.value = false
   } catch (err) {
     console.error('Drop request failed:', err)
-    toast.error('Failed to submit drop request')
+    snackbar.message = 'Failed to submit drop request'
+    snackbar.color = 'error'
+    snackbar.show = true
   } finally {
     isSubmittingChange.value = false
   }
 }
 
-async function fetchUpcomingTimeOff() {
+async function fetchRequests() {
+  loadingRequests.value = true
   try {
-    const employeeId = userStore.employee?.id
-    if (!employeeId) return
-
+    const profileId = authStore.profile?.id
+    if (!profileId) {
+      allRequests.value = []
+      return
+    }
+    
     const { data, error } = await supabase
       .from('time_off_requests')
       .select('*')
-      .eq('employee_id', employeeId)
-      .gte('end_date', new Date().toISOString().split('T')[0])
-      .order('start_date')
-      .limit(5)
+      .eq('profile_id', profileId)
+      .order('created_at', { ascending: false })
 
     if (error) throw error
-    upcomingTimeOff.value = data || []
+    allRequests.value = data || []
   } catch (err) {
-    console.error('Error fetching time off:', err)
+    console.error('Error fetching requests:', err)
+  } finally {
+    loadingRequests.value = false
+  }
+}
+
+async function submitTimeOffRequest() {
+  const { valid } = await formRef.value?.validate()
+  if (!valid) return
+
+  const profileId = authStore.profile?.id
+  const employeeId = userStore.employee?.id
+  if (!profileId || !employeeId) {
+    snackbar.message = 'User session not found'
+    snackbar.color = 'error'
+    snackbar.show = true
+    return
+  }
+
+  submittingRequest.value = true
+  try {
+    const { error } = await supabase
+      .from('time_off_requests')
+      .insert({
+        profile_id: profileId,
+        employee_id: employeeId,
+        request_type: form.type,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        reason: form.reason || null,
+        status: 'pending'
+      } as any)
+
+    if (error) throw error
+
+    snackbar.message = 'Time off request submitted!'
+    snackbar.color = 'success'
+    snackbar.show = true
+    
+    requestDialog.value = false
+    form.start_date = ''
+    form.end_date = ''
+    form.reason = ''
+    form.type = 'PTO'
+    
+    await fetchRequests()
+  } catch (err) {
+    console.error('Error submitting request:', err)
+    snackbar.message = 'Failed to submit request'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    submittingRequest.value = false
+  }
+}
+
+async function cancelRequest(id: string) {
+  try {
+    const { error } = await supabase
+      .from('time_off_requests')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    snackbar.message = 'Request cancelled'
+    snackbar.color = 'info'
+    snackbar.show = true
+    
+    await fetchRequests()
+  } catch (err) {
+    console.error('Error cancelling request:', err)
+    snackbar.message = 'Failed to cancel request'
+    snackbar.color = 'error'
+    snackbar.show = true
   }
 }
 
@@ -510,12 +918,71 @@ onMounted(async () => {
   }
   
   await employeeStore.fetchEmployees?.()
-  await fetchUpcomingTimeOff()
+  await fetchRequests()
 })
 </script>
 
 <style scoped>
 .my-schedule-page {
   max-width: 1400px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Horizontal scrollable stats on mobile */
+.stats-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.stats-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  min-width: max-content;
+}
+
+.stat-card {
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 600px) {
+  .stats-row {
+    min-width: auto;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: auto;
+  }
+}
+
+/* PTO Types Grid */
+.pto-types-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 600px) {
+  .pto-types-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.pto-type-item {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 8px;
 }
 </style>

@@ -231,7 +231,7 @@ const topMentors = computed(() => {
 const personalQuickLinks = [
   { icon: '👤', label: 'My Profile', href: '/profile', color: 'bg-purple-100 text-purple-600' },
   { icon: '📅', label: 'My Schedule', href: '/my-schedule', color: 'bg-green-100 text-green-600' },
-  { icon: '🏖️', label: 'Time Off', href: '/my-time-off', color: 'bg-cyan-100 text-cyan-600' },
+  { icon: '🏖️', label: 'Time Off', href: '/my-schedule?tab=timeoff', color: 'bg-cyan-100 text-cyan-600' },
   { icon: '⭐', label: 'My Skills', href: '/skills', color: 'bg-amber-100 text-amber-600' },
   { icon: '🎯', label: 'My Goals', href: '/goals', color: 'bg-pink-100 text-pink-600' },
   { icon: '🎓', label: 'Training', href: '/training', color: 'bg-indigo-100 text-indigo-600' },
@@ -533,7 +533,7 @@ const formatShiftTime = (time: string) => {
           <div class="p-5">
             <div class="flex items-center justify-between mb-4">
               <h2 class="text-lg font-semibold text-slate-900">🏖️ Pending Time Off</h2>
-              <NuxtLink to="/my-time-off" class="text-xs text-green-600 hover:text-green-700 font-medium">View all →</NuxtLink>
+              <NuxtLink to="/my-schedule?tab=timeoff" class="text-xs text-green-600 hover:text-green-700 font-medium">View all →</NuxtLink>
             </div>
             <div class="space-y-2">
               <div 
