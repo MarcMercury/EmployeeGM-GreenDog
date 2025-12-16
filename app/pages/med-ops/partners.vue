@@ -8,13 +8,19 @@
           Directory of medical equipment manufacturers and suppliers
         </p>
       </div>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="showAddPartner = true"
-      >
-        Add Partner
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn-toggle v-model="showInactive" density="compact" variant="outlined">
+          <v-btn :value="false">Active Only</v-btn>
+          <v-btn :value="true">Show All</v-btn>
+        </v-btn-toggle>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="openAddDialog"
+        >
+          Add Partner
+        </v-btn>
+      </div>
     </div>
 
     <!-- Search and Filters -->
@@ -53,27 +59,49 @@
       </v-card-text>
     </v-card>
 
+    <!-- Loading State -->
+    <div v-if="loading" class="d-flex justify-center py-12">
+      <v-progress-circular indeterminate color="primary" size="48" />
+    </div>
+
+    <!-- Empty State -->
+    <v-card v-else-if="filteredPartners.length === 0" rounded="lg" class="pa-8 text-center">
+      <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-factory</v-icon>
+      <h3 class="text-h6 mb-2">No Partners Found</h3>
+      <p class="text-body-2 text-grey mb-4">
+        {{ partners.length === 0 ? 'Get started by adding your first partner.' : 'No partners match your current filters.' }}
+      </p>
+      <v-btn v-if="partners.length === 0" color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
+        Add Partner
+      </v-btn>
+    </v-card>
+
     <!-- Grid View -->
-    <v-row v-if="viewMode === 'grid'">
+    <v-row v-else-if="viewMode === 'grid'">
       <v-col v-for="partner in filteredPartners" :key="partner.id" cols="12" sm="6" md="4" lg="3">
-        <v-card rounded="lg" class="h-100 partner-card" @click="openPartner(partner)">
+        <v-card rounded="lg" class="h-100 partner-card" :class="{ 'inactive-card': partner.status !== 'active' }" @click="openPartner(partner)">
           <div class="pa-4 text-center">
             <v-avatar size="64" :color="partner.color || 'primary'" class="mb-3">
               <v-icon size="32" color="white">{{ partner.icon || 'mdi-factory' }}</v-icon>
             </v-avatar>
             <h3 class="text-subtitle-1 font-weight-bold mb-1">{{ partner.name }}</h3>
-            <v-chip size="x-small" variant="tonal" color="primary" class="mb-2">
-              {{ partner.category }}
-            </v-chip>
+            <div class="d-flex justify-center gap-1 mb-2">
+              <v-chip size="x-small" variant="tonal" color="primary">
+                {{ partner.category || 'Other' }}
+              </v-chip>
+              <v-chip v-if="partner.status !== 'active'" size="x-small" variant="flat" color="warning">
+                {{ partner.status }}
+              </v-chip>
+            </div>
             <p class="text-body-2 text-grey text-truncate">{{ partner.description }}</p>
           </div>
           <v-divider />
           <v-card-actions class="justify-center">
-            <v-btn variant="text" size="small" prepend-icon="mdi-phone">
+            <v-btn variant="text" size="small" prepend-icon="mdi-phone" @click.stop="callPartner(partner)">
               Contact
             </v-btn>
-            <v-btn variant="text" size="small" prepend-icon="mdi-web">
-              Website
+            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="openEditDialog(partner)">
+              Edit
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -96,15 +124,25 @@
             </v-avatar>
             <div>
               <div class="font-weight-medium">{{ item.name }}</div>
-              <div class="text-caption text-grey">{{ item.category }}</div>
+              <div class="text-caption text-grey">{{ item.category || 'Other' }}</div>
             </div>
           </div>
+        </template>
+        <template #item.status="{ item }">
+          <v-chip 
+            :color="item.status === 'active' ? 'success' : item.status === 'inactive' ? 'grey' : 'warning'" 
+            size="small" 
+            variant="flat"
+          >
+            {{ item.status }}
+          </v-chip>
         </template>
         <template #item.contact="{ item }">
           <div class="text-body-2">{{ item.contact_name }}</div>
           <div class="text-caption text-grey">{{ item.phone }}</div>
         </template>
         <template #item.actions="{ item }">
+          <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openEditDialog(item)" />
           <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="callPartner(item)" />
           <v-btn icon="mdi-email" size="small" variant="text" @click.stop="emailPartner(item)" />
           <v-btn icon="mdi-web" size="small" variant="text" @click.stop="visitWebsite(item)" />
@@ -186,7 +224,7 @@
         </v-card-text>
         
         <v-card-actions>
-          <v-btn variant="text" prepend-icon="mdi-pencil">Edit</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-pencil" @click="openEditDialog(selectedPartner)">Edit</v-btn>
           <v-spacer />
           <v-btn color="primary" prepend-icon="mdi-phone" @click="callPartner(selectedPartner)">
             Call
@@ -198,63 +236,217 @@
       </v-card>
     </v-dialog>
 
-    <!-- Add Partner Dialog -->
-    <v-dialog v-model="showAddPartner" max-width="500">
+    <!-- Add/Edit Partner Dialog -->
+    <v-dialog v-model="showPartnerForm" max-width="600" persistent>
       <v-card>
-        <v-card-title>Add New Partner</v-card-title>
+        <v-card-title class="d-flex align-center justify-space-between">
+          <span>{{ isEditing ? 'Edit Partner' : 'Add New Partner' }}</span>
+          <v-btn icon="mdi-close" variant="text" @click="closeFormDialog" />
+        </v-card-title>
+        <v-divider />
         <v-card-text>
-          <v-form ref="addFormRef">
-            <v-text-field
-              v-model="newPartner.name"
-              label="Company Name"
-              variant="outlined"
-              :rules="[v => !!v || 'Required']"
-              class="mb-3"
-            />
-            <v-select
-              v-model="newPartner.category"
-              :items="categories"
-              label="Category"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="newPartner.contact_name"
-              label="Contact Name"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="newPartner.phone"
-              label="Phone"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="newPartner.email"
-              label="Email"
-              type="email"
-              variant="outlined"
-              class="mb-3"
-            />
-            <v-text-field
-              v-model="newPartner.website"
-              label="Website"
-              variant="outlined"
-              class="mb-3"
-            />
+          <v-form ref="formRef">
+            <v-row>
+              <v-col cols="12" md="8">
+                <v-text-field
+                  v-model="partnerForm.name"
+                  label="Company Name *"
+                  variant="outlined"
+                  :rules="[v => !!v || 'Required']"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="partnerForm.status"
+                  :items="statusOptions"
+                  label="Status"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+            
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.category"
+                  :items="categories"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.website"
+                  label="Website"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="www.example.com"
+                />
+              </v-col>
+            </v-row>
+
             <v-textarea
-              v-model="newPartner.description"
+              v-model="partnerForm.description"
               label="Description"
               variant="outlined"
               rows="2"
+              density="compact"
+              class="mb-2"
+            />
+
+            <v-divider class="my-3" />
+            <div class="text-subtitle-2 mb-2">Primary Contact</div>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.contact_name"
+                  label="Contact Name"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.phone"
+                  label="Phone"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.email"
+                  label="Email"
+                  type="email"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.address"
+                  label="Address"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <v-divider class="my-3" />
+            <div class="text-subtitle-2 mb-2">Display Options</div>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.icon"
+                  :items="iconOptions"
+                  label="Icon"
+                  variant="outlined"
+                  density="compact"
+                >
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <template #prepend>
+                        <v-icon>{{ item.value }}</v-icon>
+                      </template>
+                    </v-list-item>
+                  </template>
+                  <template #selection="{ item }">
+                    <v-icon class="mr-2">{{ item.value }}</v-icon>
+                    {{ item.title }}
+                  </template>
+                </v-select>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.color"
+                  :items="colorOptions"
+                  label="Color"
+                  variant="outlined"
+                  density="compact"
+                >
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <template #prepend>
+                        <v-avatar :color="item.value" size="24" />
+                      </template>
+                    </v-list-item>
+                  </template>
+                  <template #selection="{ item }">
+                    <v-avatar :color="item.value" size="20" class="mr-2" />
+                    {{ item.title }}
+                  </template>
+                </v-select>
+              </v-col>
+            </v-row>
+
+            <v-combobox
+              v-model="partnerForm.products"
+              label="Products & Services"
+              variant="outlined"
+              density="compact"
+              chips
+              multiple
+              closable-chips
+              hint="Press Enter to add items"
+              persistent-hint
             />
           </v-form>
         </v-card-text>
+        <v-divider />
         <v-card-actions>
+          <v-btn 
+            v-if="isEditing" 
+            color="error" 
+            variant="text" 
+            prepend-icon="mdi-delete"
+            @click="confirmDelete"
+          >
+            Delete
+          </v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="showAddPartner = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addPartner">Add Partner</v-btn>
+          <v-btn variant="text" @click="closeFormDialog">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="savePartner">
+            {{ isEditing ? 'Save Changes' : 'Add Partner' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteConfirm" max-width="400">
+      <v-card>
+        <v-card-title class="text-h6">Delete Partner?</v-card-title>
+        <v-card-text>
+          <p>Are you sure you want to delete <strong>{{ partnerForm.name }}</strong>?</p>
+          <p class="text-caption text-grey mt-2">
+            This action cannot be undone. Consider disabling the partner instead if you may need this record later.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="text" @click="showDeleteConfirm = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn 
+            color="warning" 
+            variant="tonal"
+            @click="disablePartner"
+          >
+            Disable Instead
+          </v-btn>
+          <v-btn 
+            color="error" 
+            :loading="deleting"
+            @click="deletePartner"
+          >
+            Delete
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -262,6 +454,8 @@
 </template>
 
 <script setup lang="ts">
+import { useToast } from '~/composables/useToast'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
@@ -271,23 +465,39 @@ useHead({
   title: 'Med Ops Partners'
 })
 
+const supabase = useSupabaseClient()
+const { showSuccess, showError } = useToast()
+
 // State
 const search = ref('')
 const categoryFilter = ref<string | null>(null)
 const viewMode = ref('grid')
 const partnerDialog = ref(false)
-const showAddPartner = ref(false)
+const showPartnerForm = ref(false)
+const showDeleteConfirm = ref(false)
+const showInactive = ref(false)
 const selectedPartner = ref<any>(null)
-const addFormRef = ref()
+const formRef = ref()
+const isEditing = ref(false)
+const saving = ref(false)
+const deleting = ref(false)
+const loading = ref(true)
 
-const newPartner = reactive({
+// Form state
+const partnerForm = reactive({
+  id: '',
   name: '',
-  category: '',
+  category: 'Other',
   contact_name: '',
   phone: '',
   email: '',
   website: '',
-  description: ''
+  description: '',
+  address: '',
+  status: 'active',
+  icon: 'mdi-factory',
+  color: 'grey',
+  products: [] as string[]
 })
 
 const categories = [
@@ -303,35 +513,137 @@ const categories = [
   'Other'
 ]
 
+const statusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Inactive', value: 'inactive' },
+  { title: 'Pending', value: 'pending' }
+]
+
+const iconOptions = [
+  { title: 'Factory', value: 'mdi-factory' },
+  { title: 'Flask', value: 'mdi-flask' },
+  { title: 'Pill', value: 'mdi-pill' },
+  { title: 'Radiology', value: 'mdi-radiology-box' },
+  { title: 'Medical Bag', value: 'mdi-medical-bag' },
+  { title: 'Gas Cylinder', value: 'mdi-gas-cylinder' },
+  { title: 'Tooth', value: 'mdi-tooth' },
+  { title: 'Test Tube', value: 'mdi-test-tube' },
+  { title: 'Heart Pulse', value: 'mdi-heart-pulse' },
+  { title: 'Hospital', value: 'mdi-hospital-building' },
+  { title: 'Needle', value: 'mdi-needle' },
+  { title: 'Microscope', value: 'mdi-microscope' }
+]
+
+const colorOptions = [
+  { title: 'Grey', value: 'grey' },
+  { title: 'Blue', value: 'blue' },
+  { title: 'Green', value: 'green' },
+  { title: 'Purple', value: 'purple' },
+  { title: 'Teal', value: 'teal' },
+  { title: 'Orange', value: 'orange' },
+  { title: 'Cyan', value: 'cyan' },
+  { title: 'Red', value: 'red' },
+  { title: 'Pink', value: 'pink' },
+  { title: 'Indigo', value: 'indigo' }
+]
+
 const tableHeaders = [
   { title: 'Partner', key: 'name' },
+  { title: 'Status', key: 'status' },
   { title: 'Contact', key: 'contact' },
   { title: 'Email', key: 'email' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
 ]
 
-// Sample partners data
-const partners = ref([
-  { id: '1', name: 'IDEXX Laboratories', category: 'Laboratory', description: 'Diagnostic testing and IT solutions for veterinary practices', contact_name: 'Sales Team', phone: '1-800-548-6733', email: 'info@idexx.com', website: 'www.idexx.com', icon: 'mdi-flask', color: 'blue', products: ['Blood Chemistry', 'Urinalysis', 'SNAP Tests', 'VetLab Station'] },
-  { id: '2', name: 'Zoetis', category: 'Pharmaceuticals', description: 'Global animal health company with vaccines and medicines', contact_name: 'Vet Sales', phone: '1-888-963-8471', email: 'info@zoetis.com', website: 'www.zoetis.com', icon: 'mdi-pill', color: 'green', products: ['Vaccines', 'Parasiticides', 'Antibiotics', 'Pain Management'] },
-  { id: '3', name: 'VetRay', category: 'Imaging Equipment', description: 'Digital radiography systems for veterinary clinics', contact_name: 'Technical Support', phone: '1-800-555-0199', email: 'support@vetray.com', website: 'www.vetray.com', icon: 'mdi-radiology-box', color: 'purple', products: ['Digital X-Ray', 'DR Panels', 'PACS Software'] },
-  { id: '4', name: 'Midmark', category: 'Surgical Instruments', description: 'Surgical tables, lighting, and equipment', contact_name: 'Sales', phone: '1-800-643-6275', email: 'sales@midmark.com', website: 'www.midmark.com', icon: 'mdi-medical-bag', color: 'teal', products: ['Exam Tables', 'Surgical Lights', 'Autoclaves'] },
-  { id: '5', name: 'VetEquip', category: 'Anesthesia', description: 'Anesthesia machines and monitoring equipment', contact_name: 'Orders', phone: '1-800-466-6463', email: 'orders@vetequip.com', website: 'www.vetequip.com', icon: 'mdi-gas-cylinder', color: 'orange', products: ['Anesthesia Machines', 'Ventilators', 'Vaporizers'] },
-  { id: '6', name: 'iM3', category: 'Dental', description: 'Veterinary dental equipment and instruments', contact_name: 'Support', phone: '1-800-346-0444', email: 'info@im3vet.com', website: 'www.im3vet.com', icon: 'mdi-tooth', color: 'cyan', products: ['Dental Units', 'Ultrasonic Scalers', 'Dental X-Ray'] },
-  { id: '7', name: 'Heska', category: 'Laboratory', description: 'Point-of-care diagnostics and specialty products', contact_name: 'Customer Care', phone: '1-800-464-3752', email: 'customercare@heska.com', website: 'www.heska.com', icon: 'mdi-test-tube', color: 'red', products: ['Element DC', 'HemaTrue', 'Allergy Testing'] },
-  { id: '8', name: 'SurgiVet', category: 'Monitoring', description: 'Patient monitoring systems', contact_name: 'Tech Support', phone: '1-800-447-8433', email: 'support@surgivet.com', website: 'www.surgivet.com', icon: 'mdi-heart-pulse', color: 'pink', products: ['Multi-Parameter Monitors', 'Pulse Oximeters', 'Capnographs'] }
-])
+// Partners from database
+const partners = ref<any[]>([])
+
+// Load partners from database
+async function loadPartners() {
+  loading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('referral_partners')
+      .select('*')
+      .order('name')
+    
+    if (error) throw error
+    partners.value = data || []
+  } catch (err: any) {
+    showError('Failed to load partners: ' + err.message)
+    console.error('Error loading partners:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load on mount
+onMounted(() => {
+  loadPartners()
+})
 
 // Computed
 const filteredPartners = computed(() => {
   return partners.value.filter(p => {
     const matchesSearch = !search.value || 
       p.name.toLowerCase().includes(search.value.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.value.toLowerCase())
+      (p.description || '').toLowerCase().includes(search.value.toLowerCase())
     const matchesCategory = !categoryFilter.value || p.category === categoryFilter.value
-    return matchesSearch && matchesCategory
+    const matchesStatus = showInactive.value || p.status === 'active'
+    return matchesSearch && matchesCategory && matchesStatus
   })
 })
+
+// Form helpers
+function resetForm() {
+  Object.assign(partnerForm, {
+    id: '',
+    name: '',
+    category: 'Other',
+    contact_name: '',
+    phone: '',
+    email: '',
+    website: '',
+    description: '',
+    address: '',
+    status: 'active',
+    icon: 'mdi-factory',
+    color: 'grey',
+    products: []
+  })
+}
+
+function openAddDialog() {
+  resetForm()
+  isEditing.value = false
+  showPartnerForm.value = true
+}
+
+function openEditDialog(partner: any) {
+  Object.assign(partnerForm, {
+    id: partner.id,
+    name: partner.name || '',
+    category: partner.category || 'Other',
+    contact_name: partner.contact_name || '',
+    phone: partner.phone || '',
+    email: partner.email || '',
+    website: partner.website || '',
+    description: partner.description || '',
+    address: partner.address || '',
+    status: partner.status || 'active',
+    icon: partner.icon || 'mdi-factory',
+    color: partner.color || 'grey',
+    products: partner.products || []
+  })
+  isEditing.value = true
+  partnerDialog.value = false
+  showPartnerForm.value = true
+}
+
+function closeFormDialog() {
+  showPartnerForm.value = false
+  resetForm()
+}
 
 // Methods
 function openPartner(partner: any) {
@@ -340,39 +652,120 @@ function openPartner(partner: any) {
 }
 
 function callPartner(partner: any) {
-  window.open(`tel:${partner.phone}`, '_self')
+  if (partner?.phone) {
+    window.open(`tel:${partner.phone}`, '_self')
+  }
 }
 
 function emailPartner(partner: any) {
-  window.open(`mailto:${partner.email}`, '_blank')
+  if (partner?.email) {
+    window.open(`mailto:${partner.email}`, '_blank')
+  }
 }
 
 function visitWebsite(partner: any) {
-  window.open(`https://${partner.website}`, '_blank')
+  if (partner?.website) {
+    const url = partner.website.startsWith('http') ? partner.website : `https://${partner.website}`
+    window.open(url, '_blank')
+  }
 }
 
-async function addPartner() {
-  const { valid } = await addFormRef.value?.validate()
+async function savePartner() {
+  const { valid } = await formRef.value?.validate()
   if (!valid) return
 
-  partners.value.push({
-    id: Date.now().toString(),
-    ...newPartner,
-    icon: 'mdi-factory',
-    color: 'grey',
-    products: []
-  })
+  saving.value = true
+  try {
+    const partnerData = {
+      name: partnerForm.name,
+      category: partnerForm.category,
+      contact_name: partnerForm.contact_name || null,
+      phone: partnerForm.phone || null,
+      email: partnerForm.email || null,
+      website: partnerForm.website || null,
+      description: partnerForm.description || null,
+      address: partnerForm.address || null,
+      status: partnerForm.status,
+      icon: partnerForm.icon,
+      color: partnerForm.color,
+      products: partnerForm.products
+    }
 
-  showAddPartner.value = false
-  Object.assign(newPartner, {
-    name: '',
-    category: '',
-    contact_name: '',
-    phone: '',
-    email: '',
-    website: '',
-    description: ''
-  })
+    if (isEditing.value) {
+      // Update existing partner
+      const { error } = await supabase
+        .from('referral_partners')
+        .update(partnerData)
+        .eq('id', partnerForm.id)
+      
+      if (error) throw error
+      showSuccess('Partner updated successfully')
+    } else {
+      // Create new partner
+      const { error } = await supabase
+        .from('referral_partners')
+        .insert(partnerData)
+      
+      if (error) throw error
+      showSuccess('Partner added successfully')
+    }
+
+    closeFormDialog()
+    await loadPartners()
+  } catch (err: any) {
+    showError('Failed to save partner: ' + err.message)
+    console.error('Error saving partner:', err)
+  } finally {
+    saving.value = false
+  }
+}
+
+function confirmDelete() {
+  showDeleteConfirm.value = true
+}
+
+async function deletePartner() {
+  deleting.value = true
+  try {
+    const { error } = await supabase
+      .from('referral_partners')
+      .delete()
+      .eq('id', partnerForm.id)
+    
+    if (error) throw error
+    
+    showSuccess('Partner deleted successfully')
+    showDeleteConfirm.value = false
+    closeFormDialog()
+    await loadPartners()
+  } catch (err: any) {
+    showError('Failed to delete partner: ' + err.message)
+    console.error('Error deleting partner:', err)
+  } finally {
+    deleting.value = false
+  }
+}
+
+async function disablePartner() {
+  deleting.value = true
+  try {
+    const { error } = await supabase
+      .from('referral_partners')
+      .update({ status: 'inactive' })
+      .eq('id', partnerForm.id)
+    
+    if (error) throw error
+    
+    showSuccess('Partner disabled successfully')
+    showDeleteConfirm.value = false
+    closeFormDialog()
+    await loadPartners()
+  } catch (err: any) {
+    showError('Failed to disable partner: ' + err.message)
+    console.error('Error disabling partner:', err)
+  } finally {
+    deleting.value = false
+  }
 }
 </script>
 
@@ -389,5 +782,9 @@ async function addPartner() {
 .partner-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.inactive-card {
+  opacity: 0.7;
 }
 </style>
