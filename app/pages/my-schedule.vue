@@ -234,7 +234,7 @@
                   
                   <v-list-item-subtitle>
                     {{ getDaysCount(request) }} day{{ getDaysCount(request) !== 1 ? 's' : '' }}
-                    • {{ request.request_type || 'PTO' }}
+                    • {{ request.time_off_type?.name || 'PTO' }}
                   </v-list-item-subtitle>
 
                   <template #append>
@@ -460,11 +460,15 @@
         <v-card-text>
           <v-form ref="formRef">
             <v-select
-              v-model="form.type"
+              v-model="form.type_id"
               :items="ptoTypeOptions"
+              item-title="title"
+              item-value="value"
               label="Type"
               variant="outlined"
               class="mb-3"
+              :loading="loadingTypes"
+              :rules="[v => !!v || 'Please select a type']"
             />
             <v-row>
               <v-col cols="6">
@@ -541,13 +545,20 @@ const route = useRoute()
 // Tabs - check for query param
 const activeTab = ref('schedule')
 
-// Initialize tab from query param
-onMounted(() => {
+// Initialize data and tab from query param
+onMounted(async () => {
   if (route.query.tab === 'timeoff') {
     activeTab.value = 'timeoff'
   } else if (route.query.tab === 'reliability') {
     activeTab.value = 'reliability'
   }
+  
+  // Fetch time off data
+  await Promise.all([
+    fetchTimeOffTypes(),
+    fetchRequests(),
+    fetchTimeOffBalances()
+  ])
 })
 
 // Schedule State
@@ -568,8 +579,12 @@ const statusFilter = ref('all')
 const allRequests = ref<any[]>([])
 const formRef = ref()
 
+// Time Off Types from database
+const timeOffTypes = ref<any[]>([])
+const loadingTypes = ref(true)
+
 const form = reactive({
-  type: 'PTO',
+  type_id: '',  // UUID of time_off_type
   start_date: '',
   end_date: '',
   reason: ''
@@ -597,22 +612,42 @@ const reliabilityScore = computed(() => {
 
 // PTO Balance
 const ptoBalance = ref({
-  available: 12,
-  used: 3,
-  total: 15
+  available: 0,
+  used: 0,
+  total: 0
 })
 
-// PTO Types
-const ptoTypes = ref([
-  { name: 'PTO', total: 10, available: 7, icon: 'mdi-beach', color: '#2196F3' },
-  { name: 'Sick', total: 5, available: 5, icon: 'mdi-hospital', color: '#F44336' },
-  { name: 'Personal', total: 3, available: 2, icon: 'mdi-account', color: '#9C27B0' },
-  { name: 'Floating', total: 2, available: 1, icon: 'mdi-calendar-star', color: '#FF9800' },
-  { name: 'Bereavement', total: 3, available: 3, icon: 'mdi-heart', color: '#607D8B' },
-  { name: 'Jury Duty', total: 5, available: 5, icon: 'mdi-gavel', color: '#795548' }
-])
+// PTO Types from employee_time_off_balances
+const ptoTypes = ref<any[]>([])
+const loadingBalances = ref(true)
 
-const ptoTypeOptions = computed(() => ptoTypes.value.map(t => t.name))
+// Type icons and colors mapping
+const typeStyles: Record<string, { icon: string; color: string }> = {
+  'PTO': { icon: 'mdi-beach', color: '#2196F3' },
+  'Paid Time Off': { icon: 'mdi-beach', color: '#2196F3' },
+  'Sick Leave': { icon: 'mdi-hospital', color: '#F44336' },
+  'SICK': { icon: 'mdi-hospital', color: '#F44336' },
+  'Personal Day': { icon: 'mdi-account', color: '#9C27B0' },
+  'PERS': { icon: 'mdi-account', color: '#9C27B0' },
+  'Vacation': { icon: 'mdi-palm-tree', color: '#4CAF50' },
+  'VAC': { icon: 'mdi-palm-tree', color: '#4CAF50' },
+  'Bereavement': { icon: 'mdi-heart', color: '#607D8B' },
+  'BRV': { icon: 'mdi-heart', color: '#607D8B' },
+  'Jury Duty': { icon: 'mdi-gavel', color: '#795548' },
+  'JURY': { icon: 'mdi-gavel', color: '#795548' },
+  'Holiday': { icon: 'mdi-calendar-star', color: '#FF9800' },
+  'HOL': { icon: 'mdi-calendar-star', color: '#FF9800' },
+  'Unpaid Leave': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
+  'UNPAID': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
+  'FMLA': { icon: 'mdi-file-document', color: '#3F51B5' },
+  'Maternity/Paternity': { icon: 'mdi-baby-carriage', color: '#E91E63' },
+  'PARENTAL': { icon: 'mdi-baby-carriage', color: '#E91E63' }
+}
+
+const ptoTypeOptions = computed(() => timeOffTypes.value.map(t => ({ 
+  title: t.name, 
+  value: t.id 
+})))
 
 // Computed
 const todayFormatted = computed(() => {
@@ -817,7 +852,10 @@ async function fetchRequests() {
     
     const { data, error } = await supabase
       .from('time_off_requests')
-      .select('*')
+      .select(`
+        *,
+        time_off_type:time_off_types(id, name, code)
+      `)
       .eq('profile_id', profileId)
       .order('created_at', { ascending: false })
 
@@ -827,6 +865,95 @@ async function fetchRequests() {
     console.error('Error fetching requests:', err)
   } finally {
     loadingRequests.value = false
+  }
+}
+
+async function fetchTimeOffTypes() {
+  loadingTypes.value = true
+  try {
+    const { data, error } = await supabase
+      .from('time_off_types')
+      .select('*')
+      .order('name')
+
+    if (error) throw error
+    timeOffTypes.value = data || []
+    
+    // Set default type if available
+    if (timeOffTypes.value.length > 0 && !form.type_id) {
+      const ptoType = timeOffTypes.value.find(t => t.code === 'PTO' || t.name === 'Paid Time Off')
+      form.type_id = ptoType?.id || timeOffTypes.value[0].id
+    }
+  } catch (err) {
+    console.error('Error fetching time off types:', err)
+  } finally {
+    loadingTypes.value = false
+  }
+}
+
+async function fetchTimeOffBalances() {
+  loadingBalances.value = true
+  try {
+    const employeeId = userStore.employee?.id
+    if (!employeeId) {
+      ptoTypes.value = []
+      return
+    }
+    
+    const currentYear = new Date().getFullYear()
+    
+    const { data, error } = await supabase
+      .from('employee_time_off_balances')
+      .select(`
+        *,
+        time_off_type:time_off_types(id, name, code)
+      `)
+      .eq('employee_id', employeeId)
+      .eq('year', currentYear)
+
+    if (error) throw error
+    
+    if (data && data.length > 0) {
+      // Calculate totals
+      let totalUsed = 0
+      let totalAvailable = 0
+      
+      ptoTypes.value = data.map((b: any) => {
+        const typeName = b.time_off_type?.name || 'Unknown'
+        const typeCode = b.time_off_type?.code || typeName
+        const style = typeStyles[typeName] || typeStyles[typeCode] || { icon: 'mdi-calendar', color: '#9E9E9E' }
+        
+        const used = b.hours_used || 0
+        const total = b.hours_allocated || 0
+        const available = Math.max(0, total - used)
+        
+        totalUsed += used
+        totalAvailable += available
+        
+        return {
+          name: typeName,
+          total: Math.round(total / 8), // Convert hours to days
+          available: Math.round(available / 8),
+          used: Math.round(used / 8),
+          icon: style.icon,
+          color: style.color
+        }
+      })
+      
+      ptoBalance.value = {
+        total: Math.round((totalUsed + totalAvailable) / 8),
+        used: Math.round(totalUsed / 8),
+        available: Math.round(totalAvailable / 8)
+      }
+    } else {
+      // No balances found - show empty state
+      ptoTypes.value = []
+      ptoBalance.value = { total: 0, used: 0, available: 0 }
+    }
+  } catch (err) {
+    console.error('Error fetching time off balances:', err)
+  } finally {
+    loadingBalances.value = false
   }
 }
 
@@ -850,7 +977,7 @@ async function submitTimeOffRequest() {
       .insert({
         profile_id: profileId,
         employee_id: employeeId,
-        request_type: form.type,
+        time_off_type_id: form.type_id,
         start_date: form.start_date,
         end_date: form.end_date,
         reason: form.reason || null,
@@ -867,7 +994,9 @@ async function submitTimeOffRequest() {
     form.start_date = ''
     form.end_date = ''
     form.reason = ''
-    form.type = 'PTO'
+    // Reset to default type
+    const ptoType = timeOffTypes.value.find(t => t.code === 'PTO' || t.name === 'Paid Time Off')
+    form.type_id = ptoType?.id || timeOffTypes.value[0]?.id || ''
     
     await fetchRequests()
   } catch (err) {
