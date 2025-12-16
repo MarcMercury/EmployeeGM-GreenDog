@@ -71,7 +71,6 @@
         <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/org-chart" title="Org Chart" prepend-icon="mdi-sitemap" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/admin/skills-management" title="Skill Library" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/profile" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
@@ -139,6 +138,13 @@
       
       <!-- Admin Settings -->
       <v-list v-if="isAdmin" nav density="compact" class="px-2">
+        <v-list-item
+          to="/admin/skills-management"
+          prepend-icon="mdi-bookshelf"
+          title="Skill Library"
+          rounded="lg"
+          class="nav-item"
+        />
         <v-list-item
           to="/settings"
           prepend-icon="mdi-cog"

@@ -189,6 +189,10 @@
                 <v-icon start size="18">mdi-cash</v-icon>
                 Edit Compensation
               </v-btn>
+              <v-btn block variant="text" class="justify-start text-body-2" color="primary" @click="showRequestReviewDialog = true">
+                <v-icon start size="18">mdi-clipboard-plus</v-icon>
+                Request Review
+              </v-btn>
               <v-btn block variant="text" class="justify-start text-body-2" color="error" @click="showDeleteDialog = true">
                 <v-icon start size="18">mdi-delete</v-icon>
                 Archive Employee
@@ -1225,6 +1229,95 @@
       </v-card>
     </v-dialog>
 
+    <!-- Admin Request Review Dialog -->
+    <v-dialog v-model="showRequestReviewDialog" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-clipboard-plus</v-icon>
+          Request Review for {{ employee?.first_name }}
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="showRequestReviewDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-6">
+          <v-alert type="info" variant="tonal" class="mb-6">
+            This will notify <strong>{{ employee?.first_name }} {{ employee?.last_name }}</strong> 
+            to complete a self-assessment for performance review.
+          </v-alert>
+
+          <!-- Topics for Review -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Topics to Address</div>
+            <v-combobox
+              v-model="reviewRequest.topics"
+              :items="reviewTopicSuggestions"
+              label="Select or type topics"
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <!-- Skills to Review -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Skills to Assess</div>
+            <v-autocomplete
+              v-model="reviewRequest.skillIds"
+              :items="employeeSkillsForReview"
+              item-title="name"
+              item-value="id"
+              label="Select skills to review"
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <!-- Admin Notes -->
+          <div class="mb-4">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Notes for Employee</div>
+            <v-textarea
+              v-model="reviewRequest.notes"
+              label="Context or instructions for the employee..."
+              variant="outlined"
+              rows="3"
+            />
+          </div>
+
+          <!-- Due Date -->
+          <div>
+            <div class="text-subtitle-2 font-weight-bold mb-2">Due Date</div>
+            <v-text-field
+              v-model="reviewRequest.dueDate"
+              type="date"
+              variant="outlined"
+              density="comfortable"
+              :min="minReviewDate"
+            />
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showRequestReviewDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="submittingReviewRequest"
+            :disabled="reviewRequest.topics.length === 0"
+            @click="submitAdminReviewRequest"
+          >
+            <v-icon start>mdi-send</v-icon>
+            Send Request
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Compensation Edit Dialog -->
     <v-dialog v-model="showCompensationDialog" max-width="600">
       <v-card>
@@ -1607,6 +1700,30 @@ const documentCategories = [
   { title: 'Training', value: 'training' },
   { title: 'General', value: 'general' }
 ]
+
+// Admin Review Request state
+const showRequestReviewDialog = ref(false)
+const submittingReviewRequest = ref(false)
+const reviewRequest = reactive({
+  topics: [] as string[],
+  skillIds: [] as string[],
+  notes: '',
+  dueDate: ''
+})
+const reviewTopicSuggestions = [
+  'Job Performance',
+  'Teamwork & Collaboration',
+  'Communication Skills',
+  'Technical Skills',
+  'Time Management',
+  'Customer Service',
+  'Leadership',
+  'Problem Solving',
+  'Attendance & Punctuality',
+  'Professional Development'
+]
+const minReviewDate = computed(() => new Date().toISOString().split('T')[0])
+const employeeSkillsForReview = computed(() => skills.value.map(s => ({ id: s.id, name: s.skill_name || s.name })))
 
 // ==========================================
 // COMPUTED
@@ -2505,6 +2622,46 @@ async function uploadDocument() {
     toast.error('Failed to upload document')
   } finally {
     savingDocument.value = false
+  }
+}
+
+// Admin Request Review
+async function submitAdminReviewRequest() {
+  if (reviewRequest.topics.length === 0) {
+    toast.error('Please select at least one topic')
+    return
+  }
+  
+  submittingReviewRequest.value = true
+  try {
+    const { error: insertError } = await supabase
+      .from('review_requests')
+      .insert({
+        employee_id: employeeId.value,
+        requested_by_employee_id: userStore.employee?.id,
+        request_type: 'admin_initiated',
+        topics: reviewRequest.topics,
+        skill_ids: reviewRequest.skillIds.length > 0 ? reviewRequest.skillIds : null,
+        notes: reviewRequest.notes || null,
+        due_date: reviewRequest.dueDate || null,
+        status: 'pending'
+      })
+    
+    if (insertError) throw insertError
+    
+    // Reset form
+    reviewRequest.topics = []
+    reviewRequest.skillIds = []
+    reviewRequest.notes = ''
+    reviewRequest.dueDate = ''
+    showRequestReviewDialog.value = false
+    
+    toast.success(`Review request sent to ${employee.value?.first_name}`)
+  } catch (err: any) {
+    console.error('Failed to submit review request:', err)
+    toast.error('Failed to send review request')
+  } finally {
+    submittingReviewRequest.value = false
   }
 }
 

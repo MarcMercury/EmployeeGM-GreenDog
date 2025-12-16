@@ -90,8 +90,21 @@
                 <v-chip size="x-small" variant="text" class="ml-auto">Coming Soon</v-chip>
               </v-btn>
               
-              <!-- Admin: Delete Employee -->
+              <!-- Admin: Request Review for Employee -->
               <v-divider v-if="isAdmin && !isOwnProfile" class="my-2" />
+              <v-btn 
+                v-if="isAdmin && !isOwnProfile" 
+                block 
+                variant="text" 
+                color="primary" 
+                class="justify-start" 
+                @click="showRequestReviewDialog = true"
+              >
+                <v-icon start>mdi-clipboard-plus</v-icon>
+                Request Review
+              </v-btn>
+              
+              <!-- Admin: Delete Employee -->
               <v-btn 
                 v-if="isAdmin && !isOwnProfile" 
                 block 

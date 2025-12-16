@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
+import { useUserStore } from './user'
 
 // =====================================================
 // TYPES
@@ -344,16 +345,20 @@ export const usePerformanceStore = defineStore('performance', {
 
     async createGoal(goal: Partial<Goal>) {
       const authStore = useAuthStore()
+      const userStore = useUserStore()
       const supabase = useSupabaseClient()
 
-      if (!authStore.user?.id) throw new Error('Not authenticated')
+      // Get employee ID from userStore, not authStore.user.id (which is profile ID)
+      const employeeId = goal.owner_employee_id || userStore.employee?.id
+      
+      if (!employeeId) throw new Error('Not authenticated or no employee record found')
 
       try {
         const { data, error } = await supabase
           .from('goals')
           .insert({
             ...goal,
-            owner_employee_id: goal.owner_employee_id || authStore.user.id,
+            owner_employee_id: employeeId,
             status: goal.status || 'active',
             progress_percent: goal.progress_percent || 0
           })
@@ -373,10 +378,11 @@ export const usePerformanceStore = defineStore('performance', {
     },
 
     async updateGoalProgress(goalId: string, progressPercent: number, comment?: string) {
-      const authStore = useAuthStore()
+      const userStore = useUserStore()
       const supabase = useSupabaseClient()
 
-      if (!authStore.user?.id) throw new Error('Not authenticated')
+      const employeeId = userStore.employee?.id
+      if (!employeeId) throw new Error('Not authenticated or no employee record found')
 
       try {
         // Create update record (audit trail)
@@ -384,7 +390,7 @@ export const usePerformanceStore = defineStore('performance', {
           .from('goal_updates')
           .insert({
             goal_id: goalId,
-            employee_id: authStore.user.id,
+            employee_id: employeeId,
             progress_percent: progressPercent,
             comment: comment || null
           })

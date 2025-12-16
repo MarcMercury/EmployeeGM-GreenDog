@@ -486,11 +486,25 @@
           <v-window v-model="reviewTab">
             <!-- My Reviews Tab -->
             <v-window-item value="my-reviews">
+              <!-- Request Review Button -->
+              <div class="d-flex justify-end mb-4">
+                <v-btn 
+                  color="primary" 
+                  prepend-icon="mdi-clipboard-plus"
+                  @click="showRequestReviewDialog = true"
+                >
+                  Request Review
+                </v-btn>
+              </div>
+
               <v-card v-if="myReviews.length === 0" class="text-center pa-8">
                 <v-icon size="64" color="grey-lighten-1">mdi-clipboard-text-outline</v-icon>
                 <h3 class="text-h6 mt-4">No Active Reviews</h3>
                 <p class="text-body-2 text-grey">
                   You'll see your performance reviews here when a cycle begins
+                </p>
+                <p class="text-body-2 text-grey mt-2">
+                  Ready for a performance check-in? Click "Request Review" above to start a self-assessment.
                 </p>
               </v-card>
 
@@ -720,6 +734,104 @@
       @updated="onReviewUpdated"
     />
 
+    <!-- Request Review Dialog -->
+    <v-dialog v-model="showRequestReviewDialog" max-width="700" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-clipboard-plus</v-icon>
+          Request Performance Review
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="showRequestReviewDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-6">
+          <v-alert type="info" variant="tonal" class="mb-6">
+            <strong>Self-Assessment Request</strong><br>
+            This will notify your manager that you'd like a performance review. 
+            Please indicate what topics and skills you'd like to discuss.
+          </v-alert>
+
+          <!-- Topics to Cover -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Topics You'd Like to Discuss</div>
+            <v-combobox
+              v-model="reviewRequest.topics"
+              :items="reviewTopicSuggestions"
+              label="Select or type topics"
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="comfortable"
+              hint="Select from suggestions or type your own topics"
+              persistent-hint
+            />
+          </div>
+
+          <!-- Skills to Review -->
+          <div class="mb-6">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Skills You'd Like Reviewed</div>
+            <v-autocomplete
+              v-model="reviewRequest.skillIds"
+              :items="availableSkillsForReview"
+              item-title="name"
+              item-value="id"
+              label="Select skills for review"
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              density="comfortable"
+              hint="Choose skills you'd like your manager to assess and provide feedback on"
+              persistent-hint
+            />
+          </div>
+
+          <!-- Additional Notes -->
+          <div class="mb-4">
+            <div class="text-subtitle-2 font-weight-bold mb-2">Additional Notes (Optional)</div>
+            <v-textarea
+              v-model="reviewRequest.notes"
+              label="Any additional context for your manager..."
+              variant="outlined"
+              rows="3"
+              counter="500"
+              maxlength="500"
+            />
+          </div>
+
+          <!-- Due Date Preference -->
+          <div>
+            <div class="text-subtitle-2 font-weight-bold mb-2">Preferred Due Date (Optional)</div>
+            <v-text-field
+              v-model="reviewRequest.dueDate"
+              type="date"
+              variant="outlined"
+              density="comfortable"
+              :min="minReviewDate"
+              hint="When would you like to complete this review by?"
+              persistent-hint
+            />
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showRequestReviewDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="submittingReviewRequest"
+            :disabled="reviewRequest.topics.length === 0"
+            @click="submitReviewRequest"
+          >
+            <v-icon start>mdi-send</v-icon>
+            Submit Request
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color">
       {{ snackbar.message }}
@@ -793,6 +905,32 @@ const newGoal = ref({
 const showReviewDialog = ref(false)
 const selectedReview = ref<any>(null)
 const reviewViewMode = ref<'employee' | 'manager'>('employee')
+
+// Review Request state
+const showRequestReviewDialog = ref(false)
+const submittingReviewRequest = ref(false)
+const reviewRequest = reactive({
+  topics: [] as string[],
+  skillIds: [] as string[],
+  notes: '',
+  dueDate: ''
+})
+
+// Review topic suggestions
+const reviewTopicSuggestions = [
+  'Career Growth & Development',
+  'Role & Responsibilities',
+  'Work-Life Balance',
+  'Training & Education Needs',
+  'Team Collaboration',
+  'Communication Skills',
+  'Technical Skills Assessment',
+  'Goal Setting & Alignment',
+  'Compensation Discussion',
+  'Promotion Readiness',
+  'Project Feedback',
+  'Manager Support & Feedback'
+]
 
 // Snackbar
 const snackbar = reactive({
@@ -942,6 +1080,21 @@ const pendingReviewsCount = computed(() => {
 })
 const pendingTeamReviewsCount = computed(() => {
   return directReportReviews.value.filter(r => r.current_stage === 'manager_review').length
+})
+
+// Available skills for review selection (user's current skills)
+const availableSkillsForReview = computed(() => {
+  if (!mySkills.value || mySkills.value.length === 0) return []
+  return mySkills.value.map(s => ({
+    id: s.skill_id || s.id,
+    name: s.skill?.name || s.name || 'Unknown Skill'
+  }))
+})
+
+// Min date for review request (today)
+const minReviewDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
 })
 
 // ============================================
@@ -1224,6 +1377,50 @@ function closeReview() {
 
 function onReviewUpdated() {
   performanceStore.fetchMyReviews()
+}
+
+// Submit review request to database
+async function submitReviewRequest() {
+  if (reviewRequest.topics.length === 0) {
+    showNotification('Please select at least one topic to discuss', 'error')
+    return
+  }
+
+  submittingReviewRequest.value = true
+  try {
+    const employeeId = currentEmployee.value?.id
+    if (!employeeId) {
+      throw new Error('Could not identify current employee')
+    }
+
+    const { error } = await client
+      .from('review_requests')
+      .insert({
+        employee_id: employeeId,
+        request_type: 'self_initiated',
+        topics_to_cover: reviewRequest.topics,
+        skills_to_review: reviewRequest.skillIds.length > 0 ? reviewRequest.skillIds : null,
+        additional_notes: reviewRequest.notes || null,
+        due_date: reviewRequest.dueDate || null,
+        status: 'pending'
+      })
+
+    if (error) throw error
+
+    // Reset form
+    reviewRequest.topics = []
+    reviewRequest.skillIds = []
+    reviewRequest.notes = ''
+    reviewRequest.dueDate = ''
+    
+    showRequestReviewDialog.value = false
+    showNotification('Review request submitted! Your manager will be notified.', 'success')
+  } catch (err: any) {
+    console.error('Error submitting review request:', err)
+    showNotification(err.message || 'Failed to submit review request', 'error')
+  } finally {
+    submittingReviewRequest.value = false
+  }
 }
 
 // ============================================
