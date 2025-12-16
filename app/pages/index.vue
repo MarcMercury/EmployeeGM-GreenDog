@@ -232,7 +232,7 @@ const personalQuickLinks = [
   { icon: '👤', label: 'My Profile', href: '/profile', color: 'bg-purple-100 text-purple-600' },
   { icon: '📅', label: 'My Schedule', href: '/my-schedule', color: 'bg-green-100 text-green-600' },
   { icon: '🏖️', label: 'Time Off', href: '/my-schedule?tab=timeoff', color: 'bg-cyan-100 text-cyan-600' },
-  { icon: '⭐', label: 'My Skills', href: '/skills', color: 'bg-amber-100 text-amber-600' },
+  { icon: '⭐', label: 'My Skills', href: '/people/my-skills', color: 'bg-amber-100 text-amber-600' },
   { icon: '🎯', label: 'My Goals', href: '/goals', color: 'bg-pink-100 text-pink-600' },
   { icon: '🎓', label: 'Training', href: '/training', color: 'bg-indigo-100 text-indigo-600' },
 ]
@@ -351,7 +351,7 @@ const formatShiftTime = (time: string) => {
             variant="light" 
             :tilt-intensity="8"
             class="cursor-pointer"
-            @click="navigateTo('/skills')"
+            @click="navigateTo('/people/my-skills')"
           >
             <div class="p-4">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-2xl shadow-lg">
@@ -590,7 +590,7 @@ const formatShiftTime = (time: string) => {
           variant="light" 
           :tilt-intensity="8"
           class="cursor-pointer"
-          @click="navigateTo('/skills')"
+          @click="navigateTo('/people/skill-stats')"
         >
           <div class="p-4">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">
@@ -626,7 +626,7 @@ const formatShiftTime = (time: string) => {
           variant="light" 
           :tilt-intensity="8"
           class="cursor-pointer"
-          @click="navigateTo('/skills')"
+          @click="navigateTo('/admin/skills-management')"
         >
           <div class="p-4">
             <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-2xl shadow-lg">

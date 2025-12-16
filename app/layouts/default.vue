@@ -271,9 +271,9 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
                   Interviews
                 </NuxtLink>
-                <NuxtLink to="/people/skill-matrix" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📊</div>
-                  Skill Matrix
+                <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📚</div>
+                  Skills Management
                 </NuxtLink>
                 <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
@@ -379,9 +379,9 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
                   Global Settings
                 </NuxtLink>
-                <NuxtLink to="/skills" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📖</div>
-                  Skill Library
+                <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📚</div>
+                  Skills Management
                 </NuxtLink>
                 <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>

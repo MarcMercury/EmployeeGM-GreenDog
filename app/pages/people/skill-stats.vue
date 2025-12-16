@@ -170,52 +170,141 @@
         </v-list>
       </v-card>
 
-      <!-- Top Performers by Skill -->
+      <!-- Employee Skills Editor -->
       <v-card rounded="lg" class="mt-6">
         <v-card-title>
-          <v-icon start color="success">mdi-medal</v-icon>
-          Top Skilled Employees
+          <v-icon start color="primary">mdi-account-edit</v-icon>
+          Edit Employee Skills
         </v-card-title>
         <v-divider />
-        <v-card-text v-if="topPerformers.length === 0" class="text-center py-8">
-          <v-icon size="48" color="grey-lighten-1">mdi-account-search</v-icon>
-          <p class="text-body-1 text-grey mt-2">No skill data available</p>
-        </v-card-text>
-        <v-list v-else>
-          <v-list-item
-            v-for="(employee, index) in topPerformers"
-            :key="employee.id"
-            :to="`/roster/${employee.id}`"
+        <v-card-text>
+          <!-- Employee Search -->
+          <v-autocomplete
+            v-model="selectedEmployeeId"
+            :items="employeeList"
+            item-title="full_name"
+            item-value="id"
+            label="Search Employee"
+            placeholder="Start typing to search..."
+            prepend-inner-icon="mdi-account-search"
+            variant="outlined"
+            density="comfortable"
+            clearable
+            hide-details
+            class="mb-4"
+            @update:model-value="loadEmployeeSkills"
           >
-            <template #prepend>
-              <v-avatar :color="getMedalColor(index)" class="mr-3">
-                <span v-if="index < 3" class="text-white font-weight-bold">{{ index + 1 }}</span>
-                <span v-else class="text-white font-weight-bold">
-                  {{ employee.first_name?.[0] }}{{ employee.last_name?.[0] }}
-                </span>
-              </v-avatar>
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props">
+                <template #prepend>
+                  <v-avatar size="32" color="primary">
+                    <v-img v-if="item.raw.avatar_url" :src="item.raw.avatar_url" />
+                    <span v-else class="text-white text-body-2">
+                      {{ item.raw.first_name?.[0] }}{{ item.raw.last_name?.[0] }}
+                    </span>
+                  </v-avatar>
+                </template>
+                <v-list-item-subtitle v-if="item.raw.position">
+                  {{ item.raw.position }}
+                </v-list-item-subtitle>
+              </v-list-item>
             </template>
-            <v-list-item-title>
-              {{ employee.first_name }} {{ employee.last_name }}
-            </v-list-item-title>
-            <v-list-item-subtitle>
-              {{ employee.skillCount }} skills • Avg: {{ employee.avgLevel.toFixed(1) }}
-            </v-list-item-subtitle>
-            <template #append>
-              <div class="d-flex align-center gap-2">
-                <v-rating
-                  :model-value="employee.avgLevel"
-                  readonly
-                  density="compact"
-                  size="x-small"
-                  color="amber"
-                  half-increments
-                />
-                <v-icon color="grey">mdi-chevron-right</v-icon>
+          </v-autocomplete>
+
+          <!-- Skills Rating Table -->
+          <template v-if="selectedEmployeeId">
+            <div class="d-flex align-center justify-space-between mb-3">
+              <div class="text-subtitle-1 font-weight-medium">
+                Skills for {{ selectedEmployeeName }}
               </div>
-            </template>
-          </v-list-item>
-        </v-list>
+              <div class="d-flex align-center gap-2">
+                <v-text-field
+                  v-model="skillSearchQuery"
+                  prepend-inner-icon="mdi-magnify"
+                  placeholder="Filter skills..."
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                  style="max-width: 250px"
+                />
+                <v-btn
+                  v-if="hasUnsavedChanges"
+                  color="primary"
+                  prepend-icon="mdi-content-save-all"
+                  :loading="savingAll"
+                  @click="saveAllChanges"
+                >
+                  Save All
+                </v-btn>
+              </div>
+            </div>
+
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th class="text-left">Skill</th>
+                  <th class="text-left">Category</th>
+                  <th class="text-center" style="width: 280px;">Rating</th>
+                  <th class="text-center" style="width: 80px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="skillRating in filteredEmployeeSkills" :key="skillRating.skill_id">
+                  <td>
+                    <div class="font-weight-medium">{{ skillRating.skill_name }}</div>
+                    <div v-if="skillRating.skill_description" class="text-caption text-grey">
+                      {{ skillRating.skill_description }}
+                    </div>
+                  </td>
+                  <td>
+                    <v-chip size="small" variant="tonal" :color="getCategoryColor(skillRating.category)">
+                      {{ skillRating.category }}
+                    </v-chip>
+                  </td>
+                  <td class="text-center">
+                    <v-btn-toggle 
+                      v-model="skillRating.level" 
+                      mandatory 
+                      density="compact"
+                      :color="getRatingColor(skillRating.level)"
+                      @update:model-value="markDirty(skillRating)"
+                    >
+                      <v-btn :value="0" size="small">0</v-btn>
+                      <v-btn :value="1" size="small">1</v-btn>
+                      <v-btn :value="2" size="small">2</v-btn>
+                      <v-btn :value="3" size="small">3</v-btn>
+                      <v-btn :value="4" size="small">4</v-btn>
+                      <v-btn :value="5" size="small">5</v-btn>
+                    </v-btn-toggle>
+                  </td>
+                  <td class="text-center">
+                    <v-progress-circular
+                      v-if="skillRating.saving"
+                      indeterminate
+                      size="20"
+                      width="2"
+                      color="primary"
+                    />
+                    <v-icon v-else-if="skillRating.isDirty" color="warning" size="small">mdi-circle</v-icon>
+                    <v-icon v-else color="success" size="small">mdi-check-circle</v-icon>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+            
+            <div v-if="filteredEmployeeSkills.length === 0" class="text-center py-8">
+              <v-icon size="48" color="grey-lighten-1">mdi-magnify-close</v-icon>
+              <p class="text-body-2 text-grey mt-2">No skills matching your search</p>
+            </div>
+          </template>
+
+          <!-- No Employee Selected -->
+          <div v-else class="text-center py-8">
+            <v-icon size="48" color="grey-lighten-1">mdi-account-search</v-icon>
+            <p class="text-body-1 text-grey mt-2">Search for an employee to view and edit their skills</p>
+          </div>
+        </v-card-text>
       </v-card>
     </template>
   </div>
@@ -236,12 +325,15 @@ interface SkillStat {
   severity?: 'high' | 'medium'
 }
 
-interface EmployeeSkillStat {
-  id: string
-  first_name: string
-  last_name: string
-  skillCount: number
-  avgLevel: number
+interface SkillRating {
+  skill_id: string
+  skill_name: string
+  skill_description?: string
+  category: string
+  level: number
+  originalLevel: number
+  isDirty: boolean
+  saving: boolean
 }
 
 const client = useSupabaseClient()
@@ -254,6 +346,12 @@ const totalSkills = ref(0)
 const employeeSkills = ref<any[]>([])
 const skillLibrary = ref<any[]>([])
 const employees = ref<any[]>([])
+
+// Employee Skills Editor State
+const selectedEmployeeId = ref<string | null>(null)
+const skillSearchQuery = ref('')
+const employeeSkillRatings = ref<SkillRating[]>([])
+const savingAll = ref(false)
 
 // Computed
 const averageSkillLevel = computed(() => {
@@ -356,33 +454,34 @@ const skillGaps = computed((): SkillStat[] => {
   return gaps.sort((a, b) => a.employeeCount - b.employeeCount).slice(0, 5)
 })
 
-const topPerformers = computed((): EmployeeSkillStat[] => {
-  const employeeStats: Record<string, { employee: any; levels: number[] }> = {}
-  
-  employeeSkills.value.forEach(es => {
-    const emp = employees.value.find(e => e.id === es.employee_id)
-    if (!emp) return
-    
-    if (!employeeStats[emp.id]) {
-      employeeStats[emp.id] = { employee: emp, levels: [] }
-    }
-    employeeStats[emp.id].levels.push(es.level)
-  })
-  
-  return Object.values(employeeStats)
-    .map(({ employee, levels }) => ({
-      id: employee.id,
-      first_name: employee.first_name,
-      last_name: employee.last_name,
-      skillCount: levels.length,
-      avgLevel: levels.reduce((a, b) => a + b, 0) / levels.length
-    }))
-    .sort((a, b) => {
-      // Sort by average level first, then by skill count
-      if (b.avgLevel !== a.avgLevel) return b.avgLevel - a.avgLevel
-      return b.skillCount - a.skillCount
-    })
-    .slice(0, 10)
+// Employee Skills Editor Computed
+const employeeList = computed(() => 
+  employees.value.map(e => ({
+    id: e.id,
+    full_name: `${e.first_name} ${e.last_name}`,
+    first_name: e.first_name,
+    last_name: e.last_name,
+    position: '',
+    avatar_url: null
+  }))
+)
+
+const selectedEmployeeName = computed(() => {
+  const emp = employeeList.value.find(e => e.id === selectedEmployeeId.value)
+  return emp?.full_name || ''
+})
+
+const filteredEmployeeSkills = computed(() => {
+  if (!skillSearchQuery.value) return employeeSkillRatings.value
+  const search = skillSearchQuery.value.toLowerCase()
+  return employeeSkillRatings.value.filter(s => 
+    s.skill_name.toLowerCase().includes(search) ||
+    s.category.toLowerCase().includes(search)
+  )
+})
+
+const hasUnsavedChanges = computed(() => {
+  return employeeSkillRatings.value.some(s => s.isDirty)
 })
 
 // Methods
@@ -412,11 +511,111 @@ const getCategoryColor = (category: string) => {
   return colors[category] || 'primary'
 }
 
-const getMedalColor = (index: number) => {
-  if (index === 0) return 'amber-darken-1'
-  if (index === 1) return 'grey-lighten-1'
-  if (index === 2) return 'orange-darken-3'
-  return 'primary'
+const getRatingColor = (level: number): string => {
+  const colors: Record<number, string> = {
+    0: 'grey',
+    1: 'red-lighten-2',
+    2: 'orange',
+    3: 'blue',
+    4: 'teal',
+    5: 'green'
+  }
+  return colors[level] || 'grey'
+}
+
+// Employee Skills Editor Methods
+const loadEmployeeSkills = async () => {
+  if (!selectedEmployeeId.value) {
+    employeeSkillRatings.value = []
+    return
+  }
+
+  try {
+    // Get employee's current skill ratings
+    const { data: empSkills, error } = await client
+      .from('employee_skills')
+      .select('skill_id, level')
+      .eq('employee_id', selectedEmployeeId.value)
+
+    if (error) throw error
+
+    // Create a map of existing skills
+    const existingSkillsMap = new Map(
+      (empSkills || []).map(es => [es.skill_id, es.level])
+    )
+
+    // Build full skill ratings list
+    employeeSkillRatings.value = skillLibrary.value.map(skill => {
+      const existingLevel = existingSkillsMap.get(skill.id) ?? 0
+      return {
+        skill_id: skill.id,
+        skill_name: skill.name,
+        skill_description: skill.description || undefined,
+        category: skill.category,
+        level: existingLevel,
+        originalLevel: existingLevel,
+        isDirty: false,
+        saving: false
+      }
+    }).sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category)
+      return a.skill_name.localeCompare(b.skill_name)
+    })
+  } catch (err) {
+    console.error('Error loading employee skills:', err)
+    toast.error('Failed to load employee skills')
+  }
+}
+
+const markDirty = (skillRating: SkillRating) => {
+  skillRating.isDirty = skillRating.level !== skillRating.originalLevel
+}
+
+const saveSkillRating = async (skillRating: SkillRating) => {
+  if (!selectedEmployeeId.value) return
+
+  skillRating.saving = true
+  try {
+    const { error } = await client
+      .from('employee_skills')
+      .upsert({
+        employee_id: selectedEmployeeId.value,
+        skill_id: skillRating.skill_id,
+        level: skillRating.level,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'employee_id,skill_id'
+      })
+
+    if (error) throw error
+
+    skillRating.originalLevel = skillRating.level
+    skillRating.isDirty = false
+    
+    // Refresh global stats
+    await fetchData()
+  } catch (err) {
+    console.error('Error saving skill rating:', err)
+    toast.error('Failed to save skill rating')
+  } finally {
+    skillRating.saving = false
+  }
+}
+
+const saveAllChanges = async () => {
+  const dirtySkills = employeeSkillRatings.value.filter(s => s.isDirty)
+  if (dirtySkills.length === 0) return
+
+  savingAll.value = true
+  try {
+    // Save all dirty skills in parallel
+    await Promise.all(dirtySkills.map(s => saveSkillRating(s)))
+    toast.success(`Saved ${dirtySkills.length} skill rating(s)`)
+  } catch (err) {
+    console.error('Error saving all changes:', err)
+  } finally {
+    savingAll.value = false
+  }
 }
 
 const exportReport = () => {
@@ -429,15 +628,8 @@ const exportReport = () => {
     `Total Employees,${totalEmployees.value}`,
     `Total Skills,${totalSkills.value}`,
     `Average Skill Level,${averageSkillLevel.value.toFixed(2)}`,
-    `Skill Coverage,${skillCoverage.value}%`,
-    '',
-    'Top Performers',
-    'Name,Skill Count,Average Level'
+    `Skill Coverage,${skillCoverage.value}%`
   ]
-  
-  topPerformers.value.forEach(p => {
-    lines.push(`${p.first_name} ${p.last_name},${p.skillCount},${p.avgLevel.toFixed(2)}`)
-  })
   
   const csv = lines.join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -457,7 +649,7 @@ const fetchData = async () => {
     // Fetch all data in parallel
     const [empRes, skillRes, esRes] = await Promise.all([
       client.from('employees').select('id, first_name, last_name'),
-      client.from('skill_library').select('id, name, category'),
+      client.from('skill_library').select('id, name, category, description'),
       client.from('employee_skills').select('employee_id, skill_id, level')
     ])
     

@@ -3,15 +3,133 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Skill Matrix</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">Skills Management</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Manage and configure the company skill library
+          Create, edit, and manage the company skill library
         </p>
       </div>
       <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">
         Add Skill
       </v-btn>
     </div>
+
+    <!-- Skill Level Legend -->
+    <v-card rounded="lg" class="mb-6">
+      <v-card-title class="text-subtitle-1 d-flex align-center gap-2">
+        <v-icon>mdi-information-outline</v-icon>
+        Skill Rating Definitions
+      </v-card-title>
+      <v-card-text>
+        <v-row>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="grey" size="32">
+                <span class="text-white font-weight-bold">0</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Untrained</div>
+                <div class="text-caption text-grey">No training started</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="red-lighten-2" size="32">
+                <span class="text-white font-weight-bold">1</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Initial Training</div>
+                <div class="text-caption text-grey">Reading/learning phase</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="orange" size="32">
+                <span class="text-white font-weight-bold">2</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Formal Training</div>
+                <div class="text-caption text-grey">Quizzes, mentorship</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="blue" size="32">
+                <span class="text-white font-weight-bold">3</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Supervised</div>
+                <div class="text-caption text-grey">Can perform supervised</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="teal" size="32">
+                <span class="text-white font-weight-bold">4</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Independent</div>
+                <div class="text-caption text-grey">Can perform unsupervised</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="green" size="32">
+                <span class="text-white font-weight-bold">5</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Mentor</div>
+                <div class="text-caption text-grey">Can teach others</div>
+              </div>
+            </div>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Stats Row -->
+    <v-row class="mb-6">
+      <v-col cols="6" sm="3">
+        <v-card rounded="lg">
+          <v-card-text class="text-center">
+            <v-icon size="28" color="primary" class="mb-2">mdi-lightbulb</v-icon>
+            <div class="text-h4 font-weight-bold">{{ skills.length }}</div>
+            <div class="text-body-2 text-grey">Total Skills</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card rounded="lg">
+          <v-card-text class="text-center">
+            <v-icon size="28" color="info" class="mb-2">mdi-view-grid</v-icon>
+            <div class="text-h4 font-weight-bold">{{ categoryCount }}</div>
+            <div class="text-body-2 text-grey">Categories</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card rounded="lg">
+          <v-card-text class="text-center">
+            <v-icon size="28" color="success" class="mb-2">mdi-star</v-icon>
+            <div class="text-h4 font-weight-bold">{{ coreSkillsCount }}</div>
+            <div class="text-body-2 text-grey">Core Skills</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card rounded="lg">
+          <v-card-text class="text-center">
+            <v-icon size="28" color="warning" class="mb-2">mdi-account-group</v-icon>
+            <div class="text-h4 font-weight-bold">{{ totalAssignments }}</div>
+            <div class="text-body-2 text-grey">Total Assignments</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Loading State -->
     <template v-if="loading">
@@ -88,7 +206,7 @@
                         v-for="skill in category.skills"
                         :key="skill.id"
                         :active="selectedSkill?.id === skill.id"
-                        @click="selectedSkill = skill"
+                        @click="selectSkill(skill)"
                         class="rounded mb-1"
                       >
                         <v-list-item-title>{{ skill.name }}</v-list-item-title>
@@ -107,6 +225,15 @@
               <div v-if="searchQuery && filteredCategories.length === 0" class="text-center py-8">
                 <v-icon size="48" color="grey-lighten-1">mdi-magnify-close</v-icon>
                 <p class="text-body-2 text-grey mt-2">No skills matching "{{ searchQuery }}"</p>
+              </div>
+
+              <!-- Empty State -->
+              <div v-if="!searchQuery && skills.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-lightbulb-off</v-icon>
+                <p class="text-body-2 text-grey mt-2">No skills defined yet</p>
+                <v-btn color="primary" size="small" class="mt-2" @click="showAddDialog = true">
+                  Add First Skill
+                </v-btn>
               </div>
             </div>
           </v-card>
@@ -145,7 +272,7 @@
               <v-divider />
 
               <v-card-text>
-                <v-form ref="form" @submit.prevent="saveSkill">
+                <v-form ref="editFormRef" @submit.prevent="saveSkill">
                   <v-text-field
                     v-model="editForm.name"
                     label="Skill Name"
@@ -236,31 +363,40 @@
           Add New Skill
         </v-card-title>
         <v-card-text>
-          <v-text-field
-            v-model="newSkill.name"
-            label="Skill Name"
-            variant="outlined"
-            class="mb-4"
-            placeholder="e.g., Customer Service"
-          />
-          <v-select
-            v-model="newSkill.category"
-            :items="categoryOptions"
-            label="Category"
-            variant="outlined"
-            class="mb-4"
-          />
-          <v-textarea
-            v-model="newSkill.description"
-            label="Description"
-            variant="outlined"
-            rows="3"
-            placeholder="Describe what this skill entails..."
-          />
+          <v-form ref="addFormRef">
+            <v-text-field
+              v-model="newSkill.name"
+              label="Skill Name"
+              variant="outlined"
+              class="mb-4"
+              placeholder="e.g., Customer Service"
+              :rules="[v => !!v || 'Skill name is required']"
+            />
+            <v-select
+              v-model="newSkill.category"
+              :items="categoryOptions"
+              label="Category"
+              variant="outlined"
+              class="mb-4"
+            />
+            <v-textarea
+              v-model="newSkill.description"
+              label="Description"
+              variant="outlined"
+              rows="3"
+              placeholder="Describe what this skill entails..."
+            />
+            <v-switch
+              v-model="newSkill.is_core"
+              label="Core Skill (required for all employees)"
+              color="primary"
+              hide-details
+            />
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showAddDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="closeAddDialog">Cancel</v-btn>
           <v-btn color="primary" :loading="creating" @click="createSkill">
             Create Skill
           </v-btn>
@@ -278,7 +414,7 @@
         <v-card-text>
           <p>Are you sure you want to delete <strong>{{ selectedSkill?.name }}</strong>?</p>
           <v-alert v-if="selectedSkill?.employee_count" type="warning" variant="tonal" density="compact" class="mt-2">
-            This skill is assigned to {{ selectedSkill.employee_count }} employee(s).
+            This skill is assigned to {{ selectedSkill.employee_count }} employee(s). Their skill records will be removed.
           </v-alert>
         </v-card-text>
         <v-card-actions>
@@ -329,7 +465,8 @@ const categoryOptions = ['Technical', 'Service', 'Leadership', 'Communication', 
 const newSkill = ref({
   name: '',
   category: 'Technical',
-  description: ''
+  description: '',
+  is_core: false
 })
 
 const editForm = ref({
@@ -338,6 +475,9 @@ const editForm = ref({
   description: '',
   is_core: false
 })
+
+const editFormRef = ref()
+const addFormRef = ref()
 
 // Watch selected skill to populate edit form
 watch(selectedSkill, (skill) => {
@@ -352,6 +492,19 @@ watch(selectedSkill, (skill) => {
 })
 
 // Computed
+const categoryCount = computed(() => {
+  const cats = new Set(skills.value.map(s => s.category))
+  return cats.size
+})
+
+const coreSkillsCount = computed(() => {
+  return skills.value.filter(s => s.is_core).length
+})
+
+const totalAssignments = computed(() => {
+  return skills.value.reduce((sum, s) => sum + (s.employee_count || 0), 0)
+})
+
 const skillsByCategory = computed(() => {
   const categories: Record<string, Skill[]> = {}
   
@@ -413,10 +566,14 @@ const getCategoryColor = (category: string) => {
   return colors[category] || 'primary'
 }
 
+const selectSkill = (skill: Skill) => {
+  selectedSkill.value = skill
+}
+
 const fetchSkills = async () => {
   loading.value = true
   try {
-    // Get skills with employee count
+    // Get skills
     const { data, error } = await client
       .from('skill_library')
       .select('*')
@@ -424,7 +581,7 @@ const fetchSkills = async () => {
     
     if (error) throw error
     
-    // Get employee counts for each skill
+    // Get employee counts and average levels for each skill
     const { data: skillStats } = await client
       .from('employee_skills')
       .select('skill_id, level')
@@ -454,10 +611,8 @@ const fetchSkills = async () => {
 }
 
 const createSkill = async () => {
-  if (!newSkill.value.name) {
-    toast.error('Skill name is required')
-    return
-  }
+  const { valid } = await addFormRef.value?.validate()
+  if (!valid) return
   
   creating.value = true
   try {
@@ -466,25 +621,35 @@ const createSkill = async () => {
       .insert({
         name: newSkill.value.name,
         category: newSkill.value.category,
-        description: newSkill.value.description || null
+        description: newSkill.value.description || null,
+        is_core: newSkill.value.is_core
       } as any)
     
     if (error) throw error
     
     toast.success('Skill created successfully')
-    showAddDialog.value = false
-    newSkill.value = { name: '', category: 'Technical', description: '' }
+    closeAddDialog()
     await fetchSkills()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating skill:', error)
-    toast.error('Failed to create skill')
+    if (error.code === '23505') {
+      toast.error('A skill with this name already exists in this category')
+    } else {
+      toast.error('Failed to create skill')
+    }
   } finally {
     creating.value = false
   }
 }
 
+const closeAddDialog = () => {
+  showAddDialog.value = false
+  newSkill.value = { name: '', category: 'Technical', description: '', is_core: false }
+}
+
 const saveSkill = async () => {
-  if (!selectedSkill.value) return
+  const { valid } = await editFormRef.value?.validate()
+  if (!valid || !selectedSkill.value) return
   
   saving.value = true
   try {
@@ -505,9 +670,13 @@ const saveSkill = async () => {
     
     // Update selected skill reference
     selectedSkill.value = skills.value.find(s => s.id === selectedSkill.value?.id) || null
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving skill:', error)
-    toast.error('Failed to save skill')
+    if (error.code === '23505') {
+      toast.error('A skill with this name already exists in this category')
+    } else {
+      toast.error('Failed to save skill')
+    }
   } finally {
     saving.value = false
   }
@@ -522,13 +691,7 @@ const deleteSkill = async () => {
   
   deleting.value = true
   try {
-    // First delete all employee_skills referencing this skill
-    await client
-      .from('employee_skills')
-      .delete()
-      .eq('skill_id', selectedSkill.value.id)
-    
-    // Then delete the skill
+    // Delete the skill (employee_skills will cascade delete due to FK constraint)
     const { error } = await client
       .from('skill_library')
       .delete()
