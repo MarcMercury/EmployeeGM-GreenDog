@@ -59,14 +59,6 @@
       <v-icon size="48" color="grey-lighten-1">mdi-calendar-check</v-icon>
       <p class="text-body-2 text-grey mt-2">No upcoming shifts scheduled</p>
     </v-card-text>
-
-    <v-divider />
-
-    <v-card-actions>
-      <v-btn variant="text" color="primary" to="/schedule">
-        View Full Schedule
-      </v-btn>
-    </v-card-actions>
   </v-card>
 </template>
 

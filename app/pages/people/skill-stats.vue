@@ -246,7 +246,7 @@
                   <th class="text-left">Skill</th>
                   <th class="text-left">Category</th>
                   <th class="text-center" style="width: 280px;">Rating</th>
-                  <th class="text-center" style="width: 80px;">Status</th>
+                  <th class="text-center" style="width: 120px;">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,14 +279,19 @@
                     </v-btn-toggle>
                   </td>
                   <td class="text-center">
-                    <v-progress-circular
-                      v-if="skillRating.saving"
-                      indeterminate
-                      size="20"
-                      width="2"
+                    <v-btn
+                      v-if="skillRating.isDirty"
                       color="primary"
-                    />
-                    <v-icon v-else-if="skillRating.isDirty" color="warning" size="small">mdi-circle</v-icon>
+                      size="small"
+                      variant="tonal"
+                      :loading="skillRating.saving"
+                      @click="saveSkillRating(skillRating)"
+                    >
+                      Save
+                    </v-btn>
+                    <v-icon v-else-if="skillRating.saving" color="primary" size="small">
+                      mdi-loading mdi-spin
+                    </v-icon>
                     <v-icon v-else color="success" size="small">mdi-check-circle</v-icon>
                   </td>
                 </tr>
@@ -576,27 +581,67 @@ const saveSkillRating = async (skillRating: SkillRating) => {
 
   skillRating.saving = true
   try {
-    const { error } = await client
+    // First check if record exists
+    const { data: existing } = await client
       .from('employee_skills')
-      .upsert({
-        employee_id: selectedEmployeeId.value,
-        skill_id: skillRating.skill_id,
-        level: skillRating.level,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'employee_id,skill_id'
-      })
+      .select('id')
+      .eq('employee_id', selectedEmployeeId.value)
+      .eq('skill_id', skillRating.skill_id)
+      .maybeSingle()
 
-    if (error) throw error
+    let saveError = null
+    let saveResult = null
 
+    if (existing) {
+      // Update existing record
+      const { data, error } = await client
+        .from('employee_skills')
+        .update({
+          level: skillRating.level,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+      saveError = error
+      saveResult = data
+    } else {
+      // Insert new record
+      const { data, error } = await client
+        .from('employee_skills')
+        .insert({
+          employee_id: selectedEmployeeId.value,
+          skill_id: skillRating.skill_id,
+          level: skillRating.level
+        })
+        .select()
+      saveError = error
+      saveResult = data
+    }
+
+    if (saveError) {
+      console.error('Save error details:', saveError)
+      throw saveError
+    }
+
+    // Log success for debugging
+    console.log('Skill saved successfully:', { 
+      skill: skillRating.skill_name, 
+      level: skillRating.level,
+      result: saveResult 
+    })
+
+    // Update local state to reflect saved changes
     skillRating.originalLevel = skillRating.level
     skillRating.isDirty = false
     
-    // Refresh global stats
+    // Show success toast for individual saves
+    toast.success(`Saved ${skillRating.skill_name}: Level ${skillRating.level}`)
+    
+    // Refresh global stats (but don't reload employee skills as local state is already updated)
     await fetchData()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error saving skill rating:', err)
-    toast.error('Failed to save skill rating')
+    toast.error(err?.message || 'Failed to save skill rating')
   } finally {
     skillRating.saving = false
   }

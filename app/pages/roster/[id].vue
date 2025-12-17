@@ -2561,18 +2561,28 @@ async function saveAsset() {
   
   savingAsset.value = true
   try {
-    const { error: err } = await supabase
-      .from('employee_assets')
-      .insert({
-        employee_id: employeeId.value,
-        asset_name: assetForm.value.asset_name.trim(),
-        asset_type: assetForm.value.asset_type,
-        serial_number: assetForm.value.serial_number || null,
-        expected_return_date: assetForm.value.expected_return_date || null,
-        notes: assetForm.value.notes || null
-      })
+    const insertData = {
+      employee_id: employeeId.value,
+      asset_name: assetForm.value.asset_name.trim(),
+      asset_type: assetForm.value.asset_type,
+      serial_number: assetForm.value.serial_number || null,
+      expected_return_date: assetForm.value.expected_return_date || null,
+      notes: assetForm.value.notes || null
+    }
     
-    if (err) throw err
+    console.log('Inserting asset:', insertData)
+    
+    const { data, error: err } = await supabase
+      .from('employee_assets')
+      .insert(insertData)
+      .select()
+    
+    if (err) {
+      console.error('Asset insert error:', err)
+      throw err
+    }
+    
+    console.log('Asset inserted successfully:', data)
     
     await loadAssets()
     showAssetDialog.value = false
@@ -2580,7 +2590,7 @@ async function saveAsset() {
     toast.success('Asset assigned successfully')
   } catch (err: any) {
     console.error('Failed to save asset:', err)
-    toast.error('Failed to assign asset')
+    toast.error(err?.message || 'Failed to assign asset')
   } finally {
     savingAsset.value = false
   }

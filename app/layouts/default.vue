@@ -304,6 +304,10 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏭</div>
                 Med Ops Partners
               </NuxtLink>
+              <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
+                Facilities Resources
+              </NuxtLink>
               <NuxtLink to="/med-ops/wiki" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
                 Wiki

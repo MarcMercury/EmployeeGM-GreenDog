@@ -45,8 +45,8 @@
         {{ formatPunchTime(lastPunch.punched_at) }}
       </div>
 
-      <!-- Location Status -->
-      <div class="location-status mt-4" v-if="locationEnabled">
+      <!-- Location Status - always show -->
+      <div class="location-status mt-4">
         <v-chip
           :color="locationStatus.color"
           size="small"
@@ -55,6 +55,11 @@
           <v-icon start size="14">{{ locationStatus.icon }}</v-icon>
           {{ locationStatus.text }}
         </v-chip>
+      </div>
+      
+      <!-- Error Message -->
+      <div v-if="punchError" class="text-caption text-error mt-2">
+        {{ punchError }}
       </div>
     </v-card-text>
 
@@ -175,6 +180,7 @@ const locationEnabled = ref(false)
 const locationError = ref<string | null>(null)
 const workedTimeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const displayedWorkedMinutes = ref(0)
+const punchError = ref<string | null>(null)
 
 // Computed
 const employeeId = computed(() => userStore.employee?.id)
@@ -197,22 +203,23 @@ const formattedWorkedTime = computed(() => {
 const locationStatus = computed(() => {
   if (locationError.value) {
     return {
-      color: 'error',
+      color: 'warning',
       icon: 'mdi-map-marker-off',
-      text: 'Location unavailable'
+      text: locationError.value
     }
   }
   if (currentLocation.value) {
+    // Location verified means we have coordinates
     return {
       color: 'success',
       icon: 'mdi-map-marker-check',
-      text: 'Location verified'
+      text: `Location verified (±${Math.round(currentLocation.value.accuracy)}m)`
     }
   }
   return {
     color: 'grey',
     icon: 'mdi-map-marker-question',
-    text: 'Location pending'
+    text: 'Getting location...'
   }
 })
 
@@ -226,7 +233,10 @@ function formatPunchTime(timestamp: string): string {
 }
 
 async function handlePunch() {
+  punchError.value = null
+  
   if (!employeeId.value) {
+    punchError.value = 'No employee record found. Please contact admin.'
     console.error('No employee ID found')
     return
   }
@@ -252,8 +262,12 @@ async function handlePunch() {
       geofenceWarningMessage.value = result.geofenceWarning
       showGeofenceWarning.value = true
     }
-  } catch (err) {
+    
+    // Success - clear any previous error
+    punchError.value = null
+  } catch (err: any) {
     console.error('Punch failed:', err)
+    punchError.value = err?.message || 'Failed to record punch. Please try again.'
   } finally {
     isPunching.value = false
   }

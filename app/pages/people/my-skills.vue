@@ -442,27 +442,50 @@ async function updateSkillRating(skill: MergedSkill, newLevel: number) {
   if (!canEditSkills.value || !currentEmployeeId.value) return
   
   try {
-    // Upsert the skill rating
-    const { error } = await client
+    // First check if record exists
+    const { data: existing } = await client
       .from('employee_skills')
-      .upsert({
-        employee_id: currentEmployeeId.value,
-        skill_id: skill.skillId,
-        level: newLevel,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'employee_id,skill_id'
-      })
-    
-    if (error) throw error
+      .select('id')
+      .eq('employee_id', currentEmployeeId.value)
+      .eq('skill_id', skill.skillId)
+      .maybeSingle()
+
+    let saveError = null
+
+    if (existing) {
+      // Update existing record
+      const { error } = await client
+        .from('employee_skills')
+        .update({
+          level: newLevel,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+      saveError = error
+    } else {
+      // Insert new record
+      const { error } = await client
+        .from('employee_skills')
+        .insert({
+          employee_id: currentEmployeeId.value,
+          skill_id: skill.skillId,
+          level: newLevel
+        })
+      saveError = error
+    }
+
+    if (saveError) {
+      console.error('Save error details:', saveError)
+      throw saveError
+    }
     
     // Update local state
     employeeRatings.value[skill.skillId] = newLevel
     
     uiStore.showSuccess(`Updated ${skill.name} to Level ${newLevel}`)
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error updating skill rating:', err)
-    uiStore.showError('Failed to update skill rating')
+    uiStore.showError(err?.message || 'Failed to update skill rating')
   }
 }
 
