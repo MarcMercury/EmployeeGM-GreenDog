@@ -587,29 +587,63 @@ const saveSkillRating = async (skillRating: SkillRating) => {
       level: skillRating.level
     })
 
-    // Use upsert for atomic operation - this avoids the check-then-insert/update race condition
-    const { data, error } = await client
+    // First check if record exists
+    const { data: existing, error: checkError } = await client
       .from('employee_skills')
-      .upsert({
-        employee_id: selectedEmployeeId.value,
-        skill_id: skillRating.skill_id,
-        level: skillRating.level,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'employee_id,skill_id',
-        ignoreDuplicates: false
-      })
-      .select()
+      .select('id')
+      .eq('employee_id', selectedEmployeeId.value)
+      .eq('skill_id', skillRating.skill_id)
+      .maybeSingle()
 
-    if (error) {
-      console.error('Save error details:', error)
-      throw error
+    if (checkError) {
+      console.error('Check error:', checkError)
+      throw checkError
+    }
+
+    console.log('Existing record check:', existing)
+
+    let saveResult
+    let saveError
+
+    if (existing?.id) {
+      // Update existing record
+      console.log('Updating existing record:', existing.id)
+      const { data, error } = await client
+        .from('employee_skills')
+        .update({
+          level: skillRating.level,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+      
+      saveResult = data
+      saveError = error
+    } else {
+      // Insert new record
+      console.log('Inserting new record')
+      const { data, error } = await client
+        .from('employee_skills')
+        .insert({
+          employee_id: selectedEmployeeId.value,
+          skill_id: skillRating.skill_id,
+          level: skillRating.level
+        })
+        .select()
+      
+      saveResult = data
+      saveError = error
+    }
+
+    if (saveError) {
+      console.error('Save error details:', saveError)
+      throw saveError
     }
 
     console.log('Skill saved successfully:', { 
       skill: skillRating.skill_name, 
       level: skillRating.level,
-      result: data 
+      result: saveResult 
     })
 
     // Update local state to reflect saved changes
