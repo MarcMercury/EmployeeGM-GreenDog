@@ -581,53 +581,35 @@ const saveSkillRating = async (skillRating: SkillRating) => {
 
   skillRating.saving = true
   try {
-    // First check if record exists
-    const { data: existing } = await client
+    console.log('Attempting to save skill:', {
+      employee_id: selectedEmployeeId.value,
+      skill_id: skillRating.skill_id,
+      level: skillRating.level
+    })
+
+    // Use upsert for atomic operation - this avoids the check-then-insert/update race condition
+    const { data, error } = await client
       .from('employee_skills')
-      .select('id')
-      .eq('employee_id', selectedEmployeeId.value)
-      .eq('skill_id', skillRating.skill_id)
-      .maybeSingle()
+      .upsert({
+        employee_id: selectedEmployeeId.value,
+        skill_id: skillRating.skill_id,
+        level: skillRating.level,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'employee_id,skill_id',
+        ignoreDuplicates: false
+      })
+      .select()
 
-    let saveError = null
-    let saveResult = null
-
-    if (existing) {
-      // Update existing record
-      const { data, error } = await client
-        .from('employee_skills')
-        .update({
-          level: skillRating.level,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existing.id)
-        .select()
-      saveError = error
-      saveResult = data
-    } else {
-      // Insert new record
-      const { data, error } = await client
-        .from('employee_skills')
-        .insert({
-          employee_id: selectedEmployeeId.value,
-          skill_id: skillRating.skill_id,
-          level: skillRating.level
-        })
-        .select()
-      saveError = error
-      saveResult = data
+    if (error) {
+      console.error('Save error details:', error)
+      throw error
     }
 
-    if (saveError) {
-      console.error('Save error details:', saveError)
-      throw saveError
-    }
-
-    // Log success for debugging
     console.log('Skill saved successfully:', { 
       skill: skillRating.skill_name, 
       level: skillRating.level,
-      result: saveResult 
+      result: data 
     })
 
     // Update local state to reflect saved changes
