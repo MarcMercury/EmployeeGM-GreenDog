@@ -328,6 +328,12 @@ async function handleSignOut() {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.marketing }">
+              <!-- Command Center -->
+              <NuxtLink to="/marketing/command-center" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎯</div>
+                Command Center
+              </NuxtLink>
+              
               <!-- Calendar: Visible to all -->
               <NuxtLink to="/marketing/calendar" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📅</div>
@@ -346,9 +352,23 @@ async function handleSignOut() {
                 </NuxtLink>
               </template>
               
+              <!-- Marketing Hubs -->
+              <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
+                Partners
+              </NuxtLink>
+              <NuxtLink to="/marketing/influencers" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-pink-500/20">⭐</div>
+                Influencers
+              </NuxtLink>
+              <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
+                Inventory
+              </NuxtLink>
+              
               <!-- Visible to all: Resources, Partnerships -->
               <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
+                <div class="nav-icon-wrap group-hover:bg-lime-500/20">📁</div>
                 Resources
               </NuxtLink>
               <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
