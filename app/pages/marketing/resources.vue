@@ -152,17 +152,17 @@
             <v-row>
               <v-col v-for="file in currentFiles" :key="file.id" cols="6" sm="4" md="3" lg="2">
                 <v-card rounded="lg" class="file-card text-center pa-3">
-                  <v-icon size="40" :color="getFileTypeColor(file.type)">{{ getFileTypeIcon(file.type) }}</v-icon>
+                  <v-icon size="40" :color="getFileTypeColor(file.file_type)">{{ getFileTypeIcon(file.file_type) }}</v-icon>
                   <div class="text-body-2 font-weight-medium mt-2 text-truncate" :title="file.name">
                     {{ file.name }}
                   </div>
-                  <div class="text-caption text-grey">{{ file.size }}</div>
+                  <div class="text-caption text-grey">{{ formatFileSize(file.file_size) }}</div>
                   <div class="mt-2">
                     <v-btn size="x-small" variant="tonal" color="primary" @click="downloadFile(file)">
                       <v-icon size="14">mdi-download</v-icon>
                     </v-btn>
-                    <v-btn v-if="isAdmin" size="x-small" variant="text" class="ml-1" @click="editFile(file)">
-                      <v-icon size="14">mdi-pencil</v-icon>
+                    <v-btn v-if="isAdmin" size="x-small" variant="text" class="ml-1" @click="deleteFile(file)">
+                      <v-icon size="14">mdi-delete</v-icon>
                     </v-btn>
                   </div>
                 </v-card>
@@ -181,13 +181,15 @@
             >
               <template #item.name="{ item }">
                 <div class="d-flex align-center py-1">
-                  <v-icon :color="getFileTypeColor(item.type)" class="mr-2">{{ getFileTypeIcon(item.type) }}</v-icon>
+                  <v-icon :color="getFileTypeColor(item.file_type)" class="mr-2">{{ getFileTypeIcon(item.file_type) }}</v-icon>
                   <span class="font-weight-medium">{{ item.name }}</span>
                 </div>
               </template>
+              <template #item.file_size="{ item }">
+                {{ formatFileSize(item.file_size) }}
+              </template>
               <template #item.actions="{ item }">
                 <v-btn icon="mdi-download" size="x-small" variant="text" color="primary" @click="downloadFile(item)" />
-                <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="editFile(item)" />
                 <v-btn v-if="isAdmin" icon="mdi-delete" size="x-small" variant="text" color="error" @click="deleteFile(item)" />
               </template>
             </v-data-table>
@@ -594,7 +596,7 @@
         <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="text" @click="showUploadDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :disabled="!uploadFiles?.length" @click="handleUpload">
+          <v-btn color="primary" :disabled="!uploadFiles?.length" :loading="uploading" @click="handleUpload">
             Upload
           </v-btn>
         </v-card-actions>
@@ -646,12 +648,16 @@
 </template>
 
 <script setup lang="ts">
+import { useToast } from '~/composables/useToast'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
 })
 
 const { isAdmin } = useAppData()
+const supabase = useSupabaseClient()
+const { showSuccess, showError } = useToast()
 
 useHead({
   title: 'Resources'
@@ -662,6 +668,9 @@ useHead({
 // ============================================
 const activeTab = ref('library')
 const currentPath = ref('')
+const loadingFiles = ref(false)
+const loadingFolders = ref(false)
+const uploading = ref(false)
 
 // Library state
 const librarySearch = ref('')
@@ -676,6 +685,10 @@ const uploadAsAdminOnly = ref(false)
 const newFolderName = ref('')
 const newFolderParent = ref('')
 const newFolderAdminOnly = ref(false)
+
+// Database-backed data
+const dbFolders = ref<any[]>([])
+const dbFiles = ref<any[]>([])
 
 // Vendor state
 const vendorSearch = ref('')
@@ -694,128 +707,58 @@ const snackbar = reactive({
 })
 
 // ============================================
-// FILE LIBRARY DATA
+// LOAD DATA FROM DATABASE
 // ============================================
-const fileCategories = ref([
-  {
-    id: 'event-production',
-    name: 'Event Production',
-    description: 'Logistics, venues, catering, and event vendors',
-    icon: 'mdi-party-popper',
-    color: '#E91E63',
-    adminOnly: false,
-    subfolders: [
-      { id: 'venues', name: 'Venue & Facilities', itemCount: 5 },
-      { id: 'food-bev', name: 'Food & Beverage', itemCount: 8 },
-      { id: 'entertainment', name: 'Entertainment & Talent', itemCount: 3 },
-      { id: 'equipment', name: 'Event Equipment', itemCount: 6 },
-      { id: 'permits', name: 'Permits & Legal', itemCount: 12 }
-    ]
-  },
-  {
-    id: 'community-outreach',
-    name: 'Community & Outreach',
-    description: 'External relationships and networking materials',
-    icon: 'mdi-account-group',
-    color: '#4CAF50',
-    adminOnly: false,
-    subfolders: [
-      { id: 'chambers', name: 'Chambers & Associations', itemCount: 4 },
-      { id: 'rescues', name: 'Rescue Partners', itemCount: 7 },
-      { id: 'pet-partners', name: 'Pet Business Partners', itemCount: 9 },
-      { id: 'sponsorship', name: 'Sponsorship Decks', itemCount: 3 }
-    ]
-  },
-  {
-    id: 'brand-creative',
-    name: 'Brand & Creative Assets',
-    description: 'Logos, templates, style guides, and photography',
-    icon: 'mdi-palette',
-    color: '#9C27B0',
-    adminOnly: false,
-    subfolders: [
-      { id: 'brand-identity', name: 'Brand Identity', itemCount: 15 },
-      { id: 'print-collateral', name: 'Print Collateral', itemCount: 22 },
-      { id: 'digital-assets', name: 'Digital Assets', itemCount: 18 },
-      { id: 'photography', name: 'Photography Library', itemCount: 45 }
-    ]
-  },
-  {
-    id: 'promotion-merch',
-    name: 'Promotion & Merchandise',
-    description: 'Swag, uniforms, printing specs, and PR materials',
-    icon: 'mdi-gift',
-    color: '#FF9800',
-    adminOnly: false,
-    subfolders: [
-      { id: 'swag', name: 'Marketing Merch (Swag)', itemCount: 8 },
-      { id: 'uniforms', name: 'Uniforms', itemCount: 5 },
-      { id: 'printing', name: 'Printing Services', itemCount: 6 },
-      { id: 'media-pr', name: 'Media & PR', itemCount: 10 }
-    ]
-  },
-  {
-    id: 'internal-tools',
-    name: 'Internal Marketing Tools',
-    description: 'SOPs, talking points, and campaign archives',
-    icon: 'mdi-book-open-variant',
-    color: '#2196F3',
-    adminOnly: false,
-    subfolders: [
-      { id: 'talking-points', name: 'Talking Points & Scripts', itemCount: 12 },
-      { id: 'campaign-archives', name: 'Campaign Archives', itemCount: 25 },
-      { id: 'sops', name: 'SOPs & Procedures', itemCount: 8 }
-    ]
-  },
-  {
-    id: 'vendor-contracts',
-    name: 'Vendor Contracts & Rates',
-    description: 'Confidential vendor agreements and pricing',
-    icon: 'mdi-file-document-multiple',
-    color: '#607D8B',
-    adminOnly: true,
-    subfolders: [
-      { id: 'contracts', name: 'Active Contracts', itemCount: 15 },
-      { id: 'pricing', name: 'Rate Sheets', itemCount: 8 },
-      { id: 'expired', name: 'Expired/Archived', itemCount: 22 }
-    ]
+async function loadFolders() {
+  loadingFolders.value = true
+  try {
+    const { data, error } = await supabase
+      .from('marketing_folders')
+      .select('*')
+      .order('sort_order')
+    
+    if (error) throw error
+    dbFolders.value = data || []
+  } catch (err: any) {
+    console.error('Error loading folders:', err)
+  } finally {
+    loadingFolders.value = false
   }
-])
+}
 
-// Sample files
-const files = ref([
-  // Brand Identity
-  { id: 'f1', name: 'GDD_Logo_Primary.svg', type: 'image', size: '245 KB', folder: 'brand-creative/brand-identity', adminOnly: false },
-  { id: 'f2', name: 'GDD_Logo_White.png', type: 'image', size: '128 KB', folder: 'brand-creative/brand-identity', adminOnly: false },
-  { id: 'f3', name: 'Brand_Style_Guide_2024.pdf', type: 'document', size: '4.2 MB', folder: 'brand-creative/brand-identity', adminOnly: false },
-  { id: 'f4', name: 'Color_Palette.pdf', type: 'document', size: '156 KB', folder: 'brand-creative/brand-identity', adminOnly: false },
-  { id: 'f5', name: 'Montserrat_Fonts.zip', type: 'archive', size: '890 KB', folder: 'brand-creative/brand-identity', adminOnly: false },
-  
-  // Print Collateral
-  { id: 'f6', name: 'Services_Brochure.pdf', type: 'document', size: '2.1 MB', folder: 'brand-creative/print-collateral', adminOnly: false },
-  { id: 'f7', name: 'Puppy_Package_Flyer.pdf', type: 'document', size: '1.8 MB', folder: 'brand-creative/print-collateral', adminOnly: false },
-  { id: 'f8', name: 'Business_Card_Template.ai', type: 'template', size: '3.5 MB', folder: 'brand-creative/print-collateral', adminOnly: false },
-  { id: 'f9', name: 'Letterhead_Template.docx', type: 'template', size: '245 KB', folder: 'brand-creative/print-collateral', adminOnly: false },
-  
-  // Digital Assets
-  { id: 'f10', name: 'Instagram_Post_Templates.zip', type: 'archive', size: '12 MB', folder: 'brand-creative/digital-assets', adminOnly: false },
-  { id: 'f11', name: 'Email_Signature.html', type: 'template', size: '8 KB', folder: 'brand-creative/digital-assets', adminOnly: false },
-  { id: 'f12', name: 'Website_Banner_Holiday.jpg', type: 'image', size: '456 KB', folder: 'brand-creative/digital-assets', adminOnly: false },
-  
-  // Event Production
-  { id: 'f13', name: 'Event_Waiver_Template.pdf', type: 'document', size: '89 KB', folder: 'event-production/permits', adminOnly: false },
-  { id: 'f14', name: 'Photo_Release_Form.pdf', type: 'document', size: '67 KB', folder: 'event-production/permits', adminOnly: false },
-  { id: 'f15', name: 'COI_Template.pdf', type: 'document', size: '125 KB', folder: 'event-production/permits', adminOnly: false },
-  
-  // Internal Tools
-  { id: 'f16', name: 'Review_Request_Script.docx', type: 'document', size: '34 KB', folder: 'internal-tools/talking-points', adminOnly: false },
-  { id: 'f17', name: 'Promo_Explanation_Script.pdf', type: 'document', size: '56 KB', folder: 'internal-tools/talking-points', adminOnly: false },
-  { id: 'f18', name: 'Booth_Setup_SOP.pdf', type: 'document', size: '1.2 MB', folder: 'internal-tools/sops', adminOnly: false },
-  
-  // Vendor Contracts (Admin Only)
-  { id: 'f19', name: 'PetLens_Contract_2024.pdf', type: 'document', size: '456 KB', folder: 'vendor-contracts/contracts', adminOnly: true },
-  { id: 'f20', name: 'Catering_Rate_Sheet.xlsx', type: 'spreadsheet', size: '89 KB', folder: 'vendor-contracts/pricing', adminOnly: true }
-])
+async function loadFiles() {
+  loadingFiles.value = true
+  try {
+    let query = supabase
+      .from('marketing_resources')
+      .select('*')
+      .order('name')
+    
+    if (!showArchived.value) {
+      query = query.eq('is_archived', false)
+    }
+    
+    const { data, error } = await query
+    
+    if (error) throw error
+    dbFiles.value = data || []
+  } catch (err: any) {
+    console.error('Error loading files:', err)
+  } finally {
+    loadingFiles.value = false
+  }
+}
+
+// Load on mount
+onMounted(() => {
+  loadFolders()
+  loadFiles()
+})
+
+// Watch for archived toggle
+watch(showArchived, () => {
+  loadFiles()
+})
 
 // ============================================
 // VENDOR DIRECTORY DATA
@@ -981,8 +924,8 @@ const vendorForm = reactive({
 // ============================================
 const fileTableHeaders = [
   { title: 'Name', key: 'name', sortable: true },
-  { title: 'Type', key: 'type', sortable: true },
-  { title: 'Size', key: 'size', sortable: true },
+  { title: 'Type', key: 'file_type', sortable: true },
+  { title: 'Size', key: 'file_size', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px' }
 ]
 
@@ -996,8 +939,30 @@ const vendorTableHeaders = [
 ]
 
 // ============================================
-// COMPUTED
+// COMPUTED - USING DATABASE DATA
 // ============================================
+
+// Get root folders (categories)
+const fileCategories = computed(() => {
+  return dbFolders.value
+    .filter(f => !f.parent_id)
+    .map(f => ({
+      id: f.path || f.id,
+      name: f.name,
+      description: f.description || '',
+      icon: f.icon || 'mdi-folder',
+      color: f.color || '#9E9E9E',
+      adminOnly: f.admin_only,
+      subfolders: dbFolders.value
+        .filter(sf => sf.parent_id === f.id)
+        .map(sf => ({
+          id: sf.path?.split('/').pop() || sf.id,
+          name: sf.name,
+          itemCount: dbFiles.value.filter(file => file.folder_path === sf.path).length
+        }))
+    }))
+})
+
 const visibleCategories = computed(() => {
   return fileCategories.value.filter(cat => !cat.adminOnly || isAdmin.value)
 })
@@ -1054,11 +1019,11 @@ const currentSubfolders = computed(() => {
 const currentFiles = computed(() => {
   if (!currentPath.value) return []
   
-  let result = files.value.filter(f => f.folder === currentPath.value)
+  let result = dbFiles.value.filter(f => f.folder_path === currentPath.value)
   
   // Filter admin-only files for non-admins
   if (!isAdmin.value) {
-    result = result.filter(f => !f.adminOnly)
+    result = result.filter(f => !f.admin_only)
   }
   
   // Apply search
@@ -1070,13 +1035,13 @@ const currentFiles = computed(() => {
   // Apply file type filter
   if (fileTypeFilter.value !== 'All Types') {
     const typeMap: Record<string, string[]> = {
-      'Documents': ['document', 'spreadsheet'],
-      'Images': ['image'],
-      'Videos': ['video'],
-      'Templates': ['template']
+      'Documents': ['document', 'pdf', 'doc', 'docx', 'txt'],
+      'Images': ['image', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'],
+      'Videos': ['video', 'mp4', 'mov', 'webm'],
+      'Templates': ['template', 'ai', 'psd']
     }
     const types = typeMap[fileTypeFilter.value] || []
-    result = result.filter(f => types.includes(f.type))
+    result = result.filter(f => types.some(t => (f.file_type || '').toLowerCase().includes(t)))
   }
   
   return result
@@ -1143,34 +1108,62 @@ function getBreadcrumbPath(item: unknown): string {
 }
 
 function getFileTypeIcon(type: string) {
-  const icons: Record<string, string> = {
-    'document': 'mdi-file-document',
-    'image': 'mdi-file-image',
-    'video': 'mdi-file-video',
-    'template': 'mdi-file-cog',
-    'archive': 'mdi-folder-zip',
-    'spreadsheet': 'mdi-file-excel'
-  }
-  return icons[type] || 'mdi-file'
+  const typeStr = (type || '').toLowerCase()
+  if (typeStr.includes('pdf') || typeStr.includes('document')) return 'mdi-file-document'
+  if (typeStr.includes('image') || typeStr.includes('jpg') || typeStr.includes('png') || typeStr.includes('svg')) return 'mdi-file-image'
+  if (typeStr.includes('video') || typeStr.includes('mp4')) return 'mdi-file-video'
+  if (typeStr.includes('excel') || typeStr.includes('spreadsheet') || typeStr.includes('xlsx')) return 'mdi-file-excel'
+  if (typeStr.includes('zip') || typeStr.includes('archive')) return 'mdi-folder-zip'
+  if (typeStr.includes('word') || typeStr.includes('doc')) return 'mdi-file-word'
+  if (typeStr.includes('powerpoint') || typeStr.includes('ppt')) return 'mdi-file-powerpoint'
+  return 'mdi-file'
 }
 
 function getFileTypeColor(type: string) {
-  const colors: Record<string, string> = {
-    'document': '#F44336',
-    'image': '#4CAF50',
-    'video': '#9C27B0',
-    'template': '#FF9800',
-    'archive': '#607D8B',
-    'spreadsheet': '#2E7D32'
-  }
-  return colors[type] || '#9E9E9E'
+  const typeStr = (type || '').toLowerCase()
+  if (typeStr.includes('pdf')) return '#F44336'
+  if (typeStr.includes('image') || typeStr.includes('jpg') || typeStr.includes('png')) return '#4CAF50'
+  if (typeStr.includes('video')) return '#9C27B0'
+  if (typeStr.includes('excel') || typeStr.includes('xlsx')) return '#2E7D32'
+  if (typeStr.includes('word') || typeStr.includes('doc')) return '#2196F3'
+  if (typeStr.includes('zip')) return '#607D8B'
+  return '#9E9E9E'
 }
 
-function downloadFile(file: any) {
-  snackbar.message = `Downloading ${file.name}...`
-  snackbar.color = 'info'
-  snackbar.show = true
-  // In a real app, this would trigger actual download
+function formatFileSize(bytes: number | null | undefined) {
+  if (!bytes) return '—'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB'
+}
+
+async function downloadFile(file: any) {
+  try {
+    if (!file.file_url) {
+      showError('No file URL available')
+      return
+    }
+    
+    // Get signed URL for download
+    const { data, error } = await supabase.storage
+      .from('marketing-resources')
+      .createSignedUrl(file.file_url, 60) // 60 second expiry
+    
+    if (error) throw error
+    
+    // Trigger download
+    const link = document.createElement('a')
+    link.href = data.signedUrl
+    link.download = file.name
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    showSuccess(`Downloading ${file.name}...`)
+  } catch (err: any) {
+    showError('Failed to download file: ' + err.message)
+  }
 }
 
 function editFile(file: any) {
@@ -1179,25 +1172,123 @@ function editFile(file: any) {
   snackbar.show = true
 }
 
-function deleteFile(file: any) {
-  files.value = files.value.filter(f => f.id !== file.id)
-  snackbar.message = 'File deleted'
-  snackbar.color = 'info'
-  snackbar.show = true
+async function deleteFile(file: any) {
+  if (!confirm(`Delete "${file.name}"? This cannot be undone.`)) return
+  
+  try {
+    // Delete from storage
+    if (file.file_url) {
+      const { error: storageError } = await supabase.storage
+        .from('marketing-resources')
+        .remove([file.file_url])
+      
+      if (storageError) console.warn('Storage delete error:', storageError)
+    }
+    
+    // Delete from database
+    const { error } = await supabase
+      .from('marketing_resources')
+      .delete()
+      .eq('id', file.id)
+    
+    if (error) throw error
+    
+    showSuccess('File deleted')
+    await loadFiles()
+  } catch (err: any) {
+    showError('Failed to delete file: ' + err.message)
+  }
 }
 
-function handleUpload() {
-  snackbar.message = `${uploadFiles.value?.length || 0} file(s) uploaded successfully`
-  snackbar.color = 'success'
-  snackbar.show = true
-  showUploadDialog.value = false
-  uploadFiles.value = []
+async function handleUpload() {
+  if (!uploadFiles.value?.length) return
+  
+  uploading.value = true
+  const targetFolder = uploadFolder.value || currentPath.value || ''
+  
+  try {
+    for (const file of uploadFiles.value) {
+      // Generate unique path
+      const timestamp = Date.now()
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+      const storagePath = targetFolder ? `${targetFolder}/${timestamp}_${safeName}` : `${timestamp}_${safeName}`
+      
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('marketing-resources')
+        .upload(storagePath, file)
+      
+      if (uploadError) throw uploadError
+      
+      // Get file type from mime type
+      let fileType = 'document'
+      if (file.type.startsWith('image/')) fileType = 'image'
+      else if (file.type.startsWith('video/')) fileType = 'video'
+      else if (file.type.includes('pdf')) fileType = 'pdf'
+      else if (file.type.includes('spreadsheet') || file.type.includes('excel')) fileType = 'spreadsheet'
+      
+      // Create database record
+      const { error: dbError } = await supabase
+        .from('marketing_resources')
+        .insert({
+          name: file.name,
+          file_url: storagePath,
+          file_type: fileType,
+          file_size: file.size,
+          folder_path: targetFolder,
+          admin_only: uploadAsAdminOnly.value
+        })
+      
+      if (dbError) throw dbError
+    }
+    
+    showSuccess(`${uploadFiles.value.length} file(s) uploaded successfully`)
+    showUploadDialog.value = false
+    uploadFiles.value = []
+    uploadAsAdminOnly.value = false
+    await loadFiles()
+  } catch (err: any) {
+    showError('Upload failed: ' + err.message)
+  } finally {
+    uploading.value = false
+  }
 }
 
-function createFolder() {
-  snackbar.message = `Folder "${newFolderName.value}" created`
-  snackbar.color = 'success'
-  snackbar.show = true
+async function createFolder() {
+  if (!newFolderName.value) return
+  
+  try {
+    const parentPath = newFolderParent.value || ''
+    const folderPath = parentPath ? `${parentPath}/${newFolderName.value.toLowerCase().replace(/\s+/g, '-')}` : newFolderName.value.toLowerCase().replace(/\s+/g, '-')
+    
+    // Find parent folder ID if nested
+    let parentId = null
+    if (parentPath) {
+      const parentFolder = dbFolders.value.find(f => f.path === parentPath)
+      if (parentFolder) parentId = parentFolder.id
+    }
+    
+    const { error } = await supabase
+      .from('marketing_folders')
+      .insert({
+        name: newFolderName.value,
+        parent_id: parentId,
+        path: folderPath,
+        admin_only: newFolderAdminOnly.value
+      })
+    
+    if (error) throw error
+    
+    showSuccess(`Folder "${newFolderName.value}" created`)
+    showAddFolderDialog.value = false
+    newFolderName.value = ''
+    newFolderParent.value = ''
+    newFolderAdminOnly.value = false
+    await loadFolders()
+  } catch (err: any) {
+    showError('Failed to create folder: ' + err.message)
+  }
+}
   showAddFolderDialog.value = false
   newFolderName.value = ''
 }
