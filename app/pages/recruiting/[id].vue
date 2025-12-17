@@ -464,36 +464,94 @@
                     These ratings will transfer to their employee profile when hired.
                   </p>
 
-                  <v-row>
-                    <v-col 
-                      v-for="skill in availableSkills" 
-                      :key="skill.id" 
-                      cols="12" 
-                      sm="6" 
-                      md="4"
-                    >
-                      <v-card variant="outlined" class="pa-3">
-                        <div class="d-flex align-center justify-space-between mb-2">
-                          <span class="text-body-2 font-weight-medium">{{ skill.name }}</span>
-                          <v-chip 
-                            size="small" 
-                            :color="getSkillColor(getSkillRating(skill.id))"
-                            variant="flat"
-                          >
-                            {{ getSkillRating(skill.id) }}/5
-                          </v-chip>
-                        </div>
-                        <v-rating
-                          :model-value="getSkillRating(skill.id)"
-                          color="amber"
-                          hover
-                          density="compact"
-                          @update:model-value="updateSkillRating(skill.id, Number($event))"
-                        />
-                        <div class="text-caption text-grey mt-1">{{ skill.category }}</div>
-                      </v-card>
-                    </v-col>
-                  </v-row>
+                  <!-- Category Filter -->
+                  <v-select
+                    v-model="selectedSkillCategory"
+                    :items="skillCategories"
+                    label="Select Category"
+                    variant="outlined"
+                    density="compact"
+                    prepend-inner-icon="mdi-filter"
+                    clearable
+                    class="mb-4"
+                    placeholder="All Categories"
+                  />
+
+                  <!-- Skills Grid by Category -->
+                  <template v-if="selectedSkillCategory">
+                    <v-row>
+                      <v-col 
+                        v-for="skill in filteredSkillsByCategory" 
+                        :key="skill.id" 
+                        cols="12" 
+                        sm="6" 
+                        md="4"
+                      >
+                        <v-card variant="outlined" class="pa-3">
+                          <div class="d-flex align-center justify-space-between mb-2">
+                            <span class="text-body-2 font-weight-medium">{{ skill.name }}</span>
+                            <v-chip 
+                              size="small" 
+                              :color="getSkillColor(getSkillRating(skill.id))"
+                              variant="flat"
+                            >
+                              {{ getSkillRating(skill.id) }}/5
+                            </v-chip>
+                          </div>
+                          <v-rating
+                            :model-value="getSkillRating(skill.id)"
+                            color="amber"
+                            hover
+                            density="compact"
+                            @update:model-value="updateSkillRating(skill.id, Number($event))"
+                          />
+                          <div class="text-caption text-grey mt-1">{{ skill.description || skill.category }}</div>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+
+                    <v-alert v-if="filteredSkillsByCategory.length === 0" type="info" variant="tonal" class="mt-4">
+                      No skills found in this category. Add skills in the Skill Library.
+                    </v-alert>
+                  </template>
+
+                  <!-- All Categories Overview (when no filter selected) -->
+                  <template v-else>
+                    <div v-for="category in skillCategories" :key="category" class="mb-6">
+                      <div class="d-flex align-center mb-3">
+                        <h4 class="text-subtitle-2 font-weight-bold">{{ category }}</h4>
+                        <v-chip size="x-small" class="ml-2" variant="tonal">
+                          {{ getSkillsByCategory(category).length }} skills
+                        </v-chip>
+                        <v-spacer />
+                        <v-btn 
+                          variant="text" 
+                          size="small" 
+                          color="primary"
+                          @click="selectedSkillCategory = category"
+                        >
+                          Rate Skills
+                          <v-icon end>mdi-chevron-right</v-icon>
+                        </v-btn>
+                      </div>
+                      
+                      <!-- Show rated skills summary for this category -->
+                      <div class="d-flex flex-wrap gap-2">
+                        <v-chip 
+                          v-for="skill in getRatedSkillsInCategory(category)" 
+                          :key="skill.id"
+                          size="small"
+                          :color="getSkillColor(getSkillRating(skill.id))"
+                          variant="tonal"
+                        >
+                          {{ skill.name }}: {{ getSkillRating(skill.id) }}/5
+                        </v-chip>
+                        <span v-if="getRatedSkillsInCategory(category).length === 0" class="text-caption text-grey">
+                          No skills rated yet
+                        </span>
+                      </div>
+                    </div>
+                  </template>
 
                   <v-alert v-if="availableSkills.length === 0" type="info" variant="tonal" class="mt-4">
                     No skills defined in the skill library. Add skills in the Skill Library to rate candidates.
@@ -841,6 +899,7 @@ const showUploadDialog = ref(false)
 const uploading = ref(false)
 const isDragging = ref(false)
 const postingNote = ref(false)
+const selectedSkillCategory = ref<string | null>(null)
 
 // Edit form
 const editForm = ref<Partial<Candidate>>({})
@@ -910,6 +969,29 @@ const isLicenseExpiringSoon = computed(() => {
   if (!candidate.value?.license_expiration) return false
   return differenceInDays(new Date(candidate.value.license_expiration), new Date()) < 90
 })
+
+// Skill categories computed
+const skillCategories = computed(() => {
+  const categories = new Set<string>()
+  availableSkills.value.forEach(skill => {
+    if (skill.category) categories.add(skill.category)
+  })
+  return Array.from(categories).sort()
+})
+
+const filteredSkillsByCategory = computed(() => {
+  if (!selectedSkillCategory.value) return availableSkills.value
+  return availableSkills.value.filter(skill => skill.category === selectedSkillCategory.value)
+})
+
+function getSkillsByCategory(category: string) {
+  return availableSkills.value.filter(skill => skill.category === category)
+}
+
+function getRatedSkillsInCategory(category: string) {
+  const categorySkills = getSkillsByCategory(category)
+  return categorySkills.filter(skill => getSkillRating(skill.id) > 0)
+}
 
 // Load data
 async function loadCandidate() {
