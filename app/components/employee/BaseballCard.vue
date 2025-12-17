@@ -115,7 +115,13 @@
 
 <script setup lang="ts">
 import type { ProfileWithSkills, EmployeeSkill, SkillLevel } from '~/types/database.types'
-import { getSkillCategory } from '~/types/database.types'
+
+// Helper function to categorize skill levels
+function getSkillCategory(level: SkillLevel): 'learning' | 'competent' | 'mentor' {
+  if (level <= 2) return 'learning'
+  if (level <= 4) return 'competent'
+  return 'mentor'
+}
 
 interface Props {
   profile: ProfileWithSkills
