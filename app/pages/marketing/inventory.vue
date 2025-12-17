@@ -1,0 +1,742 @@
+<script setup lang="ts">
+definePageMeta({
+  layout: 'default',
+  middleware: ['auth']
+})
+
+const supabase = useSupabaseClient()
+const route = useRoute()
+
+// Type definitions
+interface InventoryItem {
+  id: string
+  item_name: string
+  category: string
+  description: string | null
+  quantity_venice: number
+  quantity_sherman_oaks: number
+  quantity_valley: number
+  boxes_on_hand: number | null
+  units_per_box: number | null
+  total_quantity: number
+  reorder_point: number
+  is_low_stock: boolean
+  last_ordered: string | null
+  order_quantity: number | null
+  supplier: string | null
+  unit_cost: number | null
+  notes: string | null
+  created_at: string
+}
+
+// Filter state
+const searchQuery = ref('')
+const selectedCategory = ref<string | null>(null)
+const showLowStockOnly = ref(false)
+
+// Check URL for filter
+onMounted(() => {
+  if (route.query.filter === 'low_stock') {
+    showLowStockOnly.value = true
+  }
+  if (route.query.action === 'add') {
+    openAddDialog()
+  }
+})
+
+const categoryOptions = [
+  { title: 'All Categories', value: null },
+  { title: 'Brochures', value: 'brochures' },
+  { title: 'Flyers', value: 'flyers' },
+  { title: 'Business Cards', value: 'business_cards' },
+  { title: 'Promotional Items', value: 'promotional_items' },
+  { title: 'Apparel', value: 'apparel' },
+  { title: 'Signage', value: 'signage' },
+  { title: 'Supplies', value: 'supplies' },
+  { title: 'Other', value: 'other' }
+]
+
+// Fetch inventory
+const { data: inventory, pending, refresh } = await useAsyncData('inventory', async () => {
+  const { data, error } = await supabase
+    .from('marketing_inventory')
+    .select('*')
+    .order('item_name')
+  
+  if (error) throw error
+  return data as InventoryItem[]
+})
+
+// Filtered inventory
+const filteredInventory = computed(() => {
+  let result = inventory.value || []
+  
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(i => 
+      i.item_name.toLowerCase().includes(query) ||
+      i.notes?.toLowerCase().includes(query)
+    )
+  }
+  
+  if (selectedCategory.value) {
+    result = result.filter(i => i.category === selectedCategory.value)
+  }
+  
+  if (showLowStockOnly.value) {
+    result = result.filter(i => i.is_low_stock)
+  }
+  
+  return result
+})
+
+// Stats
+const stats = computed(() => ({
+  total: inventory.value?.length || 0,
+  lowStock: inventory.value?.filter(i => i.is_low_stock).length || 0,
+  totalValue: inventory.value?.reduce((sum, i) => sum + (i.total_quantity * (i.unit_cost || 0)), 0) || 0,
+  byCategory: categoryOptions.slice(1).map(cat => ({
+    category: cat.title,
+    count: inventory.value?.filter(i => i.category === cat.value).length || 0
+  }))
+}))
+
+// Dialog state
+const dialogOpen = ref(false)
+const editingItem = ref<InventoryItem | null>(null)
+const formData = ref({
+  item_name: '',
+  category: 'other',
+  description: '',
+  quantity_venice: 0,
+  quantity_sherman_oaks: 0,
+  quantity_valley: 0,
+  boxes_on_hand: null as number | null,
+  units_per_box: null as number | null,
+  reorder_point: 100,
+  last_ordered: '',
+  order_quantity: null as number | null,
+  supplier: '',
+  unit_cost: null as number | null,
+  notes: ''
+})
+
+function openAddDialog() {
+  editingItem.value = null
+  formData.value = {
+    item_name: '',
+    category: 'other',
+    description: '',
+    quantity_venice: 0,
+    quantity_sherman_oaks: 0,
+    quantity_valley: 0,
+    boxes_on_hand: null,
+    units_per_box: null,
+    reorder_point: 100,
+    last_ordered: '',
+    order_quantity: null,
+    supplier: '',
+    unit_cost: null,
+    notes: ''
+  }
+  dialogOpen.value = true
+}
+
+function openEditDialog(item: InventoryItem) {
+  editingItem.value = item
+  formData.value = {
+    item_name: item.item_name,
+    category: item.category,
+    description: item.description || '',
+    quantity_venice: item.quantity_venice,
+    quantity_sherman_oaks: item.quantity_sherman_oaks,
+    quantity_valley: item.quantity_valley,
+    boxes_on_hand: item.boxes_on_hand,
+    units_per_box: item.units_per_box,
+    reorder_point: item.reorder_point,
+    last_ordered: item.last_ordered || '',
+    order_quantity: item.order_quantity,
+    supplier: item.supplier || '',
+    unit_cost: item.unit_cost,
+    notes: item.notes || ''
+  }
+  dialogOpen.value = true
+}
+
+async function saveItem() {
+  const payload = {
+    item_name: formData.value.item_name,
+    category: formData.value.category,
+    description: formData.value.description || null,
+    quantity_venice: formData.value.quantity_venice,
+    quantity_sherman_oaks: formData.value.quantity_sherman_oaks,
+    quantity_valley: formData.value.quantity_valley,
+    boxes_on_hand: formData.value.boxes_on_hand,
+    units_per_box: formData.value.units_per_box,
+    reorder_point: formData.value.reorder_point,
+    last_ordered: formData.value.last_ordered || null,
+    order_quantity: formData.value.order_quantity,
+    supplier: formData.value.supplier || null,
+    unit_cost: formData.value.unit_cost,
+    notes: formData.value.notes || null
+  }
+  
+  if (editingItem.value) {
+    await supabase
+      .from('marketing_inventory')
+      .update(payload)
+      .eq('id', editingItem.value.id)
+  } else {
+    await supabase
+      .from('marketing_inventory')
+      .insert(payload)
+  }
+  
+  dialogOpen.value = false
+  refresh()
+}
+
+async function deleteItem(id: string) {
+  if (!confirm('Are you sure you want to delete this item?')) return
+  
+  await supabase
+    .from('marketing_inventory')
+    .delete()
+    .eq('id', id)
+  
+  refresh()
+}
+
+// Quick update quantity
+async function updateQuantity(item: InventoryItem, location: 'venice' | 'sherman_oaks' | 'valley', delta: number) {
+  const field = `quantity_${location}` as keyof InventoryItem
+  const currentValue = item[field] as number
+  const newValue = Math.max(0, currentValue + delta)
+  
+  await supabase
+    .from('marketing_inventory')
+    .update({ [field]: newValue })
+    .eq('id', item.id)
+  
+  refresh()
+}
+
+function getCategoryColor(category: string): string {
+  const colors: Record<string, string> = {
+    brochures: 'blue',
+    flyers: 'cyan',
+    business_cards: 'indigo',
+    promotional_items: 'purple',
+    apparel: 'pink',
+    signage: 'orange',
+    supplies: 'teal',
+    other: 'grey'
+  }
+  return colors[category] || 'grey'
+}
+
+function getCategoryIcon(category: string): string {
+  const icons: Record<string, string> = {
+    brochures: 'mdi-book-open-page-variant',
+    flyers: 'mdi-file-document',
+    business_cards: 'mdi-card-account-details',
+    promotional_items: 'mdi-gift',
+    apparel: 'mdi-tshirt-crew',
+    signage: 'mdi-sign-real-estate',
+    supplies: 'mdi-package-variant',
+    other: 'mdi-dots-horizontal'
+  }
+  return icons[category] || 'mdi-package-variant'
+}
+
+function getStockLevel(item: InventoryItem): { color: string; text: string } {
+  const ratio = item.total_quantity / item.reorder_point
+  if (ratio <= 0.5) return { color: 'error', text: 'Critical' }
+  if (ratio <= 1) return { color: 'warning', text: 'Low' }
+  if (ratio <= 2) return { color: 'info', text: 'Adequate' }
+  return { color: 'success', text: 'Good' }
+}
+</script>
+
+<template>
+  <v-container fluid class="pa-6">
+    <!-- Header -->
+    <div class="d-flex align-center mb-4">
+      <v-btn icon variant="text" to="/marketing/command-center" class="mr-2">
+        <v-icon>mdi-arrow-left</v-icon>
+      </v-btn>
+      <div>
+        <h1 class="text-h4 font-weight-bold">Marketing Inventory Hub</h1>
+        <p class="text-subtitle-1 text-medium-emphasis">
+          Track swag, materials, and supplies across locations
+        </p>
+      </div>
+      <v-spacer />
+      <v-btn
+        color="warning"
+        prepend-icon="mdi-package-variant-plus"
+        @click="openAddDialog"
+      >
+        Add Item
+      </v-btn>
+    </div>
+
+    <!-- Stats Row -->
+    <v-row class="mb-4">
+      <v-col cols="6" sm="3">
+        <v-card variant="tonal" color="primary">
+          <v-card-text class="text-center">
+            <div class="text-h4 font-weight-bold">{{ stats.total }}</div>
+            <div class="text-caption">Total Items</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card
+          :variant="stats.lowStock > 0 ? 'flat' : 'tonal'"
+          :color="stats.lowStock > 0 ? 'error' : 'success'"
+          :class="{ 'pulse-alert': stats.lowStock > 0 }"
+        >
+          <v-card-text class="text-center">
+            <div class="text-h4 font-weight-bold">
+              {{ stats.lowStock }}
+              <v-icon v-if="stats.lowStock > 0" size="small">mdi-alert</v-icon>
+            </div>
+            <div class="text-caption">Low Stock Items</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6">
+        <v-card variant="outlined">
+          <v-card-text>
+            <div class="text-subtitle-2 mb-2">Items by Category</div>
+            <div class="d-flex flex-wrap gap-1">
+              <v-chip
+                v-for="cat in stats.byCategory.filter(c => c.count > 0)"
+                :key="cat.category"
+                size="small"
+                :color="getCategoryColor(cat.category.toLowerCase().replace(/ /g, '_'))"
+                variant="tonal"
+              >
+                {{ cat.category }}: {{ cat.count }}
+              </v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Filters -->
+    <v-card class="mb-4">
+      <v-card-text>
+        <v-row dense align="center">
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="searchQuery"
+              label="Search items..."
+              prepend-inner-icon="mdi-magnify"
+              variant="outlined"
+              density="compact"
+              clearable
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6" md="3">
+            <v-select
+              v-model="selectedCategory"
+              :items="categoryOptions"
+              label="Category"
+              variant="outlined"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6" md="2">
+            <v-switch
+              v-model="showLowStockOnly"
+              label="Low Stock Only"
+              color="error"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="12" md="2" class="text-right">
+            <v-chip :color="showLowStockOnly ? 'error' : 'primary'" variant="tonal">
+              {{ filteredInventory.length }} Items
+            </v-chip>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- Inventory Table -->
+    <v-card>
+      <v-progress-linear v-if="pending" indeterminate color="warning" />
+      
+      <v-table v-if="filteredInventory.length > 0" hover>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="text-center">Venice</th>
+            <th class="text-center">Sherman Oaks</th>
+            <th class="text-center">Valley</th>
+            <th class="text-center">Total</th>
+            <th class="text-center">Reorder Point</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Last Ordered</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="item in filteredInventory"
+            :key="item.id"
+            :class="{ 'bg-error-lighten-5': item.is_low_stock }"
+            style="cursor: pointer;"
+            @click="openEditDialog(item)"
+          >
+            <td>
+              <div class="d-flex align-center py-2">
+                <v-avatar :color="getCategoryColor(item.category)" size="32" class="mr-3">
+                  <v-icon size="small" color="white">{{ getCategoryIcon(item.category) }}</v-icon>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium">{{ item.item_name }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ item.category.replace(/_/g, ' ') }}
+                  </div>
+                </div>
+              </div>
+            </td>
+            
+            <!-- Venice -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'venice', -10)"
+                >
+                  <v-icon>mdi-minus</v-icon>
+                </v-btn>
+                <span class="mx-2 font-weight-medium" style="min-width: 40px;">
+                  {{ item.quantity_venice }}
+                </span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'venice', 10)"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </td>
+            
+            <!-- Sherman Oaks -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'sherman_oaks', -10)"
+                >
+                  <v-icon>mdi-minus</v-icon>
+                </v-btn>
+                <span class="mx-2 font-weight-medium" style="min-width: 40px;">
+                  {{ item.quantity_sherman_oaks }}
+                </span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'sherman_oaks', 10)"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </td>
+            
+            <!-- Valley -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'valley', -10)"
+                >
+                  <v-icon>mdi-minus</v-icon>
+                </v-btn>
+                <span class="mx-2 font-weight-medium" style="min-width: 40px;">
+                  {{ item.quantity_valley }}
+                </span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'valley', 10)"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </td>
+            
+            <!-- Total -->
+            <td class="text-center">
+              <span
+                class="font-weight-bold"
+                :class="{
+                  'text-error': item.is_low_stock,
+                  'text-success': !item.is_low_stock
+                }"
+              >
+                {{ item.total_quantity }}
+              </span>
+            </td>
+            
+            <!-- Reorder Point -->
+            <td class="text-center text-medium-emphasis">
+              {{ item.reorder_point }}
+            </td>
+            
+            <!-- Status -->
+            <td class="text-center">
+              <v-chip
+                size="small"
+                :color="getStockLevel(item).color"
+                variant="flat"
+              >
+                <v-icon v-if="item.is_low_stock" start size="small">mdi-alert</v-icon>
+                {{ getStockLevel(item).text }}
+              </v-chip>
+            </td>
+            
+            <!-- Last Ordered -->
+            <td class="text-center text-caption">
+              {{ item.last_ordered ? new Date(item.last_ordered).toLocaleDateString() : '—' }}
+            </td>
+            
+            <td>
+              <v-btn
+                icon
+                variant="text"
+                size="small"
+                color="error"
+                @click.stop="deleteItem(item.id)"
+              >
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+
+      <!-- Empty State -->
+      <div v-else class="text-center py-12">
+        <v-icon size="64" color="grey-lighten-1">mdi-package-variant-closed</v-icon>
+        <div class="text-h6 mt-4">No inventory items found</div>
+        <div class="text-body-2 text-medium-emphasis">
+          {{ searchQuery || selectedCategory || showLowStockOnly ? 'Try adjusting your filters' : 'Add your first item to get started' }}
+        </div>
+        <v-btn
+          v-if="!searchQuery && !selectedCategory && !showLowStockOnly"
+          color="warning"
+          class="mt-4"
+          @click="openAddDialog"
+        >
+          Add Item
+        </v-btn>
+      </div>
+    </v-card>
+
+    <!-- Add/Edit Dialog -->
+    <v-dialog v-model="dialogOpen" max-width="700" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">{{ editingItem ? 'mdi-pencil' : 'mdi-package-variant-plus' }}</v-icon>
+          {{ editingItem ? 'Edit Item' : 'Add Inventory Item' }}
+          <v-spacer />
+          <v-btn icon variant="text" @click="dialogOpen = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider />
+        
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="8">
+              <v-text-field
+                v-model="formData.item_name"
+                label="Item Name *"
+                variant="outlined"
+                required
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="formData.category"
+                :items="categoryOptions.filter(c => c.value !== null)"
+                label="Category *"
+                variant="outlined"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-textarea
+                v-model="formData.description"
+                label="Description"
+                variant="outlined"
+                rows="2"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Quantities by Location</div>
+            </v-col>
+            
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="formData.quantity_venice"
+                label="Venice"
+                variant="outlined"
+                type="number"
+                prepend-inner-icon="mdi-beach"
+              />
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="formData.quantity_sherman_oaks"
+                label="Sherman Oaks"
+                variant="outlined"
+                type="number"
+                prepend-inner-icon="mdi-tree"
+              />
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model.number="formData.quantity_valley"
+                label="Valley"
+                variant="outlined"
+                type="number"
+                prepend-inner-icon="mdi-terrain"
+              />
+            </v-col>
+            
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model.number="formData.boxes_on_hand"
+                label="Boxes"
+                variant="outlined"
+                type="number"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model.number="formData.units_per_box"
+                label="Units/Box"
+                variant="outlined"
+                type="number"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model.number="formData.reorder_point"
+                label="Reorder Point *"
+                variant="outlined"
+                type="number"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model.number="formData.unit_cost"
+                label="Unit Cost ($)"
+                variant="outlined"
+                type="number"
+                density="compact"
+                prefix="$"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Ordering Information</div>
+            </v-col>
+            
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.supplier"
+                label="Supplier"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.last_ordered"
+                label="Last Ordered"
+                variant="outlined"
+                density="compact"
+                type="date"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model.number="formData.order_quantity"
+                label="Order Quantity"
+                variant="outlined"
+                density="compact"
+                type="number"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-textarea
+                v-model="formData.notes"
+                label="Notes"
+                variant="outlined"
+                rows="2"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        
+        <v-divider />
+        
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="dialogOpen = false">Cancel</v-btn>
+          <v-btn color="warning" @click="saveItem">
+            {{ editingItem ? 'Save Changes' : 'Add Item' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
+<style scoped>
+.pulse-alert {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.bg-error-lighten-5 {
+  background-color: rgba(var(--v-theme-error), 0.05) !important;
+}
+</style>
