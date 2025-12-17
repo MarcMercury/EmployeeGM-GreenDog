@@ -1289,9 +1289,6 @@ async function createFolder() {
     showError('Failed to create folder: ' + err.message)
   }
 }
-  showAddFolderDialog.value = false
-  newFolderName.value = ''
-}
 
 function getVendorCategoryCount(category: string) {
   return vendors.value.filter(v => v.category === category).length
