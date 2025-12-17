@@ -121,11 +121,17 @@
             class="nav-item"
           />
         </template>
+        <!-- Command Center - Marketing Hub -->
+        <v-list-item to="/marketing/command-center" title="Command Center" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Calendar - visible to all -->
         <v-list-item to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Admin only items -->
         <v-list-item v-if="isAdmin" to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="isAdmin" to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Marketing Hubs -->
+        <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Visible to all -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/partnerships" title="Partnerships" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
