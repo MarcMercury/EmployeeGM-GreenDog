@@ -628,7 +628,13 @@ const saveSkillRating = async (skillRating: SkillRating) => {
     }
 
     if (saveError) {
-      console.error('Save error details:', saveError)
+      console.error('Save error details:', {
+        message: saveError.message,
+        code: saveError.code,
+        details: saveError.details,
+        hint: saveError.hint,
+        fullError: JSON.stringify(saveError)
+      })
       throw saveError
     }
 
