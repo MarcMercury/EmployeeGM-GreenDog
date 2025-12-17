@@ -602,36 +602,28 @@ const saveSkillRating = async (skillRating: SkillRating) => {
 
     console.log('Existing record check:', existing)
 
-    let saveResult
     let saveError
 
     if (existing?.id) {
       // Update existing record
       console.log('Updating existing record:', existing.id)
-      const { data, error } = await client
+      const { error } = await client
         .from('employee_skills')
-        .update({
-          level: skillRating.level,
-          updated_at: new Date().toISOString()
-        })
+        .update({ level: skillRating.level })
         .eq('id', existing.id)
-        .select()
       
-      saveResult = data
       saveError = error
     } else {
       // Insert new record
       console.log('Inserting new record')
-      const { data, error } = await client
+      const { error } = await client
         .from('employee_skills')
         .insert({
           employee_id: selectedEmployeeId.value,
           skill_id: skillRating.skill_id,
           level: skillRating.level
         })
-        .select()
       
-      saveResult = data
       saveError = error
     }
 
@@ -642,8 +634,7 @@ const saveSkillRating = async (skillRating: SkillRating) => {
 
     console.log('Skill saved successfully:', { 
       skill: skillRating.skill_name, 
-      level: skillRating.level,
-      result: saveResult 
+      level: skillRating.level
     })
 
     // Update local state to reflect saved changes
