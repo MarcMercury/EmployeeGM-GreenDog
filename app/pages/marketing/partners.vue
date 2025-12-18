@@ -49,17 +49,16 @@ const serviceOptions = [
 // Partner type options
 const partnerTypes = [
   { title: 'All Types', value: null },
-  { title: 'Chamber of Commerce', value: 'chamber' },
-  { title: 'Association', value: 'association' },
-  { title: 'Food & Beverage', value: 'food_vendor' },
   { title: 'Pet Business', value: 'pet_business' },
-  { title: 'Rescue', value: 'rescue' },
-  { title: 'Entertainment', value: 'entertainment' },
-  { title: 'Local Business', value: 'local_business' },
-  { title: 'Print Vendor', value: 'print_vendor' },
   { title: 'Exotic Shop', value: 'exotic_shop' },
+  { title: 'Rescue', value: 'rescue' },
+  { title: 'Influencer', value: 'influencer' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Print Vendor', value: 'print_vendor' },
+  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Food & Beverage', value: 'food_vendor' },
+  { title: 'Association', value: 'association' },
   { title: 'Spay & Neuter', value: 'spay_neuter' },
-  { title: 'Media Outlet', value: 'media_outlet' },
   { title: 'Other', value: 'other' }
 ]
 
@@ -240,17 +239,16 @@ async function deletePartner(id: string) {
 
 function getTypeColor(type: string): string {
   const colors: Record<string, string> = {
-    chamber: 'primary',
-    association: 'indigo',
-    food_vendor: 'orange',
     pet_business: 'teal',
-    rescue: 'pink',
-    entertainment: 'purple',
-    local_business: 'blue-grey',
-    print_vendor: 'brown',
     exotic_shop: 'lime',
+    rescue: 'pink',
+    influencer: 'secondary',
+    entertainment: 'purple',
+    print_vendor: 'brown',
+    chamber: 'primary',
+    food_vendor: 'orange',
+    association: 'indigo',
     spay_neuter: 'cyan',
-    media_outlet: 'deep-purple',
     other: 'grey'
   }
   return colors[type] || 'grey'
@@ -381,13 +379,16 @@ function formatTypeName(type: string): string {
               <v-avatar :color="getTypeColor(partner.partner_type)" size="40">
                 <v-icon color="white">
                   {{
-                    partner.partner_type === 'chamber' ? 'mdi-office-building' :
-                    partner.partner_type === 'rescue' ? 'mdi-paw' :
-                    partner.partner_type === 'food_vendor' ? 'mdi-food' :
                     partner.partner_type === 'pet_business' ? 'mdi-dog' :
-                    partner.partner_type === 'print_vendor' ? 'mdi-printer' :
                     partner.partner_type === 'exotic_shop' ? 'mdi-snake' :
+                    partner.partner_type === 'rescue' ? 'mdi-paw' :
+                    partner.partner_type === 'influencer' ? 'mdi-star-circle' :
                     partner.partner_type === 'entertainment' ? 'mdi-party-popper' :
+                    partner.partner_type === 'print_vendor' ? 'mdi-printer' :
+                    partner.partner_type === 'chamber' ? 'mdi-office-building' :
+                    partner.partner_type === 'food_vendor' ? 'mdi-food' :
+                    partner.partner_type === 'association' ? 'mdi-account-group' :
+                    partner.partner_type === 'spay_neuter' ? 'mdi-medical-bag' :
                     'mdi-handshake'
                   }}
                 </v-icon>

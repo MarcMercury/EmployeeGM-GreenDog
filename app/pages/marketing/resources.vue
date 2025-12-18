@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Resources</h1>
         <p class="text-body-1 text-grey-darken-1">
-          {{ isAdmin ? 'Manage marketing assets, vendor contacts, influencers, and resource library' : 'Download marketing assets and find vendor contacts' }}
+          {{ isAdmin ? 'Manage marketing assets, influencer roster, and resource library' : 'Download marketing assets and view influencer roster' }}
         </p>
       </div>
       <div v-if="isAdmin" class="d-flex gap-2">
@@ -16,12 +16,6 @@
           </v-btn>
           <v-btn color="primary" prepend-icon="mdi-upload" @click="showUploadDialog = true">
             Upload
-          </v-btn>
-        </template>
-        <!-- Vendor Actions -->
-        <template v-if="activeTab === 'vendors'">
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddResourceDialog = true">
-            Add Vendor
           </v-btn>
         </template>
         <!-- Influencer Actions -->
@@ -38,10 +32,6 @@
       <v-tab value="library">
         <v-icon start>mdi-folder-multiple</v-icon>
         File Library
-      </v-tab>
-      <v-tab value="vendors">
-        <v-icon start>mdi-account-tie</v-icon>
-        Vendor Directory
       </v-tab>
       <v-tab value="influencers">
         <v-icon start>mdi-star-circle</v-icon>
@@ -226,167 +216,6 @@
         </div>
       </v-window-item>
 
-      <!-- Vendor Directory Tab -->
-      <v-window-item value="vendors">
-        <!-- Filters & Search -->
-        <v-card rounded="lg" class="mb-6">
-          <v-card-text>
-            <v-row align="center">
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="vendorSearch"
-                  placeholder="Search vendors..."
-                  prepend-inner-icon="mdi-magnify"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  clearable
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="vendorCategoryFilter"
-                  :items="vendorCategories"
-                  label="Category"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                  clearable
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="vendorStatusFilter"
-                  :items="['All', 'Active', 'Inactive', 'Preferred']"
-                  label="Status"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                />
-              </v-col>
-              <v-col cols="12" md="2" class="text-right">
-                <v-btn-toggle v-model="vendorViewMode" mandatory variant="outlined">
-                  <v-btn icon="mdi-view-grid" value="grid" />
-                  <v-btn icon="mdi-view-list" value="list" />
-                </v-btn-toggle>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-
-        <!-- Vendor Category Quick Filters -->
-        <div class="d-flex flex-wrap gap-2 mb-6">
-          <v-chip
-            v-for="cat in vendorCategoryChips"
-            :key="cat.value"
-            :color="vendorCategoryFilter === cat.value ? 'primary' : 'grey'"
-            :variant="vendorCategoryFilter === cat.value ? 'flat' : 'outlined'"
-            :prepend-icon="cat.icon"
-            size="small"
-            @click="vendorCategoryFilter = vendorCategoryFilter === cat.value ? '' : cat.value"
-          >
-            {{ cat.label }} ({{ getVendorCategoryCount(cat.value) }})
-          </v-chip>
-        </div>
-
-        <!-- Vendor Grid View -->
-        <v-row v-if="vendorViewMode === 'grid'">
-          <v-col v-for="vendor in filteredVendors" :key="vendor.id" cols="12" sm="6" md="4" lg="3">
-            <v-card rounded="lg" class="vendor-card h-100" @click="viewVendor(vendor)">
-              <div class="vendor-header" :style="{ backgroundColor: getVendorCategoryColor(vendor.category) }">
-                <v-avatar size="48" color="white">
-                  <v-icon :color="getVendorCategoryColor(vendor.category)">{{ getVendorCategoryIcon(vendor.category) }}</v-icon>
-                </v-avatar>
-                <v-chip
-                  v-if="vendor.preferred"
-                  color="warning"
-                  size="x-small"
-                  class="preferred-badge"
-                >
-                  <v-icon size="12">mdi-star</v-icon>
-                </v-chip>
-              </div>
-              
-              <v-card-text>
-                <h3 class="text-subtitle-1 font-weight-bold mb-1">{{ vendor.name }}</h3>
-                <v-chip size="x-small" variant="outlined" class="mb-2">{{ vendor.category }}</v-chip>
-                <p class="text-body-2 text-grey-darken-1 mb-3 description-text">
-                  {{ vendor.description }}
-                </p>
-                <div class="d-flex align-center gap-1 flex-wrap">
-                  <v-chip v-for="tag in vendor.tags?.slice(0, 2)" :key="tag" size="x-small" variant="tonal">
-                    {{ tag }}
-                  </v-chip>
-                  <v-chip v-if="vendor.tags?.length > 2" size="x-small" variant="text">
-                    +{{ vendor.tags.length - 2 }}
-                  </v-chip>
-                </div>
-              </v-card-text>
-              
-              <v-divider />
-              
-              <v-card-actions>
-                <v-btn size="small" variant="text" :href="`mailto:${vendor.email}`" @click.stop>
-                  <v-icon>mdi-email</v-icon>
-                </v-btn>
-                <v-btn size="small" variant="text" :href="`tel:${vendor.phone}`" @click.stop>
-                  <v-icon>mdi-phone</v-icon>
-                </v-btn>
-                <v-btn v-if="vendor.website" size="small" variant="text" :href="vendor.website" target="_blank" @click.stop>
-                  <v-icon>mdi-open-in-new</v-icon>
-                </v-btn>
-                <v-spacer />
-                <v-btn v-if="isAdmin" size="small" variant="text" icon="mdi-pencil" @click.stop="editVendor(vendor)" />
-              </v-card-actions>
-            </v-card>
-          </v-col>
-        </v-row>
-
-        <!-- Vendor List View -->
-        <v-card v-else rounded="lg">
-          <v-data-table
-            :headers="vendorTableHeaders"
-            :items="filteredVendors"
-            :search="vendorSearch"
-            hover
-          >
-            <template #item.name="{ item }">
-              <div class="d-flex align-center py-2">
-                <v-avatar size="36" :color="getVendorCategoryColor(item.category)" class="mr-3">
-                  <v-icon color="white" size="small">{{ getVendorCategoryIcon(item.category) }}</v-icon>
-                </v-avatar>
-                <div>
-                  <div class="font-weight-medium">{{ item.name }}</div>
-                  <div class="text-caption text-grey">{{ item.description?.substring(0, 50) }}...</div>
-                </div>
-                <v-icon v-if="item.preferred" color="warning" size="small" class="ml-2">mdi-star</v-icon>
-              </div>
-            </template>
-            
-            <template #item.category="{ item }">
-              <v-chip size="small" variant="outlined">{{ item.category }}</v-chip>
-            </template>
-            
-            <template #item.contact="{ item }">
-              <div class="text-body-2">{{ item.contact_name }}</div>
-              <div class="text-caption text-grey">{{ item.email }}</div>
-            </template>
-            
-            <template #item.status="{ item }">
-              <v-chip :color="item.active ? 'success' : 'grey'" size="small" variant="flat">
-                {{ item.active ? 'Active' : 'Inactive' }}
-              </v-chip>
-            </template>
-            
-            <template #item.actions="{ item }">
-              <v-btn icon="mdi-eye" size="small" variant="text" @click="viewVendor(item)" />
-              <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" @click="editVendor(item)" />
-              <v-btn v-if="isAdmin" icon="mdi-delete" size="small" variant="text" color="error" @click="deleteVendor(item)" />
-            </template>
-          </v-data-table>
-        </v-card>
-      </v-window-item>
-
       <!-- ============================================
            INFLUENCERS TAB
            ============================================ -->
@@ -475,361 +304,132 @@
           </v-card-text>
         </v-card>
 
-        <!-- Influencer Cards Grid -->
-        <v-progress-linear v-if="influencersPending" indeterminate color="secondary" class="mb-4" />
-        
-        <v-row v-if="filteredInfluencers.length > 0">
-          <v-col
-            v-for="influencer in filteredInfluencers"
-            :key="influencer.id"
-            cols="12"
-            sm="6"
-            md="4"
-            lg="3"
-          >
-            <v-card class="h-100 influencer-card" hover @click="openEditInfluencerDialog(influencer)">
-              <!-- Header with follower count -->
-              <div class="influencer-header pa-4 text-center">
-                <v-avatar size="64" color="secondary" class="mb-2">
-                  <v-icon size="32" color="white">{{ getPlatformIcon(influencer.highest_platform) }}</v-icon>
-                </v-avatar>
-                <h3 class="text-h6">{{ influencer.contact_name }}</h3>
-                <div v-if="influencer.pet_name" class="text-body-2 text-medium-emphasis">
-                  🐕 {{ influencer.pet_name }}
-                </div>
-              </div>
-              
-              <!-- Follower Count Badge -->
-              <div class="text-center mt-n2 mb-2">
-                <v-chip
-                  v-if="influencer.follower_count"
-                  color="secondary"
-                  size="large"
-                  class="font-weight-bold"
-                >
-                  {{ formatFollowers(influencer.follower_count) }} followers
-                </v-chip>
-                <v-chip v-else size="small" variant="outlined">
-                  Followers unknown
-                </v-chip>
-              </div>
-              
-              <v-divider />
-              
-              <v-card-text class="pt-3">
-                <!-- Status & Promo Code -->
-                <div class="d-flex align-center gap-2 mb-3">
-                  <v-chip size="small" :color="getInfluencerStatusColor(influencer.status)" variant="flat">
-                    {{ influencer.status }}
-                  </v-chip>
-                  <v-chip v-if="influencer.promo_code" size="small" color="warning" variant="tonal">
-                    {{ influencer.promo_code }}
-                  </v-chip>
-                </div>
+        <!-- Influencer List View -->
+        <v-card>
+          <v-progress-linear v-if="influencersPending" indeterminate color="secondary" />
+          
+          <v-list v-if="filteredInfluencers.length > 0" lines="three">
+            <template v-for="(influencer, index) in filteredInfluencers" :key="influencer.id">
+              <v-list-item @click="openEditInfluencerDialog(influencer)">
+                <template #prepend>
+                  <v-avatar color="secondary" size="40">
+                    <v-icon color="white">{{ getPlatformIcon(influencer.highest_platform) }}</v-icon>
+                  </v-avatar>
+                </template>
                 
-                <!-- Social Links -->
-                <div class="d-flex gap-1 mb-3">
-                  <v-btn
-                    v-if="influencer.instagram_url || influencer.instagram_handle"
-                    icon
-                    size="small"
-                    variant="tonal"
-                    color="pink"
-                    :href="influencer.instagram_url || `https://instagram.com/${influencer.instagram_handle}`"
-                    target="_blank"
-                    @click.stop
-                  >
-                    <v-icon>mdi-instagram</v-icon>
-                  </v-btn>
-                  <v-btn
-                    v-if="influencer.tiktok_handle"
-                    icon
-                    size="small"
-                    variant="tonal"
-                    color="grey-darken-3"
-                    target="_blank"
-                    @click.stop
-                  >
-                    <v-icon>mdi-music-note</v-icon>
-                  </v-btn>
-                  <v-btn
-                    v-if="influencer.youtube_url"
-                    icon
-                    size="small"
-                    variant="tonal"
-                    color="red"
-                    :href="influencer.youtube_url"
-                    target="_blank"
-                    @click.stop
-                  >
-                    <v-icon>mdi-youtube</v-icon>
-                  </v-btn>
-                  <v-btn
-                    v-if="influencer.facebook_url"
-                    icon
-                    size="small"
-                    variant="tonal"
-                    color="blue"
-                    :href="influencer.facebook_url"
-                    target="_blank"
-                    @click.stop
-                  >
-                    <v-icon>mdi-facebook</v-icon>
-                  </v-btn>
-                </div>
+                <v-list-item-title class="font-weight-medium">
+                  {{ influencer.contact_name }}
+                  <span v-if="influencer.pet_name" class="text-medium-emphasis ml-2">🐕 {{ influencer.pet_name }}</span>
+                </v-list-item-title>
                 
-                <!-- Location -->
-                <div v-if="influencer.location" class="text-caption text-medium-emphasis mb-2">
-                  <v-icon size="x-small">mdi-map-marker</v-icon>
-                  {{ influencer.location }}
-                </div>
-                
-                <!-- Content Stats -->
-                <div class="d-flex justify-space-around text-center">
-                  <div>
-                    <div class="text-h6">{{ influencer.posts_completed || 0 }}</div>
-                    <div class="text-caption text-medium-emphasis">Posts</div>
+                <v-list-item-subtitle>
+                  <div class="d-flex align-center flex-wrap gap-2 mt-1">
+                    <v-chip size="x-small" :color="getInfluencerStatusColor(influencer.status)" variant="flat">
+                      {{ influencer.status }}
+                    </v-chip>
+                    <v-chip v-if="influencer.follower_count" size="x-small" color="secondary" variant="tonal">
+                      {{ formatFollowers(influencer.follower_count) }} followers
+                    </v-chip>
+                    <v-chip v-if="influencer.promo_code" size="x-small" color="warning" variant="tonal">
+                      {{ influencer.promo_code }}
+                    </v-chip>
+                    <span v-if="influencer.instagram_handle">
+                      <v-icon size="x-small" color="pink">mdi-instagram</v-icon>
+                      @{{ influencer.instagram_handle }}
+                    </span>
+                    <span v-if="influencer.email">
+                      <v-icon size="x-small">mdi-email</v-icon>
+                      {{ influencer.email }}
+                    </span>
+                    <span v-if="influencer.phone">
+                      <v-icon size="x-small">mdi-phone</v-icon>
+                      {{ influencer.phone }}
+                    </span>
                   </div>
-                  <div>
-                    <div class="text-h6">{{ influencer.stories_completed || 0 }}</div>
-                    <div class="text-caption text-medium-emphasis">Stories</div>
+                  <div v-if="influencer.location" class="text-truncate mt-1" style="max-width: 500px;">
+                    <v-icon size="x-small">mdi-map-marker</v-icon>
+                    {{ influencer.location }}
                   </div>
-                  <div>
-                    <div class="text-h6">{{ influencer.reels_completed || 0 }}</div>
-                    <div class="text-caption text-medium-emphasis">Reels</div>
-                  </div>
-                </div>
-              </v-card-text>
-              
-              <v-card-actions>
-                <v-btn
-                  v-if="influencer.email"
-                  size="small"
-                  variant="text"
-                  :href="`mailto:${influencer.email}`"
-                  @click.stop
-                >
-                  <v-icon start>mdi-email</v-icon>
-                  Contact
-                </v-btn>
-                <v-spacer />
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  color="error"
-                  @click.stop="deleteInfluencer(influencer.id)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </v-card-actions>
-            </v-card>
-          </v-col>
-        </v-row>
+                </v-list-item-subtitle>
 
-        <!-- Empty State -->
-        <v-card v-else class="text-center py-12">
-          <v-icon size="64" color="grey-lighten-1">mdi-star-circle-outline</v-icon>
-          <div class="text-h6 mt-4">No influencers found</div>
-          <div class="text-body-2 text-medium-emphasis">
-            {{ influencerSearch || influencerStatusFilter ? 'Try adjusting your filters' : 'Add your first influencer to get started' }}
-          </div>
-          <v-btn
-            v-if="!influencerSearch && !influencerStatusFilter && isAdmin"
-            color="secondary"
-            class="mt-4"
-            @click="openAddInfluencerDialog"
-          >
-            Add Influencer
-          </v-btn>
+                <template #append>
+                  <div class="d-flex flex-column align-end gap-1">
+                    <div class="d-flex gap-2 text-caption text-medium-emphasis">
+                      <span>{{ influencer.posts_completed || 0 }} posts</span>
+                      <span>{{ influencer.stories_completed || 0 }} stories</span>
+                      <span>{{ influencer.reels_completed || 0 }} reels</span>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <v-btn
+                        v-if="influencer.instagram_url || influencer.instagram_handle"
+                        icon
+                        size="x-small"
+                        variant="text"
+                        color="pink"
+                        :href="influencer.instagram_url || `https://instagram.com/${influencer.instagram_handle}`"
+                        target="_blank"
+                        @click.stop
+                      >
+                        <v-icon size="16">mdi-instagram</v-icon>
+                      </v-btn>
+                      <v-btn
+                        v-if="influencer.tiktok_handle"
+                        icon
+                        size="x-small"
+                        variant="text"
+                        @click.stop
+                      >
+                        <v-icon size="16">mdi-music-note</v-icon>
+                      </v-btn>
+                      <v-btn
+                        v-if="influencer.youtube_url"
+                        icon
+                        size="x-small"
+                        variant="text"
+                        color="red"
+                        :href="influencer.youtube_url"
+                        target="_blank"
+                        @click.stop
+                      >
+                        <v-icon size="16">mdi-youtube</v-icon>
+                      </v-btn>
+                    </div>
+                  </div>
+                  <v-btn
+                    v-if="isAdmin"
+                    icon
+                    variant="text"
+                    size="small"
+                    color="error"
+                    class="ml-2"
+                    @click.stop="deleteInfluencer(influencer.id)"
+                  >
+                    <v-icon>mdi-delete</v-icon>
+                  </v-btn>
+                </template>
+              </v-list-item>
+              <v-divider v-if="index < filteredInfluencers.length - 1" />
+            </template>
+          </v-list>
+
+          <v-card-text v-else class="text-center py-12">
+            <v-icon size="64" color="grey-lighten-1">mdi-star-circle-outline</v-icon>
+            <div class="text-h6 mt-4">No influencers found</div>
+            <div class="text-body-2 text-medium-emphasis">
+              {{ influencerSearch || influencerStatusFilter ? 'Try adjusting your filters' : 'Add your first influencer to get started' }}
+            </div>
+            <v-btn
+              v-if="!influencerSearch && !influencerStatusFilter && isAdmin"
+              color="secondary"
+              class="mt-4"
+              @click="openAddInfluencerDialog"
+            >
+              Add Influencer
+            </v-btn>
+          </v-card-text>
         </v-card>
       </v-window-item>
     </v-window>
-
-    <!-- Add/Edit Vendor Dialog -->
-    <v-dialog v-model="showAddResourceDialog" max-width="700">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-tie</v-icon>
-          {{ editMode ? 'Edit Vendor' : 'Add Vendor' }}
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pt-4">
-          <v-row>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="vendorForm.name"
-                label="Vendor Name *"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-select
-                v-model="vendorForm.category"
-                :items="vendorCategories"
-                label="Category *"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea
-                v-model="vendorForm.description"
-                label="Description"
-                variant="outlined"
-                rows="2"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="vendorForm.contact_name"
-                label="Contact Name"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="vendorForm.email"
-                label="Email"
-                type="email"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="vendorForm.phone"
-                label="Phone"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="vendorForm.website"
-                label="Website"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field
-                v-model="vendorForm.address"
-                label="Address"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-combobox
-                v-model="vendorForm.tags"
-                :items="vendorTags"
-                label="Tags"
-                variant="outlined"
-                density="compact"
-                multiple
-                chips
-                closable-chips
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <div class="d-flex gap-4">
-                <v-switch v-model="vendorForm.active" label="Active" color="success" hide-details density="compact" />
-                <v-switch v-model="vendorForm.preferred" label="Preferred" color="warning" hide-details density="compact" />
-              </div>
-            </v-col>
-            <v-col cols="12">
-              <v-textarea
-                v-model="vendorForm.notes"
-                label="Internal Notes (Admin Only)"
-                variant="outlined"
-                rows="2"
-                density="compact"
-              />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-divider />
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="closeVendorDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="saveVendor">{{ editMode ? 'Update' : 'Add' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- View Vendor Dialog -->
-    <v-dialog v-model="showViewVendorDialog" max-width="600">
-      <v-card v-if="selectedVendor">
-        <div class="pa-6 text-center" :style="{ backgroundColor: getVendorCategoryColor(selectedVendor.category) + '22' }">
-          <v-avatar size="80" :color="getVendorCategoryColor(selectedVendor.category)">
-            <v-icon size="40" color="white">{{ getVendorCategoryIcon(selectedVendor.category) }}</v-icon>
-          </v-avatar>
-          <h2 class="text-h5 font-weight-bold mt-4">{{ selectedVendor.name }}</h2>
-          <v-chip size="small" variant="outlined" class="mt-2">{{ selectedVendor.category }}</v-chip>
-          <v-chip v-if="selectedVendor.preferred" size="small" color="warning" class="ml-2">
-            <v-icon size="14" start>mdi-star</v-icon> Preferred
-          </v-chip>
-        </div>
-        
-        <v-card-text>
-          <p class="text-body-1 mb-4">{{ selectedVendor.description }}</p>
-          
-          <v-list density="compact">
-            <v-list-item v-if="selectedVendor.contact_name" prepend-icon="mdi-account">
-              <v-list-item-title>{{ selectedVendor.contact_name }}</v-list-item-title>
-              <v-list-item-subtitle>Contact Person</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item v-if="selectedVendor.email" prepend-icon="mdi-email">
-              <v-list-item-title>
-                <a :href="`mailto:${selectedVendor.email}`">{{ selectedVendor.email }}</a>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item v-if="selectedVendor.phone" prepend-icon="mdi-phone">
-              <v-list-item-title>
-                <a :href="`tel:${selectedVendor.phone}`">{{ selectedVendor.phone }}</a>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item v-if="selectedVendor.website" prepend-icon="mdi-web">
-              <v-list-item-title>
-                <a :href="selectedVendor.website" target="_blank">{{ selectedVendor.website }}</a>
-              </v-list-item-title>
-            </v-list-item>
-            <v-list-item v-if="selectedVendor.address" prepend-icon="mdi-map-marker">
-              <v-list-item-title>{{ selectedVendor.address }}</v-list-item-title>
-            </v-list-item>
-          </v-list>
-          
-          <div v-if="selectedVendor.tags?.length" class="mt-4">
-            <div class="text-caption text-grey mb-2">Tags</div>
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip v-for="tag in selectedVendor.tags" :key="tag" size="small" variant="tonal">
-                {{ tag }}
-              </v-chip>
-            </div>
-          </div>
-          
-          <div v-if="isAdmin && selectedVendor.notes" class="mt-4">
-            <div class="text-caption text-grey mb-1">Internal Notes</div>
-            <v-alert type="info" variant="tonal" density="compact">
-              {{ selectedVendor.notes }}
-            </v-alert>
-          </div>
-        </v-card-text>
-        
-        <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="showViewVendorDialog = false">Close</v-btn>
-          <v-spacer />
-          <v-btn v-if="isAdmin" color="primary" @click="editVendor(selectedVendor); showViewVendorDialog = false">
-            <v-icon start>mdi-pencil</v-icon>
-            Edit Vendor
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Upload File Dialog -->
     <v-dialog v-model="showUploadDialog" max-width="500">
@@ -1147,16 +747,6 @@ const newFolderAdminOnly = ref(false)
 // Database-backed data
 const dbFolders = ref<any[]>([])
 const dbFiles = ref<any[]>([])
-
-// Vendor state
-const vendorSearch = ref('')
-const vendorCategoryFilter = ref('')
-const vendorStatusFilter = ref('All')
-const vendorViewMode = ref('grid')
-const showAddResourceDialog = ref(false)
-const showViewVendorDialog = ref(false)
-const editMode = ref(false)
-const selectedVendor = ref<any>(null)
 
 // ============================================
 // INFLUENCER STATE
@@ -1478,165 +1068,6 @@ async function deleteInfluencer(id: string) {
 }
 
 // ============================================
-// VENDOR DIRECTORY DATA
-// ============================================
-const vendorCategories = [
-  'Event Venue',
-  'Catering',
-  'Entertainment',
-  'Photography',
-  'Videography',
-  'Graphic Design',
-  'Printing Services',
-  'Marketing Agency',
-  'PR Agency',
-  'Web Development',
-  'Promotional Products',
-  'Rescue Partner',
-  'Pet Business',
-  'Other'
-]
-
-const vendorCategoryChips = [
-  { label: 'Venues', value: 'Event Venue', icon: 'mdi-map-marker' },
-  { label: 'Photo', value: 'Photography', icon: 'mdi-camera' },
-  { label: 'Video', value: 'Videography', icon: 'mdi-video' },
-  { label: 'Design', value: 'Graphic Design', icon: 'mdi-palette' },
-  { label: 'Print', value: 'Printing Services', icon: 'mdi-printer' },
-  { label: 'Rescues', value: 'Rescue Partner', icon: 'mdi-heart' }
-]
-
-const vendorTags = [
-  'Local', 'National', 'Premium', 'Budget-Friendly', 'Fast Turnaround',
-  'Pet Specialty', 'Veterinary Focus', 'Digital', 'Print', 'Video Production',
-  'Social Media', 'SEO', 'PPC', 'Content Creation', 'Long-term Partner'
-]
-
-const vendors = ref([
-  {
-    id: '1',
-    name: 'PetLens Photography',
-    category: 'Photography',
-    description: 'Specialized in pet and veterinary clinic photography. Excellent at capturing natural moments with animals.',
-    contact_name: 'Jennifer Adams',
-    email: 'hello@petlens.com',
-    phone: '555-0201',
-    website: 'https://petlens.com',
-    address: '456 Photo Lane, Animal City',
-    tags: ['Pet Specialty', 'Local', 'Premium'],
-    active: true,
-    preferred: true,
-    notes: 'Great for social media content and website updates. Contract renewed through 2025.'
-  },
-  {
-    id: '2',
-    name: 'Vet Marketing Pro',
-    category: 'Marketing Agency',
-    description: 'Full-service marketing agency specializing in veterinary practices. Digital and traditional marketing services.',
-    contact_name: 'David Miller',
-    email: 'david@vetmarketingpro.com',
-    phone: '555-0202',
-    website: 'https://vetmarketingpro.com',
-    address: '789 Marketing Blvd',
-    tags: ['Veterinary Focus', 'Digital', 'SEO', 'PPC'],
-    active: true,
-    preferred: true,
-    notes: 'Running our Google Ads campaigns. Monthly retainer $2,500.'
-  },
-  {
-    id: '3',
-    name: 'Creative Paws Design',
-    category: 'Graphic Design',
-    description: 'Boutique design studio focusing on pet industry branding and marketing materials.',
-    contact_name: 'Sarah Chen',
-    email: 'sarah@creativepaws.design',
-    phone: '555-0203',
-    website: 'https://creativepaws.design',
-    address: '',
-    tags: ['Pet Specialty', 'Premium', 'Content Creation'],
-    active: true,
-    preferred: false,
-    notes: ''
-  },
-  {
-    id: '4',
-    name: 'Quick Print Solutions',
-    category: 'Printing Services',
-    description: 'Local printing company with fast turnaround. Business cards, brochures, and large format printing.',
-    contact_name: 'Tom Roberts',
-    email: 'orders@quickprint.com',
-    phone: '555-0204',
-    website: 'https://quickprint.com',
-    address: '321 Print Ave',
-    tags: ['Local', 'Fast Turnaround', 'Budget-Friendly'],
-    active: true,
-    preferred: false,
-    notes: 'Use for standard print jobs. 10% discount on orders over $500.'
-  },
-  {
-    id: '5',
-    name: 'Animal Tales Video',
-    category: 'Videography',
-    description: 'Video production company specializing in pet-related content. Testimonials, commercials, and educational videos.',
-    contact_name: 'Mike Johnson',
-    email: 'mike@animaltalesvideo.com',
-    phone: '555-0205',
-    website: 'https://animaltalesvideo.com',
-    address: '555 Film Street',
-    tags: ['Pet Specialty', 'Video Production', 'Premium'],
-    active: true,
-    preferred: true,
-    notes: 'Created our clinic tour video. Day rate is $1,500.'
-  },
-  {
-    id: '6',
-    name: 'Paws & Claws Rescue',
-    category: 'Rescue Partner',
-    description: 'Local animal rescue organization. Partner for adoption events and community outreach.',
-    contact_name: 'Lisa Thompson',
-    email: 'lisa@pawsclawsrescue.org',
-    phone: '555-0210',
-    website: 'https://pawsclawsrescue.org',
-    address: '100 Rescue Lane',
-    tags: ['Local', 'Long-term Partner', 'Pet Specialty'],
-    active: true,
-    preferred: true,
-    notes: 'Monthly adoption events at Sherman Oaks location.'
-  },
-  {
-    id: '7',
-    name: 'The Barking Lot Venue',
-    category: 'Event Venue',
-    description: 'Pet-friendly outdoor event space. Perfect for community events and fundraisers.',
-    contact_name: 'James Wilson',
-    email: 'events@barkinglot.com',
-    phone: '555-0215',
-    website: 'https://barkinglot.com',
-    address: '888 Event Plaza',
-    tags: ['Pet Specialty', 'Local', 'Premium'],
-    active: true,
-    preferred: false,
-    notes: 'Used for 2024 Summer Bash. Capacity 200 guests.'
-  }
-])
-
-const vendorForm = reactive({
-  id: '',
-  name: '',
-  category: '',
-  description: '',
-  contact_name: '',
-  email: '',
-  phone: '',
-  website: '',
-  address: '',
-  tags: [] as string[],
-  active: true,
-  preferred: false,
-  notes: ''
-})
-
-// ============================================
 // TABLE HEADERS
 // ============================================
 const fileTableHeaders = [
@@ -1644,15 +1075,6 @@ const fileTableHeaders = [
   { title: 'Type', key: 'file_type', sortable: true },
   { title: 'Size', key: 'file_size', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, width: '120px' }
-]
-
-const vendorTableHeaders = [
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Category', key: 'category', sortable: true },
-  { title: 'Contact', key: 'contact' },
-  { title: 'Phone', key: 'phone' },
-  { title: 'Status', key: 'status' },
-  { title: 'Actions', key: 'actions', sortable: false }
 ]
 
 // ============================================
@@ -1775,36 +1197,6 @@ const allFolderPaths = computed(() => {
     }
   })
   return paths
-})
-
-const filteredVendors = computed(() => {
-  let result = vendors.value
-  
-  if (vendorCategoryFilter.value) {
-    result = result.filter(v => v.category === vendorCategoryFilter.value)
-  }
-  
-  if (vendorStatusFilter.value !== 'All') {
-    if (vendorStatusFilter.value === 'Active') {
-      result = result.filter(v => v.active)
-    } else if (vendorStatusFilter.value === 'Inactive') {
-      result = result.filter(v => !v.active)
-    } else if (vendorStatusFilter.value === 'Preferred') {
-      result = result.filter(v => v.preferred)
-    }
-  }
-  
-  if (vendorSearch.value) {
-    const query = vendorSearch.value.toLowerCase()
-    result = result.filter(v =>
-      v.name.toLowerCase().includes(query) ||
-      v.description.toLowerCase().includes(query) ||
-      v.category.toLowerCase().includes(query) ||
-      v.tags?.some(t => t.toLowerCase().includes(query))
-    )
-  }
-  
-  return result
 })
 
 // ============================================
@@ -2006,119 +1398,6 @@ async function createFolder() {
     showError('Failed to create folder: ' + err.message)
   }
 }
-
-function getVendorCategoryCount(category: string) {
-  return vendors.value.filter(v => v.category === category).length
-}
-
-function getVendorCategoryColor(category: string) {
-  const colors: Record<string, string> = {
-    'Event Venue': '#F44336',
-    'Catering': '#E91E63',
-    'Entertainment': '#9C27B0',
-    'Photography': '#673AB7',
-    'Videography': '#3F51B5',
-    'Graphic Design': '#2196F3',
-    'Printing Services': '#00BCD4',
-    'Marketing Agency': '#009688',
-    'PR Agency': '#4CAF50',
-    'Web Development': '#8BC34A',
-    'Promotional Products': '#CDDC39',
-    'Rescue Partner': '#FF5722',
-    'Pet Business': '#795548',
-    'Other': '#9E9E9E'
-  }
-  return colors[category] || '#9E9E9E'
-}
-
-function getVendorCategoryIcon(category: string) {
-  const icons: Record<string, string> = {
-    'Event Venue': 'mdi-map-marker',
-    'Catering': 'mdi-food',
-    'Entertainment': 'mdi-music',
-    'Photography': 'mdi-camera',
-    'Videography': 'mdi-video',
-    'Graphic Design': 'mdi-palette',
-    'Printing Services': 'mdi-printer',
-    'Marketing Agency': 'mdi-bullhorn',
-    'PR Agency': 'mdi-newspaper',
-    'Web Development': 'mdi-web',
-    'Promotional Products': 'mdi-gift',
-    'Rescue Partner': 'mdi-heart',
-    'Pet Business': 'mdi-paw',
-    'Other': 'mdi-dots-horizontal'
-  }
-  return icons[category] || 'mdi-dots-horizontal'
-}
-
-function viewVendor(vendor: any) {
-  selectedVendor.value = vendor
-  showViewVendorDialog.value = true
-}
-
-function editVendor(vendor: any) {
-  Object.assign(vendorForm, vendor)
-  editMode.value = true
-  showAddResourceDialog.value = true
-}
-
-function deleteVendor(vendor: any) {
-  vendors.value = vendors.value.filter(v => v.id !== vendor.id)
-  snackbar.message = 'Vendor deleted'
-  snackbar.color = 'info'
-  snackbar.show = true
-}
-
-function closeVendorDialog() {
-  showAddResourceDialog.value = false
-  editMode.value = false
-  resetVendorForm()
-}
-
-function resetVendorForm() {
-  Object.assign(vendorForm, {
-    id: '',
-    name: '',
-    category: '',
-    description: '',
-    contact_name: '',
-    email: '',
-    phone: '',
-    website: '',
-    address: '',
-    tags: [],
-    active: true,
-    preferred: false,
-    notes: ''
-  })
-}
-
-function saveVendor() {
-  if (!vendorForm.name || !vendorForm.category) {
-    snackbar.message = 'Please fill in required fields'
-    snackbar.color = 'warning'
-    snackbar.show = true
-    return
-  }
-  
-  if (editMode.value) {
-    const index = vendors.value.findIndex(v => v.id === vendorForm.id)
-    if (index !== -1) {
-      vendors.value[index] = { ...vendorForm }
-    }
-    snackbar.message = 'Vendor updated'
-  } else {
-    vendors.value.push({
-      ...vendorForm,
-      id: Date.now().toString()
-    })
-    snackbar.message = 'Vendor added'
-  }
-  
-  snackbar.color = 'success'
-  snackbar.show = true
-  closeVendorDialog()
-}
 </script>
 
 <style scoped>
@@ -2145,55 +1424,11 @@ function saveVendor() {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.vendor-card {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.vendor-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.vendor-header {
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.preferred-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-
-.description-text {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
 .breadcrumb-link {
   cursor: pointer;
 }
 
 .breadcrumb-link:not([disabled]):hover {
   text-decoration: underline;
-}
-
-.influencer-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.influencer-card:hover {
-  transform: translateY(-4px);
-}
-
-.influencer-header {
-  background: linear-gradient(135deg, rgba(var(--v-theme-secondary), 0.1), rgba(var(--v-theme-primary), 0.05));
 }
 </style>
