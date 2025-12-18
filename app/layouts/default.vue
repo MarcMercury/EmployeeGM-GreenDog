@@ -13,6 +13,7 @@ const sections = ref({
   management: false,     // Manager+: Roster, Team Schedule, Recruiting, Approvals
   medOps: false,         // All users: Med Ops tools
   marketing: false,      // All/Admin: Marketing tools
+  gdu: false,            // GDU: Green Dog University - Education module
   adminOps: false        // Admin only: Settings, Course Manager, Payroll, Skill Library
 })
 
@@ -377,6 +378,43 @@ async function handleSignOut() {
               </NuxtLink>
             </div>
           </div>
+
+          <!-- ==========================================
+               SECTION: GDU - Green Dog University
+               Visitor CRM, CE Events, Education
+               ========================================== -->
+          <template v-if="isAdmin">
+            <div class="pt-2">
+              <button 
+                @click="toggleSection('gdu')"
+                class="section-header group"
+              >
+                <span>🎓 GDU</span>
+                <svg 
+                  class="w-4 h-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': sections.gdu }"
+                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="section-content" :class="{ 'section-open': sections.gdu }">
+                <NuxtLink to="/gdu" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏠</div>
+                  Dashboard
+                </NuxtLink>
+                <NuxtLink to="/gdu/visitors" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
+                  Visitor CRM
+                </NuxtLink>
+                <NuxtLink to="/gdu/events" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-green-500/20">📅</div>
+                  CE Events
+                </NuxtLink>
+                <NuxtLink to="/gdu/events/new" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">✨</div>
+                  New CE Event
+                </NuxtLink>
+              </div>
+            </div>
+          </template>
 
           <!-- ==========================================
                SECTION 3: ADMIN OPS (Admin Only)
