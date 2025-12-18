@@ -32,6 +32,19 @@ interface Partner {
 const searchQuery = ref('')
 const selectedType = ref<string | null>(null)
 const selectedStatus = ref<string | null>(null)
+const selectedService = ref<string | null>(null)
+
+// Service options for pet businesses
+const serviceOptions = [
+  { title: 'All Services', value: null },
+  { title: 'Groomer', value: 'Groomer' },
+  { title: 'Daycare', value: 'Daycare' },
+  { title: 'Retail', value: 'Retail' },
+  { title: 'Hotel', value: 'Hotel' },
+  { title: 'Rescue/Shelter', value: 'Rescue' },
+  { title: 'Trainer', value: 'Trainer' },
+  { title: 'Other', value: 'Other' }
+]
 
 // Partner type options
 const partnerTypes = [
@@ -80,7 +93,9 @@ const filteredPartners = computed(() => {
       p.name.toLowerCase().includes(query) ||
       p.contact_name?.toLowerCase().includes(query) ||
       p.contact_email?.toLowerCase().includes(query) ||
-      p.notes?.toLowerCase().includes(query)
+      p.notes?.toLowerCase().includes(query) ||
+      p.services_provided?.toLowerCase().includes(query) ||
+      p.address?.toLowerCase().includes(query)
     )
   }
   
@@ -90,6 +105,12 @@ const filteredPartners = computed(() => {
   
   if (selectedStatus.value) {
     result = result.filter(p => p.status === selectedStatus.value)
+  }
+  
+  if (selectedService.value) {
+    result = result.filter(p => 
+      p.services_provided?.toLowerCase().includes(selectedService.value!.toLowerCase())
+    )
   }
   
   return result
@@ -328,6 +349,24 @@ function formatTypeName(type: string): string {
             />
           </v-col>
         </v-row>
+        <v-row v-if="selectedType === 'pet_business' || selectedType === 'rescue'" dense class="mt-2">
+          <v-col cols="12" md="4">
+            <v-select
+              v-model="selectedService"
+              :items="serviceOptions"
+              label="Filter by Service"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" md="8" class="d-flex align-center">
+            <span class="text-caption text-medium-emphasis">
+              Showing {{ filteredPartners.length }} of {{ partners?.length || 0 }} partners
+            </span>
+          </v-col>
+        </v-row>
       </v-card-text>
     </v-card>
 
@@ -360,13 +399,20 @@ function formatTypeName(type: string): string {
             </v-list-item-title>
             
             <v-list-item-subtitle>
-              <div class="d-flex align-center gap-2 mt-1">
+              <div class="d-flex align-center flex-wrap gap-2 mt-1">
                 <v-chip size="x-small" :color="getStatusColor(partner.status)" variant="flat">
                   {{ partner.status }}
+                </v-chip>
+                <v-chip v-if="partner.services_provided" size="x-small" color="info" variant="tonal">
+                  {{ partner.services_provided }}
                 </v-chip>
                 <span v-if="partner.contact_name">
                   <v-icon size="x-small">mdi-account</v-icon>
                   {{ partner.contact_name }}
+                </span>
+                <span v-if="partner.contact_phone">
+                  <v-icon size="x-small">mdi-phone</v-icon>
+                  {{ partner.contact_phone }}
                 </span>
                 <span v-if="partner.contact_email">
                   <v-icon size="x-small">mdi-email</v-icon>
