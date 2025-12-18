@@ -26,6 +26,32 @@ interface Partner {
   notes: string | null
   proximity_to_location: string | null
   created_at: string
+  // Combined list flag
+  _isInfluencer?: boolean
+}
+
+interface Influencer {
+  id: string
+  contact_name: string
+  pet_name: string | null
+  phone: string | null
+  email: string | null
+  status: string
+  promo_code: string | null
+  instagram_handle: string | null
+  instagram_url: string | null
+  facebook_url: string | null
+  tiktok_handle: string | null
+  youtube_url: string | null
+  follower_count: number | null
+  highest_platform: string | null
+  location: string | null
+  agreement_details: string | null
+  notes: string | null
+  posts_completed: number
+  stories_completed: number
+  reels_completed: number
+  created_at: string
 }
 
 // Filter state
@@ -68,7 +94,8 @@ const statusOptions = [
   { title: 'Pending', value: 'pending' },
   { title: 'Expired', value: 'expired' },
   { title: 'Inactive', value: 'inactive' },
-  { title: 'Prospect', value: 'prospect' }
+  { title: 'Prospect', value: 'prospect' },
+  { title: 'Completed', value: 'completed' }
 ]
 
 // Fetch partners
@@ -82,9 +109,51 @@ const { data: partners, pending, refresh } = await useAsyncData('partners', asyn
   return data as Partner[]
 })
 
-// Filtered partners
+// Fetch influencers
+const { data: influencers, pending: influencersPending, refresh: refreshInfluencers } = await useAsyncData('influencers', async () => {
+  const { data, error } = await supabase
+    .from('marketing_influencers')
+    .select('*')
+    .order('contact_name')
+  
+  if (error) throw error
+  return data as Influencer[]
+})
+
+// Combined list: partners + influencers transformed to partner-like format
+const combinedList = computed(() => {
+  const partnerList = (partners.value || []).map(p => ({ ...p, _isInfluencer: false }))
+  
+  // Transform influencers to partner-like format for unified display
+  const influencerList = (influencers.value || []).map(inf => ({
+    id: inf.id,
+    name: inf.contact_name + (inf.pet_name ? ` (${inf.pet_name})` : ''),
+    partner_type: 'influencer',
+    status: inf.status,
+    contact_name: inf.contact_name,
+    contact_phone: inf.phone,
+    contact_email: inf.email,
+    website: inf.instagram_url,
+    address: inf.location,
+    membership_level: null,
+    membership_fee: null,
+    membership_end: null,
+    instagram_handle: inf.instagram_handle,
+    services_provided: inf.promo_code ? `Promo: ${inf.promo_code}` : null,
+    notes: inf.notes,
+    proximity_to_location: null,
+    created_at: inf.created_at,
+    _isInfluencer: true,
+    // Keep original influencer data for edit dialog
+    _influencerData: inf
+  })) as (Partner & { _influencerData?: Influencer })[]
+  
+  return [...partnerList, ...influencerList]
+})
+
+// Filtered partners (now uses combined list)
 const filteredPartners = computed(() => {
-  let result = partners.value || []
+  let result = combinedList.value || []
   
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
@@ -115,10 +184,10 @@ const filteredPartners = computed(() => {
   return result
 })
 
-// Stats by type
+// Stats by type (includes influencers)
 const statsByType = computed(() => {
   const stats: Record<string, number> = {}
-  for (const p of partners.value || []) {
+  for (const p of combinedList.value || []) {
     stats[p.partner_type] = (stats[p.partner_type] || 0) + 1
   }
   return stats
@@ -143,6 +212,35 @@ const formData = ref({
   services_provided: '',
   notes: ''
 })
+
+// Influencer dialog state
+const influencerDialogOpen = ref(false)
+const editingInfluencer = ref<Influencer | null>(null)
+const influencerForm = ref({
+  contact_name: '',
+  pet_name: '',
+  phone: '',
+  email: '',
+  status: 'prospect',
+  promo_code: '',
+  instagram_handle: '',
+  instagram_url: '',
+  facebook_url: '',
+  tiktok_handle: '',
+  youtube_url: '',
+  follower_count: null as number | null,
+  highest_platform: 'IG',
+  location: '',
+  agreement_details: '',
+  notes: ''
+})
+
+const influencerStatusOptions = [
+  { title: 'Active', value: 'active' },
+  { title: 'Prospect', value: 'prospect' },
+  { title: 'Inactive', value: 'inactive' },
+  { title: 'Completed', value: 'completed' }
+]
 
 // Check if we should open add dialog from URL
 onMounted(() => {
@@ -237,6 +335,129 @@ async function deletePartner(id: string) {
   refresh()
 }
 
+// Influencer functions
+function openAddInfluencerDialog() {
+  editingInfluencer.value = null
+  influencerForm.value = {
+    contact_name: '',
+    pet_name: '',
+    phone: '',
+    email: '',
+    status: 'prospect',
+    promo_code: '',
+    instagram_handle: '',
+    instagram_url: '',
+    facebook_url: '',
+    tiktok_handle: '',
+    youtube_url: '',
+    follower_count: null,
+    highest_platform: 'IG',
+    location: '',
+    agreement_details: '',
+    notes: ''
+  }
+  influencerDialogOpen.value = true
+}
+
+function openEditInfluencerDialog(influencer: Influencer) {
+  editingInfluencer.value = influencer
+  influencerForm.value = {
+    contact_name: influencer.contact_name,
+    pet_name: influencer.pet_name || '',
+    phone: influencer.phone || '',
+    email: influencer.email || '',
+    status: influencer.status,
+    promo_code: influencer.promo_code || '',
+    instagram_handle: influencer.instagram_handle || '',
+    instagram_url: influencer.instagram_url || '',
+    facebook_url: influencer.facebook_url || '',
+    tiktok_handle: influencer.tiktok_handle || '',
+    youtube_url: influencer.youtube_url || '',
+    follower_count: influencer.follower_count,
+    highest_platform: influencer.highest_platform || 'IG',
+    location: influencer.location || '',
+    agreement_details: influencer.agreement_details || '',
+    notes: influencer.notes || ''
+  }
+  influencerDialogOpen.value = true
+}
+
+async function saveInfluencer() {
+  const payload = {
+    contact_name: influencerForm.value.contact_name,
+    pet_name: influencerForm.value.pet_name || null,
+    phone: influencerForm.value.phone || null,
+    email: influencerForm.value.email || null,
+    status: influencerForm.value.status,
+    promo_code: influencerForm.value.promo_code || null,
+    instagram_handle: influencerForm.value.instagram_handle || null,
+    instagram_url: influencerForm.value.instagram_url || null,
+    facebook_url: influencerForm.value.facebook_url || null,
+    tiktok_handle: influencerForm.value.tiktok_handle || null,
+    youtube_url: influencerForm.value.youtube_url || null,
+    follower_count: influencerForm.value.follower_count,
+    highest_platform: influencerForm.value.highest_platform || null,
+    location: influencerForm.value.location || null,
+    agreement_details: influencerForm.value.agreement_details || null,
+    notes: influencerForm.value.notes || null
+  }
+  
+  if (editingInfluencer.value) {
+    await supabase
+      .from('marketing_influencers')
+      .update(payload)
+      .eq('id', editingInfluencer.value.id)
+  } else {
+    await supabase
+      .from('marketing_influencers')
+      .insert(payload)
+  }
+  
+  influencerDialogOpen.value = false
+  refreshInfluencers()
+}
+
+async function deleteInfluencer(id: string) {
+  if (!confirm('Are you sure you want to delete this influencer?')) return
+  
+  await supabase
+    .from('marketing_influencers')
+    .delete()
+    .eq('id', id)
+  
+  refreshInfluencers()
+}
+
+// Handle clicking on list item - route to correct dialog based on type
+function handleItemClick(partner: Partner & { _influencerData?: Influencer }) {
+  if (partner._isInfluencer && partner._influencerData) {
+    openEditInfluencerDialog(partner._influencerData)
+  } else {
+    openEditDialog(partner)
+  }
+}
+
+// Handle delete - route to correct function based on type
+function handleDelete(partner: Partner & { _isInfluencer?: boolean }) {
+  if (partner._isInfluencer) {
+    deleteInfluencer(partner.id)
+  } else {
+    deletePartner(partner.id)
+  }
+}
+
+// Influencer helper functions
+function formatFollowers(count: number | null): string {
+  if (!count) return ''
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+  if (count >= 1000) return `${(count / 1000).toFixed(0)}K`
+  return count.toString()
+}
+
+function getInfluencerFollowerCount(partner: Partner & { _influencerData?: Influencer }): number | null {
+  return partner._influencerData?.follower_count || null
+}
+
 function getTypeColor(type: string): string {
   const colors: Record<string, string> = {
     pet_business: 'teal',
@@ -280,10 +501,18 @@ function formatTypeName(type: string): string {
       <div>
         <h1 class="text-h4 font-weight-bold">Partnership CRM Hub</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage chambers, vendors, rescues, and business partners
+          Manage chambers, vendors, rescues, influencers, and business partners
         </p>
       </div>
       <v-spacer />
+      <v-btn
+        color="secondary"
+        prepend-icon="mdi-star-circle"
+        class="mr-2"
+        @click="openAddInfluencerDialog"
+      >
+        Add Influencer
+      </v-btn>
       <v-btn
         color="primary"
         prepend-icon="mdi-plus"
@@ -361,7 +590,7 @@ function formatTypeName(type: string): string {
           </v-col>
           <v-col cols="12" md="8" class="d-flex align-center">
             <span class="text-caption text-medium-emphasis">
-              Showing {{ filteredPartners.length }} of {{ partners?.length || 0 }} partners
+              Showing {{ filteredPartners.length }} of {{ combinedList?.length || 0 }} contacts
             </span>
           </v-col>
         </v-row>
@@ -370,11 +599,11 @@ function formatTypeName(type: string): string {
 
     <!-- Partners List -->
     <v-card>
-      <v-progress-linear v-if="pending" indeterminate color="primary" />
+      <v-progress-linear v-if="pending || influencersPending" indeterminate color="primary" />
       
       <v-list v-if="filteredPartners.length > 0" lines="three">
         <template v-for="(partner, index) in filteredPartners" :key="partner.id">
-          <v-list-item @click="openEditDialog(partner)">
+          <v-list-item @click="handleItemClick(partner)">
             <template #prepend>
               <v-avatar :color="getTypeColor(partner.partner_type)" size="40">
                 <v-icon color="white">
@@ -397,6 +626,9 @@ function formatTypeName(type: string): string {
             
             <v-list-item-title class="font-weight-medium">
               {{ partner.name }}
+              <v-chip v-if="partner._isInfluencer && getInfluencerFollowerCount(partner)" size="x-small" color="secondary" variant="tonal" class="ml-2">
+                {{ formatFollowers(getInfluencerFollowerCount(partner)) }} followers
+              </v-chip>
             </v-list-item-title>
             
             <v-list-item-subtitle>
@@ -407,10 +639,6 @@ function formatTypeName(type: string): string {
                 <v-chip v-if="partner.services_provided" size="x-small" color="info" variant="tonal">
                   {{ partner.services_provided }}
                 </v-chip>
-                <span v-if="partner.contact_name">
-                  <v-icon size="x-small">mdi-account</v-icon>
-                  {{ partner.contact_name }}
-                </span>
                 <span v-if="partner.contact_phone">
                   <v-icon size="x-small">mdi-phone</v-icon>
                   {{ partner.contact_phone }}
@@ -446,7 +674,7 @@ function formatTypeName(type: string): string {
                 size="small"
                 color="error"
                 class="ml-2"
-                @click.stop="deletePartner(partner.id)"
+                @click.stop="handleDelete(partner)"
               >
                 <v-icon>mdi-delete</v-icon>
               </v-btn>
@@ -458,9 +686,9 @@ function formatTypeName(type: string): string {
 
       <v-card-text v-else class="text-center py-12">
         <v-icon size="64" color="grey-lighten-1">mdi-handshake-outline</v-icon>
-        <div class="text-h6 mt-4">No partners found</div>
+        <div class="text-h6 mt-4">No contacts found</div>
         <div class="text-body-2 text-medium-emphasis">
-          {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner to get started' }}
+          {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner or influencer to get started' }}
         </div>
         <v-btn
           v-if="!searchQuery && !selectedType && !selectedStatus"
@@ -634,6 +862,188 @@ function formatTypeName(type: string): string {
           <v-btn variant="text" @click="dialogOpen = false">Cancel</v-btn>
           <v-btn color="primary" @click="savePartner">
             {{ editingPartner ? 'Save Changes' : 'Add Partner' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add/Edit Influencer Dialog -->
+    <v-dialog v-model="influencerDialogOpen" max-width="700" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">{{ editingInfluencer ? 'mdi-pencil' : 'mdi-star-circle' }}</v-icon>
+          {{ editingInfluencer ? 'Edit Influencer' : 'Add Influencer' }}
+          <v-spacer />
+          <v-btn icon variant="text" @click="influencerDialogOpen = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider />
+        
+        <v-card-text>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.contact_name"
+                label="Contact Name *"
+                variant="outlined"
+                required
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.pet_name"
+                label="Pet Name"
+                variant="outlined"
+                prepend-inner-icon="mdi-paw"
+              />
+            </v-col>
+            
+            <v-col cols="6" md="4">
+              <v-select
+                v-model="influencerForm.status"
+                :items="influencerStatusOptions"
+                label="Status *"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="6" md="4">
+              <v-text-field
+                v-model="influencerForm.promo_code"
+                label="Promo Code"
+                variant="outlined"
+                placeholder="e.g., SAWYER20"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="influencerForm.location"
+                label="Location"
+                variant="outlined"
+                prepend-inner-icon="mdi-map-marker"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Contact Information</div>
+            </v-col>
+            
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.phone"
+                label="Phone"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.email"
+                label="Email"
+                variant="outlined"
+                density="compact"
+                type="email"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Social Media</div>
+            </v-col>
+            
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.instagram_handle"
+                label="Instagram Handle"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-instagram"
+                prefix="@"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="influencerForm.instagram_url"
+                label="Instagram URL"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="influencerForm.tiktok_handle"
+                label="TikTok Handle"
+                variant="outlined"
+                density="compact"
+                prefix="@"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="influencerForm.youtube_url"
+                label="YouTube URL"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="influencerForm.facebook_url"
+                label="Facebook URL"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            
+            <v-col cols="6" md="4">
+              <v-text-field
+                v-model.number="influencerForm.follower_count"
+                label="Follower Count"
+                variant="outlined"
+                density="compact"
+                type="number"
+              />
+            </v-col>
+            <v-col cols="6" md="4">
+              <v-select
+                v-model="influencerForm.highest_platform"
+                :items="['IG', 'TikTok', 'YouTube', 'Facebook', 'Twitter']"
+                label="Primary Platform"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-textarea
+                v-model="influencerForm.agreement_details"
+                label="Agreement Details"
+                variant="outlined"
+                rows="3"
+                placeholder="e.g., Collaboration Reel with promo code, 2 IG Stories, Green Dog Experience filming..."
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-textarea
+                v-model="influencerForm.notes"
+                label="Notes"
+                variant="outlined"
+                rows="2"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        
+        <v-divider />
+        
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="influencerDialogOpen = false">Cancel</v-btn>
+          <v-btn color="secondary" @click="saveInfluencer">
+            {{ editingInfluencer ? 'Save Changes' : 'Add Influencer' }}
           </v-btn>
         </v-card-actions>
       </v-card>
