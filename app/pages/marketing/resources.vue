@@ -105,8 +105,100 @@
           </v-card-text>
         </v-card>
 
+        <!-- External Resources (Top Level) -->
+        <div v-if="currentPath === ''" class="mb-6">
+          <h3 class="text-subtitle-2 text-grey mb-3">External Resources</h3>
+          <v-row>
+            <v-col cols="12" sm="6" md="3">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                href="https://www.dropbox.com/scl/fo/465hik7yxbdej26k3xwe5/AEqcQ-cpxxU8OjzFrFQbNdY?rlkey=dvmv0cvj504n7gkvt7kf82eld&e=1&st=z1s68eaf&dl=0"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <v-card-text class="text-center py-6">
+                  <v-avatar size="64" color="blue" class="mb-3">
+                    <v-icon size="32" color="white">mdi-dropbox</v-icon>
+                  </v-avatar>
+                  <h3 class="text-subtitle-1 font-weight-bold">Company Assets</h3>
+                  <p class="text-caption text-grey mb-2">Dropbox folder for company assets</p>
+                  <v-chip size="x-small" color="blue" variant="tonal">
+                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
+                    External Link
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" sm="6" md="3">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                href="https://www.dropbox.com/scl/fo/s36wdlct6q8rgznvsi8py/AJgaoCVe15pIUGjHdlX4omo?rlkey=cwwum11xdjslh36c2wddux1kg&e=1&st=udfnbd9u&dl=0"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <v-card-text class="text-center py-6">
+                  <v-avatar size="64" color="purple" class="mb-3">
+                    <v-icon size="32" color="white">mdi-dropbox</v-icon>
+                  </v-avatar>
+                  <h3 class="text-subtitle-1 font-weight-bold">Media Drop Box</h3>
+                  <p class="text-caption text-grey mb-2">Dropbox folder for media files</p>
+                  <v-chip size="x-small" color="purple" variant="tonal">
+                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
+                    External Link
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" sm="6" md="3">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                href="https://www.canva.com/login/?redirect=%2Fdesign%2FDAGZrjtoYzw%2FF_LmUEwIEto-N96GAg6idw%2Fedit"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <v-card-text class="text-center py-6">
+                  <v-avatar size="64" color="teal" class="mb-3">
+                    <v-icon size="32" color="white">mdi-palette</v-icon>
+                  </v-avatar>
+                  <h3 class="text-subtitle-1 font-weight-bold">Canva</h3>
+                  <p class="text-caption text-grey mb-2">Design platform for graphics</p>
+                  <v-chip size="x-small" color="teal" variant="tonal">
+                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
+                    External Link
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" sm="6" md="3">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                href="https://docs.google.com/spreadsheets/d/1hZvC3hqKfotbMU7qkzOce2Ya4xovNabHVwGc2z2PI6Y/edit?gid=303049314#gid=303049314"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <v-card-text class="text-center py-6">
+                  <v-avatar size="64" color="green" class="mb-3">
+                    <v-icon size="32" color="white">mdi-account-key</v-icon>
+                  </v-avatar>
+                  <h3 class="text-subtitle-1 font-weight-bold">User Accounts</h3>
+                  <p class="text-caption text-grey mb-2">Account credentials spreadsheet</p>
+                  <v-chip size="x-small" color="green" variant="tonal">
+                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
+                    External Link
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
+
         <!-- Category Folders (Top Level) -->
         <div v-if="currentPath === ''" class="mb-6">
+          <h3 class="text-subtitle-2 text-grey mb-3">File Library</h3>
           <v-row>
             <v-col v-for="category in visibleCategories" :key="category.id" cols="12" sm="6" md="4" lg="3">
               <v-card 
