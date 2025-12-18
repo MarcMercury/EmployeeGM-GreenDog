@@ -1,332 +1,596 @@
 <template>
   <div class="partnerships-page">
     <!-- Page Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="d-flex align-center justify-space-between mb-4">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Partnerships</h1>
-        <p class="text-body-1 text-grey-darken-1">
-          {{ isAdmin ? 'CRM for referral clinics, businesses, and independent doctors' : 'Directory of our partner businesses and referral contacts' }}
+        <h1 class="text-h4 font-weight-bold mb-1">Medical Partnerships CRM</h1>
+        <p class="text-body-2 text-grey-darken-1">
+          Manage referral clinics, contacts, and relationship touchpoints
         </p>
       </div>
-      <div v-if="isAdmin" class="d-flex gap-2">
-        <v-btn variant="outlined" prepend-icon="mdi-download" @click="exportPartners">
+      <div class="d-flex gap-2">
+        <v-btn variant="outlined" prepend-icon="mdi-download" size="small" @click="exportPartners">
           Export
         </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">
+        <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddPartner">
           Add Partner
         </v-btn>
       </div>
     </div>
 
-    <!-- Stats Cards (Admin Only) -->
-    <v-row v-if="isAdmin" class="mb-6">
-      <v-col cols="6" md="3">
-        <v-card rounded="lg" class="text-center pa-4">
-          <div class="text-h4 font-weight-bold text-primary">{{ partners.length }}</div>
-          <div class="text-body-2 text-grey">Total Partners</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card rounded="lg" class="text-center pa-4">
-          <div class="text-h4 font-weight-bold text-success">{{ activePartners }}</div>
-          <div class="text-body-2 text-grey">Active</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card rounded="lg" class="text-center pa-4">
-          <div class="text-h4 font-weight-bold text-info">{{ referralCount }}</div>
-          <div class="text-body-2 text-grey">Referrals This Month</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" md="3">
-        <v-card rounded="lg" class="text-center pa-4">
-          <div class="text-h4 font-weight-bold text-warning">{{ needsFollowUp }}</div>
-          <div class="text-body-2 text-grey">Needs Follow-up</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Main Tabs -->
+    <v-tabs v-model="mainTab" class="mb-4" color="primary">
+      <v-tab value="list">
+        <v-icon start>mdi-view-list</v-icon>
+        Partners
+      </v-tab>
+      <v-tab value="targeting">
+        <v-icon start>mdi-target</v-icon>
+        Targeting
+      </v-tab>
+      <v-tab value="activity">
+        <v-icon start>mdi-history</v-icon>
+        Activity
+      </v-tab>
+    </v-tabs>
 
-    <!-- Filters -->
-    <v-card rounded="lg" class="mb-6">
-      <v-card-text>
-        <v-row align="center">
-          <v-col cols="12" :md="isAdmin ? 4 : 6">
-            <v-text-field
-              v-model="searchQuery"
-              placeholder="Search partners..."
-              prepend-inner-icon="mdi-magnify"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
+    <v-window v-model="mainTab">
+      <!-- PARTNERS LIST TAB -->
+      <v-window-item value="list">
+        <!-- Stats Row -->
+        <v-row class="mb-4">
+          <v-col cols="6" sm="3">
+            <v-card class="text-center pa-3" variant="tonal" color="primary">
+              <div class="text-h5 font-weight-bold">{{ partners.length }}</div>
+              <div class="text-caption">Total Partners</div>
+            </v-card>
           </v-col>
-          <v-col cols="12" :md="isAdmin ? 2 : 6">
-            <v-select
-              v-model="filterType"
-              :items="partnerTypes"
-              label="Type"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
+          <v-col cols="6" sm="3">
+            <v-card class="text-center pa-3" variant="tonal" color="success">
+              <div class="text-h5 font-weight-bold">{{ activeCount }}</div>
+              <div class="text-caption">Active</div>
+            </v-card>
           </v-col>
-          <template v-if="isAdmin">
-            <v-col cols="12" md="2">
-              <v-select
-                v-model="filterStatus"
-                :items="['All', 'Active', 'Inactive', 'Prospect']"
-                label="Status"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" md="2">
-              <v-select
-                v-model="filterPriority"
-                :items="['All', 'High', 'Medium', 'Low']"
-                label="Priority"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" md="2">
-              <v-switch
-                v-model="showNeedsFollowUp"
-                label="Needs Follow-up"
-                color="warning"
-                hide-details
-              density="compact"
-            />
-            </v-col>
-          </template>
+          <v-col cols="6" sm="3">
+            <v-card class="text-center pa-3" variant="tonal" color="warning">
+              <div class="text-h5 font-weight-bold">{{ needsFollowupCount }}</div>
+              <div class="text-caption">Need Follow-up</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <v-card class="text-center pa-3" variant="tonal" color="info">
+              <div class="text-h5 font-weight-bold">{{ overdueCount }}</div>
+              <div class="text-caption">Overdue Visits</div>
+            </v-card>
+          </v-col>
         </v-row>
-      </v-card-text>
-    </v-card>
 
-    <!-- Partners Table -->
-    <v-card rounded="lg">
-      <v-data-table
-        :headers="visibleTableHeaders"
-        :items="filteredPartners"
-        :search="searchQuery"
-        hover
-        @click:row="(_event: any, { item }: { item: any }) => viewPartner(item)"
-      >
-        <template #item.name="{ item }">
-          <div class="d-flex align-center py-2">
-            <v-avatar :color="getTypeColor(item.type)" size="40" class="mr-3">
-              <v-icon color="white">{{ getTypeIcon(item.type) }}</v-icon>
-            </v-avatar>
-            <div>
-              <div class="font-weight-medium">{{ item.name }}</div>
-              <div class="text-caption text-grey">{{ item.type }}</div>
-            </div>
-          </div>
-        </template>
-        
-        <template #item.priority="{ item }">
-          <v-chip :color="getPriorityColor(item.priority)" size="small" variant="flat">
-            {{ item.priority }}
-          </v-chip>
-        </template>
-        
-        <template #item.status="{ item }">
-          <v-chip :color="getStatusColor(item.status)" size="small" variant="tonal">
-            {{ item.status }}
-          </v-chip>
-        </template>
-        
-        <template #item.referrals="{ item }">
-          <v-chip variant="outlined" size="small">
-            <v-icon start size="small">mdi-account-arrow-right</v-icon>
-            {{ item.referral_count || 0 }}
-          </v-chip>
-        </template>
-        
-        <template #item.last_contact="{ item }">
-          <div>
-            <div class="text-body-2">{{ item.last_contact || 'Never' }}</div>
-            <div v-if="item.needs_followup" class="text-caption text-warning">
-              <v-icon size="12" color="warning">mdi-alert</v-icon>
-              Follow-up needed
-            </div>
-          </div>
-        </template>
-        
-        <template #item.actions="{ item }">
-          <template v-if="isAdmin">
-            <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="logCall(item)" />
-            <v-btn icon="mdi-email" size="small" variant="text" @click.stop="sendEmail(item)" />
-            <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="editPartner(item)" />
-          </template>
-          <v-btn v-else icon="mdi-eye" size="small" variant="text" @click.stop="viewPartner(item)" />
-        </template>
-      </v-data-table>
-    </v-card>
+        <!-- Filters -->
+        <v-card class="mb-4" variant="outlined">
+          <v-card-text class="py-3">
+            <v-row align="center" dense>
+              <v-col cols="12" md="3">
+                <v-text-field
+                  v-model="search"
+                  placeholder="Search partners..."
+                  prepend-inner-icon="mdi-magnify"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="filterTier"
+                  :items="tierOptions"
+                  label="Tier"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="filterZone"
+                  :items="zoneOptions"
+                  label="Zone"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="filterPriority"
+                  :items="priorityOptions"
+                  label="Priority"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-btn-toggle v-model="filterFollowup" density="compact" variant="outlined">
+                  <v-btn value="all" size="small">All</v-btn>
+                  <v-btn value="followup" size="small" color="warning">Follow-up</v-btn>
+                  <v-btn value="overdue" size="small" color="error">Overdue</v-btn>
+                </v-btn-toggle>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
 
-    <!-- Add/Edit Partner Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="700">
+        <!-- Partners Table -->
+        <v-card variant="outlined">
+          <v-data-table
+            :headers="tableHeaders"
+            :items="filteredPartners"
+            :loading="loading"
+            hover
+            @click:row="(_e: any, { item }: any) => openPartnerDetail(item)"
+          >
+            <template #item.name="{ item }">
+              <div class="d-flex align-center py-2">
+                <v-avatar :color="getTierColor(item.tier)" size="36" class="mr-3">
+                  <span class="text-white text-caption font-weight-bold">{{ getTierLabel(item.tier) }}</span>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium">{{ item.name }}</div>
+                  <div class="text-caption text-grey">{{ item.zone || 'No zone' }}</div>
+                </div>
+              </div>
+            </template>
+
+            <template #item.priority="{ item }">
+              <v-chip :color="getPriorityColor(item.priority)" size="x-small" variant="flat">
+                {{ item.priority || 'medium' }}
+              </v-chip>
+            </template>
+
+            <template #item.status="{ item }">
+              <v-chip :color="item.status === 'active' ? 'success' : 'grey'" size="x-small" variant="tonal">
+                {{ item.status }}
+              </v-chip>
+            </template>
+
+            <template #item.last_visit_date="{ item }">
+              <div v-if="item.last_visit_date">
+                {{ formatDate(item.last_visit_date) }}
+                <div v-if="isOverdue(item)" class="text-caption text-error">
+                  <v-icon size="10">mdi-alert</v-icon> Overdue
+                </div>
+              </div>
+              <span v-else class="text-grey">Never</span>
+            </template>
+
+            <template #item.next_followup_date="{ item }">
+              <div v-if="item.next_followup_date" :class="isPastDue(item.next_followup_date) ? 'text-error' : ''">
+                {{ formatDate(item.next_followup_date) }}
+              </div>
+              <span v-else class="text-grey">—</span>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn icon="mdi-phone" size="x-small" variant="text" @click.stop="openLogVisit(item, 'call')" />
+              <v-btn icon="mdi-calendar-check" size="x-small" variant="text" @click.stop="openLogVisit(item, 'visit')" />
+              <v-btn icon="mdi-pencil" size="x-small" variant="text" @click.stop="openEditPartner(item)" />
+            </template>
+          </v-data-table>
+        </v-card>
+      </v-window-item>
+
+      <!-- TARGETING TAB -->
+      <v-window-item value="targeting">
+        <v-row>
+          <!-- This Week's Visits -->
+          <v-col cols="12" md="6">
+            <v-card variant="outlined">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="primary" class="mr-2">mdi-calendar-week</v-icon>
+                This Week's Targets
+              </v-card-title>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="partner in weeklyTargets"
+                  :key="partner.id"
+                  @click="openPartnerDetail(partner)"
+                >
+                  <template #prepend>
+                    <v-avatar :color="getTierColor(partner.tier)" size="32">
+                      <span class="text-white text-caption">{{ getTierLabel(partner.tier) }}</span>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title>{{ partner.name }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ partner.zone }} • {{ partner.preferred_visit_day || 'Any day' }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-chip size="x-small" :color="getPriorityColor(partner.priority)">
+                      {{ partner.priority }}
+                    </v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="!weeklyTargets.length">
+                  <v-list-item-title class="text-grey text-center">No targets this week</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-col>
+
+          <!-- Overdue Partners -->
+          <v-col cols="12" md="6">
+            <v-card variant="outlined">
+              <v-card-title class="d-flex align-center text-error">
+                <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+                Overdue Visits
+              </v-card-title>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="partner in overduePartners"
+                  :key="partner.id"
+                  @click="openPartnerDetail(partner)"
+                >
+                  <template #prepend>
+                    <v-avatar color="error" size="32">
+                      <v-icon size="18">mdi-clock-alert</v-icon>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title>{{ partner.name }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    Last visit: {{ partner.last_visit_date ? formatDate(partner.last_visit_date) : 'Never' }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-btn size="x-small" color="primary" variant="tonal" @click.stop="openLogVisit(partner, 'visit')">
+                      Log Visit
+                    </v-btn>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="!overduePartners.length">
+                  <v-list-item-title class="text-grey text-center">All caught up!</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-card>
+          </v-col>
+
+          <!-- By Zone -->
+          <v-col cols="12">
+            <v-card variant="outlined">
+              <v-card-title>Partners by Zone</v-card-title>
+              <v-card-text>
+                <v-row>
+                  <v-col v-for="zone in uniqueZones" :key="zone" cols="6" md="3">
+                    <v-card variant="tonal" class="pa-3 text-center" @click="filterZone = zone; mainTab = 'list'">
+                      <div class="text-h5 font-weight-bold">{{ getZoneCount(zone) }}</div>
+                      <div class="text-body-2">{{ zone || 'Unassigned' }}</div>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <!-- ACTIVITY TAB -->
+      <v-window-item value="activity">
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>Recent Activity</span>
+            <v-btn size="small" variant="text" @click="loadRecentActivity">
+              <v-icon>mdi-refresh</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-timeline density="compact" side="end">
+            <v-timeline-item
+              v-for="log in recentActivity"
+              :key="log.id"
+              :dot-color="getVisitTypeColor(log.visit_type)"
+              size="small"
+            >
+              <div class="d-flex justify-space-between align-start">
+                <div>
+                  <div class="font-weight-medium">{{ log.partner_name }}</div>
+                  <div class="text-body-2">{{ log.visit_type }}: {{ log.summary }}</div>
+                  <div v-if="log.outcome" class="text-caption text-grey">Outcome: {{ log.outcome }}</div>
+                </div>
+                <div class="text-caption text-grey">{{ formatDate(log.visit_date) }}</div>
+              </div>
+            </v-timeline-item>
+            <v-timeline-item v-if="!recentActivity.length" dot-color="grey">
+              <div class="text-grey">No recent activity</div>
+            </v-timeline-item>
+          </v-timeline>
+        </v-card>
+      </v-window-item>
+    </v-window>
+
+    <!-- PARTNER DETAIL DIALOG -->
+    <v-dialog v-model="showDetailDialog" max-width="900" scrollable>
+      <v-card v-if="selectedPartner">
+        <v-toolbar :color="getTierColor(selectedPartner.tier)" density="compact">
+          <v-toolbar-title class="text-white">
+            {{ selectedPartner.name }}
+          </v-toolbar-title>
+          <v-chip class="ml-2" size="small" variant="elevated">{{ selectedPartner.tier || 'bronze' }}</v-chip>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="showDetailDialog = false" />
+        </v-toolbar>
+
+        <v-tabs v-model="detailTab" bg-color="grey-lighten-4">
+          <v-tab value="overview">Overview</v-tab>
+          <v-tab value="contacts">Contacts</v-tab>
+          <v-tab value="notes">Notes</v-tab>
+          <v-tab value="visits">Visit Log</v-tab>
+          <v-tab value="goals">Goals</v-tab>
+        </v-tabs>
+
+        <v-card-text style="max-height: 500px; overflow-y: auto;">
+          <v-window v-model="detailTab">
+            <!-- Overview -->
+            <v-window-item value="overview">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <h4 class="text-subtitle-2 mb-2">Partner Info</h4>
+                  <v-list density="compact" class="bg-transparent">
+                    <v-list-item>
+                      <template #prepend><v-icon size="18">mdi-map-marker</v-icon></template>
+                      <v-list-item-title>{{ selectedPartner.address || 'No address' }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend><v-icon size="18">mdi-phone</v-icon></template>
+                      <v-list-item-title>{{ selectedPartner.phone || 'No phone' }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend><v-icon size="18">mdi-email</v-icon></template>
+                      <v-list-item-title>{{ selectedPartner.email || 'No email' }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend><v-icon size="18">mdi-web</v-icon></template>
+                      <v-list-item-title>{{ selectedPartner.website || 'No website' }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <h4 class="text-subtitle-2 mb-2">CRM Details</h4>
+                  <div class="d-flex flex-wrap gap-2 mb-3">
+                    <v-chip size="small" :color="getPriorityColor(selectedPartner.priority)">
+                      {{ selectedPartner.priority }} priority
+                    </v-chip>
+                    <v-chip size="small" variant="outlined">{{ selectedPartner.zone || 'No zone' }}</v-chip>
+                    <v-chip size="small" variant="outlined">{{ selectedPartner.visit_frequency || 'monthly' }}</v-chip>
+                  </div>
+                  <div class="text-body-2 mb-1">
+                    <strong>Last Visit:</strong> {{ selectedPartner.last_visit_date ? formatDate(selectedPartner.last_visit_date) : 'Never' }}
+                  </div>
+                  <div class="text-body-2 mb-1">
+                    <strong>Next Follow-up:</strong> {{ selectedPartner.next_followup_date ? formatDate(selectedPartner.next_followup_date) : 'Not set' }}
+                  </div>
+                  <div class="text-body-2">
+                    <strong>Preferred Day:</strong> {{ selectedPartner.preferred_visit_day || 'Any' }}
+                  </div>
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Contacts -->
+            <v-window-item value="contacts">
+              <div class="d-flex justify-end mb-2">
+                <v-btn size="small" color="primary" variant="tonal" @click="openAddContact">
+                  <v-icon start>mdi-plus</v-icon> Add Contact
+                </v-btn>
+              </div>
+              <v-list density="compact">
+                <v-list-item v-for="contact in partnerContacts" :key="contact.id">
+                  <template #prepend>
+                    <v-avatar color="primary" size="36">
+                      <span class="text-white">{{ contact.name?.charAt(0) || '?' }}</span>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title>{{ contact.name }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ contact.title }} • {{ contact.email }}</v-list-item-subtitle>
+                  <template #append>
+                    <v-chip v-if="contact.is_primary" size="x-small" color="success">Primary</v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="!partnerContacts.length">
+                  <v-list-item-title class="text-grey">No contacts added</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-window-item>
+
+            <!-- Notes -->
+            <v-window-item value="notes">
+              <div class="d-flex gap-2 mb-3">
+                <v-textarea
+                  v-model="newNote"
+                  placeholder="Add a note..."
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  hide-details
+                  class="flex-grow-1"
+                />
+                <v-btn color="primary" @click="addNote" :disabled="!newNote.trim()">Add</v-btn>
+              </div>
+              <v-list density="compact">
+                <v-list-item v-for="note in partnerNotes" :key="note.id" class="mb-2">
+                  <v-card variant="tonal" class="pa-3 w-100">
+                    <div class="d-flex justify-space-between align-start mb-1">
+                      <v-chip size="x-small" variant="outlined">{{ note.note_type }}</v-chip>
+                      <span class="text-caption text-grey">{{ formatDateTime(note.created_at) }}</span>
+                    </div>
+                    <div class="text-body-2">{{ note.content }}</div>
+                    <div v-if="note.created_by_name" class="text-caption text-grey mt-1">
+                      — {{ note.created_by_name }}
+                    </div>
+                  </v-card>
+                </v-list-item>
+                <v-list-item v-if="!partnerNotes.length">
+                  <v-list-item-title class="text-grey">No notes yet</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-window-item>
+
+            <!-- Visits -->
+            <v-window-item value="visits">
+              <div class="d-flex justify-end mb-2">
+                <v-btn size="small" color="primary" variant="tonal" @click="openLogVisit(selectedPartner, 'visit')">
+                  <v-icon start>mdi-plus</v-icon> Log Visit
+                </v-btn>
+              </div>
+              <v-timeline density="compact" side="end">
+                <v-timeline-item
+                  v-for="log in partnerVisits"
+                  :key="log.id"
+                  :dot-color="getVisitTypeColor(log.visit_type)"
+                  size="small"
+                >
+                  <div>
+                    <div class="d-flex justify-space-between">
+                      <strong>{{ log.visit_type }}</strong>
+                      <span class="text-caption">{{ formatDate(log.visit_date) }}</span>
+                    </div>
+                    <div class="text-body-2">{{ log.summary }}</div>
+                    <div v-if="log.outcome" class="text-caption">Outcome: {{ log.outcome }}</div>
+                    <div v-if="log.next_steps" class="text-caption text-primary">Next: {{ log.next_steps }}</div>
+                  </div>
+                </v-timeline-item>
+                <v-timeline-item v-if="!partnerVisits.length" dot-color="grey">
+                  <div class="text-grey">No visits logged</div>
+                </v-timeline-item>
+              </v-timeline>
+            </v-window-item>
+
+            <!-- Goals -->
+            <v-window-item value="goals">
+              <div class="d-flex justify-end mb-2">
+                <v-btn size="small" color="primary" variant="tonal" @click="openAddGoal">
+                  <v-icon start>mdi-plus</v-icon> Add Goal
+                </v-btn>
+              </div>
+              <v-list density="compact">
+                <v-list-item v-for="goal in partnerGoals" :key="goal.id">
+                  <template #prepend>
+                    <v-icon :color="goal.status === 'completed' ? 'success' : 'warning'">
+                      {{ goal.status === 'completed' ? 'mdi-check-circle' : 'mdi-target' }}
+                    </v-icon>
+                  </template>
+                  <v-list-item-title>{{ goal.title }}</v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ goal.goal_type }} • Target: {{ goal.target_date ? formatDate(goal.target_date) : 'No date' }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-chip size="x-small" :color="goal.status === 'completed' ? 'success' : 'warning'">
+                      {{ goal.status }}
+                    </v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="!partnerGoals.length">
+                  <v-list-item-title class="text-grey">No goals set</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-window-item>
+          </v-window>
+        </v-card-text>
+
+        <v-card-actions class="pa-4">
+          <v-btn variant="outlined" prepend-icon="mdi-phone" @click="openLogVisit(selectedPartner, 'call')">
+            Log Call
+          </v-btn>
+          <v-btn variant="outlined" prepend-icon="mdi-calendar-check" @click="openLogVisit(selectedPartner, 'visit')">
+            Log Visit
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="showDetailDialog = false">Close</v-btn>
+          <v-btn color="primary" @click="openEditPartner(selectedPartner)">Edit</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ADD/EDIT PARTNER DIALOG -->
+    <v-dialog v-model="showPartnerDialog" max-width="700">
       <v-card>
         <v-card-title>{{ editMode ? 'Edit Partner' : 'Add Partner' }}</v-card-title>
         <v-card-text>
           <v-tabs v-model="formTab" class="mb-4">
-            <v-tab value="basic">Basic Info</v-tab>
-            <v-tab value="contact">Contact Details</v-tab>
-            <v-tab value="crm">CRM Info</v-tab>
+            <v-tab value="basic">Basic</v-tab>
+            <v-tab value="crm">CRM</v-tab>
+            <v-tab value="targeting">Targeting</v-tab>
           </v-tabs>
 
           <v-window v-model="formTab">
-            <!-- Basic Info -->
             <v-window-item value="basic">
-              <v-row>
+              <v-row dense>
                 <v-col cols="12" md="8">
-                  <v-text-field
-                    v-model="form.name"
-                    label="Partner Name *"
-                    variant="outlined"
-                  />
+                  <v-text-field v-model="form.name" label="Partner Name *" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="12" md="4">
-                  <v-select
-                    v-model="form.type"
-                    :items="partnerTypes"
-                    label="Partner Type *"
-                    variant="outlined"
-                  />
+                  <v-select v-model="form.status" :items="['active', 'inactive', 'prospect']" label="Status" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="12">
-                  <v-textarea
-                    v-model="form.description"
-                    label="Description"
-                    variant="outlined"
-                    rows="2"
-                  />
+                  <v-text-field v-model="form.address" label="Address" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <v-select
-                    v-model="form.status"
-                    :items="['Active', 'Inactive', 'Prospect']"
-                    label="Status"
-                    variant="outlined"
-                  />
+                <v-col cols="6">
+                  <v-text-field v-model="form.phone" label="Phone" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <v-select
-                    v-model="form.priority"
-                    :items="['High', 'Medium', 'Low']"
-                    label="Priority"
-                    variant="outlined"
-                  />
+                <v-col cols="6">
+                  <v-text-field v-model="form.email" label="Email" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field v-model="form.website" label="Website" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea v-model="form.notes" label="Notes" variant="outlined" density="compact" rows="2" />
                 </v-col>
               </v-row>
             </v-window-item>
 
-            <!-- Contact Details -->
-            <v-window-item value="contact">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.contact_name"
-                    label="Primary Contact Name"
-                    variant="outlined"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.contact_title"
-                    label="Contact Title"
-                    variant="outlined"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.email"
-                    label="Email"
-                    type="email"
-                    variant="outlined"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.phone"
-                    label="Phone"
-                    variant="outlined"
-                  />
-                </v-col>
-                <v-col cols="12">
-                  <v-text-field
-                    v-model="form.address"
-                    label="Address"
-                    variant="outlined"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.website"
-                    label="Website"
-                    variant="outlined"
-                  />
-                </v-col>
-              </v-row>
-            </v-window-item>
-
-            <!-- CRM Info -->
             <v-window-item value="crm">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.referral_count"
-                    label="Total Referrals"
-                    type="number"
-                    variant="outlined"
-                  />
+              <v-row dense>
+                <v-col cols="6">
+                  <v-select v-model="form.tier" :items="tierOptions" label="Tier" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.last_contact"
-                    label="Last Contact Date"
-                    type="date"
-                    variant="outlined"
-                  />
+                <v-col cols="6">
+                  <v-select v-model="form.priority" :items="priorityOptions" label="Priority" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="form.next_followup"
-                    label="Next Follow-up Date"
-                    type="date"
-                    variant="outlined"
-                  />
+                <v-col cols="6">
+                  <v-text-field v-model="form.zone" label="Zone" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12" md="6">
-                  <v-select
-                    v-model="form.referral_agreement"
-                    :items="['None', 'Informal', 'Formal Contract']"
-                    label="Referral Agreement"
-                    variant="outlined"
-                  />
+                <v-col cols="6">
+                  <v-select v-model="form.clinic_type" :items="clinicTypeOptions" label="Clinic Type" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12">
-                  <v-textarea
-                    v-model="form.notes"
-                    label="Internal Notes"
-                    variant="outlined"
-                    rows="3"
-                  />
+                <v-col cols="6">
+                  <v-text-field v-model="form.contact_name" label="Primary Contact" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="6">
+                  <v-select v-model="form.referral_agreement_type" :items="agreementOptions" label="Agreement" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <v-window-item value="targeting">
+              <v-row dense>
+                <v-col cols="6">
+                  <v-select v-model="form.visit_frequency" :items="frequencyOptions" label="Visit Frequency" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="6">
+                  <v-select v-model="form.preferred_visit_day" :items="dayOptions" label="Preferred Day" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="6">
+                  <v-select v-model="form.preferred_visit_time" :items="timeOptions" label="Preferred Time" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field v-model="form.best_contact_person" label="Best Contact Person" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="12">
-                  <v-combobox
-                    v-model="form.tags"
-                    :items="availableTags"
-                    label="Tags"
-                    variant="outlined"
-                    multiple
-                    chips
-                    closable-chips
-                  />
+                  <v-text-field v-model="form.next_followup_date" label="Next Follow-up" type="date" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12">
+                  <v-switch v-model="form.needs_followup" label="Needs Follow-up" color="warning" hide-details />
                 </v-col>
               </v-row>
             </v-window-item>
@@ -334,181 +598,101 @@
         </v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="closeDialog">Cancel</v-btn>
-          <v-btn color="primary" @click="savePartner">{{ editMode ? 'Update' : 'Add' }}</v-btn>
+          <v-btn variant="text" @click="showPartnerDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="savePartner">{{ editMode ? 'Update' : 'Add' }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- View Partner Dialog -->
-    <v-dialog v-model="showViewDialog" max-width="700">
-      <v-card v-if="selectedPartner">
-        <div class="pa-6" :style="{ backgroundColor: getTypeColor(selectedPartner.type) + '22' }">
-          <div class="d-flex align-center">
-            <v-avatar :color="getTypeColor(selectedPartner.type)" size="64" class="mr-4">
-              <v-icon size="32" color="white">{{ getTypeIcon(selectedPartner.type) }}</v-icon>
-            </v-avatar>
-            <div class="flex-grow-1">
-              <h2 class="text-h5 font-weight-bold">{{ selectedPartner.name }}</h2>
-              <div class="d-flex align-center gap-2 mt-1">
-                <v-chip size="small" variant="outlined">{{ selectedPartner.type }}</v-chip>
-                <v-chip :color="getStatusColor(selectedPartner.status)" size="small" variant="tonal">
-                  {{ selectedPartner.status }}
-                </v-chip>
-                <v-chip :color="getPriorityColor(selectedPartner.priority)" size="small" variant="flat">
-                  {{ selectedPartner.priority }} Priority
-                </v-chip>
-              </div>
-            </div>
-          </div>
-        </div>
-        
+    <!-- LOG VISIT DIALOG -->
+    <v-dialog v-model="showVisitDialog" max-width="500">
+      <v-card>
+        <v-card-title>Log {{ visitForm.visit_type }}</v-card-title>
         <v-card-text>
-          <p v-if="selectedPartner.description" class="text-body-1 mb-4">
-            {{ selectedPartner.description }}
-          </p>
-          
-          <v-row>
-            <v-col cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Contact Information</h4>
-              <v-list density="compact" class="bg-transparent">
-                <v-list-item v-if="selectedPartner.contact_name">
-                  <template #prepend>
-                    <v-icon color="primary">mdi-account</v-icon>
-                  </template>
-                  <v-list-item-title>{{ selectedPartner.contact_name }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ selectedPartner.contact_title }}</v-list-item-subtitle>
-                </v-list-item>
-                <v-list-item v-if="selectedPartner.email">
-                  <template #prepend>
-                    <v-icon color="primary">mdi-email</v-icon>
-                  </template>
-                  <v-list-item-title>{{ selectedPartner.email }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="selectedPartner.phone">
-                  <template #prepend>
-                    <v-icon color="primary">mdi-phone</v-icon>
-                  </template>
-                  <v-list-item-title>{{ selectedPartner.phone }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="selectedPartner.address">
-                  <template #prepend>
-                    <v-icon color="primary">mdi-map-marker</v-icon>
-                  </template>
-                  <v-list-item-title>{{ selectedPartner.address }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
+          <v-row dense>
+            <v-col cols="6">
+              <v-text-field v-model="visitForm.visit_date" label="Date" type="date" variant="outlined" density="compact" />
             </v-col>
-            
-            <!-- CRM Metrics (Admin Only) -->
-            <v-col v-if="isAdmin" cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Relationship Metrics</h4>
-              <div class="d-flex align-center mb-3">
-                <v-icon color="success" class="mr-2">mdi-account-arrow-right</v-icon>
-                <div>
-                  <div class="text-h5 font-weight-bold">{{ selectedPartner.referral_count || 0 }}</div>
-                  <div class="text-caption text-grey">Total Referrals</div>
-                </div>
-              </div>
-              <div class="text-body-2 mb-1">
-                <strong>Last Contact:</strong> {{ selectedPartner.last_contact || 'Never' }}
-              </div>
-              <div class="text-body-2 mb-1">
-                <strong>Next Follow-up:</strong> {{ selectedPartner.next_followup || 'Not scheduled' }}
-              </div>
-              <div class="text-body-2">
-                <strong>Agreement:</strong> {{ selectedPartner.referral_agreement || 'None' }}
-              </div>
+            <v-col cols="6">
+              <v-select v-model="visitForm.visit_type" :items="visitTypeOptions" label="Type" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-text-field v-model="visitForm.contacted_person" label="Contacted Person" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-model="visitForm.summary" label="Summary *" variant="outlined" density="compact" rows="2" />
+            </v-col>
+            <v-col cols="12">
+              <v-select v-model="visitForm.outcome" :items="outcomeOptions" label="Outcome" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-model="visitForm.next_steps" label="Next Steps" variant="outlined" density="compact" rows="2" />
             </v-col>
           </v-row>
-          
-          <div v-if="selectedPartner.tags?.length" class="mt-4">
-            <h4 class="text-subtitle-2 mb-2">Tags</h4>
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip v-for="tag in selectedPartner.tags" :key="tag" size="small" variant="tonal">
-                {{ tag }}
-              </v-chip>
-            </div>
-          </div>
-          
-          <!-- Notes (Admin Only) -->
-          <div v-if="isAdmin && selectedPartner.notes" class="mt-4">
-            <h4 class="text-subtitle-2 mb-2">Notes</h4>
-            <v-alert variant="tonal" type="info" density="compact">
-              {{ selectedPartner.notes }}
-            </v-alert>
-          </div>
-
-          <!-- Activity Log (Admin Only) -->
-          <div v-if="isAdmin" class="mt-6">
-            <h4 class="text-subtitle-2 mb-2">Recent Activity</h4>
-            <v-timeline density="compact" side="end">
-              <v-timeline-item
-                v-for="activity in selectedPartner.activities?.slice(0, 5)"
-                :key="activity.id"
-                :dot-color="activity.type === 'call' ? 'success' : 'info'"
-                size="small"
-              >
-                <div class="d-flex justify-space-between">
-                  <div>
-                    <div class="font-weight-medium">{{ activity.title }}</div>
-                    <div class="text-caption text-grey">{{ activity.description }}</div>
-                  </div>
-                  <div class="text-caption text-grey">{{ activity.date }}</div>
-                </div>
-              </v-timeline-item>
-            </v-timeline>
-          </div>
         </v-card-text>
-        
         <v-card-actions class="pa-4">
-          <template v-if="isAdmin">
-            <v-btn variant="outlined" prepend-icon="mdi-phone" @click="logCall(selectedPartner)">
-              Log Call
-            </v-btn>
-            <v-btn variant="outlined" prepend-icon="mdi-email" @click="sendEmail(selectedPartner)">
-              Send Email
-            </v-btn>
-          </template>
           <v-spacer />
-          <v-btn variant="text" @click="showViewDialog = false">Close</v-btn>
-          <v-btn v-if="isAdmin" color="primary" @click="editPartner(selectedPartner); showViewDialog = false">
-            Edit
-          </v-btn>
+          <v-btn variant="text" @click="showVisitDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveVisitLog">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Log Call Dialog -->
-    <v-dialog v-model="showCallDialog" max-width="400">
+    <!-- ADD CONTACT DIALOG -->
+    <v-dialog v-model="showContactDialog" max-width="500">
       <v-card>
-        <v-card-title>Log Call</v-card-title>
+        <v-card-title>Add Contact</v-card-title>
         <v-card-text>
-          <v-text-field
-            v-model="callLog.date"
-            label="Date"
-            type="date"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-select
-            v-model="callLog.outcome"
-            :items="['Successful', 'No Answer', 'Left Voicemail', 'Callback Requested']"
-            label="Outcome"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-textarea
-            v-model="callLog.notes"
-            label="Notes"
-            variant="outlined"
-            rows="3"
-          />
+          <v-row dense>
+            <v-col cols="12">
+              <v-text-field v-model="contactForm.name" label="Name *" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-text-field v-model="contactForm.title" label="Title" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="contactForm.email" label="Email" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="contactForm.phone" label="Phone" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-switch v-model="contactForm.is_primary" label="Primary Contact" color="primary" hide-details />
+            </v-col>
+          </v-row>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="showCallDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="saveCallLog">Save</v-btn>
+          <v-btn variant="text" @click="showContactDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveContact">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ADD GOAL DIALOG -->
+    <v-dialog v-model="showGoalDialog" max-width="500">
+      <v-card>
+        <v-card-title>Add Goal</v-card-title>
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12">
+              <v-text-field v-model="goalForm.title" label="Goal Title *" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-select v-model="goalForm.goal_type" :items="goalTypeOptions" label="Type" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="goalForm.target_date" label="Target Date" type="date" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-model="goalForm.description" label="Description" variant="outlined" density="compact" rows="2" />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showGoalDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveGoal">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -526,442 +710,571 @@ definePageMeta({
   middleware: ['auth']
 })
 
-// Get admin status
-const { isAdmin } = useAppData()
+useHead({ title: 'Medical Partnerships CRM' })
 
-useHead({
-  title: 'Partnerships'
-})
+const supabase = useSupabaseClient()
+const user = useSupabaseUser()
 
 // State
-const searchQuery = ref('')
-const filterType = ref('')
-const filterStatus = ref('All')
-const filterPriority = ref('All')
-const showNeedsFollowUp = ref(false)
-const showAddDialog = ref(false)
-const showViewDialog = ref(false)
-const showCallDialog = ref(false)
+const loading = ref(false)
+const saving = ref(false)
+const mainTab = ref('list')
+const detailTab = ref('overview')
+const formTab = ref('basic')
+const search = ref('')
+const filterTier = ref<string | null>(null)
+const filterZone = ref<string | null>(null)
+const filterPriority = ref<string | null>(null)
+const filterFollowup = ref('all')
+
+// Data
+const partners = ref<any[]>([])
+const partnerContacts = ref<any[]>([])
+const partnerNotes = ref<any[]>([])
+const partnerVisits = ref<any[]>([])
+const partnerGoals = ref<any[]>([])
+const recentActivity = ref<any[]>([])
+
+// Dialog state
+const showDetailDialog = ref(false)
+const showPartnerDialog = ref(false)
+const showVisitDialog = ref(false)
+const showContactDialog = ref(false)
+const showGoalDialog = ref(false)
 const editMode = ref(false)
 const selectedPartner = ref<any>(null)
-const formTab = ref('basic')
+const newNote = ref('')
 
-const snackbar = reactive({
-  show: false,
-  message: '',
-  color: 'success'
+const snackbar = reactive({ show: false, message: '', color: 'success' })
+
+// Options
+const tierOptions = ['platinum', 'gold', 'silver', 'bronze', 'prospect']
+const priorityOptions = ['high', 'medium', 'low']
+const clinicTypeOptions = ['general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent']
+const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually', 'as_needed']
+const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+const timeOptions = ['morning', 'midday', 'afternoon']
+const agreementOptions = ['none', 'informal', 'formal', 'exclusive']
+const visitTypeOptions = ['visit', 'call', 'email', 'meeting', 'lunch_and_learn', 'ce_event']
+const outcomeOptions = ['successful', 'follow_up_needed', 'no_answer', 'voicemail', 'rescheduled', 'declined']
+const goalTypeOptions = ['referral', 'revenue', 'relationship', 'event', 'custom']
+
+// Zone options computed from data
+const zoneOptions = computed(() => {
+  const zones = new Set(partners.value.map(p => p.zone).filter(Boolean))
+  return Array.from(zones)
 })
 
-const callLog = reactive({
-  date: new Date().toISOString().split('T')[0],
-  outcome: '',
-  notes: ''
-})
-
-const partnerTypes = [
-  'Referral Clinic',
-  'Specialty Hospital',
-  'Emergency Clinic',
-  'Independent Veterinarian',
-  'Pet Store',
-  'Grooming Salon',
-  'Boarding Facility',
-  'Training Center',
-  'Rescue Organization',
-  'Other Business'
-]
-
-const availableTags = [
-  'High Volume',
-  'Local',
-  'Regional',
-  'Specialty Care',
-  'Emergency Services',
-  'Same Owner',
-  'Competitor',
-  'New Relationship',
-  'Long-term Partner',
-  'VIP'
-]
-
-const tableHeaders = [
-  { title: 'Partner', key: 'name', sortable: true },
-  { title: 'Priority', key: 'priority', sortable: true, adminOnly: true },
-  { title: 'Status', key: 'status', sortable: true, adminOnly: true },
-  { title: 'Referrals', key: 'referrals', sortable: true, adminOnly: true },
-  { title: 'Last Contact', key: 'last_contact', sortable: true, adminOnly: true },
-  { title: 'Actions', key: 'actions', sortable: false }
-]
-
-// Computed headers based on role
-const visibleTableHeaders = computed(() => {
-  if (isAdmin.value) {
-    return tableHeaders
-  }
-  // Non-admins see simplified view: Partner name, contact info, and view button
-  return tableHeaders.filter(h => !h.adminOnly)
-})
-
+// Forms
 const form = reactive({
   id: '',
   name: '',
-  type: '',
-  description: '',
-  status: 'Active',
-  priority: 'Medium',
-  contact_name: '',
-  contact_title: '',
-  email: '',
-  phone: '',
+  status: 'active',
   address: '',
+  phone: '',
+  email: '',
   website: '',
-  referral_count: 0,
-  last_contact: '',
-  next_followup: '',
-  referral_agreement: 'None',
   notes: '',
-  tags: [] as string[]
+  tier: 'bronze',
+  priority: 'medium',
+  zone: '',
+  clinic_type: 'general',
+  contact_name: '',
+  referral_agreement_type: 'none',
+  visit_frequency: 'monthly',
+  preferred_visit_day: null as string | null,
+  preferred_visit_time: null as string | null,
+  best_contact_person: '',
+  next_followup_date: '',
+  needs_followup: false
 })
 
-// Sample partners data
-const partners = ref([
-  {
-    id: '1',
-    name: 'Animal Emergency Clinic',
-    type: 'Emergency Clinic',
-    description: 'Primary emergency referral partner for after-hours cases.',
-    status: 'Active',
-    priority: 'High',
-    contact_name: 'Dr. Sarah Mitchell',
-    contact_title: 'Medical Director',
-    email: 'smitchell@animalemergency.com',
-    phone: '555-0301',
-    address: '789 Emergency Way',
-    website: 'https://animalemergency.com',
-    referral_count: 45,
-    last_contact: 'Dec 10, 2024',
-    next_followup: 'Dec 20, 2024',
-    referral_agreement: 'Formal Contract',
-    needs_followup: false,
-    notes: 'Great relationship. Monthly referral meeting scheduled.',
-    tags: ['High Volume', 'Long-term Partner', 'Emergency Services'],
-    activities: [
-      { id: 1, type: 'call', title: 'Monthly Check-in', description: 'Discussed referral process updates', date: 'Dec 10' },
-      { id: 2, type: 'email', title: 'Referral Report Sent', description: 'November referral summary', date: 'Dec 1' }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Specialty Veterinary Center',
-    type: 'Specialty Hospital',
-    description: 'Referral partner for specialized surgeries and oncology.',
-    status: 'Active',
-    priority: 'High',
-    contact_name: 'Dr. James Wong',
-    contact_title: 'Chief of Surgery',
-    email: 'jwong@specialtyvet.com',
-    phone: '555-0302',
-    address: '456 Specialty Drive',
-    website: 'https://specialtyvet.com',
-    referral_count: 32,
-    last_contact: 'Dec 5, 2024',
-    next_followup: 'Dec 15, 2024',
-    referral_agreement: 'Formal Contract',
-    needs_followup: true,
-    notes: 'Excellent surgical outcomes. Need to schedule quarterly review.',
-    tags: ['High Volume', 'Specialty Care', 'VIP'],
-    activities: []
-  },
-  {
-    id: '3',
-    name: 'Happy Paws Pet Store',
-    type: 'Pet Store',
-    description: 'Local pet store that refers new pet owners for first exams.',
-    status: 'Active',
-    priority: 'Medium',
-    contact_name: 'Mike Johnson',
-    contact_title: 'Store Manager',
-    email: 'mike@happypaws.com',
-    phone: '555-0303',
-    address: '123 Pet Lane',
-    website: '',
-    referral_count: 18,
-    last_contact: 'Nov 28, 2024',
-    next_followup: '',
-    referral_agreement: 'Informal',
-    needs_followup: true,
-    notes: 'Provide brochures monthly. Good source of new puppy/kitten clients.',
-    tags: ['Local', 'New Relationship'],
-    activities: []
-  },
-  {
-    id: '4',
-    name: 'Dr. Emily Richards',
-    type: 'Independent Veterinarian',
-    description: 'Retired vet who refers complex cases.',
-    status: 'Active',
-    priority: 'Low',
-    contact_name: 'Dr. Emily Richards',
-    contact_title: 'DVM (Retired)',
-    email: 'emily.richards@email.com',
-    phone: '555-0304',
-    address: '',
-    website: '',
-    referral_count: 8,
-    last_contact: 'Nov 15, 2024',
-    next_followup: '',
-    referral_agreement: 'None',
-    needs_followup: false,
-    notes: 'Occasional referrals from former clients.',
-    tags: ['Local'],
-    activities: []
-  },
-  {
-    id: '5',
-    name: 'City Animal Rescue',
-    type: 'Rescue Organization',
-    description: 'Local rescue that refers adopted animals for initial checkups.',
-    status: 'Active',
-    priority: 'Medium',
-    contact_name: 'Lisa Thompson',
-    contact_title: 'Executive Director',
-    email: 'lisa@cityanimalrescue.org',
-    phone: '555-0305',
-    address: '321 Rescue Road',
-    website: 'https://cityanimalrescue.org',
-    referral_count: 24,
-    last_contact: 'Dec 8, 2024',
-    next_followup: 'Jan 5, 2025',
-    referral_agreement: 'Informal',
-    needs_followup: false,
-    notes: 'Provide discounted services for rescue animals.',
-    tags: ['Local', 'Long-term Partner'],
-    activities: []
-  }
-])
+const visitForm = reactive({
+  partner_id: '',
+  visit_date: new Date().toISOString().split('T')[0],
+  visit_type: 'visit',
+  contacted_person: '',
+  summary: '',
+  outcome: '',
+  next_steps: ''
+})
+
+const contactForm = reactive({
+  partner_id: '',
+  name: '',
+  title: '',
+  email: '',
+  phone: '',
+  is_primary: false
+})
+
+const goalForm = reactive({
+  partner_id: '',
+  goal_type: 'relationship',
+  title: '',
+  description: '',
+  target_date: ''
+})
+
+// Table headers
+const tableHeaders = [
+  { title: 'Partner', key: 'name', sortable: true },
+  { title: 'Priority', key: 'priority', sortable: true },
+  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Last Visit', key: 'last_visit_date', sortable: true },
+  { title: 'Next Follow-up', key: 'next_followup_date', sortable: true },
+  { title: 'Actions', key: 'actions', sortable: false }
+]
 
 // Computed
-const activePartners = computed(() => partners.value.filter(p => p.status === 'Active').length)
-const referralCount = computed(() => partners.value.reduce((sum, p) => sum + (p.referral_count || 0), 0))
-const needsFollowUp = computed(() => partners.value.filter(p => p.needs_followup).length)
+const activeCount = computed(() => partners.value.filter(p => p.status === 'active').length)
+const needsFollowupCount = computed(() => partners.value.filter(p => p.needs_followup).length)
+const overdueCount = computed(() => overduePartners.value.length)
+
+const uniqueZones = computed(() => {
+  const zones = new Set(partners.value.map(p => p.zone || 'Unassigned'))
+  return Array.from(zones)
+})
 
 const filteredPartners = computed(() => {
   let result = partners.value
-  
-  if (filterType.value) {
-    result = result.filter(p => p.type === filterType.value)
+  if (search.value) {
+    const q = search.value.toLowerCase()
+    result = result.filter(p => p.name?.toLowerCase().includes(q) || p.zone?.toLowerCase().includes(q))
   }
-  
-  if (filterStatus.value !== 'All') {
-    result = result.filter(p => p.status === filterStatus.value)
-  }
-  
-  if (filterPriority.value !== 'All') {
-    result = result.filter(p => p.priority === filterPriority.value)
-  }
-  
-  if (showNeedsFollowUp.value) {
-    result = result.filter(p => p.needs_followup)
-  }
-  
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(p =>
-      p.name.toLowerCase().includes(query) ||
-      p.type.toLowerCase().includes(query) ||
-      p.contact_name?.toLowerCase().includes(query)
-    )
-  }
-  
+  if (filterTier.value) result = result.filter(p => p.tier === filterTier.value)
+  if (filterZone.value) result = result.filter(p => p.zone === filterZone.value)
+  if (filterPriority.value) result = result.filter(p => p.priority === filterPriority.value)
+  if (filterFollowup.value === 'followup') result = result.filter(p => p.needs_followup)
+  if (filterFollowup.value === 'overdue') result = result.filter(p => isOverdue(p))
   return result
 })
 
+const overduePartners = computed(() => {
+  return partners.value.filter(p => isOverdue(p))
+})
+
+const weeklyTargets = computed(() => {
+  return partners.value
+    .filter(p => p.status === 'active' && (p.visit_frequency === 'weekly' || p.needs_followup))
+    .sort((a, b) => (a.priority === 'high' ? -1 : 1))
+    .slice(0, 10)
+})
+
 // Methods
-function getTypeColor(type: string) {
-  const colors: Record<string, string> = {
-    'Referral Clinic': '#4CAF50',
-    'Specialty Hospital': '#2196F3',
-    'Emergency Clinic': '#F44336',
-    'Independent Veterinarian': '#9C27B0',
-    'Pet Store': '#FF9800',
-    'Grooming Salon': '#E91E63',
-    'Boarding Facility': '#00BCD4',
-    'Training Center': '#795548',
-    'Rescue Organization': '#4CAF50',
-    'Other Business': '#607D8B'
-  }
-  return colors[type] || '#9E9E9E'
+function isOverdue(partner: any): boolean {
+  if (!partner.last_visit_date || partner.visit_frequency === 'as_needed') return false
+  const last = new Date(partner.last_visit_date)
+  const now = new Date()
+  const days = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24))
+  const thresholds: Record<string, number> = { weekly: 7, biweekly: 14, monthly: 30, quarterly: 90, annually: 365 }
+  return days > (thresholds[partner.visit_frequency] || 30)
 }
 
-function getTypeIcon(type: string) {
-  const icons: Record<string, string> = {
-    'Referral Clinic': 'mdi-hospital-building',
-    'Specialty Hospital': 'mdi-hospital',
-    'Emergency Clinic': 'mdi-ambulance',
-    'Independent Veterinarian': 'mdi-doctor',
-    'Pet Store': 'mdi-store',
-    'Grooming Salon': 'mdi-content-cut',
-    'Boarding Facility': 'mdi-home-heart',
-    'Training Center': 'mdi-school',
-    'Rescue Organization': 'mdi-heart',
-    'Other Business': 'mdi-briefcase'
-  }
-  return icons[type] || 'mdi-briefcase'
+function isPastDue(date: string): boolean {
+  return new Date(date) < new Date()
 }
 
-function getPriorityColor(priority: string) {
-  const colors: Record<string, string> = {
-    'High': 'error',
-    'Medium': 'warning',
-    'Low': 'info'
-  }
+function formatDate(date: string): string {
+  if (!date) return ''
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function formatDateTime(date: string): string {
+  if (!date) return ''
+  return new Date(date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function getTierColor(tier: string): string {
+  const colors: Record<string, string> = { platinum: '#E5E4E2', gold: '#FFD700', silver: '#C0C0C0', bronze: '#CD7F32', prospect: '#9E9E9E' }
+  return colors[tier] || '#9E9E9E'
+}
+
+function getTierLabel(tier: string): string {
+  const labels: Record<string, string> = { platinum: 'P', gold: 'G', silver: 'S', bronze: 'B', prospect: '?' }
+  return labels[tier] || '?'
+}
+
+function getPriorityColor(priority: string): string {
+  const colors: Record<string, string> = { high: 'error', medium: 'warning', low: 'info' }
   return colors[priority] || 'grey'
 }
 
-function getStatusColor(status: string) {
-  const colors: Record<string, string> = {
-    'Active': 'success',
-    'Inactive': 'grey',
-    'Prospect': 'info'
+function getVisitTypeColor(type: string): string {
+  const colors: Record<string, string> = { visit: 'success', call: 'info', email: 'purple', meeting: 'primary', lunch_and_learn: 'orange', ce_event: 'pink' }
+  return colors[type] || 'grey'
+}
+
+function getZoneCount(zone: string): number {
+  if (zone === 'Unassigned') return partners.value.filter(p => !p.zone).length
+  return partners.value.filter(p => p.zone === zone).length
+}
+
+// Data loading
+async function loadPartners() {
+  loading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('referral_partners')
+      .select('*')
+      .order('name')
+    if (error) throw error
+    partners.value = data || []
+  } catch (e: any) {
+    console.error('Error loading partners:', e)
+    snackbar.message = 'Error loading partners'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    loading.value = false
   }
-  return colors[status] || 'grey'
 }
 
-function viewPartner(partner: any) {
+async function loadPartnerDetails(partnerId: string) {
+  try {
+    const [contacts, notes, visits, goals] = await Promise.all([
+      supabase.from('partner_contacts').select('*').eq('partner_id', partnerId).order('is_primary', { ascending: false }),
+      supabase.from('partner_notes').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
+      supabase.from('partner_visit_logs').select('*').eq('partner_id', partnerId).order('visit_date', { ascending: false }),
+      supabase.from('partner_goals').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false })
+    ])
+    partnerContacts.value = contacts.data || []
+    partnerNotes.value = notes.data || []
+    partnerVisits.value = visits.data || []
+    partnerGoals.value = goals.data || []
+  } catch (e) {
+    console.error('Error loading partner details:', e)
+  }
+}
+
+async function loadRecentActivity() {
+  try {
+    const { data, error } = await supabase
+      .from('partner_visit_logs')
+      .select('*, referral_partners(name)')
+      .order('visit_date', { ascending: false })
+      .limit(20)
+    if (error) throw error
+    recentActivity.value = (data || []).map(d => ({ ...d, partner_name: d.referral_partners?.name }))
+  } catch (e) {
+    console.error('Error loading activity:', e)
+  }
+}
+
+// Dialog handlers
+function openPartnerDetail(partner: any) {
   selectedPartner.value = partner
-  showViewDialog.value = true
+  detailTab.value = 'overview'
+  loadPartnerDetails(partner.id)
+  showDetailDialog.value = true
 }
 
-function editPartner(partner: any) {
-  Object.assign(form, partner)
-  editMode.value = true
-  formTab.value = 'basic'
-  showAddDialog.value = true
-}
-
-function closeDialog() {
-  showAddDialog.value = false
+function openAddPartner() {
   editMode.value = false
-  formTab.value = 'basic'
   resetForm()
+  formTab.value = 'basic'
+  showPartnerDialog.value = true
+}
+
+function openEditPartner(partner: any) {
+  editMode.value = true
+  Object.assign(form, {
+    id: partner.id,
+    name: partner.name || '',
+    status: partner.status || 'active',
+    address: partner.address || '',
+    phone: partner.phone || '',
+    email: partner.email || '',
+    website: partner.website || '',
+    notes: partner.notes || '',
+    tier: partner.tier || 'bronze',
+    priority: partner.priority || 'medium',
+    zone: partner.zone || '',
+    clinic_type: partner.clinic_type || 'general',
+    contact_name: partner.contact_name || '',
+    referral_agreement_type: partner.referral_agreement_type || 'none',
+    visit_frequency: partner.visit_frequency || 'monthly',
+    preferred_visit_day: partner.preferred_visit_day || null,
+    preferred_visit_time: partner.preferred_visit_time || null,
+    best_contact_person: partner.best_contact_person || '',
+    next_followup_date: partner.next_followup_date || '',
+    needs_followup: partner.needs_followup || false
+  })
+  formTab.value = 'basic'
+  showPartnerDialog.value = true
+}
+
+function openLogVisit(partner: any, type: string) {
+  visitForm.partner_id = partner.id
+  visitForm.visit_date = new Date().toISOString().split('T')[0]
+  visitForm.visit_type = type
+  visitForm.contacted_person = partner.best_contact_person || partner.contact_name || ''
+  visitForm.summary = ''
+  visitForm.outcome = ''
+  visitForm.next_steps = ''
+  showVisitDialog.value = true
+}
+
+function openAddContact() {
+  if (!selectedPartner.value) return
+  contactForm.partner_id = selectedPartner.value.id
+  contactForm.name = ''
+  contactForm.title = ''
+  contactForm.email = ''
+  contactForm.phone = ''
+  contactForm.is_primary = false
+  showContactDialog.value = true
+}
+
+function openAddGoal() {
+  if (!selectedPartner.value) return
+  goalForm.partner_id = selectedPartner.value.id
+  goalForm.goal_type = 'relationship'
+  goalForm.title = ''
+  goalForm.description = ''
+  goalForm.target_date = ''
+  showGoalDialog.value = true
 }
 
 function resetForm() {
   Object.assign(form, {
     id: '',
     name: '',
-    type: '',
-    description: '',
-    status: 'Active',
-    priority: 'Medium',
-    contact_name: '',
-    contact_title: '',
-    email: '',
-    phone: '',
+    status: 'active',
     address: '',
+    phone: '',
+    email: '',
     website: '',
-    referral_count: 0,
-    last_contact: '',
-    next_followup: '',
-    referral_agreement: 'None',
     notes: '',
-    tags: []
+    tier: 'bronze',
+    priority: 'medium',
+    zone: '',
+    clinic_type: 'general',
+    contact_name: '',
+    referral_agreement_type: 'none',
+    visit_frequency: 'monthly',
+    preferred_visit_day: null,
+    preferred_visit_time: null,
+    best_contact_person: '',
+    next_followup_date: '',
+    needs_followup: false
   })
 }
 
-function savePartner() {
-  if (!form.name || !form.type) {
-    snackbar.message = 'Please fill in required fields'
+// Save handlers
+async function savePartner() {
+  if (!form.name) {
+    snackbar.message = 'Partner name is required'
     snackbar.color = 'warning'
     snackbar.show = true
     return
   }
-  
-  if (editMode.value) {
-    const index = partners.value.findIndex(p => p.id === form.id)
-    if (index !== -1) {
-      const existing = partners.value[index]
-      if (existing) {
-        partners.value[index] = { ...form, needs_followup: existing.needs_followup, activities: existing.activities }
-      }
+  saving.value = true
+  try {
+    const payload = {
+      name: form.name,
+      status: form.status,
+      address: form.address || null,
+      phone: form.phone || null,
+      email: form.email || null,
+      website: form.website || null,
+      notes: form.notes || null,
+      tier: form.tier,
+      priority: form.priority,
+      zone: form.zone || null,
+      clinic_type: form.clinic_type,
+      contact_name: form.contact_name || null,
+      referral_agreement_type: form.referral_agreement_type,
+      visit_frequency: form.visit_frequency,
+      preferred_visit_day: form.preferred_visit_day,
+      preferred_visit_time: form.preferred_visit_time,
+      best_contact_person: form.best_contact_person || null,
+      next_followup_date: form.next_followup_date || null,
+      needs_followup: form.needs_followup
     }
-    snackbar.message = 'Partner updated'
-  } else {
-    partners.value.push({
-      ...form,
-      id: Date.now().toString(),
-      needs_followup: false,
-      activities: []
-    })
-    snackbar.message = 'Partner added'
-  }
-  
-  snackbar.color = 'success'
-  snackbar.show = true
-  closeDialog()
-}
-
-function logCall(partner: any) {
-  selectedPartner.value = partner
-  callLog.date = new Date().toISOString().split('T')[0]
-  callLog.outcome = ''
-  callLog.notes = ''
-  showCallDialog.value = true
-}
-
-function saveCallLog() {
-  if (selectedPartner.value) {
-    selectedPartner.value.last_contact = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    selectedPartner.value.needs_followup = false
-    
-    if (!selectedPartner.value.activities) {
-      selectedPartner.value.activities = []
+    if (editMode.value) {
+      const { error } = await supabase.from('referral_partners').update(payload).eq('id', form.id)
+      if (error) throw error
+      snackbar.message = 'Partner updated'
+    } else {
+      const { error } = await supabase.from('referral_partners').insert(payload)
+      if (error) throw error
+      snackbar.message = 'Partner added'
     }
-    selectedPartner.value.activities.unshift({
-      id: Date.now(),
-      type: 'call',
-      title: `Phone Call - ${callLog.outcome}`,
-      description: callLog.notes,
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    })
+    snackbar.color = 'success'
+    snackbar.show = true
+    showPartnerDialog.value = false
+    await loadPartners()
+  } catch (e: any) {
+    console.error('Error saving partner:', e)
+    snackbar.message = e.message || 'Error saving partner'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
   }
-  
-  showCallDialog.value = false
-  snackbar.message = 'Call logged successfully'
-  snackbar.color = 'success'
-  snackbar.show = true
 }
 
-function sendEmail(partner: any) {
-  window.location.href = `mailto:${partner.email}`
+async function saveVisitLog() {
+  if (!visitForm.summary) {
+    snackbar.message = 'Summary is required'
+    snackbar.color = 'warning'
+    snackbar.show = true
+    return
+  }
+  saving.value = true
+  try {
+    const { error } = await supabase.from('partner_visit_logs').insert({
+      partner_id: visitForm.partner_id,
+      visit_date: visitForm.visit_date,
+      visit_type: visitForm.visit_type,
+      contacted_person: visitForm.contacted_person || null,
+      summary: visitForm.summary,
+      outcome: visitForm.outcome || null,
+      next_steps: visitForm.next_steps || null,
+      logged_by: user.value?.id
+    })
+    if (error) throw error
+    snackbar.message = 'Visit logged'
+    snackbar.color = 'success'
+    snackbar.show = true
+    showVisitDialog.value = false
+    await loadPartners()
+    if (selectedPartner.value?.id === visitForm.partner_id) {
+      await loadPartnerDetails(visitForm.partner_id)
+    }
+  } catch (e: any) {
+    console.error('Error logging visit:', e)
+    snackbar.message = e.message || 'Error logging visit'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
+  }
+}
+
+async function saveContact() {
+  if (!contactForm.name) {
+    snackbar.message = 'Name is required'
+    snackbar.color = 'warning'
+    snackbar.show = true
+    return
+  }
+  saving.value = true
+  try {
+    const { error } = await supabase.from('partner_contacts').insert({
+      partner_id: contactForm.partner_id,
+      name: contactForm.name,
+      title: contactForm.title || null,
+      email: contactForm.email || null,
+      phone: contactForm.phone || null,
+      is_primary: contactForm.is_primary
+    })
+    if (error) throw error
+    snackbar.message = 'Contact added'
+    snackbar.color = 'success'
+    snackbar.show = true
+    showContactDialog.value = false
+    if (selectedPartner.value) await loadPartnerDetails(selectedPartner.value.id)
+  } catch (e: any) {
+    console.error('Error saving contact:', e)
+    snackbar.message = e.message || 'Error saving contact'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
+  }
+}
+
+async function saveGoal() {
+  if (!goalForm.title) {
+    snackbar.message = 'Goal title is required'
+    snackbar.color = 'warning'
+    snackbar.show = true
+    return
+  }
+  saving.value = true
+  try {
+    const { error } = await supabase.from('partner_goals').insert({
+      partner_id: goalForm.partner_id,
+      goal_type: goalForm.goal_type,
+      title: goalForm.title,
+      description: goalForm.description || null,
+      target_date: goalForm.target_date || null,
+      created_by: user.value?.id
+    })
+    if (error) throw error
+    snackbar.message = 'Goal added'
+    snackbar.color = 'success'
+    snackbar.show = true
+    showGoalDialog.value = false
+    if (selectedPartner.value) await loadPartnerDetails(selectedPartner.value.id)
+  } catch (e: any) {
+    console.error('Error saving goal:', e)
+    snackbar.message = e.message || 'Error saving goal'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
+  }
+}
+
+async function addNote() {
+  if (!selectedPartner.value || !newNote.value.trim()) return
+  saving.value = true
+  try {
+    const { error } = await supabase.from('partner_notes').insert({
+      partner_id: selectedPartner.value.id,
+      content: newNote.value.trim(),
+      note_type: 'general',
+      created_by: user.value?.id
+    })
+    if (error) throw error
+    newNote.value = ''
+    await loadPartnerDetails(selectedPartner.value.id)
+    snackbar.message = 'Note added'
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (e: any) {
+    console.error('Error adding note:', e)
+    snackbar.message = e.message || 'Error adding note'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
+  }
 }
 
 function exportPartners() {
   const csv = [
-    ['Name', 'Type', 'Status', 'Priority', 'Contact', 'Email', 'Phone', 'Referrals', 'Last Contact'].join(','),
+    ['Name', 'Tier', 'Priority', 'Zone', 'Status', 'Phone', 'Email', 'Last Visit', 'Next Follow-up'].join(','),
     ...filteredPartners.value.map(p => [
-      `"${p.name}"`,
-      p.type,
-      p.status,
-      p.priority,
-      `"${p.contact_name || ''}"`,
-      p.email || '',
+      `"${p.name || ''}"`,
+      p.tier || '',
+      p.priority || '',
+      `"${p.zone || ''}"`,
+      p.status || '',
       p.phone || '',
-      p.referral_count || 0,
-      p.last_contact || ''
+      p.email || '',
+      p.last_visit_date || '',
+      p.next_followup_date || ''
     ].join(','))
   ].join('\n')
-  
   const blob = new Blob([csv], { type: 'text/csv' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = 'partnerships.csv'
+  link.download = 'medical-partnerships.csv'
   link.click()
-  
   snackbar.message = 'Partners exported'
   snackbar.color = 'success'
   snackbar.show = true
 }
+
+// Init
+onMounted(() => {
+  loadPartners()
+  loadRecentActivity()
+})
 </script>
 
 <style scoped>
