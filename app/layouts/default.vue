@@ -358,10 +358,6 @@ async function handleSignOut() {
                 <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
                 Partners
               </NuxtLink>
-              <NuxtLink to="/marketing/influencers" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-pink-500/20">⭐</div>
-                Influencers
-              </NuxtLink>
               <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
                 Inventory
