@@ -559,11 +559,6 @@ function handleItemClick(partner: Partner & { _influencerData?: Influencer }) {
   }
 }
 
-// Navigate to partner details page (for referral partners)
-function viewPartnerDetails(partnerId: string) {
-  navigateTo(`/marketing/partner/${partnerId}`)
-}
-
 // Handle delete - route to correct function based on type
 function handleDelete(partner: Partner & { _isInfluencer?: boolean }) {
   if (partner._isInfluencer) {
@@ -1063,18 +1058,6 @@ function getPriorityColor(priority: string | null | undefined): string {
                   ${{ partner.membership_fee }}/year
                 </div>
               </div>
-              <v-btn
-                v-if="!partner._isInfluencer"
-                icon
-                variant="text"
-                size="small"
-                color="primary"
-                class="ml-2"
-                title="View Details"
-                @click.stop="viewPartnerDetails(partner.id)"
-              >
-                <v-icon>mdi-eye</v-icon>
-              </v-btn>
               <v-btn
                 icon
                 variant="text"
