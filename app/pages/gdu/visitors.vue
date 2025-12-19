@@ -26,11 +26,22 @@ interface Visitor {
   is_active: boolean
   ce_event_id: string | null
   created_at: string
+  // New fields from PDF data
+  coordinator: string | null
+  first_greeter: string | null
+  mentor: string | null
+  location: string | null
+  visit_status: string | null
+  recruitment_announced: boolean
+  recruitment_channel: string | null
+  file_link: string | null
 }
 
 // Filter state
 const searchQuery = ref('')
 const selectedType = ref<string | null>(null)
+const selectedStatus = ref<string | null>(null)
+const selectedLocation = ref<string | null>(null)
 const showActiveOnly = ref(false)
 
 const typeOptions = [
@@ -41,6 +52,22 @@ const typeOptions = [
   { title: 'CE Attendee', value: 'ce_attendee' },
   { title: 'Shadow', value: 'shadow' },
   { title: 'Other', value: 'other' }
+]
+
+const statusOptions = [
+  { title: 'All Statuses', value: null },
+  { title: 'Upcoming', value: 'upcoming' },
+  { title: 'Currently Here', value: 'current' },
+  { title: 'Done', value: 'done' },
+  { title: 'No Show', value: 'no_show' }
+]
+
+const locationOptions = [
+  { title: 'All Locations', value: null },
+  { title: 'Venice', value: 'Venice' },
+  { title: 'The Valley', value: 'The Valley' },
+  { title: 'Sherman Oaks', value: 'Sherman Oaks' },
+  { title: 'Aetna', value: 'Aetna' }
 ]
 
 const leadSourceOptions = [
@@ -76,12 +103,23 @@ const filteredVisitors = computed(() => {
       v.last_name.toLowerCase().includes(query) ||
       v.email?.toLowerCase().includes(query) ||
       v.organization_name?.toLowerCase().includes(query) ||
-      v.school_of_origin?.toLowerCase().includes(query)
+      v.school_of_origin?.toLowerCase().includes(query) ||
+      v.coordinator?.toLowerCase().includes(query) ||
+      v.mentor?.toLowerCase().includes(query) ||
+      v.program_name?.toLowerCase().includes(query)
     )
   }
   
   if (selectedType.value) {
     result = result.filter(v => v.visitor_type === selectedType.value)
+  }
+  
+  if (selectedStatus.value) {
+    result = result.filter(v => v.visit_status === selectedStatus.value)
+  }
+  
+  if (selectedLocation.value) {
+    result = result.filter(v => v.location === selectedLocation.value)
   }
   
   if (showActiveOnly.value) {
@@ -95,6 +133,8 @@ const filteredVisitors = computed(() => {
 const stats = computed(() => ({
   total: visitors.value?.length || 0,
   active: visitors.value?.filter(v => v.is_active).length || 0,
+  upcoming: visitors.value?.filter(v => v.visit_status === 'upcoming').length || 0,
+  current: visitors.value?.filter(v => v.visit_status === 'current').length || 0,
   byType: typeOptions.slice(1).map(t => ({
     type: t.title,
     count: visitors.value?.filter(v => v.visitor_type === t.value).length || 0
@@ -118,7 +158,15 @@ const formData = ref({
   lead_source: '',
   referral_name: '',
   notes: '',
-  is_active: true
+  is_active: true,
+  // New fields
+  coordinator: '',
+  first_greeter: '',
+  mentor: '',
+  location: '',
+  visit_status: 'upcoming',
+  recruitment_announced: false,
+  recruitment_channel: ''
 })
 
 // Handle URL params
@@ -148,7 +196,14 @@ function openAddDialog() {
     lead_source: '',
     referral_name: '',
     notes: '',
-    is_active: true
+    is_active: true,
+    coordinator: '',
+    first_greeter: '',
+    mentor: '',
+    location: '',
+    visit_status: 'upcoming',
+    recruitment_announced: false,
+    recruitment_channel: ''
   }
   dialogOpen.value = true
 }
@@ -169,7 +224,14 @@ function openEditDialog(visitor: Visitor) {
     lead_source: visitor.lead_source || '',
     referral_name: visitor.referral_name || '',
     notes: visitor.notes || '',
-    is_active: visitor.is_active
+    is_active: visitor.is_active,
+    coordinator: visitor.coordinator || '',
+    first_greeter: visitor.first_greeter || '',
+    mentor: visitor.mentor || '',
+    location: visitor.location || '',
+    visit_status: visitor.visit_status || 'upcoming',
+    recruitment_announced: visitor.recruitment_announced || false,
+    recruitment_channel: visitor.recruitment_channel || ''
   }
   dialogOpen.value = true
 }
@@ -189,7 +251,14 @@ async function saveVisitor() {
     lead_source: formData.value.lead_source || null,
     referral_name: formData.value.referral_name || null,
     notes: formData.value.notes || null,
-    is_active: formData.value.is_active
+    is_active: formData.value.is_active,
+    coordinator: formData.value.coordinator || null,
+    first_greeter: formData.value.first_greeter || null,
+    mentor: formData.value.mentor || null,
+    location: formData.value.location || null,
+    visit_status: formData.value.visit_status || 'upcoming',
+    recruitment_announced: formData.value.recruitment_announced,
+    recruitment_channel: formData.value.recruitment_channel || null
   }
   
   if (editingVisitor.value) {
@@ -250,6 +319,26 @@ function getTypeIcon(type: string): string {
   }
   return icons[type] || 'mdi-account'
 }
+
+function getStatusColor(status: string | null): string {
+  const colors: Record<string, string> = {
+    upcoming: 'blue',
+    current: 'success',
+    done: 'grey',
+    no_show: 'error'
+  }
+  return colors[status || ''] || 'grey'
+}
+
+function getStatusLabel(status: string | null): string {
+  const labels: Record<string, string> = {
+    upcoming: 'Upcoming',
+    current: 'Currently Here',
+    done: 'Done',
+    no_show: 'No Show'
+  }
+  return labels[status || ''] || 'Unknown'
+}
 </script>
 
 <template>
@@ -277,7 +366,7 @@ function getTypeIcon(type: string): string {
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="3">
+      <v-col cols="6" sm="3" md="2">
         <v-card variant="tonal" color="primary">
           <v-card-text class="text-center">
             <div class="text-h4 font-weight-bold">{{ stats.total }}</div>
@@ -285,15 +374,23 @@ function getTypeIcon(type: string): string {
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="success">
+      <v-col cols="6" sm="3" md="2">
+        <v-card variant="tonal" color="blue">
           <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.active }}</div>
-            <div class="text-caption">Active</div>
+            <div class="text-h4 font-weight-bold">{{ stats.upcoming }}</div>
+            <div class="text-caption">Upcoming</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6">
+      <v-col cols="6" sm="3" md="2">
+        <v-card variant="tonal" color="success">
+          <v-card-text class="text-center">
+            <div class="text-h4 font-weight-bold">{{ stats.current }}</div>
+            <div class="text-caption">Currently Here</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3" md="6">
         <v-card variant="outlined">
           <v-card-text>
             <div class="text-subtitle-2 mb-2">By Type</div>
@@ -317,7 +414,7 @@ function getTypeIcon(type: string): string {
     <v-card class="mb-4">
       <v-card-text>
         <v-row dense align="center">
-          <v-col cols="12" md="5">
+          <v-col cols="12" md="3">
             <v-text-field
               v-model="searchQuery"
               label="Search visitors..."
@@ -328,7 +425,7 @@ function getTypeIcon(type: string): string {
               hide-details
             />
           </v-col>
-          <v-col cols="6" md="3">
+          <v-col cols="6" md="2">
             <v-select
               v-model="selectedType"
               :items="typeOptions"
@@ -339,15 +436,35 @@ function getTypeIcon(type: string): string {
             />
           </v-col>
           <v-col cols="6" md="2">
+            <v-select
+              v-model="selectedStatus"
+              :items="statusOptions"
+              label="Status"
+              variant="outlined"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="6" md="2">
+            <v-select
+              v-model="selectedLocation"
+              :items="locationOptions"
+              label="Location"
+              variant="outlined"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="3" md="1">
             <v-switch
               v-model="showActiveOnly"
-              label="Active Only"
+              label="Active"
               color="success"
               density="compact"
               hide-details
             />
           </v-col>
-          <v-col cols="12" md="2" class="text-right">
+          <v-col cols="3" md="2" class="text-right">
             <v-chip color="primary" variant="tonal">
               {{ filteredVisitors.length }} Visitors
             </v-chip>
@@ -364,11 +481,12 @@ function getTypeIcon(type: string): string {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Type</th>
-            <th>Organization</th>
+            <th>Program</th>
             <th>Visit Dates</th>
-            <th>Lead Source</th>
             <th>Status</th>
+            <th>Coordinator</th>
+            <th>Mentor</th>
+            <th>Location</th>
             <th></th>
           </tr>
         </thead>
@@ -386,52 +504,53 @@ function getTypeIcon(type: string): string {
                 </v-avatar>
                 <div>
                   <div class="font-weight-medium">{{ visitor.first_name }} {{ visitor.last_name }}</div>
-                  <div class="text-caption text-medium-emphasis" v-if="visitor.email">
-                    {{ visitor.email }}
+                  <div class="text-caption text-medium-emphasis">
+                    {{ visitor.visitor_type.replace('_', ' ') }}
+                    <span v-if="visitor.school_of_origin && visitor.school_of_origin !== 'Not Applicable'">
+                      · {{ visitor.school_of_origin }}
+                    </span>
                   </div>
                 </div>
               </div>
             </td>
             
             <td>
-              <v-chip size="small" :color="getTypeColor(visitor.visitor_type)" variant="tonal">
-                {{ visitor.visitor_type.replace('_', ' ') }}
-              </v-chip>
-            </td>
-            
-            <td>
-              <div v-if="visitor.organization_name || visitor.school_of_origin">
-                <div>{{ visitor.organization_name || visitor.school_of_origin }}</div>
-                <div class="text-caption text-medium-emphasis" v-if="visitor.program_name">
-                  {{ visitor.program_name }}
-                </div>
+              <div v-if="visitor.program_name">
+                <div class="font-weight-medium">{{ visitor.program_name }}</div>
               </div>
               <span v-else class="text-medium-emphasis">—</span>
             </td>
             
             <td>
               <div v-if="visitor.visit_start_date">
-                {{ new Date(visitor.visit_start_date).toLocaleDateString() }}
-                <span v-if="visitor.visit_end_date">
-                  - {{ new Date(visitor.visit_end_date).toLocaleDateString() }}
-                </span>
+                <div>{{ new Date(visitor.visit_start_date).toLocaleDateString() }}</div>
+                <div class="text-caption text-medium-emphasis" v-if="visitor.visit_end_date">
+                  to {{ new Date(visitor.visit_end_date).toLocaleDateString() }}
+                </div>
               </div>
               <span v-else class="text-medium-emphasis">—</span>
             </td>
             
             <td>
-              {{ visitor.lead_source || '—' }}
+              <v-chip
+                size="small"
+                :color="getStatusColor(visitor.visit_status)"
+                variant="flat"
+              >
+                {{ getStatusLabel(visitor.visit_status) }}
+              </v-chip>
             </td>
             
             <td>
-              <v-chip
-                size="small"
-                :color="visitor.is_active ? 'success' : 'grey'"
-                variant="flat"
-                @click.stop="toggleActive(visitor)"
-              >
-                {{ visitor.is_active ? 'Active' : 'Inactive' }}
-              </v-chip>
+              {{ visitor.coordinator || '—' }}
+            </td>
+            
+            <td>
+              {{ visitor.mentor || '—' }}
+            </td>
+            
+            <td>
+              {{ visitor.location || '—' }}
             </td>
             
             <td>
@@ -454,10 +573,10 @@ function getTypeIcon(type: string): string {
         <v-icon size="64" color="grey-lighten-1">mdi-account-group-outline</v-icon>
         <div class="text-h6 mt-4">No visitors found</div>
         <div class="text-body-2 text-medium-emphasis">
-          {{ searchQuery || selectedType ? 'Try adjusting your filters' : 'Add your first visitor to get started' }}
+          {{ searchQuery || selectedType || selectedStatus || selectedLocation ? 'Try adjusting your filters' : 'Add your first visitor to get started' }}
         </div>
         <v-btn
-          v-if="!searchQuery && !selectedType"
+          v-if="!searchQuery && !selectedType && !selectedStatus && !selectedLocation"
           color="primary"
           class="mt-4"
           @click="openAddDialog"
@@ -583,6 +702,56 @@ function getTypeIcon(type: string): string {
             </v-col>
             
             <v-col cols="12" md="6">
+              <v-select
+                v-model="formData.visit_status"
+                :items="statusOptions.filter(s => s.value !== null)"
+                label="Visit Status"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="formData.location"
+                :items="locationOptions.filter(l => l.value !== null)"
+                label="Location"
+                variant="outlined"
+                clearable
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Staff Assignments</div>
+            </v-col>
+            
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.coordinator"
+                label="Coordinator"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.first_greeter"
+                label="First Greeter"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.mentor"
+                label="Mentor"
+                variant="outlined"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Recruitment & Source</div>
+            </v-col>
+            
+            <v-col cols="12" md="6">
               <v-combobox
                 v-model="formData.lead_source"
                 :items="leadSourceOptions"
@@ -595,6 +764,21 @@ function getTypeIcon(type: string): string {
                 v-model="formData.referral_name"
                 label="Referral Name"
                 variant="outlined"
+              />
+            </v-col>
+            
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formData.recruitment_channel"
+                label="Recruitment Channel"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-switch
+                v-model="formData.recruitment_announced"
+                label="Recruitment Announced"
+                color="success"
               />
             </v-col>
             
