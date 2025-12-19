@@ -456,6 +456,15 @@ function openEditDialog(partner: Partner) {
 }
 
 async function savePartner() {
+  if (!formData.value.name) {
+    showError('Partner name is required')
+    return
+  }
+  if (!formData.value.partner_type) {
+    showError('Category is required')
+    return
+  }
+  
   const payload = {
     name: formData.value.name,
     partner_type: formData.value.partner_type,
@@ -473,19 +482,30 @@ async function savePartner() {
     notes: formData.value.notes || null
   }
   
-  if (editingPartner.value) {
-    await supabase
-      .from('marketing_partners')
-      .update(payload)
-      .eq('id', editingPartner.value.id)
-  } else {
-    await supabase
-      .from('marketing_partners')
-      .insert(payload)
+  try {
+    if (editingPartner.value) {
+      const { error } = await supabase
+        .from('marketing_partners')
+        .update(payload)
+        .eq('id', editingPartner.value.id)
+      
+      if (error) throw error
+      showSuccess('Partner updated successfully')
+    } else {
+      const { error } = await supabase
+        .from('marketing_partners')
+        .insert(payload)
+      
+      if (error) throw error
+      showSuccess('Partner added successfully')
+    }
+    
+    dialogOpen.value = false
+    await refresh()
+  } catch (err: any) {
+    console.error('[Partners] Save error:', err)
+    showError('Failed to save partner: ' + (err.message || 'Unknown error'))
   }
-  
-  dialogOpen.value = false
-  refresh()
 }
 
 async function deletePartner(id: string) {
@@ -656,6 +676,42 @@ function getCategoryLabel(category: string | null): string {
     other: 'Other'
   }
   return labels[category] || category
+}
+
+function getCategoryIcon(category: string | null): string {
+  if (!category) return 'mdi-tag'
+  const icons: Record<string, string> = {
+    pet_business: 'mdi-paw',
+    exotic_shop: 'mdi-snake',
+    rescue: 'mdi-heart',
+    influencer: 'mdi-account-star',
+    entertainment: 'mdi-party-popper',
+    print_vendor: 'mdi-printer',
+    chamber: 'mdi-domain',
+    food_vendor: 'mdi-food',
+    association: 'mdi-account-group',
+    spay_neuter: 'mdi-medical-bag',
+    other: 'mdi-tag'
+  }
+  return icons[category] || 'mdi-tag'
+}
+
+function getCategoryColor(category: string | null): string {
+  if (!category) return 'grey'
+  const colors: Record<string, string> = {
+    pet_business: 'teal',
+    exotic_shop: 'lime',
+    rescue: 'pink',
+    influencer: 'secondary',
+    entertainment: 'purple',
+    print_vendor: 'brown',
+    chamber: 'primary',
+    food_vendor: 'orange',
+    association: 'indigo',
+    spay_neuter: 'cyan',
+    other: 'grey'
+  }
+  return colors[category] || 'grey'
 }
 
 function getStatusColor(status: string): string {
@@ -1235,7 +1291,7 @@ function getPriorityColor(priority: string | null | undefined): string {
               <v-select
                 v-model="formData.partner_type"
                 :items="partnerTypes.filter(t => t.value !== null)"
-                label="Type *"
+                label="Category *"
                 variant="outlined"
               />
             </v-col>
@@ -1613,26 +1669,23 @@ function getPriorityColor(priority: string | null | undefined): string {
             <!-- Overview Tab -->
             <v-tabs-window-item value="overview">
               <v-row>
-                <!-- Category & Status Dropdowns -->
-                <v-col cols="12" md="6">
-                  <v-select
-                    :model-value="selectedPartner.partner_type"
-                    :items="partnerTypeEditOptions"
-                    label="Category"
-                    variant="outlined"
-                    density="compact"
-                    @update:model-value="updatePartnerRelationship('partner_type', $event)"
-                  />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-select
-                    :model-value="selectedPartner.status"
-                    :items="statusEditOptions"
-                    label="Status"
-                    variant="outlined"
-                    density="compact"
-                    @update:model-value="updatePartnerRelationship('status', $event)"
-                  />
+                <!-- Category & Status Display (read-only - edit via Edit Partner button) -->
+                <v-col cols="12">
+                  <div class="d-flex flex-wrap gap-2 mb-4">
+                    <v-chip :color="getCategoryColor(selectedPartner.partner_type)" variant="elevated" size="small">
+                      <v-icon start size="16">{{ getCategoryIcon(selectedPartner.partner_type) }}</v-icon>
+                      {{ getCategoryLabel(selectedPartner.partner_type) || 'Other' }}
+                    </v-chip>
+                    <v-chip :color="selectedPartner.status === 'active' ? 'success' : selectedPartner.status === 'inactive' ? 'grey' : 'warning'" variant="tonal" size="small">
+                      {{ selectedPartner.status || 'Unknown' }}
+                    </v-chip>
+                  </div>
+                  <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                    <template #prepend>
+                      <v-icon size="small">mdi-information</v-icon>
+                    </template>
+                    To change Category or Status, click <strong>Edit Partner</strong> below.
+                  </v-alert>
                 </v-col>
 
                 <v-col cols="12" md="6">
