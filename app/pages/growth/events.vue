@@ -132,319 +132,410 @@
       </v-data-table>
     </v-card>
 
-    <!-- Event Details Drawer -->
-    <v-navigation-drawer
-      v-model="drawer"
-      location="right"
-      width="450"
-      temporary
-    >
-      <template v-if="selectedEvent">
-        <v-toolbar color="primary">
-          <v-btn icon="mdi-close" variant="text" @click="drawer = false" />
-          <v-toolbar-title>Event Details</v-toolbar-title>
-          <v-spacer />
-          <v-btn icon="mdi-pencil" variant="text" @click="openEditDialog" />
-        </v-toolbar>
-
-        <div class="pa-4">
-          <div class="d-flex align-center gap-2 mb-2">
-            <v-chip size="small" variant="tonal" :color="getEventTypeColor(selectedEvent.event_type || 'general')">
-              {{ formatEventType(selectedEvent.event_type || 'general') }}
-            </v-chip>
-            <v-chip size="small" :color="getStatusColor(selectedEvent.status)">
-              {{ formatStatus(selectedEvent.status) }}
-            </v-chip>
+    <!-- Event Profile Dialog (Full-Featured) -->
+    <v-dialog v-model="drawer" max-width="900" scrollable>
+      <v-card v-if="selectedEvent" rounded="lg">
+        <!-- Header with Event Type & Status -->
+        <v-card-title class="bg-primary text-white py-4 d-flex align-center">
+          <v-avatar :color="getEventTypeColor(selectedEvent.event_type || 'general')" class="mr-3">
+            <v-icon>mdi-calendar-star</v-icon>
+          </v-avatar>
+          <div class="flex-grow-1">
+            <div class="text-h5 font-weight-bold">{{ selectedEvent.name }}</div>
+            <div class="text-caption opacity-80">
+              {{ formatDate(selectedEvent.event_date) }} • {{ selectedEvent.location || 'Location TBD' }}
+            </div>
           </div>
-          <h2 class="text-h5 font-weight-bold mb-2">{{ selectedEvent.name }}</h2>
-          <p class="text-body-2 text-grey mb-4">{{ selectedEvent.description }}</p>
+          <v-chip :color="getStatusColor(selectedEvent.status)" variant="elevated" class="mr-2">
+            {{ formatStatus(selectedEvent.status) }}
+          </v-chip>
+          <v-btn icon variant="text" @click="drawer = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
 
-          <v-list density="compact" class="bg-transparent">
-            <v-list-item>
-              <template #prepend>
-                <v-icon color="primary">mdi-calendar</v-icon>
-              </template>
-              <v-list-item-title>{{ formatDate(selectedEvent.event_date) }}</v-list-item-title>
-              <v-list-item-subtitle>
-                {{ selectedEvent.start_time || 'TBD' }} - {{ selectedEvent.end_time || 'TBD' }}
-              </v-list-item-subtitle>
-            </v-list-item>
+        <!-- Tabs for organized content -->
+        <v-tabs v-model="eventProfileTab" bg-color="grey-lighten-4">
+          <v-tab value="details">
+            <v-icon start>mdi-information</v-icon>
+            Details
+          </v-tab>
+          <v-tab value="stats">
+            <v-icon start>mdi-chart-bar</v-icon>
+            Stats & Performance
+          </v-tab>
+          <v-tab value="leads">
+            <v-icon start>mdi-account-multiple-plus</v-icon>
+            Leads
+            <v-badge v-if="getLeadCount(selectedEvent.id) > 0" :content="getLeadCount(selectedEvent.id)" color="secondary" inline class="ml-1" />
+          </v-tab>
+          <v-tab value="qrcode">
+            <v-icon start>mdi-qrcode</v-icon>
+            QR Code
+          </v-tab>
+        </v-tabs>
 
-            <v-list-item>
-              <template #prepend>
-                <v-icon color="primary">mdi-map-marker</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedEvent.location || 'Location TBD' }}</v-list-item-title>
-            </v-list-item>
+        <v-divider />
 
-            <v-list-item v-if="selectedEvent.contact_name">
-              <template #prepend>
-                <v-icon color="primary">mdi-account</v-icon>
-              </template>
-              <v-list-item-title>{{ selectedEvent.contact_name }}</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedEvent.contact_phone || selectedEvent.contact_email }}</v-list-item-subtitle>
-            </v-list-item>
+        <v-card-text style="min-height: 450px; max-height: 60vh; overflow-y: auto;">
+          <v-tabs-window v-model="eventProfileTab">
+            <!-- DETAILS TAB -->
+            <v-tabs-window-item value="details">
+              <v-row>
+                <!-- Left Column - Basic Info -->
+                <v-col cols="12" md="6">
+                  <p class="text-overline text-grey mb-2">EVENT INFORMATION</p>
+                  <v-list density="compact" class="bg-transparent">
+                    <v-list-item>
+                      <template #prepend><v-icon color="primary">mdi-calendar</v-icon></template>
+                      <v-list-item-title>{{ formatDate(selectedEvent.event_date) }}</v-list-item-title>
+                      <v-list-item-subtitle>{{ selectedEvent.start_time || 'TBD' }} - {{ selectedEvent.end_time || 'TBD' }}</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend><v-icon color="primary">mdi-map-marker</v-icon></template>
+                      <v-list-item-title>{{ selectedEvent.location || 'Location TBD' }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item>
+                      <template #prepend><v-icon color="primary">mdi-tag</v-icon></template>
+                      <v-list-item-title>{{ formatEventType(selectedEvent.event_type || 'general') }}</v-list-item-title>
+                      <v-list-item-subtitle>Event Type</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item v-if="selectedEvent.budget">
+                      <template #prepend><v-icon color="primary">mdi-currency-usd</v-icon></template>
+                      <v-list-item-title>${{ selectedEvent.budget.toLocaleString() }}</v-list-item-title>
+                      <v-list-item-subtitle>Budget</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item v-if="selectedEvent.expected_attendance">
+                      <template #prepend><v-icon color="primary">mdi-account-multiple</v-icon></template>
+                      <v-list-item-title>{{ selectedEvent.expected_attendance }} expected</v-list-item-title>
+                      <v-list-item-subtitle>Attendance</v-list-item-subtitle>
+                    </v-list-item>
+                  </v-list>
 
-            <v-list-item>
-              <template #prepend>
-                <v-icon color="primary">mdi-account-group</v-icon>
-              </template>
-              <v-list-item-title>Staffing Needs</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedEvent.staffing_needs || 'Not specified' }}</v-list-item-subtitle>
-            </v-list-item>
+                  <v-divider class="my-3" />
 
-            <v-list-item v-if="selectedEvent.supplies_needed">
-              <template #prepend>
-                <v-icon color="primary">mdi-package-variant</v-icon>
-              </template>
-              <v-list-item-title>Supplies</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedEvent.supplies_needed }}</v-list-item-subtitle>
-            </v-list-item>
+                  <p class="text-overline text-grey mb-2">CONTACT INFORMATION</p>
+                  <v-list density="compact" class="bg-transparent">
+                    <v-list-item v-if="selectedEvent.contact_name">
+                      <template #prepend><v-icon color="primary">mdi-account</v-icon></template>
+                      <v-list-item-title>{{ selectedEvent.contact_name }}</v-list-item-title>
+                      <v-list-item-subtitle>Contact Person</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item v-if="selectedEvent.contact_phone">
+                      <template #prepend><v-icon color="primary">mdi-phone</v-icon></template>
+                      <v-list-item-title>{{ selectedEvent.contact_phone }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedEvent.contact_email">
+                      <template #prepend><v-icon color="primary">mdi-email</v-icon></template>
+                      <v-list-item-title>{{ selectedEvent.contact_email }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="!selectedEvent.contact_name && !selectedEvent.contact_phone && !selectedEvent.contact_email">
+                      <v-list-item-title class="text-grey">No contact info added</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
 
-            <v-list-item v-if="selectedEvent.expected_attendance">
-              <template #prepend>
-                <v-icon color="primary">mdi-account-multiple</v-icon>
-              </template>
-              <v-list-item-title>Expected Attendance</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedEvent.expected_attendance }} people</v-list-item-subtitle>
-            </v-list-item>
+                <!-- Right Column - Planning Details -->
+                <v-col cols="12" md="6">
+                  <p class="text-overline text-grey mb-2">PLANNING & LOGISTICS</p>
+                  
+                  <v-card variant="outlined" class="mb-3">
+                    <v-card-text>
+                      <div class="text-subtitle-2 mb-1">Staffing Needs</div>
+                      <p class="text-body-2 mb-0">{{ selectedEvent.staffing_needs || 'Not specified' }}</p>
+                      <v-chip size="x-small" :color="selectedEvent.staffing_status === 'confirmed' ? 'success' : 'warning'" class="mt-2">
+                        {{ selectedEvent.staffing_status === 'confirmed' ? 'Staffing Confirmed' : 'Staffing Planned' }}
+                      </v-chip>
+                    </v-card-text>
+                  </v-card>
 
-            <v-list-item v-if="selectedEvent.budget">
-              <template #prepend>
-                <v-icon color="primary">mdi-currency-usd</v-icon>
-              </template>
-              <v-list-item-title>Anticipated Spend</v-list-item-title>
-              <v-list-item-subtitle>${{ selectedEvent.budget.toLocaleString() }}</v-list-item-subtitle>
-            </v-list-item>
+                  <v-card variant="outlined" class="mb-3">
+                    <v-card-text>
+                      <div class="text-subtitle-2 mb-1">Supplies Needed</div>
+                      <p class="text-body-2 mb-0">{{ selectedEvent.supplies_needed || 'Not specified' }}</p>
+                    </v-card-text>
+                  </v-card>
 
-            <v-list-item v-if="selectedEvent.notes">
-              <template #prepend>
-                <v-icon color="primary">mdi-note-text</v-icon>
-              </template>
-              <v-list-item-title>Notes</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedEvent.notes }}</v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
+                  <v-card variant="outlined" class="mb-3">
+                    <v-card-text>
+                      <div class="text-subtitle-2 mb-1">Notes</div>
+                      <p class="text-body-2 mb-0">{{ selectedEvent.notes || 'No notes' }}</p>
+                    </v-card-text>
+                  </v-card>
 
-          <v-divider class="my-4" />
+                  <v-card variant="outlined" v-if="selectedEvent.description">
+                    <v-card-text>
+                      <div class="text-subtitle-2 mb-1">Description</div>
+                      <p class="text-body-2 mb-0">{{ selectedEvent.description }}</p>
+                    </v-card-text>
+                  </v-card>
 
-          <!-- Lead Capture QR Code Section -->
-          <div class="mb-4 pa-4 bg-grey-lighten-4 rounded-lg">
-            <div class="d-flex align-center justify-space-between mb-3">
-              <div>
-                <p class="text-overline text-grey mb-0">Lead Capture Form</p>
-                <p class="text-body-2 font-weight-medium">Share this QR code at your event</p>
-              </div>
-              <v-btn 
-                icon="mdi-content-copy" 
-                size="small" 
-                variant="text"
-                @click="copyLeadCaptureUrl"
-              />
-            </div>
-            
-            <!-- QR Code Display using qrcode.vue -->
-            <div class="d-flex justify-center mb-3">
-              <div class="bg-white pa-4 rounded-lg" style="width: fit-content;">
-                <QrcodeVue 
-                  :value="getLeadCaptureUrl(selectedEvent.id)"
-                  :size="200"
-                  level="M"
-                  render-as="canvas"
-                  :id="`qr-canvas-${selectedEvent.id}`"
-                />
-              </div>
-            </div>
-            
-            <!-- Download QR Button -->
-            <div class="d-flex justify-center mb-3">
-              <v-btn
-                color="primary"
-                variant="tonal"
-                prepend-icon="mdi-download"
-                size="small"
-                @click="downloadQrCode(selectedEvent)"
-              >
-                Download QR Code
-              </v-btn>
-            </div>
-            
-            <!-- Lead Capture URL -->
-            <div class="text-center">
-              <v-text-field
-                :model-value="getLeadCaptureUrl(selectedEvent.id)"
-                readonly
-                variant="outlined"
-                density="compact"
-                hide-details
-                class="mb-2"
-              >
-                <template #append-inner>
-                  <v-btn 
-                    icon="mdi-open-in-new" 
-                    size="x-small" 
-                    variant="text"
-                    :href="getLeadCaptureUrl(selectedEvent.id)"
-                    target="_blank"
+                  <!-- External Links -->
+                  <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mt-4">
+                    <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
+                    <v-chip
+                      v-for="(link, idx) in selectedEvent.external_links"
+                      :key="idx"
+                      :href="link.url"
+                      target="_blank"
+                      color="primary"
+                      variant="tonal"
+                      class="mr-2 mb-2"
+                    >
+                      <v-icon start size="16">mdi-open-in-new</v-icon>
+                      {{ link.title }}
+                    </v-chip>
+                  </div>
+
+                  <!-- Attachments -->
+                  <div v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0" class="mt-4">
+                    <p class="text-overline text-grey mb-2">ATTACHMENTS</p>
+                    <v-chip
+                      v-for="(att, idx) in selectedEvent.attachments"
+                      :key="idx"
+                      :href="att.url"
+                      target="_blank"
+                      color="secondary"
+                      variant="tonal"
+                      class="mr-2 mb-2"
+                    >
+                      <v-icon start size="16">mdi-file-document</v-icon>
+                      {{ att.name }}
+                    </v-chip>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+
+            <!-- STATS & PERFORMANCE TAB -->
+            <v-tabs-window-item value="stats">
+              <v-row>
+                <!-- Stats Cards Row -->
+                <v-col cols="6" md="3">
+                  <v-card color="info" variant="tonal" class="text-center pa-4">
+                    <v-icon size="36" color="info">mdi-account-group</v-icon>
+                    <div class="text-h4 font-weight-bold mt-2">{{ selectedEvent.visitors_count || 0 }}</div>
+                    <div class="text-caption">Visitors</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card color="success" variant="tonal" class="text-center pa-4">
+                    <v-icon size="36" color="success">mdi-currency-usd</v-icon>
+                    <div class="text-h4 font-weight-bold mt-2">${{ (selectedEvent.revenue_generated || 0).toLocaleString() }}</div>
+                    <div class="text-caption">Revenue</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card color="secondary" variant="tonal" class="text-center pa-4">
+                    <v-icon size="36" color="secondary">mdi-account-plus</v-icon>
+                    <div class="text-h4 font-weight-bold mt-2">{{ getLeadCount(selectedEvent.id) }}</div>
+                    <div class="text-caption">Leads Captured</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card color="warning" variant="tonal" class="text-center pa-4">
+                    <v-icon size="36" color="warning">mdi-package-variant</v-icon>
+                    <div class="text-h4 font-weight-bold mt-2">{{ (selectedEvent.inventory_used || []).length }}</div>
+                    <div class="text-caption">Inventory Items</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <!-- Editable Stats Section -->
+              <v-row>
+                <v-col cols="12" md="6">
+                  <p class="text-overline text-grey mb-3">UPDATE PERFORMANCE METRICS</p>
+                  <v-text-field
+                    :model-value="selectedEvent.visitors_count || 0"
+                    label="Visitors Count"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    prepend-inner-icon="mdi-account-group"
+                    min="0"
+                    class="mb-3"
+                    @update:model-value="updateEventStat('visitors_count', Number($event))"
                   />
-                </template>
-              </v-text-field>
-              <p class="text-caption text-grey">Visitors can scan or visit this link to submit their info</p>
-            </div>
-          </div>
+                  <v-text-field
+                    :model-value="selectedEvent.revenue_generated || 0"
+                    label="Revenue Generated"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    prepend-inner-icon="mdi-currency-usd"
+                    prefix="$"
+                    min="0"
+                    class="mb-3"
+                    @update:model-value="updateEventStat('revenue_generated', Number($event))"
+                  />
+                  <v-textarea
+                    :model-value="selectedEvent.post_event_notes || ''"
+                    label="Post-Event Notes"
+                    variant="outlined"
+                    density="compact"
+                    rows="3"
+                    placeholder="Notes and observations from after the event..."
+                    @update:model-value="updateEventStat('post_event_notes', $event)"
+                  />
+                </v-col>
 
-          <!-- External Links Section -->
-          <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mb-4">
-            <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item
-                v-for="(link, idx) in selectedEvent.external_links"
-                :key="idx"
-                :href="link.url"
-                target="_blank"
-                class="px-0"
-              >
-                <template #prepend>
-                  <v-icon color="primary" size="20">mdi-open-in-new</v-icon>
-                </template>
-                <v-list-item-title class="text-body-2">{{ link.title }}</v-list-item-title>
-                <v-list-item-subtitle v-if="link.description" class="text-caption">{{ link.description }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </div>
+                <v-col cols="12" md="6">
+                  <div class="d-flex align-center justify-space-between mb-3">
+                    <p class="text-overline text-grey mb-0">INVENTORY USED</p>
+                    <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="openInventoryDialog">
+                      Add Item
+                    </v-btn>
+                  </div>
+                  
+                  <v-card variant="outlined">
+                    <v-list v-if="selectedEvent.inventory_used && selectedEvent.inventory_used.length > 0" density="compact">
+                      <v-list-item
+                        v-for="(item, idx) in selectedEvent.inventory_used"
+                        :key="idx"
+                      >
+                        <template #prepend>
+                          <v-icon color="warning">mdi-package-variant</v-icon>
+                        </template>
+                        <v-list-item-title>{{ item.item_name }}</v-list-item-title>
+                        <v-list-item-subtitle>Quantity: {{ item.quantity_used }}</v-list-item-subtitle>
+                        <template #append>
+                          <v-btn icon size="x-small" variant="text" color="error" @click="removeInventoryItem(idx)">
+                            <v-icon size="small">mdi-delete</v-icon>
+                          </v-btn>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                    <v-card-text v-else class="text-center text-grey py-8">
+                      <v-icon size="48" color="grey-lighten-2">mdi-package-variant-closed</v-icon>
+                      <div class="mt-2">No inventory items tracked yet</div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
 
-          <!-- Attachments Section -->
-          <div v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0" class="mb-4">
-            <p class="text-overline text-grey mb-2">ATTACHMENTS</p>
-            <div class="d-flex flex-wrap gap-2">
-              <v-chip
-                v-for="(att, idx) in selectedEvent.attachments"
-                :key="idx"
-                :href="att.url"
-                target="_blank"
-                color="primary"
-                variant="tonal"
-              >
-                <v-icon start size="16">mdi-file-document</v-icon>
-                {{ att.name }}
-                <v-icon end size="16">mdi-download</v-icon>
-              </v-chip>
-            </div>
-          </div>
+            <!-- LEADS TAB -->
+            <v-tabs-window-item value="leads">
+              <div class="d-flex align-center justify-space-between mb-4">
+                <div>
+                  <p class="text-h6 mb-0">Leads from this Event</p>
+                  <p class="text-caption text-grey">{{ getLeadCount(selectedEvent.id) }} total leads captured</p>
+                </div>
+                <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddLeadDialog">
+                  Add Lead Manually
+                </v-btn>
+              </div>
 
-          <v-divider class="my-4" />
-
-          <!-- Lead Counter -->
-          <div class="d-flex align-center justify-space-between mb-4">
-            <div>
-              <p class="text-overline text-grey mb-0">Leads Generated</p>
-              <p class="text-h4 font-weight-bold">{{ getLeadCount(selectedEvent.id) }}</p>
-            </div>
-            <v-btn color="primary" variant="tonal" prepend-icon="mdi-plus" @click="openAddLeadDialog">
-              Add Lead
-            </v-btn>
-          </div>
-
-          <!-- Recent Leads from this Event -->
-          <v-list v-if="getEventLeads(selectedEvent.id).length > 0" density="compact">
-            <v-list-subheader>Recent Leads</v-list-subheader>
-            <v-list-item
-              v-for="lead in getEventLeads(selectedEvent.id).slice(0, 5)"
-              :key="lead.id"
-            >
-              <v-list-item-title>{{ lead.lead_name }}</v-list-item-title>
-              <v-list-item-subtitle>{{ lead.email || lead.phone }}</v-list-item-subtitle>
-              <template #append>
-                <v-chip :color="getLeadStatusColor(lead.status)" size="x-small">
-                  {{ lead.status }}
-                </v-chip>
-              </template>
-            </v-list-item>
-          </v-list>
-
-          <v-divider class="my-4" />
-
-          <!-- EVENT STATS SECTION -->
-          <p class="text-overline text-grey mb-3">EVENT PERFORMANCE</p>
-          
-          <v-row dense>
-            <!-- Visitors Count -->
-            <v-col cols="6">
-              <v-text-field
-                :model-value="selectedEvent.visitors_count || 0"
-                label="Visitors"
-                type="number"
-                variant="outlined"
-                density="compact"
-                prepend-inner-icon="mdi-account-group"
-                min="0"
-                @update:model-value="updateEventStat('visitors_count', Number($event))"
-              />
-            </v-col>
-            
-            <!-- Revenue Generated -->
-            <v-col cols="6">
-              <v-text-field
-                :model-value="selectedEvent.revenue_generated || 0"
-                label="Revenue Generated"
-                type="number"
-                variant="outlined"
-                density="compact"
-                prepend-inner-icon="mdi-currency-usd"
-                prefix="$"
-                min="0"
-                @update:model-value="updateEventStat('revenue_generated', Number($event))"
-              />
-            </v-col>
-          </v-row>
-
-          <!-- Inventory Used Section -->
-          <div class="mt-4">
-            <div class="d-flex align-center justify-space-between mb-2">
-              <p class="text-subtitle-2 mb-0">Inventory Used</p>
-              <v-btn 
-                size="x-small" 
-                variant="tonal" 
-                color="primary"
-                prepend-icon="mdi-plus"
-                @click="openInventoryDialog"
-              >
-                Add Item
-              </v-btn>
-            </div>
-            
-            <v-list v-if="selectedEvent.inventory_used && selectedEvent.inventory_used.length > 0" density="compact" class="bg-grey-lighten-4 rounded">
-              <v-list-item
-                v-for="(item, idx) in selectedEvent.inventory_used"
-                :key="idx"
-              >
-                <v-list-item-title>{{ item.item_name }}</v-list-item-title>
-                <v-list-item-subtitle>Qty: {{ item.quantity_used }}</v-list-item-subtitle>
-                <template #append>
-                  <v-btn icon size="x-small" variant="text" color="error" @click="removeInventoryItem(idx)">
-                    <v-icon size="small">mdi-delete</v-icon>
+              <v-card variant="outlined">
+                <v-list v-if="getEventLeads(selectedEvent.id).length > 0" lines="two">
+                  <v-list-item
+                    v-for="lead in getEventLeads(selectedEvent.id)"
+                    :key="lead.id"
+                  >
+                    <template #prepend>
+                      <v-avatar color="secondary" size="40">
+                        <span class="text-body-2">{{ lead.lead_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) }}</span>
+                      </v-avatar>
+                    </template>
+                    <v-list-item-title>{{ lead.lead_name }}</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <span v-if="lead.email">{{ lead.email }}</span>
+                      <span v-if="lead.phone" class="ml-2">• {{ lead.phone }}</span>
+                    </v-list-item-subtitle>
+                    <template #append>
+                      <v-chip :color="getLeadStatusColor(lead.status)" size="small">
+                        {{ lead.status }}
+                      </v-chip>
+                    </template>
+                  </v-list-item>
+                </v-list>
+                <v-card-text v-else class="text-center py-12">
+                  <v-icon size="64" color="grey-lighten-2">mdi-account-question</v-icon>
+                  <div class="text-h6 mt-4 text-grey">No leads captured yet</div>
+                  <div class="text-body-2 text-grey mb-4">Share the QR code at your event to capture leads</div>
+                  <v-btn color="primary" variant="tonal" @click="eventProfileTab = 'qrcode'">
+                    View QR Code
                   </v-btn>
-                </template>
-              </v-list-item>
-            </v-list>
-            <p v-else class="text-caption text-grey text-center py-4">No inventory items tracked</p>
-          </div>
+                </v-card-text>
+              </v-card>
+            </v-tabs-window-item>
 
-          <!-- Post-Event Notes -->
-          <div class="mt-4">
-            <v-textarea
-              :model-value="selectedEvent.post_event_notes || ''"
-              label="Post-Event Notes"
-              variant="outlined"
-              density="compact"
-              rows="3"
-              placeholder="Notes from after the event..."
-              @update:model-value="updateEventStat('post_event_notes', $event)"
-            />
-          </div>
-        </div>
-      </template>
-    </v-navigation-drawer>
+            <!-- QR CODE TAB -->
+            <v-tabs-window-item value="qrcode">
+              <v-row>
+                <v-col cols="12" md="6" class="text-center">
+                  <p class="text-overline text-grey mb-3">LEAD CAPTURE QR CODE</p>
+                  <v-card variant="outlined" class="pa-6">
+                    <div class="bg-white pa-4 rounded-lg d-inline-block">
+                      <QrcodeVue 
+                        :value="getLeadCaptureUrl(selectedEvent.id)"
+                        :size="250"
+                        level="M"
+                        render-as="canvas"
+                        :id="`qr-canvas-${selectedEvent.id}`"
+                      />
+                    </div>
+                    <div class="mt-4">
+                      <v-btn color="primary" prepend-icon="mdi-download" class="mr-2" @click="downloadQrCode(selectedEvent)">
+                        Download
+                      </v-btn>
+                      <v-btn variant="outlined" prepend-icon="mdi-content-copy" @click="copyLeadCaptureUrl">
+                        Copy Link
+                      </v-btn>
+                    </div>
+                  </v-card>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <p class="text-overline text-grey mb-3">LEAD CAPTURE URL</p>
+                  <v-text-field
+                    :model-value="getLeadCaptureUrl(selectedEvent.id)"
+                    readonly
+                    variant="outlined"
+                    density="compact"
+                    class="mb-4"
+                  >
+                    <template #append-inner>
+                      <v-btn icon size="small" variant="text" :href="getLeadCaptureUrl(selectedEvent.id)" target="_blank">
+                        <v-icon>mdi-open-in-new</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-text-field>
+                  
+                  <v-alert type="info" variant="tonal" class="mb-4">
+                    <div class="text-subtitle-2">How to use:</div>
+                    <ol class="text-body-2 mt-2 mb-0">
+                      <li>Print or display the QR code at your event booth</li>
+                      <li>Visitors scan the code with their phone</li>
+                      <li>They fill out the lead capture form</li>
+                      <li>Leads appear automatically in this event's Leads tab</li>
+                    </ol>
+                  </v-alert>
+
+                  <v-card variant="outlined">
+                    <v-card-text class="text-center">
+                      <div class="text-h4 font-weight-bold text-secondary">{{ getLeadCount(selectedEvent.id) }}</div>
+                      <div class="text-caption">Leads captured via QR code</div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+          </v-tabs-window>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" prepend-icon="mdi-pencil" @click="drawer = false; openEditDialog()">
+            Edit Event
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="drawer = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Create/Edit Event Dialog -->
     <v-dialog v-model="eventDialog" max-width="800" scrollable>
@@ -937,6 +1028,7 @@ const leadDialog = ref(false)
 const editMode = ref(false)
 const formValid = ref(false)
 const leadFormValid = ref(false)
+const eventProfileTab = ref('details')
 
 // Snackbar
 const snackbar = ref(false)
