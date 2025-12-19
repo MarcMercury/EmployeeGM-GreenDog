@@ -72,6 +72,23 @@ export const useToast = () => {
      */
     clear() {
       uiStore.clearNotifications()
+    },
+
+    // Aliases for compatibility with existing code patterns
+    showSuccess(message: string, options?: { timeout?: number }) {
+      this.success(message, options)
+    },
+
+    showError(message: string, options?: { timeout?: number }) {
+      this.error(message, options)
+    },
+
+    showInfo(message: string, options?: { timeout?: number }) {
+      this.info(message, options)
+    },
+
+    showWarning(message: string, options?: { timeout?: number }) {
+      this.warning(message, options)
     }
   }
 }

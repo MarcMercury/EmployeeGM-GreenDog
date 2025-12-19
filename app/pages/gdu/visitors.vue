@@ -6,6 +6,11 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
+const { showSuccess, showError } = useToast()
+
+// Loading states
+const saving = ref(false)
+const deleting = ref<string | null>(null)
 
 // Types
 interface Visitor {
@@ -237,17 +242,25 @@ function openEditDialog(visitor: Visitor) {
 }
 
 async function saveVisitor() {
-  const payload = {
-    first_name: formData.value.first_name,
-    last_name: formData.value.last_name,
-    email: formData.value.email || null,
-    phone: formData.value.phone || null,
-    visitor_type: formData.value.visitor_type,
-    organization_name: formData.value.organization_name || null,
-    school_of_origin: formData.value.school_of_origin || null,
-    program_name: formData.value.program_name || null,
-    visit_start_date: formData.value.visit_start_date || null,
-    visit_end_date: formData.value.visit_end_date || null,
+  if (!formData.value.first_name || !formData.value.last_name) {
+    showError('First and last name are required')
+    return
+  }
+  
+  saving.value = true
+  
+  try {
+    const payload = {
+      first_name: formData.value.first_name,
+      last_name: formData.value.last_name,
+      email: formData.value.email || null,
+      phone: formData.value.phone || null,
+      visitor_type: formData.value.visitor_type,
+      organization_name: formData.value.organization_name || null,
+      school_of_origin: formData.value.school_of_origin || null,
+      program_name: formData.value.program_name || null,
+      visit_start_date: formData.value.visit_start_date || null,
+      visit_end_date: formData.value.visit_end_date || null,
     lead_source: formData.value.lead_source || null,
     referral_name: formData.value.referral_name || null,
     notes: formData.value.notes || null,
@@ -261,39 +274,69 @@ async function saveVisitor() {
     recruitment_channel: formData.value.recruitment_channel || null
   }
   
-  if (editingVisitor.value) {
-    await supabase
-      .from('education_visitors')
-      .update(payload)
-      .eq('id', editingVisitor.value.id)
-  } else {
-    await supabase
-      .from('education_visitors')
-      .insert(payload)
+    if (editingVisitor.value) {
+      const { error } = await supabase
+        .from('education_visitors')
+        .update(payload)
+        .eq('id', editingVisitor.value.id)
+      
+      if (error) throw error
+      showSuccess('Visitor updated successfully')
+    } else {
+      const { error } = await supabase
+        .from('education_visitors')
+        .insert(payload)
+      
+      if (error) throw error
+      showSuccess('Visitor added successfully')
+    }
+    
+    dialogOpen.value = false
+    refresh()
+  } catch (error: any) {
+    console.error('Error saving visitor:', error)
+    showError(error.message || 'Failed to save visitor')
+  } finally {
+    saving.value = false
   }
-  
-  dialogOpen.value = false
-  refresh()
 }
 
 async function deleteVisitor(id: string) {
   if (!confirm('Are you sure you want to delete this visitor?')) return
   
-  await supabase
-    .from('education_visitors')
-    .delete()
-    .eq('id', id)
+  deleting.value = id
   
-  refresh()
+  try {
+    const { error } = await supabase
+      .from('education_visitors')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    showSuccess('Visitor deleted')
+    refresh()
+  } catch (error: any) {
+    console.error('Error deleting visitor:', error)
+    showError(error.message || 'Failed to delete visitor')
+  } finally {
+    deleting.value = null
+  }
 }
 
 async function toggleActive(visitor: Visitor) {
-  await supabase
-    .from('education_visitors')
-    .update({ is_active: !visitor.is_active })
-    .eq('id', visitor.id)
-  
-  refresh()
+  try {
+    const { error } = await supabase
+      .from('education_visitors')
+      .update({ is_active: !visitor.is_active })
+      .eq('id', visitor.id)
+    
+    if (error) throw error
+    showSuccess(visitor.is_active ? 'Visitor marked inactive' : 'Visitor marked active')
+    refresh()
+  } catch (error: any) {
+    console.error('Error toggling visitor status:', error)
+    showError(error.message || 'Failed to update status')
+  }
 }
 
 function getTypeColor(type: string): string {
@@ -559,6 +602,7 @@ function getStatusLabel(status: string | null): string {
                 variant="text"
                 size="small"
                 color="error"
+                :loading="deleting === visitor.id"
                 @click.stop="deleteVisitor(visitor.id)"
               >
                 <v-icon>mdi-delete</v-icon>
@@ -797,8 +841,8 @@ function getStatusLabel(status: string | null): string {
         
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="dialogOpen = false">Cancel</v-btn>
-          <v-btn color="primary" @click="saveVisitor">
+          <v-btn variant="text" :disabled="saving" @click="dialogOpen = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" :disabled="!formData.first_name || !formData.last_name" @click="saveVisitor">
             {{ editingVisitor ? 'Save Changes' : 'Add Visitor' }}
           </v-btn>
         </v-card-actions>
