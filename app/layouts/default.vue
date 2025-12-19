@@ -404,10 +404,6 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">📅</div>
                   CE Events
                 </NuxtLink>
-                <NuxtLink to="/gdu/events/new" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">✨</div>
-                  New CE Event
-                </NuxtLink>
               </div>
             </div>
           </template>
