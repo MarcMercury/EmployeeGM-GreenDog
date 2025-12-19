@@ -893,15 +893,24 @@ async function deleteContact(contactId: string) {
 
 // Update relationship fields
 async function updatePartnerRelationship(field: string, value: any) {
-  if (!selectedPartner.value) return
+  if (!selectedPartner.value) {
+    console.error('[Partners] No selectedPartner for update')
+    return
+  }
   
-  const { error } = await supabase
+  console.log('[Partners] Updating field:', field, 'to value:', value, 'for partner:', selectedPartner.value.id)
+  
+  const { data, error } = await supabase
     .from('marketing_partners')
     .update({ [field]: value })
     .eq('id', selectedPartner.value.id)
+    .select()
+  
+  console.log('[Partners] Update result - data:', data, 'error:', error)
   
   if (error) {
-    showError('Failed to update')
+    console.error('[Partners] Update failed:', error)
+    showError('Failed to update: ' + error.message)
     return
   }
   
@@ -910,8 +919,16 @@ async function updatePartnerRelationship(field: string, value: any) {
     (selectedPartner.value as any)[field] = value
   }
   
+  // Also update the partner in the main list
+  if (partners.value) {
+    const partnerIndex = partners.value.findIndex(p => p.id === selectedPartner.value?.id)
+    if (partnerIndex !== -1) {
+      (partners.value[partnerIndex] as any)[field] = value
+    }
+  }
+  
   showSuccess('Updated')
-  refresh()
+  await refresh()
 }
 
 // Get note type icon
