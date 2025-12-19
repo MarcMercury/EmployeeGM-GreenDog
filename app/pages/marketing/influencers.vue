@@ -2,7 +2,7 @@
 // Redirect to resources page with influencers tab
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'marketing-admin']
 })
 
 const router = useRouter()

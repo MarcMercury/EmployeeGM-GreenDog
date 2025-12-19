@@ -708,7 +708,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'marketing-admin']
 })
 
 useHead({ title: 'Medical Partnerships CRM' })

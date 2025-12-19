@@ -311,7 +311,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'marketing-admin']
 })
 
 // Get admin status
