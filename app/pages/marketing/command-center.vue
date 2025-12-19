@@ -43,6 +43,19 @@ const { data: inventoryStats } = await useAsyncData('inventory-stats', async () 
   return { total, lowStock }
 })
 
+const { data: referralStats } = await useAsyncData('referral-stats', async () => {
+  const { data: referrals } = await supabase
+    .from('referral_partners')
+    .select('id, status, referral_type')
+  
+  const total = referrals?.length || 0
+  const active = referrals?.filter(r => r.status === 'active').length || 0
+  const vets = referrals?.filter(r => r.referral_type === 'vet').length || 0
+  const groomers = referrals?.filter(r => r.referral_type === 'groomer').length || 0
+  
+  return { total, active, vets, groomers }
+})
+
 const hubs = computed(() => [
   {
     title: 'Partnership CRM Hub',
@@ -79,6 +92,19 @@ const hubs = computed(() => [
       { label: 'Total Items', value: inventoryStats.value?.total || 0 },
       { label: 'Low Stock', value: inventoryStats.value?.lowStock || 0, alert: (inventoryStats.value?.lowStock || 0) > 0 }
     ]
+  },
+  {
+    title: 'Referral Partners Hub',
+    subtitle: 'Vets, Groomers, Trainers & More',
+    icon: 'mdi-account-group',
+    color: 'success',
+    to: '/marketing/partnerships',
+    stats: [
+      { label: 'Total Referrals', value: referralStats.value?.total || 0 },
+      { label: 'Active', value: referralStats.value?.active || 0 },
+      { label: 'Vets', value: referralStats.value?.vets || 0 },
+      { label: 'Groomers', value: referralStats.value?.groomers || 0 }
+    ]
   }
 ])
 
@@ -94,9 +120,9 @@ function formatNumber(num: number): string {
     <!-- Header -->
     <div class="d-flex align-center mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold">Marketing Command Center</h1>
+        <h1 class="text-h4 font-weight-bold">Marketing Dash</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage partnerships, influencers, and inventory from one place
+          Manage partnerships, referrals, influencers, and inventory from one place
         </p>
       </div>
       <v-spacer />
@@ -237,6 +263,17 @@ function formatNumber(num: number): string {
                   to="/marketing/inventory?filter=low_stock"
                 >
                   View Low Stock
+                </v-btn>
+              </v-col>
+              <v-col cols="12" sm="6" md="3">
+                <v-btn
+                  block
+                  color="success"
+                  variant="tonal"
+                  prepend-icon="mdi-account-plus"
+                  to="/marketing/partnerships?action=add"
+                >
+                  Add Referral
                 </v-btn>
               </v-col>
             </v-row>

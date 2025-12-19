@@ -96,10 +96,10 @@ function getVisitorTypeIcon(type: string): string {
     <div class="d-flex align-center mb-6">
       <div>
         <h1 class="text-h4 font-weight-bold">
-          🎓 Green Dog University
+          🎓 GDU Dash
         </h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Education Management System - Visitor CRM & CE Events
+          Green Dog University - Education Management System
         </p>
       </div>
       <v-spacer />

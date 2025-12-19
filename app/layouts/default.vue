@@ -355,11 +355,11 @@ async function handleSignOut() {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.marketing }">
-              <!-- Command Center - admin/marketing_admin only -->
+              <!-- Marketing Dash - admin/marketing_admin only -->
               <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/marketing/command-center" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎯</div>
-                  Command Center
+                  Marketing Dash
                 </NuxtLink>
               </template>
               
@@ -424,7 +424,7 @@ async function handleSignOut() {
               <div class="section-content" :class="{ 'section-open': sections.gdu }">
                 <NuxtLink to="/gdu" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏠</div>
-                  Dashboard
+                  GDU Dash
                 </NuxtLink>
                 <NuxtLink to="/gdu/visitors" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
