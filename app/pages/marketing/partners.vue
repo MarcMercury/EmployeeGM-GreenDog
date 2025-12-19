@@ -139,8 +139,33 @@ const partnerTypes = [
   { title: 'Other', value: 'other' }
 ]
 
+// Partner type options for profile editing (without "All Types")
+const partnerTypeEditOptions = [
+  { title: 'Pet Business', value: 'pet_business' },
+  { title: 'Exotic Shop', value: 'exotic_shop' },
+  { title: 'Rescue', value: 'rescue' },
+  { title: 'Influencer', value: 'influencer' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Print Vendor', value: 'print_vendor' },
+  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Food & Beverage', value: 'food_vendor' },
+  { title: 'Association', value: 'association' },
+  { title: 'Spay & Neuter', value: 'spay_neuter' },
+  { title: 'Other', value: 'other' }
+]
+
 const statusOptions = [
   { title: 'All Statuses', value: null },
+  { title: 'Active', value: 'active' },
+  { title: 'Pending', value: 'pending' },
+  { title: 'Expired', value: 'expired' },
+  { title: 'Inactive', value: 'inactive' },
+  { title: 'Prospect', value: 'prospect' },
+  { title: 'Completed', value: 'completed' }
+]
+
+// Status options for profile editing (without "All Statuses")
+const statusEditOptions = [
   { title: 'Active', value: 'active' },
   { title: 'Pending', value: 'pending' },
   { title: 'Expired', value: 'expired' },
@@ -1571,6 +1596,28 @@ function getPriorityColor(priority: string | null | undefined): string {
             <!-- Overview Tab -->
             <v-tabs-window-item value="overview">
               <v-row>
+                <!-- Category & Status Dropdowns -->
+                <v-col cols="12" md="6">
+                  <v-select
+                    :model-value="selectedPartner.partner_type"
+                    :items="partnerTypeEditOptions"
+                    label="Category"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('partner_type', $event)"
+                  />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-select
+                    :model-value="selectedPartner.status"
+                    :items="statusEditOptions"
+                    label="Status"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('status', $event)"
+                  />
+                </v-col>
+
                 <v-col cols="12" md="6">
                   <v-list density="compact">
                     <v-list-subheader>Contact Information</v-list-subheader>
