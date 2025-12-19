@@ -1196,7 +1196,7 @@
           <v-btn 
             color="primary" 
             :loading="uploadProcessing" 
-            :disabled="!uploadFile?.length || uploadProcessing"
+            :disabled="!hasUploadFile || uploadProcessing"
             @click="processUpload"
           >
             Process Report
@@ -1237,9 +1237,16 @@ const filterFollowup = ref('all')
 
 // Upload EzyVet Report state
 const showUploadDialog = ref(false)
-const uploadFile = ref<File[]>([])
+const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
+
+// Computed to check if file is selected
+const hasUploadFile = computed(() => {
+  if (!uploadFile.value) return false
+  if (Array.isArray(uploadFile.value)) return uploadFile.value.length > 0
+  return true
+})
 
 // Data
 const partners = ref<any[]>([])
@@ -1973,16 +1980,19 @@ function exportPartners() {
 
 // Upload EzyVet Report functions
 async function processUpload() {
-  if (!uploadFile.value?.length) return
+  if (!hasUploadFile.value || !uploadFile.value) return
   
   uploadProcessing.value = true
   uploadResult.value = null
   
   try {
     const formData = new FormData()
-    formData.append('file', uploadFile.value[0])
+    const file = Array.isArray(uploadFile.value) ? uploadFile.value[0] : uploadFile.value
+    if (file) {
+      formData.append('file', file)
+    }
     
-    const response = await $fetch('/api/parse-referrals', {
+    const response = await $fetch<any>('/api/parse-referrals', {
       method: 'POST',
       body: formData
     })
@@ -2012,7 +2022,7 @@ async function processUpload() {
 
 function closeUploadDialog() {
   showUploadDialog.value = false
-  uploadFile.value = []
+  uploadFile.value = null
   uploadResult.value = null
 }
 
