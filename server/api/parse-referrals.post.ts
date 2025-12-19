@@ -287,8 +287,19 @@ export default defineEventHandler(async (event) => {
     }
     
     // Parse PDF using pdf-parse v2 API
-    const parser = new PDFParse({ data: file.data })
-    const text = await parser.getText()
+    let text: string
+    try {
+      console.log('[parse-referrals] Creating PDFParse instance with buffer size:', file.data.length)
+      const parser = new PDFParse({ data: file.data })
+      text = await parser.getText()
+      console.log('[parse-referrals] PDF parsed successfully, text length:', text.length)
+    } catch (pdfError: any) {
+      console.error('[parse-referrals] PDF parsing error:', pdfError)
+      throw createError({ 
+        statusCode: 500, 
+        message: `Failed to parse PDF: ${pdfError.message || 'Unknown error'}` 
+      })
+    }
     
     // Extract date range from header
     const startMatch = text.match(/START\s+(\d{2}-\d{2}-\d{4})/)
