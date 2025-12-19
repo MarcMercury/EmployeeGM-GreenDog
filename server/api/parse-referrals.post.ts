@@ -4,7 +4,7 @@
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import pdf from 'pdf-parse'
+import PDFParse from 'pdf-parse'
 
 interface ParsedReferral {
   clinicName: string
@@ -286,9 +286,9 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'No PDF file found' })
     }
     
-    // Parse PDF
-    const pdfData = await pdf(file.data)
-    const text = pdfData.text
+    // Parse PDF using pdf-parse v2 API
+    const parser = new PDFParse({ data: file.data })
+    const text = await parser.getText()
     
     // Extract date range from header
     const startMatch = text.match(/START\s+(\d{2}-\d{2}-\d{4})/)
