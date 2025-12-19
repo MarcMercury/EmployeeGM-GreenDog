@@ -74,5 +74,12 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
     typeCheck: false // Disable for development
+  },
+
+  // Nitro configuration for server-side packages
+  nitro: {
+    externals: {
+      inline: ['pdf-parse']
+    }
   }
 })
