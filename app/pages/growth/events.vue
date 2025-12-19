@@ -361,6 +361,87 @@
               </template>
             </v-list-item>
           </v-list>
+
+          <v-divider class="my-4" />
+
+          <!-- EVENT STATS SECTION -->
+          <p class="text-overline text-grey mb-3">EVENT PERFORMANCE</p>
+          
+          <v-row dense>
+            <!-- Visitors Count -->
+            <v-col cols="6">
+              <v-text-field
+                :model-value="selectedEvent.visitors_count || 0"
+                label="Visitors"
+                type="number"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-account-group"
+                min="0"
+                @update:model-value="updateEventStat('visitors_count', Number($event))"
+              />
+            </v-col>
+            
+            <!-- Revenue Generated -->
+            <v-col cols="6">
+              <v-text-field
+                :model-value="selectedEvent.revenue_generated || 0"
+                label="Revenue Generated"
+                type="number"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-currency-usd"
+                prefix="$"
+                min="0"
+                @update:model-value="updateEventStat('revenue_generated', Number($event))"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Inventory Used Section -->
+          <div class="mt-4">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <p class="text-subtitle-2 mb-0">Inventory Used</p>
+              <v-btn 
+                size="x-small" 
+                variant="tonal" 
+                color="primary"
+                prepend-icon="mdi-plus"
+                @click="openInventoryDialog"
+              >
+                Add Item
+              </v-btn>
+            </div>
+            
+            <v-list v-if="selectedEvent.inventory_used && selectedEvent.inventory_used.length > 0" density="compact" class="bg-grey-lighten-4 rounded">
+              <v-list-item
+                v-for="(item, idx) in selectedEvent.inventory_used"
+                :key="idx"
+              >
+                <v-list-item-title>{{ item.item_name }}</v-list-item-title>
+                <v-list-item-subtitle>Qty: {{ item.quantity_used }}</v-list-item-subtitle>
+                <template #append>
+                  <v-btn icon size="x-small" variant="text" color="error" @click="removeInventoryItem(idx)">
+                    <v-icon size="small">mdi-delete</v-icon>
+                  </v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
+            <p v-else class="text-caption text-grey text-center py-4">No inventory items tracked</p>
+          </div>
+
+          <!-- Post-Event Notes -->
+          <div class="mt-4">
+            <v-textarea
+              :model-value="selectedEvent.post_event_notes || ''"
+              label="Post-Event Notes"
+              variant="outlined"
+              density="compact"
+              rows="3"
+              placeholder="Notes from after the event..."
+              @update:model-value="updateEventStat('post_event_notes', $event)"
+            />
+          </div>
         </div>
       </template>
     </v-navigation-drawer>
@@ -726,6 +807,45 @@
       </v-card>
     </v-dialog>
 
+    <!-- Add Inventory Item Dialog -->
+    <v-dialog v-model="inventoryDialog" max-width="400">
+      <v-card rounded="lg">
+        <v-card-title class="bg-primary text-white py-4">
+          <v-icon start>mdi-package-variant</v-icon>
+          Add Inventory Item
+        </v-card-title>
+        <v-card-text class="pt-6">
+          <v-text-field
+            v-model="inventoryItemForm.item_name"
+            label="Item Name *"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., Flyers, Brochures, Swag Bags"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model.number="inventoryItemForm.quantity_used"
+            label="Quantity Used"
+            type="number"
+            variant="outlined"
+            density="compact"
+            min="1"
+          />
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer />
+          <v-btn variant="text" @click="inventoryDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :disabled="!inventoryItemForm.item_name.trim()"
+            @click="addInventoryItem"
+          >
+            Add Item
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
       {{ snackbarText }}
@@ -767,6 +887,16 @@ interface MarketingEvent {
   leads_collected: number
   attachments: EventAttachment[]
   external_links: ExternalLink[]
+  // Event Stats
+  visitors_count: number
+  revenue_generated: number
+  inventory_used: InventoryUsedItem[]
+}
+
+interface InventoryUsedItem {
+  item_id: string
+  item_name: string
+  quantity_used: number
 }
 
 interface EventAttachment {
@@ -1094,6 +1224,96 @@ const openAddLeadDialog = () => {
     notes: ''
   })
   leadDialog.value = true
+}
+
+// =====================================================
+// EVENT STATS FUNCTIONS
+// =====================================================
+
+// Inventory dialog state
+const inventoryDialog = ref(false)
+const inventoryItemForm = reactive({
+  item_name: '',
+  quantity_used: 1
+})
+
+// Update event stat field
+const updateEventStat = async (field: string, value: any) => {
+  if (!selectedEvent.value) return
+  
+  const { error } = await client
+    .from('marketing_events')
+    .update({ [field]: value })
+    .eq('id', selectedEvent.value.id)
+  
+  if (error) {
+    showNotification('Failed to update: ' + error.message, 'error')
+    return
+  }
+  
+  // Update local state
+  ;(selectedEvent.value as any)[field] = value
+  
+  // Update in events array
+  const idx = events.value.findIndex(e => e.id === selectedEvent.value?.id)
+  if (idx !== -1) {
+    ;(events.value[idx] as any)[field] = value
+  }
+}
+
+// Open inventory dialog
+const openInventoryDialog = () => {
+  inventoryItemForm.item_name = ''
+  inventoryItemForm.quantity_used = 1
+  inventoryDialog.value = true
+}
+
+// Add inventory item
+const addInventoryItem = async () => {
+  if (!selectedEvent.value || !inventoryItemForm.item_name.trim()) return
+  
+  const newItem: InventoryUsedItem = {
+    item_id: crypto.randomUUID(),
+    item_name: inventoryItemForm.item_name.trim(),
+    quantity_used: inventoryItemForm.quantity_used
+  }
+  
+  const updatedInventory = [...(selectedEvent.value.inventory_used || []), newItem]
+  
+  const { error } = await client
+    .from('marketing_events')
+    .update({ inventory_used: updatedInventory })
+    .eq('id', selectedEvent.value.id)
+  
+  if (error) {
+    showNotification('Failed to add inventory item: ' + error.message, 'error')
+    return
+  }
+  
+  selectedEvent.value.inventory_used = updatedInventory
+  inventoryDialog.value = false
+  showNotification('Inventory item added')
+}
+
+// Remove inventory item
+const removeInventoryItem = async (index: number) => {
+  if (!selectedEvent.value) return
+  
+  const updatedInventory = [...(selectedEvent.value.inventory_used || [])]
+  updatedInventory.splice(index, 1)
+  
+  const { error } = await client
+    .from('marketing_events')
+    .update({ inventory_used: updatedInventory })
+    .eq('id', selectedEvent.value.id)
+  
+  if (error) {
+    showNotification('Failed to remove inventory item: ' + error.message, 'error')
+    return
+  }
+  
+  selectedEvent.value.inventory_used = updatedInventory
+  showNotification('Inventory item removed')
 }
 
 // External links management

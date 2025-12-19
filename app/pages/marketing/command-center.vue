@@ -56,6 +56,32 @@ const { data: referralStats } = await useAsyncData('referral-stats', async () =>
   return { total, active, platinum, gold }
 })
 
+// Fetch current month event stats
+const { data: eventStats } = await useAsyncData('event-stats', async () => {
+  const now = new Date()
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+  const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+  
+  const { data: events } = await supabase
+    .from('marketing_events')
+    .select('id, event_date, visitors_count, revenue_generated, leads_collected')
+    .gte('event_date', firstOfMonth)
+    .lte('event_date', lastOfMonth)
+  
+  const { data: leads } = await supabase
+    .from('marketing_leads')
+    .select('id, event_id, created_at')
+    .gte('created_at', firstOfMonth + 'T00:00:00')
+    .lte('created_at', lastOfMonth + 'T23:59:59')
+  
+  const totalEvents = events?.length || 0
+  const totalVisitors = events?.reduce((sum, e) => sum + (e.visitors_count || 0), 0) || 0
+  const totalRevenue = events?.reduce((sum, e) => sum + (e.revenue_generated || 0), 0) || 0
+  const totalLeads = leads?.length || 0
+  
+  return { totalEvents, totalVisitors, totalRevenue, totalLeads }
+})
+
 const hubs = computed(() => [
   {
     title: 'Partnership CRM Hub',
@@ -107,6 +133,11 @@ const hubs = computed(() => [
     ]
   }
 ])
+
+// Current month name for Events tile
+const currentMonthName = computed(() => {
+  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+})
 
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
@@ -207,6 +238,49 @@ function formatNumber(num: number): string {
               View All
             </v-btn>
           </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Events Stats Tile - Current Month Summary -->
+    <v-row class="mt-4">
+      <v-col cols="12">
+        <v-card color="info" variant="tonal">
+          <v-card-item>
+            <template #prepend>
+              <v-avatar color="info" size="48">
+                <v-icon icon="mdi-calendar-star" size="24" color="white" />
+              </v-avatar>
+            </template>
+            <v-card-title class="text-h6">Events Performance - {{ currentMonthName }}</v-card-title>
+            <v-card-subtitle>Monthly event summary at a glance</v-card-subtitle>
+            <template #append>
+              <v-btn color="info" variant="outlined" to="/growth/events" append-icon="mdi-arrow-right">
+                View All Events
+              </v-btn>
+            </template>
+          </v-card-item>
+          
+          <v-card-text>
+            <v-row>
+              <v-col cols="6" sm="3" class="text-center">
+                <div class="text-h4 font-weight-bold text-info">{{ eventStats?.totalEvents || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Events This Month</div>
+              </v-col>
+              <v-col cols="6" sm="3" class="text-center">
+                <div class="text-h4 font-weight-bold text-success">{{ eventStats?.totalVisitors || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Total Visitors</div>
+              </v-col>
+              <v-col cols="6" sm="3" class="text-center">
+                <div class="text-h4 font-weight-bold text-secondary">{{ eventStats?.totalLeads || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Leads Captured</div>
+              </v-col>
+              <v-col cols="6" sm="3" class="text-center">
+                <div class="text-h4 font-weight-bold text-warning">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
+                <div class="text-caption text-medium-emphasis">Revenue Generated</div>
+              </v-col>
+            </v-row>
+          </v-card-text>
         </v-card>
       </v-col>
     </v-row>
