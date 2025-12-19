@@ -1,11 +1,19 @@
 import { defineStore } from 'pinia'
-import type { Profile, ProfileUpdate, UserRole } from '~/types/database.types'
+import type { Profile, ProfileUpdate, UserRole, ROLE_HIERARCHY } from '~/types'
 
 interface AuthState {
   profile: Profile | null
   isLoading: boolean
   error: string | null
   initialized: boolean
+}
+
+// Role hierarchy for access level comparisons
+const roleHierarchy: Record<string, number> = {
+  admin: 100,
+  office_admin: 50,
+  marketing_admin: 40,
+  user: 10
 }
 
 // Helper to get supabase client safely in Pinia
@@ -25,8 +33,34 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => !!state.profile,
+    
+    // Role checks
+    userRole: (state): UserRole => (state.profile?.role as UserRole) || 'user',
     isAdmin: (state) => state.profile?.role === 'admin',
+    isOfficeAdmin: (state) => state.profile?.role === 'office_admin',
+    isMarketingAdmin: (state) => state.profile?.role === 'marketing_admin',
     isUser: (state) => state.profile?.role === 'user',
+    
+    // Access level checks (for section visibility)
+    hasManagementAccess: (state) => ['admin', 'office_admin'].includes(state.profile?.role || ''),
+    hasMarketingEditAccess: (state) => ['admin', 'marketing_admin'].includes(state.profile?.role || ''),
+    hasGduAccess: (state) => ['admin', 'marketing_admin'].includes(state.profile?.role || ''),
+    hasAdminOpsAccess: (state) => state.profile?.role === 'admin',
+    
+    // Role tier for comparison
+    roleTier: (state): number => roleHierarchy[state.profile?.role || 'user'] || 10,
+    
+    // Display helpers
+    roleDisplayName: (state): string => {
+      const names: Record<string, string> = {
+        admin: '⭐ System Admin',
+        office_admin: '🏢 Office Admin',
+        marketing_admin: '📣 Marketing Admin',
+        user: 'Team Member'
+      }
+      return names[state.profile?.role || 'user'] || 'Team Member'
+    },
+    
     fullName: (state) => {
       if (!state.profile) return ''
       return `${state.profile.first_name || ''} ${state.profile.last_name || ''}`.trim() || state.profile.email
@@ -152,8 +186,27 @@ export const useAuthStore = defineStore('auth', {
       return this.profile?.role === role
     },
 
+    // Check if user has at least the specified role tier
+    hasMinimumRole(role: UserRole): boolean {
+      const requiredTier = roleHierarchy[role] || 0
+      const userTier = roleHierarchy[this.profile?.role || 'user'] || 10
+      return userTier >= requiredTier
+    },
+
     canManage(): boolean {
-      return this.isAdmin
+      return this.hasManagementAccess
+    },
+
+    canEditMarketing(): boolean {
+      return this.hasMarketingEditAccess
+    },
+
+    canAccessGdu(): boolean {
+      return this.hasGduAccess
+    },
+
+    canAccessAdminOps(): boolean {
+      return this.hasAdminOpsAccess
     },
 
     $reset() {

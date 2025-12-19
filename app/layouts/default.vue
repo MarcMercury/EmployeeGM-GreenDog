@@ -7,14 +7,14 @@ const supabase = useSupabaseClient()
 const sidebarCollapsed = ref(false)
 
 // Collapsible section states - all collapsed by default
-// NEW 3-TIER STRUCTURE: My Workspace (all), Management (manager+), Admin Ops (admin)
+// 4-TIER ROLE STRUCTURE: admin, office_admin, marketing_admin, user
 const sections = ref({
-  myWorkspace: false,    // Personal: My Schedule, My Skills, My Growth, My Time Off, My Training
-  management: false,     // Manager+: Roster, Team Schedule, Recruiting, Approvals
-  medOps: false,         // All users: Med Ops tools
-  marketing: false,      // All/Admin: Marketing tools
-  gdu: false,            // GDU: Green Dog University - Education module
-  adminOps: false        // Admin only: Settings, Course Manager, Payroll, Skill Library
+  myWorkspace: false,    // All users: My Schedule, My Skills, My Growth, My Time Off, My Training
+  management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
+  medOps: false,         // All users (view), admin/office_admin (edit)
+  marketing: false,      // All users (view), admin/marketing_admin (edit)
+  gdu: false,            // admin, marketing_admin: GDU University
+  adminOps: false        // admin only: Settings, Course Manager, Payroll, Skill Library
 })
 
 const toggleSection = (section: keyof typeof sections.value) => {
@@ -39,12 +39,35 @@ await callOnce(async () => {
 
 // Use profile from either source - prefer currentUserProfile from useAppData
 const profile = computed(() => currentUserProfile.value || authStore.profile)
-const isAdmin = computed(() => appDataIsAdmin.value || authStore.profile?.role === 'admin')
+
+// Role-based access computed properties
+const userRole = computed(() => profile.value?.role || 'user')
+const isAdmin = computed(() => appDataIsAdmin.value || userRole.value === 'admin')
+const isOfficeAdmin = computed(() => userRole.value === 'office_admin')
+const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin')
+
+// Section access checks
+const hasManagementAccess = computed(() => ['admin', 'office_admin'].includes(userRole.value))
+const hasMarketingEditAccess = computed(() => ['admin', 'marketing_admin'].includes(userRole.value))
+const hasGduAccess = computed(() => ['admin', 'marketing_admin'].includes(userRole.value))
+const hasAdminOpsAccess = computed(() => userRole.value === 'admin')
+
+// Display helpers
 const firstName = computed(() => profile.value?.first_name || 'User')
 const initials = computed(() => {
   const p = profile.value
   if (!p) return 'U'
   return `${p.first_name?.[0] || ''}${p.last_name?.[0] || ''}`.toUpperCase() || 'U'
+})
+
+const roleDisplay = computed(() => {
+  const displays: Record<string, { label: string, class: string }> = {
+    admin: { label: '⭐ Admin', class: 'text-amber-400 font-semibold' },
+    office_admin: { label: '🏢 Office Admin', class: 'text-blue-400 font-semibold' },
+    marketing_admin: { label: '📣 Marketing', class: 'text-purple-400 font-semibold' },
+    user: { label: 'Team Member', class: 'text-slate-400' }
+  }
+  return displays[userRole.value] || displays.user
 })
 
 // Unread notification count
@@ -232,10 +255,10 @@ async function handleSignOut() {
           </div>
 
           <!-- ==========================================
-               SECTION 2: MANAGEMENT (Manager/Admin Only)
+               SECTION 2: MANAGEMENT (Admin + Office Admin)
                Team view: Roster, Team Schedule, Recruiting, Approvals
                ========================================== -->
-          <template v-if="isAdmin">
+          <template v-if="hasManagementAccess">
             <div class="pt-2">
               <button 
                 @click="toggleSection('management')"
@@ -264,14 +287,17 @@ async function handleSignOut() {
                   <div class="nav-icon-wrap group-hover:bg-sky-500/20">✅</div>
                   Time Off Approvals
                 </NuxtLink>
-                <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
-                  Recruiting Pipeline
-                </NuxtLink>
-                <NuxtLink to="/recruiting/interviews" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
-                  Interviews
-                </NuxtLink>
+                <!-- Recruiting only for full admin -->
+                <template v-if="isAdmin">
+                  <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
+                    <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
+                    Recruiting Pipeline
+                  </NuxtLink>
+                  <NuxtLink to="/recruiting/interviews" class="nav-link group" active-class="nav-link-active">
+                    <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎤</div>
+                    Interviews
+                  </NuxtLink>
+                </template>
                 <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
                   Skill Stats
@@ -316,7 +342,7 @@ async function handleSignOut() {
             </div>
           </div>
 
-          <!-- Section: Marketing (Collapsible) - ALL USERS -->
+          <!-- Section: Marketing (Collapsible) - ALL USERS (view), admin/marketing_admin (edit) -->
           <div class="pt-2">
             <button 
               @click="toggleSection('marketing')"
@@ -329,11 +355,13 @@ async function handleSignOut() {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.marketing }">
-              <!-- Command Center -->
-              <NuxtLink to="/marketing/command-center" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎯</div>
-                Command Center
-              </NuxtLink>
+              <!-- Command Center - admin/marketing_admin only -->
+              <template v-if="hasMarketingEditAccess">
+                <NuxtLink to="/marketing/command-center" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎯</div>
+                  Command Center
+                </NuxtLink>
+              </template>
               
               <!-- Calendar: Visible to all -->
               <NuxtLink to="/marketing/calendar" class="nav-link group" active-class="nav-link-active">
@@ -341,8 +369,8 @@ async function handleSignOut() {
                 Calendar
               </NuxtLink>
               
-              <!-- Admin-only: Events, Leads -->
-              <template v-if="isAdmin">
+              <!-- Events, Leads - admin/marketing_admin only -->
+              <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
                   Events
@@ -353,15 +381,17 @@ async function handleSignOut() {
                 </NuxtLink>
               </template>
               
-              <!-- Marketing Hubs -->
-              <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
-                Partners
-              </NuxtLink>
-              <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
-                Inventory
-              </NuxtLink>
+              <!-- Partners, Inventory - admin/marketing_admin only -->
+              <template v-if="hasMarketingEditAccess">
+                <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
+                  Partners
+                </NuxtLink>
+                <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
+                  Inventory
+                </NuxtLink>
+              </template>
               
               <!-- Visible to all: Resources, Partnerships -->
               <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
@@ -377,9 +407,9 @@ async function handleSignOut() {
 
           <!-- ==========================================
                SECTION: GDU - Green Dog University
-               Visitor CRM, CE Events, Education
+               Access: admin, marketing_admin
                ========================================== -->
-          <template v-if="isAdmin">
+          <template v-if="hasGduAccess">
             <div class="pt-2">
               <button 
                 @click="toggleSection('gdu')"
@@ -412,7 +442,7 @@ async function handleSignOut() {
                SECTION 3: ADMIN OPS (Admin Only)
                Global Settings, Integrations, Course Manager, Payroll
                ========================================== -->
-          <template v-if="isAdmin">
+          <template v-if="hasAdminOpsAccess">
             <div class="pt-2">
               <button 
                 @click="toggleSection('adminOps')"
@@ -462,8 +492,8 @@ async function handleSignOut() {
             </div>
             <div v-if="!sidebarCollapsed" class="text-sm flex-1">
               <div class="font-medium text-white">{{ firstName }}</div>
-              <div class="text-xs" :class="isAdmin ? 'text-amber-400 font-semibold' : 'text-slate-400'">
-                {{ isAdmin ? '⭐ Admin' : 'Team Member' }}
+              <div class="text-xs" :class="roleDisplay.class">
+                {{ roleDisplay.label }}
               </div>
             </div>
           </NuxtLink>
