@@ -77,6 +77,7 @@ interface PartnerContact {
   phone: string | null
   is_primary: boolean
   notes: string | null
+  category: string | null
   created_at: string
 }
 
@@ -360,8 +361,25 @@ const contactForm = ref({
   email: '',
   phone: '',
   is_primary: false,
-  notes: ''
+  notes: '',
+  category: null as string | null
 })
+
+// Contact category options (same as partner types for filtering)
+const contactCategoryOptions = [
+  { title: 'None', value: null },
+  { title: 'Pet Business', value: 'pet_business' },
+  { title: 'Exotic Shop', value: 'exotic_shop' },
+  { title: 'Rescue', value: 'rescue' },
+  { title: 'Influencer', value: 'influencer' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Print Vendor', value: 'print_vendor' },
+  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Food & Beverage', value: 'food_vendor' },
+  { title: 'Association', value: 'association' },
+  { title: 'Spay & Neuter', value: 'spay_neuter' },
+  { title: 'Other', value: 'other' }
+]
 
 // Check if we should open add dialog from URL
 onMounted(() => {
@@ -597,6 +615,24 @@ function getTypeColor(type: string): string {
   return colors[type] || 'grey'
 }
 
+function getCategoryLabel(category: string | null): string {
+  if (!category) return ''
+  const labels: Record<string, string> = {
+    pet_business: 'Pet Business',
+    exotic_shop: 'Exotic Shop',
+    rescue: 'Rescue',
+    influencer: 'Influencer',
+    entertainment: 'Entertainment',
+    print_vendor: 'Print Vendor',
+    chamber: 'Chamber',
+    food_vendor: 'Food & Beverage',
+    association: 'Association',
+    spay_neuter: 'Spay & Neuter',
+    other: 'Other'
+  }
+  return labels[category] || category
+}
+
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     active: 'success',
@@ -740,35 +776,73 @@ function openAddContactDialog() {
     email: '',
     phone: '',
     is_primary: false,
-    notes: ''
+    notes: '',
+    category: null
   }
+  editingContactId.value = null
   showContactDialog.value = true
 }
 
-// Save new contact
+// Edit contact category
+const editingContactId = ref<string | null>(null)
+
+function openEditContactDialog(contact: PartnerContact) {
+  contactForm.value = {
+    name: contact.name,
+    title: contact.title || '',
+    email: contact.email || '',
+    phone: contact.phone || '',
+    is_primary: contact.is_primary,
+    notes: contact.notes || '',
+    category: contact.category
+  }
+  editingContactId.value = contact.id
+  showContactDialog.value = true
+}
+
+// Save new or update existing contact
 async function saveContact() {
   if (!selectedPartner.value || !contactForm.value.name.trim()) return
   
-  const { error } = await supabase
-    .from('marketing_partner_contacts')
-    .insert({
-      partner_id: selectedPartner.value.id,
-      name: contactForm.value.name.trim(),
-      title: contactForm.value.title || null,
-      email: contactForm.value.email || null,
-      phone: contactForm.value.phone || null,
-      is_primary: contactForm.value.is_primary,
-      notes: contactForm.value.notes || null,
-      created_by: user.value?.id
-    })
+  const contactData = {
+    name: contactForm.value.name.trim(),
+    title: contactForm.value.title || null,
+    email: contactForm.value.email || null,
+    phone: contactForm.value.phone || null,
+    is_primary: contactForm.value.is_primary,
+    notes: contactForm.value.notes || null,
+    category: contactForm.value.category || null
+  }
+  
+  let error
+  
+  if (editingContactId.value) {
+    // Update existing contact
+    const result = await supabase
+      .from('marketing_partner_contacts')
+      .update(contactData)
+      .eq('id', editingContactId.value)
+    error = result.error
+  } else {
+    // Insert new contact
+    const result = await supabase
+      .from('marketing_partner_contacts')
+      .insert({
+        ...contactData,
+        partner_id: selectedPartner.value.id,
+        created_by: user.value?.id
+      })
+    error = result.error
+  }
   
   if (error) {
-    showError('Failed to add contact')
+    showError(editingContactId.value ? 'Failed to update contact' : 'Failed to add contact')
     return
   }
   
-  showSuccess('Contact added')
+  showSuccess(editingContactId.value ? 'Contact updated' : 'Contact added')
   showContactDialog.value = false
+  editingContactId.value = null
   await loadPartnerContacts(selectedPartner.value.id)
 }
 
@@ -1698,6 +1772,9 @@ function getPriorityColor(priority: string | null | undefined): string {
                     <v-list-item-title>
                       {{ contact.name }}
                       <v-chip v-if="contact.is_primary" size="x-small" color="success" class="ml-2">Primary</v-chip>
+                      <v-chip v-if="contact.category" size="x-small" :color="getTypeColor(contact.category)" class="ml-2">
+                        {{ getCategoryLabel(contact.category) }}
+                      </v-chip>
                     </v-list-item-title>
 
                     <v-list-item-subtitle>
@@ -1711,6 +1788,9 @@ function getPriorityColor(priority: string | null | undefined): string {
                     </v-list-item-subtitle>
 
                     <template #append>
+                      <v-btn icon variant="text" size="small" @click="openEditContactDialog(contact)">
+                        <v-icon size="small">mdi-pencil</v-icon>
+                      </v-btn>
                       <v-btn icon variant="text" size="small" color="error" @click="deleteContact(contact.id)">
                         <v-icon size="small">mdi-delete</v-icon>
                       </v-btn>
@@ -1869,10 +1949,10 @@ function getPriorityColor(priority: string | null | undefined): string {
       </v-card>
     </v-dialog>
 
-    <!-- Add Contact Dialog -->
+    <!-- Add/Edit Contact Dialog -->
     <v-dialog v-model="showContactDialog" max-width="500">
       <v-card>
-        <v-card-title>Add Contact</v-card-title>
+        <v-card-title>{{ editingContactId ? 'Edit Contact' : 'Add Contact' }}</v-card-title>
         <v-divider />
         <v-card-text>
           <v-row dense>
@@ -1889,6 +1969,15 @@ function getPriorityColor(priority: string | null | undefined): string {
                 v-model="contactForm.title"
                 label="Title / Role"
                 variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="contactForm.category"
+                :items="contactCategoryOptions"
+                label="Category"
+                variant="outlined"
+                clearable
               />
             </v-col>
             <v-col cols="12" md="6">
@@ -1927,9 +2016,9 @@ function getPriorityColor(priority: string | null | undefined): string {
         <v-divider />
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showContactDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showContactDialog = false; editingContactId = null">Cancel</v-btn>
           <v-btn color="primary" :disabled="!contactForm.name.trim()" @click="saveContact">
-            Add Contact
+            {{ editingContactId ? 'Save Changes' : 'Add Contact' }}
           </v-btn>
         </v-card-actions>
       </v-card>
