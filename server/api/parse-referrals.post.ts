@@ -4,7 +4,7 @@
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import PDFParse from 'pdf-parse'
+import { PDFParse } from 'pdf-parse'
 
 interface ParsedReferral {
   clinicName: string
