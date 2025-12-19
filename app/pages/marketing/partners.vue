@@ -6,6 +6,8 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
+const user = useSupabaseUser()
+const { showSuccess, showError } = useToast()
 
 // Type definitions
 interface Partner {
@@ -22,12 +24,60 @@ interface Partner {
   membership_fee: number | null
   membership_end: string | null
   instagram_handle: string | null
+  facebook_url: string | null
+  tiktok_handle: string | null
   services_provided: string | null
   notes: string | null
   proximity_to_location: string | null
   created_at: string
+  updated_at?: string
+  last_contact_date?: string | null
+  // Relationship fields
+  relationship_score?: number | null
+  relationship_status?: string | null
+  last_visit_date?: string | null
+  next_followup_date?: string | null
+  needs_followup?: boolean
+  visit_frequency?: string | null
+  preferred_contact_time?: string | null
+  preferred_visit_day?: string | null
+  best_contact_person?: string | null
+  partnership_value?: string | null
+  priority?: string | null
+  payment_status?: string | null
+  payment_amount?: number | null
+  payment_date?: string | null
   // Combined list flag
   _isInfluencer?: boolean
+}
+
+interface PartnerNote {
+  id: string
+  partner_id: string
+  note_type: string
+  content: string
+  is_pinned: boolean
+  created_by: string | null
+  created_by_name: string | null
+  author_initials: string | null
+  edited_at: string | null
+  edited_by: string | null
+  edited_by_initials: string | null
+  category: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface PartnerContact {
+  id: string
+  partner_id: string
+  name: string
+  title: string | null
+  email: string | null
+  phone: string | null
+  is_primary: boolean
+  notes: string | null
+  created_at: string
 }
 
 interface Influencer {
@@ -242,6 +292,77 @@ const influencerStatusOptions = [
   { title: 'Completed', value: 'completed' }
 ]
 
+// Profile Dialog State (comprehensive view)
+const profileDialogOpen = ref(false)
+const selectedPartner = ref<Partner | null>(null)
+const profileTab = ref('overview')
+const partnerNotes = ref<PartnerNote[]>([])
+const partnerContacts = ref<PartnerContact[]>([])
+const newNoteContent = ref('')
+const newNoteType = ref('general')
+const loadingProfile = ref(false)
+
+// Note type options
+const noteTypeOptions = [
+  { title: 'General', value: 'general' },
+  { title: 'Visit', value: 'visit' },
+  { title: 'Call', value: 'call' },
+  { title: 'Email', value: 'email' },
+  { title: 'Meeting', value: 'meeting' },
+  { title: 'Follow-up', value: 'follow_up' },
+  { title: 'Issue', value: 'issue' },
+  { title: 'Opportunity', value: 'opportunity' }
+]
+
+// Relationship status options
+const relationshipStatusOptions = [
+  { title: 'Prospect', value: 'prospect' },
+  { title: 'Developing', value: 'developing' },
+  { title: 'Active', value: 'active' },
+  { title: 'Strong', value: 'strong' },
+  { title: 'At Risk', value: 'at_risk' },
+  { title: 'Dormant', value: 'dormant' }
+]
+
+// Visit frequency options
+const visitFrequencyOptions = [
+  { title: 'Weekly', value: 'weekly' },
+  { title: 'Bi-weekly', value: 'bi-weekly' },
+  { title: 'Monthly', value: 'monthly' },
+  { title: 'Quarterly', value: 'quarterly' },
+  { title: 'Semi-annually', value: 'semi-annually' },
+  { title: 'Annually', value: 'annually' },
+  { title: 'As Needed', value: 'as-needed' }
+]
+
+// Priority options
+const priorityOptions = [
+  { title: 'Critical', value: 'critical' },
+  { title: 'High', value: 'high' },
+  { title: 'Medium', value: 'medium' },
+  { title: 'Low', value: 'low' }
+]
+
+// Partnership value options
+const partnershipValueOptions = [
+  { title: 'Strategic', value: 'strategic' },
+  { title: 'High', value: 'high' },
+  { title: 'Medium', value: 'medium' },
+  { title: 'Low', value: 'low' },
+  { title: 'Potential', value: 'potential' }
+]
+
+// Contact form state
+const showContactDialog = ref(false)
+const contactForm = ref({
+  name: '',
+  title: '',
+  email: '',
+  phone: '',
+  is_primary: false,
+  notes: ''
+})
+
 // Check if we should open add dialog from URL
 onMounted(() => {
   if (route.query.action === 'add') {
@@ -433,7 +554,8 @@ function handleItemClick(partner: Partner & { _influencerData?: Influencer }) {
   if (partner._isInfluencer && partner._influencerData) {
     openEditInfluencerDialog(partner._influencerData)
   } else {
-    openEditDialog(partner)
+    // Open profile dialog for partners (not edit)
+    openPartnerProfile(partner)
   }
 }
 
@@ -493,6 +615,274 @@ function getStatusColor(status: string): string {
 
 function formatTypeName(type: string): string {
   return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+// =====================================================
+// PARTNER PROFILE FUNCTIONS
+// =====================================================
+
+// Open partner profile with notes and contacts
+async function openPartnerProfile(partner: Partner) {
+  selectedPartner.value = partner
+  profileTab.value = 'overview'
+  profileDialogOpen.value = true
+  loadingProfile.value = true
+  
+  try {
+    await Promise.all([
+      loadPartnerNotes(partner.id),
+      loadPartnerContacts(partner.id)
+    ])
+  } catch (error) {
+    console.error('Error loading partner profile:', error)
+    showError('Failed to load partner details')
+  } finally {
+    loadingProfile.value = false
+  }
+}
+
+// Load notes for a partner
+async function loadPartnerNotes(partnerId: string) {
+  const { data, error } = await supabase
+    .from('marketing_partner_notes')
+    .select('*')
+    .eq('partner_id', partnerId)
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error loading notes:', error)
+    return
+  }
+  
+  partnerNotes.value = data as PartnerNote[]
+}
+
+// Load contacts for a partner
+async function loadPartnerContacts(partnerId: string) {
+  const { data, error } = await supabase
+    .from('marketing_partner_contacts')
+    .select('*')
+    .eq('partner_id', partnerId)
+    .order('is_primary', { ascending: false })
+    .order('name')
+  
+  if (error) {
+    console.error('Error loading contacts:', error)
+    return
+  }
+  
+  partnerContacts.value = data as PartnerContact[]
+}
+
+// Add a new note
+async function addNote() {
+  if (!selectedPartner.value || !newNoteContent.value.trim()) return
+  
+  const { error } = await supabase
+    .from('marketing_partner_notes')
+    .insert({
+      partner_id: selectedPartner.value.id,
+      note_type: newNoteType.value,
+      content: newNoteContent.value.trim(),
+      created_by: user.value?.id
+    })
+  
+  if (error) {
+    console.error('Error adding note:', error)
+    showError('Failed to add note')
+    return
+  }
+  
+  showSuccess('Note added')
+  newNoteContent.value = ''
+  newNoteType.value = 'general'
+  await loadPartnerNotes(selectedPartner.value.id)
+}
+
+// Toggle note pinned status
+async function toggleNotePin(note: PartnerNote) {
+  const { error } = await supabase
+    .from('marketing_partner_notes')
+    .update({ is_pinned: !note.is_pinned })
+    .eq('id', note.id)
+  
+  if (error) {
+    showError('Failed to update note')
+    return
+  }
+  
+  if (selectedPartner.value) {
+    await loadPartnerNotes(selectedPartner.value.id)
+  }
+}
+
+// Delete a note
+async function deleteNote(noteId: string) {
+  if (!confirm('Delete this note?')) return
+  
+  const { error } = await supabase
+    .from('marketing_partner_notes')
+    .delete()
+    .eq('id', noteId)
+  
+  if (error) {
+    showError('Failed to delete note')
+    return
+  }
+  
+  showSuccess('Note deleted')
+  if (selectedPartner.value) {
+    await loadPartnerNotes(selectedPartner.value.id)
+  }
+}
+
+// Open contact dialog
+function openAddContactDialog() {
+  contactForm.value = {
+    name: '',
+    title: '',
+    email: '',
+    phone: '',
+    is_primary: false,
+    notes: ''
+  }
+  showContactDialog.value = true
+}
+
+// Save new contact
+async function saveContact() {
+  if (!selectedPartner.value || !contactForm.value.name.trim()) return
+  
+  const { error } = await supabase
+    .from('marketing_partner_contacts')
+    .insert({
+      partner_id: selectedPartner.value.id,
+      name: contactForm.value.name.trim(),
+      title: contactForm.value.title || null,
+      email: contactForm.value.email || null,
+      phone: contactForm.value.phone || null,
+      is_primary: contactForm.value.is_primary,
+      notes: contactForm.value.notes || null,
+      created_by: user.value?.id
+    })
+  
+  if (error) {
+    showError('Failed to add contact')
+    return
+  }
+  
+  showSuccess('Contact added')
+  showContactDialog.value = false
+  await loadPartnerContacts(selectedPartner.value.id)
+}
+
+// Delete contact
+async function deleteContact(contactId: string) {
+  if (!confirm('Delete this contact?')) return
+  
+  const { error } = await supabase
+    .from('marketing_partner_contacts')
+    .delete()
+    .eq('id', contactId)
+  
+  if (error) {
+    showError('Failed to delete contact')
+    return
+  }
+  
+  showSuccess('Contact deleted')
+  if (selectedPartner.value) {
+    await loadPartnerContacts(selectedPartner.value.id)
+  }
+}
+
+// Update relationship fields
+async function updatePartnerRelationship(field: string, value: any) {
+  if (!selectedPartner.value) return
+  
+  const { error } = await supabase
+    .from('marketing_partners')
+    .update({ [field]: value })
+    .eq('id', selectedPartner.value.id)
+  
+  if (error) {
+    showError('Failed to update')
+    return
+  }
+  
+  // Update local state
+  if (selectedPartner.value) {
+    (selectedPartner.value as any)[field] = value
+  }
+  
+  showSuccess('Updated')
+  refresh()
+}
+
+// Get note type icon
+function getNoteTypeIcon(type: string): string {
+  const icons: Record<string, string> = {
+    general: 'mdi-note-text',
+    visit: 'mdi-walk',
+    call: 'mdi-phone',
+    email: 'mdi-email',
+    meeting: 'mdi-account-group',
+    follow_up: 'mdi-clock-outline',
+    issue: 'mdi-alert-circle',
+    opportunity: 'mdi-lightbulb'
+  }
+  return icons[type] || 'mdi-note'
+}
+
+// Get note type color
+function getNoteTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    general: 'grey',
+    visit: 'success',
+    call: 'info',
+    email: 'primary',
+    meeting: 'purple',
+    follow_up: 'warning',
+    issue: 'error',
+    opportunity: 'amber'
+  }
+  return colors[type] || 'grey'
+}
+
+// Format date relative
+function formatRelativeDate(date: string): string {
+  const d = new Date(date)
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  if (days < 30) return `${Math.floor(days / 7)} weeks ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return d.toLocaleDateString()
+}
+
+// Get relationship score color
+function getRelationshipScoreColor(score: number | null | undefined): string {
+  if (!score) return 'grey'
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'info'
+  if (score >= 40) return 'warning'
+  return 'error'
+}
+
+// Get priority color
+function getPriorityColor(priority: string | null | undefined): string {
+  const colors: Record<string, string> = {
+    critical: 'error',
+    high: 'warning',
+    medium: 'info',
+    low: 'grey'
+  }
+  return colors[priority || ''] || 'grey'
 }
 </script>
 
@@ -1061,6 +1451,502 @@ function formatTypeName(type: string): string {
           <v-btn variant="text" @click="influencerDialogOpen = false">Cancel</v-btn>
           <v-btn color="secondary" @click="saveInfluencer">
             {{ editingInfluencer ? 'Save Changes' : 'Add Influencer' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Partner Profile Dialog -->
+    <v-dialog v-model="profileDialogOpen" max-width="900" scrollable>
+      <v-card v-if="selectedPartner">
+        <v-card-title class="d-flex align-center">
+          <v-avatar :color="getTypeColor(selectedPartner.partner_type)" size="40" class="mr-3">
+            <v-icon color="white">mdi-handshake</v-icon>
+          </v-avatar>
+          <div>
+            <span class="text-h6">{{ selectedPartner.name }}</span>
+            <div class="text-caption text-medium-emphasis">
+              {{ formatTypeName(selectedPartner.partner_type) }}
+            </div>
+          </div>
+          <v-spacer />
+          <v-chip :color="getStatusColor(selectedPartner.status)" size="small" class="mr-2">
+            {{ selectedPartner.status }}
+          </v-chip>
+          <v-btn icon variant="text" @click="profileDialogOpen = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-divider />
+
+        <v-progress-linear v-if="loadingProfile" indeterminate color="primary" />
+
+        <v-tabs v-model="profileTab" bg-color="transparent">
+          <v-tab value="overview">Overview</v-tab>
+          <v-tab value="notes">
+            Notes
+            <v-badge
+              v-if="partnerNotes.length"
+              :content="partnerNotes.length"
+              color="primary"
+              inline
+              class="ml-1"
+            />
+          </v-tab>
+          <v-tab value="contacts">
+            Contacts
+            <v-badge
+              v-if="partnerContacts.length"
+              :content="partnerContacts.length"
+              color="primary"
+              inline
+              class="ml-1"
+            />
+          </v-tab>
+          <v-tab value="relationship">Relationship</v-tab>
+        </v-tabs>
+
+        <v-divider />
+
+        <v-card-text style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
+          <v-tabs-window v-model="profileTab">
+            <!-- Overview Tab -->
+            <v-tabs-window-item value="overview">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-list density="compact">
+                    <v-list-subheader>Contact Information</v-list-subheader>
+                    <v-list-item v-if="selectedPartner.contact_name">
+                      <template #prepend>
+                        <v-icon size="small">mdi-account</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.contact_name }}</v-list-item-title>
+                      <v-list-item-subtitle>Primary Contact</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.contact_phone">
+                      <template #prepend>
+                        <v-icon size="small">mdi-phone</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.contact_phone }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.contact_email">
+                      <template #prepend>
+                        <v-icon size="small">mdi-email</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.contact_email }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.address">
+                      <template #prepend>
+                        <v-icon size="small">mdi-map-marker</v-icon>
+                      </template>
+                      <v-list-item-title>{{ selectedPartner.address }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-list density="compact">
+                    <v-list-subheader>Social & Web</v-list-subheader>
+                    <v-list-item v-if="selectedPartner.website">
+                      <template #prepend>
+                        <v-icon size="small">mdi-web</v-icon>
+                      </template>
+                      <v-list-item-title>
+                        <a :href="selectedPartner.website" target="_blank">{{ selectedPartner.website }}</a>
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.instagram_handle">
+                      <template #prepend>
+                        <v-icon size="small">mdi-instagram</v-icon>
+                      </template>
+                      <v-list-item-title>@{{ selectedPartner.instagram_handle }}</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+                </v-col>
+                <v-col v-if="selectedPartner.membership_level || selectedPartner.membership_fee" cols="12">
+                  <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                    <div class="d-flex align-center justify-space-between">
+                      <div>
+                        <strong>{{ selectedPartner.membership_level || 'Member' }}</strong>
+                        <span v-if="selectedPartner.membership_fee"> - ${{ selectedPartner.membership_fee }}/year</span>
+                      </div>
+                      <v-chip
+                        v-if="selectedPartner.membership_end"
+                        size="small"
+                        :color="new Date(selectedPartner.membership_end) < new Date() ? 'error' : 'success'"
+                      >
+                        {{ new Date(selectedPartner.membership_end) < new Date() ? 'Expired' : 'Expires' }}
+                        {{ new Date(selectedPartner.membership_end).toLocaleDateString() }}
+                      </v-chip>
+                    </div>
+                  </v-alert>
+                </v-col>
+                <v-col v-if="selectedPartner.services_provided" cols="12">
+                  <div class="text-subtitle-2 mb-1">Services</div>
+                  <p class="text-body-2">{{ selectedPartner.services_provided }}</p>
+                </v-col>
+                <v-col v-if="selectedPartner.notes" cols="12">
+                  <div class="text-subtitle-2 mb-1">Notes</div>
+                  <p class="text-body-2">{{ selectedPartner.notes }}</p>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+
+            <!-- Notes Tab -->
+            <v-tabs-window-item value="notes">
+              <!-- Add Note Form -->
+              <v-card variant="outlined" class="mb-4">
+                <v-card-text>
+                  <v-row dense>
+                    <v-col cols="12" md="3">
+                      <v-select
+                        v-model="newNoteType"
+                        :items="noteTypeOptions"
+                        label="Note Type"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12" md="7">
+                      <v-textarea
+                        v-model="newNoteContent"
+                        label="Add a note..."
+                        variant="outlined"
+                        density="compact"
+                        rows="2"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12" md="2" class="d-flex align-center">
+                      <v-btn
+                        color="primary"
+                        :disabled="!newNoteContent.trim()"
+                        block
+                        @click="addNote"
+                      >
+                        Add
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+
+              <!-- Notes List -->
+              <div v-if="partnerNotes.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-note-text-outline</v-icon>
+                <div class="text-body-2 text-medium-emphasis mt-2">No notes yet</div>
+              </div>
+
+              <v-list v-else lines="three" class="pa-0">
+                <template v-for="(note, index) in partnerNotes" :key="note.id">
+                  <v-list-item>
+                    <template #prepend>
+                      <v-avatar size="36" :color="getNoteTypeColor(note.note_type)" variant="tonal">
+                        <v-icon size="small">{{ getNoteTypeIcon(note.note_type) }}</v-icon>
+                      </v-avatar>
+                    </template>
+
+                    <v-list-item-title class="d-flex align-center">
+                      <v-chip size="x-small" :color="getNoteTypeColor(note.note_type)" class="mr-2">
+                        {{ note.note_type }}
+                      </v-chip>
+                      <span class="text-caption text-medium-emphasis">
+                        {{ formatRelativeDate(note.created_at) }}
+                        <template v-if="note.author_initials">
+                          by <strong>{{ note.author_initials }}</strong>
+                        </template>
+                      </span>
+                      <v-icon v-if="note.is_pinned" size="small" color="warning" class="ml-2">mdi-pin</v-icon>
+                    </v-list-item-title>
+
+                    <v-list-item-subtitle class="text-wrap mt-1">
+                      {{ note.content }}
+                    </v-list-item-subtitle>
+
+                    <template #append>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        :color="note.is_pinned ? 'warning' : 'default'"
+                        @click="toggleNotePin(note)"
+                      >
+                        <v-icon size="small">{{ note.is_pinned ? 'mdi-pin-off' : 'mdi-pin' }}</v-icon>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        color="error"
+                        @click="deleteNote(note.id)"
+                      >
+                        <v-icon size="small">mdi-delete</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-list-item>
+                  <v-divider v-if="index < partnerNotes.length - 1" />
+                </template>
+              </v-list>
+            </v-tabs-window-item>
+
+            <!-- Contacts Tab -->
+            <v-tabs-window-item value="contacts">
+              <div class="d-flex justify-end mb-3">
+                <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="openAddContactDialog">
+                  Add Contact
+                </v-btn>
+              </div>
+
+              <div v-if="partnerContacts.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-account-outline</v-icon>
+                <div class="text-body-2 text-medium-emphasis mt-2">No contacts added yet</div>
+              </div>
+
+              <v-list v-else lines="two">
+                <template v-for="(contact, index) in partnerContacts" :key="contact.id">
+                  <v-list-item>
+                    <template #prepend>
+                      <v-avatar color="primary" size="40">
+                        <span class="text-body-2">{{ contact.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) }}</span>
+                      </v-avatar>
+                    </template>
+
+                    <v-list-item-title>
+                      {{ contact.name }}
+                      <v-chip v-if="contact.is_primary" size="x-small" color="success" class="ml-2">Primary</v-chip>
+                    </v-list-item-title>
+
+                    <v-list-item-subtitle>
+                      <span v-if="contact.title">{{ contact.title }}</span>
+                      <span v-if="contact.phone" class="ml-3">
+                        <v-icon size="x-small">mdi-phone</v-icon> {{ contact.phone }}
+                      </span>
+                      <span v-if="contact.email" class="ml-3">
+                        <v-icon size="x-small">mdi-email</v-icon> {{ contact.email }}
+                      </span>
+                    </v-list-item-subtitle>
+
+                    <template #append>
+                      <v-btn icon variant="text" size="small" color="error" @click="deleteContact(contact.id)">
+                        <v-icon size="small">mdi-delete</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-list-item>
+                  <v-divider v-if="index < partnerContacts.length - 1" />
+                </template>
+              </v-list>
+            </v-tabs-window-item>
+
+            <!-- Relationship Tab -->
+            <v-tabs-window-item value="relationship">
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-card variant="outlined" class="mb-4">
+                    <v-card-text>
+                      <div class="text-subtitle-2 mb-3">Relationship Score</div>
+                      <div class="d-flex align-center">
+                        <v-progress-linear
+                          :model-value="selectedPartner.relationship_score || 50"
+                          :color="getRelationshipScoreColor(selectedPartner.relationship_score)"
+                          height="24"
+                          rounded
+                        >
+                          <template #default>
+                            <strong>{{ selectedPartner.relationship_score || 50 }}%</strong>
+                          </template>
+                        </v-progress-linear>
+                      </div>
+                      <v-slider
+                        :model-value="selectedPartner.relationship_score || 50"
+                        min="0"
+                        max="100"
+                        step="5"
+                        class="mt-4"
+                        hide-details
+                        @update:model-value="updatePartnerRelationship('relationship_score', $event)"
+                      />
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+
+                <v-col cols="12" md="6">
+                  <v-select
+                    :model-value="selectedPartner.relationship_status"
+                    :items="relationshipStatusOptions"
+                    label="Relationship Status"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-4"
+                    @update:model-value="updatePartnerRelationship('relationship_status', $event)"
+                  />
+
+                  <v-select
+                    :model-value="selectedPartner.priority"
+                    :items="priorityOptions"
+                    label="Priority"
+                    variant="outlined"
+                    density="compact"
+                    class="mb-4"
+                    @update:model-value="updatePartnerRelationship('priority', $event)"
+                  />
+
+                  <v-select
+                    :model-value="selectedPartner.partnership_value"
+                    :items="partnershipValueOptions"
+                    label="Partnership Value"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('partnership_value', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12">
+                  <v-divider class="my-2" />
+                  <div class="text-subtitle-2 mb-3">Visit & Follow-up Tracking</div>
+                </v-col>
+
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    :model-value="selectedPartner.last_visit_date"
+                    label="Last Visit Date"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('last_visit_date', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    :model-value="selectedPartner.next_followup_date"
+                    label="Next Follow-up Date"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('next_followup_date', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12" md="4">
+                  <v-select
+                    :model-value="selectedPartner.visit_frequency"
+                    :items="visitFrequencyOptions"
+                    label="Visit Frequency"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('visit_frequency', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    :model-value="selectedPartner.preferred_visit_day"
+                    label="Preferred Visit Day"
+                    variant="outlined"
+                    density="compact"
+                    placeholder="e.g., Tuesday afternoon"
+                    @update:model-value="updatePartnerRelationship('preferred_visit_day', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    :model-value="selectedPartner.best_contact_person"
+                    label="Best Contact Person"
+                    variant="outlined"
+                    density="compact"
+                    @update:model-value="updatePartnerRelationship('best_contact_person', $event)"
+                  />
+                </v-col>
+
+                <v-col cols="12">
+                  <v-switch
+                    :model-value="selectedPartner.needs_followup"
+                    label="Needs Follow-up"
+                    color="warning"
+                    hide-details
+                    @update:model-value="updatePartnerRelationship('needs_followup', $event)"
+                  />
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+          </v-tabs-window>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions>
+          <v-btn variant="text" prepend-icon="mdi-pencil" @click="profileDialogOpen = false; openEditDialog(selectedPartner)">
+            Edit Partner
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="profileDialogOpen = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add Contact Dialog -->
+    <v-dialog v-model="showContactDialog" max-width="500">
+      <v-card>
+        <v-card-title>Add Contact</v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12">
+              <v-text-field
+                v-model="contactForm.name"
+                label="Name *"
+                variant="outlined"
+                required
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-text-field
+                v-model="contactForm.title"
+                label="Title / Role"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="contactForm.phone"
+                label="Phone"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="contactForm.email"
+                label="Email"
+                variant="outlined"
+                type="email"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-switch
+                v-model="contactForm.is_primary"
+                label="Primary Contact"
+                color="primary"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="contactForm.notes"
+                label="Notes"
+                variant="outlined"
+                rows="2"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showContactDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :disabled="!contactForm.name.trim()" @click="saveContact">
+            Add Contact
           </v-btn>
         </v-card-actions>
       </v-card>
