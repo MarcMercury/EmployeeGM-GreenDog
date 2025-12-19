@@ -204,9 +204,10 @@
             </template>
 
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-phone" size="x-small" variant="text" @click.stop="openLogVisit(item, 'call')" />
-              <v-btn icon="mdi-calendar-check" size="x-small" variant="text" @click.stop="openLogVisit(item, 'visit')" />
-              <v-btn icon="mdi-pencil" size="x-small" variant="text" @click.stop="openEditPartner(item)" />
+              <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" @click.stop="openPartnerDetail(item)" />
+              <v-btn icon="mdi-phone" size="x-small" variant="text" title="Log Call" @click.stop="openLogVisit(item, 'call')" />
+              <v-btn icon="mdi-calendar-check" size="x-small" variant="text" title="Log Visit" @click.stop="openLogVisit(item, 'visit')" />
+              <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditPartner(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -352,6 +353,7 @@
 
         <v-tabs v-model="detailTab" bg-color="grey-lighten-4">
           <v-tab value="overview">Overview</v-tab>
+          <v-tab value="relationship">Relationship</v-tab>
           <v-tab value="contacts">Contacts</v-tab>
           <v-tab value="notes">Notes</v-tab>
           <v-tab value="visits">Visit Log</v-tab>
@@ -363,46 +365,318 @@
           <v-window v-model="detailTab">
             <!-- Overview -->
             <v-window-item value="overview">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <h4 class="text-subtitle-2 mb-2">Partner Info</h4>
-                  <v-list density="compact" class="bg-transparent">
-                    <v-list-item>
-                      <template #prepend><v-icon size="18">mdi-map-marker</v-icon></template>
-                      <v-list-item-title>{{ selectedPartner.address || 'No address' }}</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item>
-                      <template #prepend><v-icon size="18">mdi-phone</v-icon></template>
-                      <v-list-item-title>{{ selectedPartner.phone || 'No phone' }}</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item>
-                      <template #prepend><v-icon size="18">mdi-email</v-icon></template>
-                      <v-list-item-title>{{ selectedPartner.email || 'No email' }}</v-list-item-title>
-                    </v-list-item>
-                    <v-list-item>
-                      <template #prepend><v-icon size="18">mdi-web</v-icon></template>
-                      <v-list-item-title>{{ selectedPartner.website || 'No website' }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
+              <!-- Stats Summary Cards -->
+              <v-row class="mb-4">
+                <v-col cols="6" sm="3">
+                  <v-card variant="tonal" color="primary" class="pa-3 text-center">
+                    <div class="text-h5 font-weight-bold">{{ selectedPartner.total_referrals_all_time || 0 }}</div>
+                    <div class="text-caption">Total Referrals</div>
+                  </v-card>
                 </v-col>
+                <v-col cols="6" sm="3">
+                  <v-card variant="tonal" color="success" class="pa-3 text-center">
+                    <div class="text-h5 font-weight-bold">${{ formatCompactNumber(selectedPartner.total_revenue_all_time) }}</div>
+                    <div class="text-caption">Total Revenue</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <v-card variant="tonal" color="info" class="pa-3 text-center">
+                    <div class="text-h5 font-weight-bold">{{ selectedPartner.relationship_score || 50 }}%</div>
+                    <div class="text-caption">Relationship Score</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" sm="3">
+                  <v-card variant="tonal" :color="selectedPartner.needs_followup ? 'warning' : 'grey'" class="pa-3 text-center">
+                    <div class="text-h5 font-weight-bold">
+                      <v-icon v-if="selectedPartner.needs_followup">mdi-alert</v-icon>
+                      <v-icon v-else>mdi-check</v-icon>
+                    </div>
+                    <div class="text-caption">{{ selectedPartner.needs_followup ? 'Needs Follow-up' : 'On Track' }}</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+
+              <v-row>
+                <!-- Contact Info -->
                 <v-col cols="12" md="6">
-                  <h4 class="text-subtitle-2 mb-2">CRM Details</h4>
-                  <div class="d-flex flex-wrap gap-2 mb-3">
-                    <v-chip size="small" :color="getPriorityColor(selectedPartner.priority)">
-                      {{ selectedPartner.priority }} priority
-                    </v-chip>
-                    <v-chip size="small" variant="outlined">{{ getZoneDisplay(selectedPartner.zone) }}</v-chip>
-                    <v-chip size="small" variant="outlined">{{ selectedPartner.visit_frequency || 'monthly' }}</v-chip>
-                  </div>
-                  <div class="text-body-2 mb-1">
-                    <strong>Last Visit:</strong> {{ selectedPartner.last_visit_date ? formatDate(selectedPartner.last_visit_date) : 'Never' }}
-                  </div>
-                  <div class="text-body-2 mb-1">
-                    <strong>Next Follow-up:</strong> {{ selectedPartner.next_followup_date ? formatDate(selectedPartner.next_followup_date) : 'Not set' }}
-                  </div>
-                  <div class="text-body-2">
-                    <strong>Preferred Day:</strong> {{ selectedPartner.preferred_visit_day || 'Any' }}
-                  </div>
+                  <v-card variant="outlined" class="pa-3 mb-3">
+                    <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-2">mdi-office-building</v-icon>
+                      Partner Info
+                    </h4>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-map-marker</v-icon></template>
+                        <v-list-item-title>{{ selectedPartner.address || 'No address' }}</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-phone</v-icon></template>
+                        <v-list-item-title>{{ selectedPartner.phone || 'No phone' }}</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-email</v-icon></template>
+                        <v-list-item-title>{{ selectedPartner.email || 'No email' }}</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-web</v-icon></template>
+                        <v-list-item-title>
+                          <a v-if="selectedPartner.website" :href="selectedPartner.website" target="_blank">{{ selectedPartner.website }}</a>
+                          <span v-else>No website</span>
+                        </v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+
+                    <!-- Social Media -->
+                    <div v-if="selectedPartner.instagram_handle || selectedPartner.facebook_url || selectedPartner.linkedin_url" class="mt-2 d-flex gap-2">
+                      <v-btn v-if="selectedPartner.instagram_handle" icon size="small" variant="text" color="pink" :href="'https://instagram.com/' + selectedPartner.instagram_handle" target="_blank">
+                        <v-icon>mdi-instagram</v-icon>
+                      </v-btn>
+                      <v-btn v-if="selectedPartner.facebook_url" icon size="small" variant="text" color="blue" :href="selectedPartner.facebook_url" target="_blank">
+                        <v-icon>mdi-facebook</v-icon>
+                      </v-btn>
+                      <v-btn v-if="selectedPartner.linkedin_url" icon size="small" variant="text" color="indigo" :href="selectedPartner.linkedin_url" target="_blank">
+                        <v-icon>mdi-linkedin</v-icon>
+                      </v-btn>
+                    </div>
+                  </v-card>
+
+                  <!-- Classification -->
+                  <v-card variant="outlined" class="pa-3">
+                    <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-2">mdi-tag-multiple</v-icon>
+                      Classification
+                    </h4>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                      <v-chip size="small" :color="getTierColor(selectedPartner.tier)" variant="elevated">
+                        {{ getTierLabel(selectedPartner.tier) }} - {{ selectedPartner.tier || 'bronze' }}
+                      </v-chip>
+                      <v-chip size="small" :color="getPriorityColor(selectedPartner.priority)" variant="flat">
+                        {{ selectedPartner.priority || 'medium' }} priority
+                      </v-chip>
+                      <v-chip size="small" variant="outlined">{{ getZoneDisplay(selectedPartner.zone) }}</v-chip>
+                    </div>
+                    <div class="text-body-2">
+                      <div class="mb-1"><strong>Clinic Type:</strong> {{ selectedPartner.clinic_type || 'general' }}</div>
+                      <div class="mb-1"><strong>Size:</strong> {{ selectedPartner.size || 'Not set' }}</div>
+                      <div class="mb-1"><strong>Organization:</strong> {{ selectedPartner.organization_type || 'Not set' }}</div>
+                      <div v-if="selectedPartner.employee_count"><strong>Employees:</strong> {{ selectedPartner.employee_count }}</div>
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <!-- CRM Details -->
+                <v-col cols="12" md="6">
+                  <v-card variant="outlined" class="pa-3 mb-3">
+                    <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-2">mdi-calendar-clock</v-icon>
+                      Visit Schedule
+                    </h4>
+                    <div class="text-body-2">
+                      <div class="mb-1">
+                        <strong>Last Visit:</strong> 
+                        <span :class="isOverdue(selectedPartner) ? 'text-error font-weight-bold' : ''">
+                          {{ selectedPartner.last_visit_date ? formatDate(selectedPartner.last_visit_date) : 'Never' }}
+                        </span>
+                        <v-chip v-if="isOverdue(selectedPartner)" size="x-small" color="error" class="ml-2">Overdue</v-chip>
+                      </div>
+                      <div class="mb-1"><strong>Last Contact:</strong> {{ selectedPartner.last_contact_date ? formatDate(selectedPartner.last_contact_date) : 'Never' }}</div>
+                      <div class="mb-1"><strong>Next Follow-up:</strong> {{ selectedPartner.next_followup_date ? formatDate(selectedPartner.next_followup_date) : 'Not set' }}</div>
+                      <div class="mb-1"><strong>Visit Frequency:</strong> {{ selectedPartner.visit_frequency || 'monthly' }}</div>
+                      <div class="mb-1"><strong>Preferred Day:</strong> {{ selectedPartner.preferred_visit_day || 'Any' }}</div>
+                      <div><strong>Preferred Time:</strong> {{ selectedPartner.preferred_visit_time || selectedPartner.preferred_contact_time || 'Any' }}</div>
+                    </div>
+                    <div v-if="selectedPartner.best_contact_person" class="mt-2 pa-2 bg-grey-lighten-4 rounded">
+                      <strong>Best Contact:</strong> {{ selectedPartner.best_contact_person }}
+                    </div>
+                  </v-card>
+
+                  <!-- Agreements -->
+                  <v-card variant="outlined" class="pa-3">
+                    <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                      <v-icon size="18" class="mr-2">mdi-handshake</v-icon>
+                      Agreements & Eligibility
+                    </h4>
+                    <div class="text-body-2 mb-2">
+                      <div class="mb-1"><strong>Referral Agreement:</strong> {{ selectedPartner.referral_agreement_type || 'none' }}</div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                      <v-chip size="small" :color="selectedPartner.ce_event_host ? 'success' : 'grey'" variant="tonal">
+                        <v-icon start size="14">{{ selectedPartner.ce_event_host ? 'mdi-check' : 'mdi-close' }}</v-icon>
+                        CE Event Host
+                      </v-chip>
+                      <v-chip size="small" :color="selectedPartner.lunch_and_learn_eligible !== false ? 'success' : 'grey'" variant="tonal">
+                        <v-icon start size="14">{{ selectedPartner.lunch_and_learn_eligible !== false ? 'mdi-check' : 'mdi-close' }}</v-icon>
+                        Lunch & Learn
+                      </v-chip>
+                      <v-chip size="small" :color="selectedPartner.drop_off_materials !== false ? 'success' : 'grey'" variant="tonal">
+                        <v-icon start size="14">{{ selectedPartner.drop_off_materials !== false ? 'mdi-check' : 'mdi-close' }}</v-icon>
+                        Drop-off Materials
+                      </v-chip>
+                    </div>
+                  </v-card>
+                </v-col>
+              </v-row>
+
+              <!-- Description / Notes -->
+              <v-row v-if="selectedPartner.description || selectedPartner.notes" class="mt-2">
+                <v-col cols="12">
+                  <v-card variant="outlined" class="pa-3">
+                    <h4 class="text-subtitle-2 mb-2">Notes</h4>
+                    <div class="text-body-2">{{ selectedPartner.description || selectedPartner.notes }}</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Relationship Tab -->
+            <v-window-item value="relationship">
+              <v-row>
+                <!-- Relationship Health -->
+                <v-col cols="12" md="6">
+                  <v-card variant="outlined" class="pa-4">
+                    <h4 class="text-subtitle-1 mb-3 d-flex align-center">
+                      <v-icon class="mr-2" color="primary">mdi-heart-pulse</v-icon>
+                      Relationship Health
+                    </h4>
+                    <div class="d-flex align-center mb-3">
+                      <div class="text-h3 font-weight-bold mr-3" :class="getRelationshipScoreColor(selectedPartner.relationship_score)">
+                        {{ selectedPartner.relationship_score || 50 }}
+                      </div>
+                      <div>
+                        <div class="text-body-2">out of 100</div>
+                        <div class="text-caption text-grey">{{ getRelationshipScoreLabel(selectedPartner.relationship_score) }}</div>
+                      </div>
+                    </div>
+                    <v-progress-linear
+                      :model-value="selectedPartner.relationship_score || 50"
+                      :color="getRelationshipScoreColorName(selectedPartner.relationship_score)"
+                      height="12"
+                      rounded
+                    />
+                    <div class="mt-3 text-body-2">
+                      <div class="mb-1">
+                        <v-icon size="16" :color="selectedPartner.last_visit_date ? 'success' : 'grey'">mdi-check-circle</v-icon>
+                        Last Visit: {{ selectedPartner.last_visit_date ? formatDate(selectedPartner.last_visit_date) : 'Never' }}
+                      </div>
+                      <div class="mb-1">
+                        <v-icon size="16" :color="selectedPartner.last_contact_date ? 'success' : 'grey'">mdi-check-circle</v-icon>
+                        Last Contact: {{ selectedPartner.last_contact_date ? formatDate(selectedPartner.last_contact_date) : 'Never' }}
+                      </div>
+                      <div>
+                        <v-icon size="16" :color="partnerNotes.length ? 'success' : 'grey'">mdi-check-circle</v-icon>
+                        Notes: {{ partnerNotes.length }} recorded
+                      </div>
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <!-- Revenue Stats -->
+                <v-col cols="12" md="6">
+                  <v-card variant="outlined" class="pa-4">
+                    <h4 class="text-subtitle-1 mb-3 d-flex align-center">
+                      <v-icon class="mr-2" color="success">mdi-currency-usd</v-icon>
+                      Revenue & Referrals
+                    </h4>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Total Referrals (All Time)</span>
+                          <strong>{{ selectedPartner.total_referrals_all_time || 0 }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Referrals YTD</span>
+                          <strong>{{ selectedPartner.total_referrals_ytd || 0 }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-divider class="my-2" />
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Total Revenue (All Time)</span>
+                          <strong class="text-success">${{ Number(selectedPartner.total_revenue_all_time || 0).toLocaleString() }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Revenue YTD</span>
+                          <strong>${{ Number(selectedPartner.revenue_ytd || 0).toLocaleString() }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Revenue Last Year</span>
+                          <strong>${{ Number(selectedPartner.revenue_last_year || 0).toLocaleString() }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <v-list-item-title class="d-flex justify-space-between">
+                          <span>Avg Monthly Revenue</span>
+                          <strong>${{ Number(selectedPartner.average_monthly_revenue || 0).toLocaleString() }}</strong>
+                        </v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                    <div v-if="selectedPartner.last_sync_date" class="mt-2 text-caption text-grey">
+                      Last synced: {{ formatDate(selectedPartner.last_sync_date) }}
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <!-- Goals Progress -->
+                <v-col cols="12" md="6">
+                  <v-card variant="outlined" class="pa-4">
+                    <h4 class="text-subtitle-1 mb-3 d-flex align-center">
+                      <v-icon class="mr-2" color="warning">mdi-target</v-icon>
+                      Goals & Targets
+                    </h4>
+                    <div class="text-body-2">
+                      <div class="mb-2">
+                        <div class="d-flex justify-space-between mb-1">
+                          <span>Monthly Referral Goal</span>
+                          <span>{{ selectedPartner.current_month_referrals || 0 }} / {{ selectedPartner.monthly_referral_goal || 0 }}</span>
+                        </div>
+                        <v-progress-linear
+                          :model-value="selectedPartner.monthly_referral_goal ? ((selectedPartner.current_month_referrals || 0) / selectedPartner.monthly_referral_goal) * 100 : 0"
+                          color="primary"
+                          height="8"
+                          rounded
+                        />
+                      </div>
+                      <div>
+                        <div class="d-flex justify-space-between mb-1">
+                          <span>Quarterly Revenue Goal</span>
+                          <span>${{ Number(selectedPartner.current_quarter_revenue || 0).toLocaleString() }} / ${{ Number(selectedPartner.quarterly_revenue_goal || 0).toLocaleString() }}</span>
+                        </div>
+                        <v-progress-linear
+                          :model-value="selectedPartner.quarterly_revenue_goal ? ((selectedPartner.current_quarter_revenue || 0) / selectedPartner.quarterly_revenue_goal) * 100 : 0"
+                          color="success"
+                          height="8"
+                          rounded
+                        />
+                      </div>
+                    </div>
+                  </v-card>
+                </v-col>
+
+                <!-- Payment Status (for sponsors) -->
+                <v-col cols="12" md="6" v-if="selectedPartner.payment_status || selectedPartner.payment_amount">
+                  <v-card variant="outlined" class="pa-4">
+                    <h4 class="text-subtitle-1 mb-3 d-flex align-center">
+                      <v-icon class="mr-2" color="info">mdi-credit-card</v-icon>
+                      Payment Status
+                    </h4>
+                    <div class="d-flex align-center gap-3">
+                      <v-chip :color="getPaymentStatusColor(selectedPartner.payment_status)" variant="flat">
+                        {{ selectedPartner.payment_status || 'N/A' }}
+                      </v-chip>
+                      <div v-if="selectedPartner.payment_amount" class="text-h6">
+                        ${{ Number(selectedPartner.payment_amount).toLocaleString() }}
+                      </div>
+                    </div>
+                    <div v-if="selectedPartner.payment_date" class="mt-2 text-caption">
+                      Payment Date: {{ formatDate(selectedPartner.payment_date) }}
+                    </div>
+                  </v-card>
                 </v-col>
               </v-row>
             </v-window-item>
@@ -1126,6 +1400,47 @@ function formatCurrency(value: number): string {
   if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M'
   if (value >= 1000) return (value / 1000).toFixed(1) + 'K'
   return value.toFixed(0)
+}
+
+function formatCompactNumber(value: any): string {
+  const num = Number(value) || 0
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toLocaleString()
+}
+
+function getRelationshipScoreColor(score: number | null): string {
+  const s = score || 50
+  if (s >= 80) return 'text-success'
+  if (s >= 60) return 'text-info'
+  if (s >= 40) return 'text-warning'
+  return 'text-error'
+}
+
+function getRelationshipScoreColorName(score: number | null): string {
+  const s = score || 50
+  if (s >= 80) return 'success'
+  if (s >= 60) return 'info'
+  if (s >= 40) return 'warning'
+  return 'error'
+}
+
+function getRelationshipScoreLabel(score: number | null): string {
+  const s = score || 50
+  if (s >= 80) return 'Excellent'
+  if (s >= 60) return 'Good'
+  if (s >= 40) return 'Needs Attention'
+  return 'At Risk'
+}
+
+function getPaymentStatusColor(status: string | null): string {
+  const colors: Record<string, string> = { 
+    paid: 'success', 
+    pending: 'warning', 
+    overdue: 'error', 
+    waived: 'info' 
+  }
+  return colors[status || ''] || 'grey'
 }
 
 const uniqueZones = computed(() => {
