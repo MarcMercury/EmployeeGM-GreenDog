@@ -140,7 +140,7 @@
                 </v-avatar>
                 <div>
                   <div class="font-weight-medium">{{ item.name }}</div>
-                  <div class="text-caption text-grey">{{ item.zone || 'No zone' }}</div>
+                  <div class="text-caption text-grey">{{ getZoneDisplay(item.zone) }}</div>
                 </div>
               </div>
             </template>
@@ -206,7 +206,7 @@
                   </template>
                   <v-list-item-title>{{ partner.name }}</v-list-item-title>
                   <v-list-item-subtitle>
-                    {{ partner.zone }} • {{ partner.preferred_visit_day || 'Any day' }}
+                    {{ getZoneDisplay(partner.zone) }} • {{ partner.preferred_visit_day || 'Any day' }}
                   </v-list-item-subtitle>
                   <template #append>
                     <v-chip size="x-small" :color="getPriorityColor(partner.priority)">
@@ -262,10 +262,11 @@
               <v-card-title>Partners by Zone</v-card-title>
               <v-card-text>
                 <v-row>
-                  <v-col v-for="zone in uniqueZones" :key="zone" cols="6" md="3">
-                    <v-card variant="tonal" class="pa-3 text-center" @click="filterZone = zone; mainTab = 'list'">
-                      <div class="text-h5 font-weight-bold">{{ getZoneCount(zone) }}</div>
-                      <div class="text-body-2">{{ zone || 'Unassigned' }}</div>
+                  <v-col v-for="zoneDef in zoneDefinitions" :key="zoneDef.value" cols="6" md="4">
+                    <v-card variant="tonal" class="pa-3 text-center" @click="filterZone = zoneDef.value; mainTab = 'list'">
+                      <div class="text-h5 font-weight-bold">{{ getZoneCount(zoneDef.value) }}</div>
+                      <div class="text-body-2 font-weight-medium">{{ zoneDef.title }}</div>
+                      <div class="text-caption text-grey mt-1" style="font-size: 0.7rem;">{{ zoneDef.description }}</div>
                     </v-card>
                   </v-col>
                 </v-row>
@@ -360,7 +361,7 @@
                     <v-chip size="small" :color="getPriorityColor(selectedPartner.priority)">
                       {{ selectedPartner.priority }} priority
                     </v-chip>
-                    <v-chip size="small" variant="outlined">{{ selectedPartner.zone || 'No zone' }}</v-chip>
+                    <v-chip size="small" variant="outlined">{{ getZoneDisplay(selectedPartner.zone) }}</v-chip>
                     <v-chip size="small" variant="outlined">{{ selectedPartner.visit_frequency || 'monthly' }}</v-chip>
                   </div>
                   <div class="text-body-2 mb-1">
@@ -558,7 +559,7 @@
                   <v-select v-model="form.priority" :items="priorityOptions" label="Priority" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
-                  <v-text-field v-model="form.zone" label="Zone" variant="outlined" density="compact" />
+                  <v-select v-model="form.zone" :items="zoneOptions" label="Zone" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
                   <v-select v-model="form.clinic_type" :items="clinicTypeOptions" label="Clinic Type" variant="outlined" density="compact" />
@@ -759,11 +760,32 @@ const visitTypeOptions = ['visit', 'call', 'email', 'meeting', 'lunch_and_learn'
 const outcomeOptions = ['successful', 'follow_up_needed', 'no_answer', 'voicemail', 'rescheduled', 'declined']
 const goalTypeOptions = ['referral', 'revenue', 'relationship', 'event', 'custom']
 
-// Zone options computed from data
-const zoneOptions = computed(() => {
-  const zones = new Set(partners.value.map(p => p.zone).filter(Boolean))
-  return Array.from(zones)
-})
+// Zone definitions with descriptions
+const zoneDefinitions = [
+  { value: 'Westside & Coastal', title: 'Westside & Coastal 🌊', description: 'Santa Monica, Venice, Marina del Rey, Culver City, Beverly Hills, Westwood, Malibu, Pacific Palisades, Brentwood' },
+  { value: 'South Valley', title: 'South Valley 🎬', description: 'Studio City, Sherman Oaks, Encino, Tarzana, Woodland Hills, Burbank, Toluca Lake, Universal City' },
+  { value: 'North Valley', title: 'North Valley 🏘️', description: 'Northridge, Chatsworth, Granada Hills, Porter Ranch, Van Nuys, Reseda, Canoga Park, North Hollywood, Sun Valley, Sylmar' },
+  { value: 'Central & Eastside', title: 'Central & Eastside 🏙️', description: 'DTLA, Silver Lake, Echo Park, Hollywood, West Hollywood, Los Feliz, Eagle Rock, Boyle Heights' },
+  { value: 'South Bay', title: 'South Bay & Airport ✈️', description: 'El Segundo, Manhattan Beach, Torrance, Redondo Beach, Hawthorne, Inglewood, Gardena' },
+  { value: 'San Gabriel Valley', title: 'San Gabriel Valley 🥡', description: 'Pasadena, Glendale, Arcadia, Alhambra, Monterey Park, San Marino' }
+]
+
+// Zone options for select dropdowns
+const zoneOptions = zoneDefinitions.map(z => ({ title: z.title, value: z.value }))
+
+// Get zone display name with emoji
+const getZoneDisplay = (zone: string | null) => {
+  if (!zone) return 'No zone'
+  const def = zoneDefinitions.find(z => z.value === zone)
+  return def ? def.title : zone
+}
+
+// Get zone description
+const getZoneDescription = (zone: string | null) => {
+  if (!zone) return ''
+  const def = zoneDefinitions.find(z => z.value === zone)
+  return def ? def.description : ''
+}
 
 // Forms
 const form = reactive({
@@ -832,8 +854,7 @@ const needsFollowupCount = computed(() => partners.value.filter(p => p.needs_fol
 const overdueCount = computed(() => overduePartners.value.length)
 
 const uniqueZones = computed(() => {
-  const zones = new Set(partners.value.map(p => p.zone || 'Unassigned'))
-  return Array.from(zones)
+  return zoneDefinitions.map(z => z.value)
 })
 
 const filteredPartners = computed(() => {
