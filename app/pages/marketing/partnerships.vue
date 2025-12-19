@@ -9,6 +9,9 @@
         </p>
       </div>
       <div class="d-flex gap-2">
+        <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
+          Upload EzyVet Report
+        </v-btn>
         <v-btn variant="outlined" prepend-icon="mdi-download" size="small" @click="exportPartners">
           Export
         </v-btn>
@@ -39,25 +42,37 @@
       <v-window-item value="list">
         <!-- Stats Row -->
         <v-row class="mb-4">
-          <v-col cols="6" sm="3">
+          <v-col cols="6" sm="4" md="2">
             <v-card class="text-center pa-3" variant="tonal" color="primary">
               <div class="text-h5 font-weight-bold">{{ partners.length }}</div>
               <div class="text-caption">Total Partners</div>
             </v-card>
           </v-col>
-          <v-col cols="6" sm="3">
+          <v-col cols="6" sm="4" md="2">
             <v-card class="text-center pa-3" variant="tonal" color="success">
               <div class="text-h5 font-weight-bold">{{ activeCount }}</div>
               <div class="text-caption">Active</div>
             </v-card>
           </v-col>
-          <v-col cols="6" sm="3">
+          <v-col cols="6" sm="4" md="2">
+            <v-card class="text-center pa-3" variant="tonal" color="secondary">
+              <div class="text-h5 font-weight-bold">{{ totalReferrals.toLocaleString() }}</div>
+              <div class="text-caption">Total Referrals</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
+            <v-card class="text-center pa-3" variant="tonal" color="teal">
+              <div class="text-h5 font-weight-bold">${{ formatCurrency(totalRevenue) }}</div>
+              <div class="text-caption">Total Revenue</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="4" md="2">
             <v-card class="text-center pa-3" variant="tonal" color="warning">
               <div class="text-h5 font-weight-bold">{{ needsFollowupCount }}</div>
               <div class="text-caption">Need Follow-up</div>
             </v-card>
           </v-col>
-          <v-col cols="6" sm="3">
+          <v-col cols="6" sm="4" md="2">
             <v-card class="text-center pa-3" variant="tonal" color="info">
               <div class="text-h5 font-weight-bold">{{ overdueCount }}</div>
               <div class="text-caption">Overdue Visits</div>
@@ -155,6 +170,20 @@
               <v-chip :color="item.status === 'active' ? 'success' : 'grey'" size="x-small" variant="tonal">
                 {{ item.status }}
               </v-chip>
+            </template>
+
+            <template #item.total_referrals_all_time="{ item }">
+              <span v-if="item.total_referrals_all_time" class="font-weight-medium">
+                {{ item.total_referrals_all_time.toLocaleString() }}
+              </span>
+              <span v-else class="text-grey">—</span>
+            </template>
+
+            <template #item.total_revenue_all_time="{ item }">
+              <span v-if="item.total_revenue_all_time" class="font-weight-medium text-success">
+                ${{ Number(item.total_revenue_all_time).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) }}
+              </span>
+              <span v-else class="text-grey">—</span>
             </template>
 
             <template #item.last_visit_date="{ item }">
@@ -805,6 +834,103 @@
       </v-card>
     </v-dialog>
 
+    <!-- UPLOAD EZYVET REPORT DIALOG -->
+    <v-dialog v-model="showUploadDialog" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-file-upload</v-icon>
+          Upload EzyVet Referrer Revenue Report
+        </v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-grey-darken-1 mb-4">
+            Upload a "Referrer Revenue" PDF from EzyVet to automatically update partner referral stats.
+            Clinics will be matched by name and their visit counts and revenue totals will be updated.
+          </p>
+          
+          <v-file-input
+            v-model="uploadFile"
+            accept=".pdf"
+            label="Select PDF Report"
+            variant="outlined"
+            prepend-icon="mdi-file-pdf-box"
+            :disabled="uploadProcessing"
+            show-size
+          />
+
+          <!-- Processing indicator -->
+          <div v-if="uploadProcessing" class="text-center my-4">
+            <v-progress-circular indeterminate color="primary" size="48" class="mb-2" />
+            <div class="text-body-2">Processing PDF... This may take a moment.</div>
+          </div>
+
+          <!-- Results -->
+          <v-alert v-if="uploadResult" :type="uploadResult.success ? 'success' : 'error'" class="mt-4">
+            <v-alert-title>{{ uploadResult.success ? 'Upload Successful' : 'Upload Failed' }}</v-alert-title>
+            <div v-if="uploadResult.success">
+              <div class="d-flex flex-wrap gap-4 my-2">
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ uploadResult.updated }}</div>
+                  <div class="text-caption">Partners Updated</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ uploadResult.visitorsAdded }}</div>
+                  <div class="text-caption">Visits Added</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">${{ uploadResult.revenueAdded?.toLocaleString() }}</div>
+                  <div class="text-caption">Revenue Added</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold text-warning">{{ uploadResult.skipped }}</div>
+                  <div class="text-caption">Unknown Clinics Skipped</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold text-info">{{ uploadResult.notMatched }}</div>
+                  <div class="text-caption">Not Matched</div>
+                </div>
+              </div>
+              
+              <!-- Show unmatched clinics -->
+              <v-expansion-panels v-if="uploadResult.details?.length" variant="accordion" class="mt-2">
+                <v-expansion-panel title="View Details">
+                  <v-expansion-panel-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item v-for="(detail, idx) in uploadResult.details" :key="idx">
+                        <template #prepend>
+                          <v-icon :color="detail.matched ? 'success' : 'warning'" size="small">
+                            {{ detail.matched ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                          </v-icon>
+                        </template>
+                        <v-list-item-title>{{ detail.clinicName }}</v-list-item-title>
+                        <v-list-item-subtitle>
+                          {{ detail.visits }} visits, ${{ detail.revenue.toLocaleString() }}
+                          <span v-if="detail.matchedTo" class="text-success"> → {{ detail.matchedTo }}</span>
+                          <span v-else class="text-warning"> (No match found)</span>
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </div>
+            <div v-else>{{ uploadResult.message }}</div>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="closeUploadDialog">Close</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="uploadProcessing" 
+            :disabled="!uploadFile?.length || uploadProcessing"
+            @click="processUpload"
+          >
+            Process Report
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -834,6 +960,12 @@ const filterTier = ref<string | null>(null)
 const filterZone = ref<string | null>(null)
 const filterPriority = ref<string | null>(null)
 const filterFollowup = ref('all')
+
+// Upload EzyVet Report state
+const showUploadDialog = ref(false)
+const uploadFile = ref<File[]>([])
+const uploadProcessing = ref(false)
+const uploadResult = ref<any>(null)
 
 // Data
 const partners = ref<any[]>([])
@@ -976,6 +1108,8 @@ const tableHeaders = [
   { title: 'Partner', key: 'name', sortable: true },
   { title: 'Priority', key: 'priority', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
+  { title: 'Referrals', key: 'total_referrals_all_time', sortable: true },
+  { title: 'Revenue', key: 'total_revenue_all_time', sortable: true },
   { title: 'Last Visit', key: 'last_visit_date', sortable: true },
   { title: 'Next Follow-up', key: 'next_followup_date', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false }
@@ -985,6 +1119,14 @@ const tableHeaders = [
 const activeCount = computed(() => partners.value.filter(p => p.status === 'active').length)
 const needsFollowupCount = computed(() => partners.value.filter(p => p.needs_followup).length)
 const overdueCount = computed(() => overduePartners.value.length)
+const totalReferrals = computed(() => partners.value.reduce((sum, p) => sum + (p.total_referrals_all_time || 0), 0))
+const totalRevenue = computed(() => partners.value.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0))
+
+function formatCurrency(value: number): string {
+  if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M'
+  if (value >= 1000) return (value / 1000).toFixed(1) + 'K'
+  return value.toFixed(0)
+}
 
 const uniqueZones = computed(() => {
   return zoneDefinitions.map(z => z.value)
@@ -1512,6 +1654,51 @@ function exportPartners() {
   snackbar.message = 'Partners exported'
   snackbar.color = 'success'
   snackbar.show = true
+}
+
+// Upload EzyVet Report functions
+async function processUpload() {
+  if (!uploadFile.value?.length) return
+  
+  uploadProcessing.value = true
+  uploadResult.value = null
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', uploadFile.value[0])
+    
+    const response = await $fetch('/api/parse-referrals', {
+      method: 'POST',
+      body: formData
+    })
+    
+    uploadResult.value = response
+    
+    if (response.success) {
+      // Refresh partners list to show updated stats
+      await loadPartners()
+      snackbar.message = `Updated ${response.updated} partners with $${response.revenueAdded?.toLocaleString()} revenue`
+      snackbar.color = 'success'
+      snackbar.show = true
+    }
+  } catch (error: any) {
+    console.error('Upload error:', error)
+    uploadResult.value = {
+      success: false,
+      message: error.data?.message || error.message || 'Failed to process PDF'
+    }
+    snackbar.message = 'Failed to process PDF'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    uploadProcessing.value = false
+  }
+}
+
+function closeUploadDialog() {
+  showUploadDialog.value = false
+  uploadFile.value = []
+  uploadResult.value = null
 }
 
 // Init
