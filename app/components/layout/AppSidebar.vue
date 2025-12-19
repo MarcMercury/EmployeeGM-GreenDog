@@ -134,7 +134,7 @@
         <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Visible to all -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/partnerships" title="Partnerships" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/partnerships" title="Referrals" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
     </v-list>

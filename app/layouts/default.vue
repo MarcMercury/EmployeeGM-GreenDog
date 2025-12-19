@@ -184,7 +184,7 @@ async function handleSignOut() {
             <NuxtLink to="/marketing/resources" class="nav-link group justify-center" title="Resources">
               <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
             </NuxtLink>
-            <NuxtLink to="/marketing/partnerships" class="nav-link group justify-center" title="Partnerships">
+            <NuxtLink to="/marketing/partnerships" class="nav-link group justify-center" title="Referrals">
               <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
             </NuxtLink>
           </template>
@@ -370,7 +370,7 @@ async function handleSignOut() {
               </NuxtLink>
               <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
-                Partnerships
+                Referrals
               </NuxtLink>
             </div>
           </div>
