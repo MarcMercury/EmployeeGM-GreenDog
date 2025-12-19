@@ -326,6 +326,7 @@
           <v-tab value="contacts">Contacts</v-tab>
           <v-tab value="notes">Notes</v-tab>
           <v-tab value="visits">Visit Log</v-tab>
+          <v-tab value="events">Events</v-tab>
           <v-tab value="goals">Goals</v-tab>
         </v-tabs>
 
@@ -421,12 +422,20 @@
                 <v-list-item v-for="note in partnerNotes" :key="note.id" class="mb-2">
                   <v-card variant="tonal" class="pa-3 w-100">
                     <div class="d-flex justify-space-between align-start mb-1">
-                      <v-chip size="x-small" variant="outlined">{{ note.note_type }}</v-chip>
+                      <div class="d-flex align-center gap-2">
+                        <v-chip size="x-small" variant="outlined">{{ note.note_type }}</v-chip>
+                        <v-chip v-if="note.author_initials" size="x-small" color="primary" variant="flat">
+                          {{ note.author_initials }}
+                        </v-chip>
+                      </div>
                       <span class="text-caption text-grey">{{ formatDateTime(note.created_at) }}</span>
                     </div>
-                    <div class="text-body-2">{{ note.content }}</div>
-                    <div v-if="note.created_by_name" class="text-caption text-grey mt-1">
-                      — {{ note.created_by_name }}
+                    <div class="text-body-2 my-2">{{ note.content }}</div>
+                    <div class="text-caption text-grey d-flex justify-space-between">
+                      <span v-if="note.created_by_name">— {{ note.created_by_name }}</span>
+                      <span v-if="note.edited_at" class="text-italic">
+                        (edited {{ formatDateTime(note.edited_at) }}<span v-if="note.edited_by_initials"> by {{ note.edited_by_initials }}</span>)
+                      </span>
                     </div>
                   </v-card>
                 </v-list-item>
@@ -464,6 +473,37 @@
                   <div class="text-grey">No visits logged</div>
                 </v-timeline-item>
               </v-timeline>
+            </v-window-item>
+
+            <!-- Events -->
+            <v-window-item value="events">
+              <div class="d-flex justify-end mb-2">
+                <v-btn size="small" color="primary" variant="tonal" @click="openAddEvent">
+                  <v-icon start>mdi-plus</v-icon> Add Event
+                </v-btn>
+              </div>
+              <v-list density="compact">
+                <v-list-item v-for="event in partnerEvents" :key="event.id" class="mb-2">
+                  <template #prepend>
+                    <v-icon color="primary">mdi-calendar-star</v-icon>
+                  </template>
+                  <v-list-item-title>
+                    {{ event.marketing_events?.name || event.event_name || 'Unknown Event' }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle>
+                    {{ formatDate(event.marketing_events?.event_date || event.event_date) }}
+                    • {{ event.participation_role?.replace('_', ' ') }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <v-chip size="x-small" :color="event.is_confirmed ? 'success' : 'warning'" variant="tonal">
+                      {{ event.is_confirmed ? 'Confirmed' : 'Pending' }}
+                    </v-chip>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="!partnerEvents.length">
+                  <v-list-item-title class="text-grey">No events recorded</v-list-item-title>
+                </v-list-item>
+              </v-list>
             </v-window-item>
 
             <!-- Goals -->
@@ -698,6 +738,73 @@
       </v-card>
     </v-dialog>
 
+    <!-- ADD EVENT DIALOG -->
+    <v-dialog v-model="showEventDialog" max-width="550">
+      <v-card>
+        <v-card-title>Add Event Participation</v-card-title>
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12">
+              <v-autocomplete
+                v-model="eventForm.event_id"
+                :items="marketingEvents"
+                item-title="name"
+                item-value="id"
+                label="Select Marketing Event"
+                variant="outlined"
+                density="compact"
+                clearable
+                hint="Or enter custom event below"
+                persistent-hint
+              >
+                <template #item="{ item, props }">
+                  <v-list-item v-bind="props">
+                    <template #subtitle>{{ formatDate(item.raw.event_date) }}</template>
+                  </v-list-item>
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" v-if="!eventForm.event_id">
+              <v-text-field 
+                v-model="eventForm.event_name" 
+                label="Custom Event Name" 
+                variant="outlined" 
+                density="compact"
+                hint="For historical/external events not in the system"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field 
+                v-model="eventForm.event_date" 
+                label="Event Date" 
+                type="date" 
+                variant="outlined" 
+                density="compact"
+                :disabled="!!eventForm.event_id"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-select 
+                v-model="eventForm.participation_role" 
+                :items="participationRoles" 
+                label="Role" 
+                variant="outlined" 
+                density="compact" 
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-model="eventForm.notes" label="Notes" variant="outlined" density="compact" rows="2" />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showEventDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveEvent">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -734,7 +841,9 @@ const partnerContacts = ref<any[]>([])
 const partnerNotes = ref<any[]>([])
 const partnerVisits = ref<any[]>([])
 const partnerGoals = ref<any[]>([])
+const partnerEvents = ref<any[]>([])
 const recentActivity = ref<any[]>([])
+const marketingEvents = ref<any[]>([]) // For event selection dropdown
 
 // Dialog state
 const showDetailDialog = ref(false)
@@ -742,11 +851,35 @@ const showPartnerDialog = ref(false)
 const showVisitDialog = ref(false)
 const showContactDialog = ref(false)
 const showGoalDialog = ref(false)
+const showEventDialog = ref(false)
 const editMode = ref(false)
 const selectedPartner = ref<any>(null)
 const newNote = ref('')
 
 const snackbar = reactive({ show: false, message: '', color: 'success' })
+
+// Event form
+const eventForm = reactive({
+  partner_id: '',
+  event_id: null as string | null,
+  event_name: '',
+  event_date: '',
+  participation_role: 'attendee',
+  notes: ''
+})
+const participationRoles = [
+  { title: 'Attendee', value: 'attendee' },
+  { title: 'Sponsor', value: 'sponsor' },
+  { title: 'Vendor', value: 'vendor' },
+  { title: 'Rescue Partner', value: 'rescue' },
+  { title: 'Food Vendor', value: 'food_vendor' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Donor', value: 'donor' },
+  { title: 'Volunteer', value: 'volunteer' },
+  { title: 'Host', value: 'host' },
+  { title: 'Speaker', value: 'speaker' },
+  { title: 'Exhibitor', value: 'exhibitor' }
+]
 
 // Options
 const tierOptions = ['platinum', 'gold', 'silver', 'bronze', 'prospect']
@@ -953,18 +1086,33 @@ async function loadPartners() {
 
 async function loadPartnerDetails(partnerId: string) {
   try {
-    const [contacts, notes, visits, goals] = await Promise.all([
+    const [contacts, notes, visits, goals, events] = await Promise.all([
       supabase.from('partner_contacts').select('*').eq('partner_id', partnerId).order('is_primary', { ascending: false }),
       supabase.from('partner_notes').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
       supabase.from('partner_visit_logs').select('*').eq('partner_id', partnerId).order('visit_date', { ascending: false }),
-      supabase.from('partner_goals').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false })
+      supabase.from('partner_goals').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
+      supabase.from('partner_events').select('*, marketing_events(name, event_date)').eq('partner_id', partnerId).order('event_date', { ascending: false })
     ])
     partnerContacts.value = contacts.data || []
     partnerNotes.value = notes.data || []
     partnerVisits.value = visits.data || []
     partnerGoals.value = goals.data || []
+    partnerEvents.value = events.data || []
   } catch (e) {
     console.error('Error loading partner details:', e)
+  }
+}
+
+async function loadMarketingEvents() {
+  try {
+    const { data } = await supabase
+      .from('marketing_events')
+      .select('id, name, event_date')
+      .order('event_date', { ascending: false })
+      .limit(50)
+    marketingEvents.value = data || []
+  } catch (e) {
+    console.error('Error loading marketing events:', e)
   }
 }
 
@@ -1055,6 +1203,18 @@ function openAddGoal() {
   goalForm.description = ''
   goalForm.target_date = ''
   showGoalDialog.value = true
+}
+
+function openAddEvent() {
+  if (!selectedPartner.value) return
+  loadMarketingEvents() // Load events for dropdown
+  eventForm.partner_id = selectedPartner.value.id
+  eventForm.event_id = null
+  eventForm.event_name = ''
+  eventForm.event_date = ''
+  eventForm.participation_role = 'attendee'
+  eventForm.notes = ''
+  showEventDialog.value = true
 }
 
 function resetForm() {
@@ -1240,19 +1400,82 @@ async function saveGoal() {
   }
 }
 
+async function saveEvent() {
+  if (!eventForm.event_id && !eventForm.event_name) {
+    snackbar.message = 'Please select an event or enter a custom event name'
+    snackbar.color = 'warning'
+    snackbar.show = true
+    return
+  }
+  saving.value = true
+  try {
+    const { error } = await supabase.from('partner_events').insert({
+      partner_id: eventForm.partner_id,
+      event_id: eventForm.event_id || null,
+      event_name: eventForm.event_id ? null : eventForm.event_name,
+      event_date: eventForm.event_id ? null : (eventForm.event_date || null),
+      participation_role: eventForm.participation_role,
+      notes: eventForm.notes || null,
+      created_by: user.value?.id
+    })
+    if (error) throw error
+    snackbar.message = 'Event added'
+    snackbar.color = 'success'
+    snackbar.show = true
+    showEventDialog.value = false
+    if (selectedPartner.value) await loadPartnerDetails(selectedPartner.value.id)
+  } catch (e: any) {
+    console.error('Error saving event:', e)
+    snackbar.message = e.message || 'Error saving event'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    saving.value = false
+  }
+}
+
 async function addNote() {
   if (!selectedPartner.value || !newNote.value.trim()) return
   saving.value = true
   try {
-    const { error } = await supabase.from('partner_notes').insert({
+    // Get user profile for initials and name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('auth_user_id', user.value?.id)
+      .single()
+    
+    const initials = profile 
+      ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')
+      : 'SY'
+    const fullName = profile 
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : 'System'
+
+    // Insert note with author info
+    const { error: noteError } = await supabase.from('partner_notes').insert({
       partner_id: selectedPartner.value.id,
       content: newNote.value.trim(),
       note_type: 'general',
-      created_by: user.value?.id
+      created_by: user.value?.id,
+      author_initials: initials.toUpperCase(),
+      created_by_name: fullName
     })
-    if (error) throw error
+    if (noteError) throw noteError
+
+    // Update partner's last_contact_date (note implies contact was made)
+    const { error: updateError } = await supabase
+      .from('referral_partners')
+      .update({ 
+        last_contact_date: new Date().toISOString().split('T')[0],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', selectedPartner.value.id)
+    if (updateError) console.warn('Could not update last_contact_date:', updateError)
+
     newNote.value = ''
     await loadPartnerDetails(selectedPartner.value.id)
+    await loadPartners() // Refresh to show updated last_contact_date
     snackbar.message = 'Note added'
     snackbar.color = 'success'
     snackbar.show = true

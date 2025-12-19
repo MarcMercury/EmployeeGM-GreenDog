@@ -46,14 +46,14 @@ const { data: inventoryStats } = await useAsyncData('inventory-stats', async () 
 const { data: referralStats } = await useAsyncData('referral-stats', async () => {
   const { data: referrals } = await supabase
     .from('referral_partners')
-    .select('id, status, referral_type')
+    .select('id, status, tier, clinic_type')
   
   const total = referrals?.length || 0
   const active = referrals?.filter(r => r.status === 'active').length || 0
-  const vets = referrals?.filter(r => r.referral_type === 'vet').length || 0
-  const groomers = referrals?.filter(r => r.referral_type === 'groomer').length || 0
+  const platinum = referrals?.filter(r => r.tier === 'platinum').length || 0
+  const gold = referrals?.filter(r => r.tier === 'gold').length || 0
   
-  return { total, active, vets, groomers }
+  return { total, active, platinum, gold }
 })
 
 const hubs = computed(() => [
@@ -95,15 +95,15 @@ const hubs = computed(() => [
   },
   {
     title: 'Referral Partners Hub',
-    subtitle: 'Vets, Groomers, Trainers & More',
+    subtitle: 'Medical Partner CRM',
     icon: 'mdi-account-group',
     color: 'success',
     to: '/marketing/partnerships',
     stats: [
-      { label: 'Total Referrals', value: referralStats.value?.total || 0 },
+      { label: 'Total Partners', value: referralStats.value?.total || 0 },
       { label: 'Active', value: referralStats.value?.active || 0 },
-      { label: 'Vets', value: referralStats.value?.vets || 0 },
-      { label: 'Groomers', value: referralStats.value?.groomers || 0 }
+      { label: 'Platinum', value: referralStats.value?.platinum || 0 },
+      { label: 'Gold', value: referralStats.value?.gold || 0 }
     ]
   }
 ])
