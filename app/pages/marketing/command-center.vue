@@ -6,8 +6,11 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 
-// Fetch summary stats
-const { data: partnerStats } = await useAsyncData('partner-stats', async () => {
+// Reactive refresh trigger
+const refreshKey = ref(0)
+
+// Fetch summary stats with watch for real-time updates
+const { data: partnerStats, refresh: refreshPartners } = await useAsyncData('partner-stats', async () => {
   const { data: partners } = await supabase
     .from('marketing_partners')
     .select('id, status, partner_type')
@@ -18,9 +21,9 @@ const { data: partnerStats } = await useAsyncData('partner-stats', async () => {
   const rescues = partners?.filter(p => p.partner_type === 'rescue').length || 0
   
   return { total, active, chambers, rescues }
-})
+}, { watch: [refreshKey] })
 
-const { data: influencerStats } = await useAsyncData('influencer-stats', async () => {
+const { data: influencerStats, refresh: refreshInfluencers } = await useAsyncData('influencer-stats', async () => {
   const { data: influencers } = await supabase
     .from('marketing_influencers')
     .select('id, status, follower_count')
@@ -30,9 +33,9 @@ const { data: influencerStats } = await useAsyncData('influencer-stats', async (
   const totalReach = influencers?.reduce((sum, i) => sum + (i.follower_count || 0), 0) || 0
   
   return { total, active, totalReach }
-})
+}, { watch: [refreshKey] })
 
-const { data: inventoryStats } = await useAsyncData('inventory-stats', async () => {
+const { data: inventoryStats, refresh: refreshInventory } = await useAsyncData('inventory-stats', async () => {
   const { data: inventory } = await supabase
     .from('marketing_inventory')
     .select('id, is_low_stock, item_name')
@@ -41,9 +44,9 @@ const { data: inventoryStats } = await useAsyncData('inventory-stats', async () 
   const lowStock = inventory?.filter(i => i.is_low_stock).length || 0
   
   return { total, lowStock }
-})
+}, { watch: [refreshKey] })
 
-const { data: referralStats } = await useAsyncData('referral-stats', async () => {
+const { data: referralStats, refresh: refreshReferrals } = await useAsyncData('referral-stats', async () => {
   const { data: referrals } = await supabase
     .from('referral_partners')
     .select('id, status, tier, clinic_type')
@@ -54,10 +57,10 @@ const { data: referralStats } = await useAsyncData('referral-stats', async () =>
   const gold = referrals?.filter(r => r.tier === 'gold').length || 0
   
   return { total, active, platinum, gold }
-})
+}, { watch: [refreshKey] })
 
 // Fetch current month event stats
-const { data: eventStats } = await useAsyncData('event-stats', async () => {
+const { data: eventStats, refresh: refreshEvents } = await useAsyncData('event-stats', async () => {
   const now = new Date()
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
@@ -80,63 +83,39 @@ const { data: eventStats } = await useAsyncData('event-stats', async () => {
   const totalLeads = leads?.length || 0
   
   return { totalEvents, totalVisitors, totalRevenue, totalLeads }
-})
+}, { watch: [refreshKey] })
 
-const hubs = computed(() => [
-  {
-    title: 'Partnership CRM Hub',
-    subtitle: 'Chambers, Vendors, Rescues & More',
-    icon: 'mdi-handshake',
-    color: 'primary',
-    to: '/marketing/partners',
-    stats: [
-      { label: 'Total Partners', value: partnerStats.value?.total || 0 },
-      { label: 'Active', value: partnerStats.value?.active || 0 },
-      { label: 'Chambers', value: partnerStats.value?.chambers || 0 },
-      { label: 'Rescues', value: partnerStats.value?.rescues || 0 }
-    ]
-  },
-  {
-    title: 'Influencer Roster Hub',
-    subtitle: 'Social Media Collaborations',
-    icon: 'mdi-star-circle',
-    color: 'secondary',
-    to: '/marketing/influencers',
-    stats: [
-      { label: 'Total Influencers', value: influencerStats.value?.total || 0 },
-      { label: 'Active', value: influencerStats.value?.active || 0 },
-      { label: 'Total Reach', value: formatNumber(influencerStats.value?.totalReach || 0) }
-    ]
-  },
-  {
-    title: 'Marketing Inventory Hub',
-    subtitle: 'Swag, Materials & Supplies',
-    icon: 'mdi-package-variant-closed',
-    color: 'warning',
-    to: '/marketing/inventory',
-    stats: [
-      { label: 'Total Items', value: inventoryStats.value?.total || 0 },
-      { label: 'Low Stock', value: inventoryStats.value?.lowStock || 0, alert: (inventoryStats.value?.lowStock || 0) > 0 }
-    ]
-  },
-  {
-    title: 'Referral Partners Hub',
-    subtitle: 'Medical Partner CRM',
-    icon: 'mdi-account-group',
-    color: 'success',
-    to: '/marketing/partnerships',
-    stats: [
-      { label: 'Total Partners', value: referralStats.value?.total || 0 },
-      { label: 'Active', value: referralStats.value?.active || 0 },
-      { label: 'Platinum', value: referralStats.value?.platinum || 0 },
-      { label: 'Gold', value: referralStats.value?.gold || 0 }
-    ]
-  }
-])
+// Refresh all data
+const isRefreshing = ref(false)
+async function refreshAll() {
+  isRefreshing.value = true
+  refreshKey.value++
+  await Promise.all([
+    refreshPartners(),
+    refreshInfluencers(),
+    refreshInventory(),
+    refreshReferrals(),
+    refreshEvents()
+  ])
+  isRefreshing.value = false
+}
+
+// Auto-refresh every 60 seconds when page is visible
+let refreshInterval: NodeJS.Timeout | null = null
+onMounted(() => {
+  refreshInterval = setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      refreshAll()
+    }
+  }, 60000)
+})
+onUnmounted(() => {
+  if (refreshInterval) clearInterval(refreshInterval)
+})
 
 // Current month name for Events tile
 const currentMonthName = computed(() => {
-  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  return new Date().toLocaleDateString('en-US', { month: 'short' })
 })
 
 function formatNumber(num: number): string {
@@ -144,220 +123,213 @@ function formatNumber(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
   return num.toString()
 }
+
+// Quick action items - condensed
+const quickActions = [
+  { label: 'Add Partner', icon: 'mdi-plus', color: 'primary', to: '/marketing/partners?action=add' },
+  { label: 'Add Influencer', icon: 'mdi-account-plus', color: 'secondary', to: '/marketing/influencers?action=add' },
+  { label: 'Add Inventory', icon: 'mdi-package-variant-plus', color: 'warning', to: '/marketing/inventory?action=add' },
+  { label: 'Add Referral', icon: 'mdi-account-plus', color: 'success', to: '/marketing/partnerships?action=add' },
+  { label: 'Low Stock', icon: 'mdi-alert-circle', color: 'error', to: '/marketing/inventory?filter=low_stock' },
+  { label: 'Create Event', icon: 'mdi-calendar-plus', color: 'info', to: '/growth/events?action=add' }
+]
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
-    <!-- Header -->
-    <div class="d-flex align-center mb-6">
+  <v-container fluid class="pa-4">
+    <!-- Compact Header -->
+    <div class="d-flex align-center mb-4">
       <div>
-        <h1 class="text-h4 font-weight-bold">Marketing Dash</h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
-          Manage partnerships, referrals, influencers, and inventory from one place
+        <h1 class="text-h5 font-weight-bold">Marketing Dash</h1>
+        <p class="text-caption text-medium-emphasis mb-0">
+          Partnerships, referrals, influencers & inventory
         </p>
       </div>
       <v-spacer />
       <v-btn
-        color="primary"
-        variant="outlined"
-        prepend-icon="mdi-calendar"
-        to="/marketing/calendar"
+        icon
+        variant="text"
+        size="small"
+        :loading="isRefreshing"
+        @click="refreshAll"
         class="mr-2"
       >
+        <v-icon>mdi-refresh</v-icon>
+        <v-tooltip activator="parent" location="bottom">Refresh Data</v-tooltip>
+      </v-btn>
+      <v-btn size="small" variant="outlined" prepend-icon="mdi-calendar" to="/marketing/calendar" class="mr-2">
         Calendar
       </v-btn>
-      <v-btn
-        color="primary"
-        variant="outlined"
-        prepend-icon="mdi-folder"
-        to="/marketing/resources"
-      >
+      <v-btn size="small" variant="outlined" prepend-icon="mdi-folder" to="/marketing/resources">
         Resources
       </v-btn>
     </div>
 
-    <!-- Hub Cards -->
-    <v-row>
-      <v-col
-        v-for="hub in hubs"
-        :key="hub.title"
-        cols="12"
-        md="4"
-      >
-        <v-card
-          :to="hub.to"
-          hover
-          class="h-100"
-        >
-          <v-card-item>
+    <!-- All Hub Cards in a 5-column grid -->
+    <v-row dense>
+      <!-- Partnership Hub -->
+      <v-col cols="12" sm="6" lg="2" xl="2">
+        <v-card to="/marketing/partners" hover class="h-100" density="compact">
+          <v-card-item class="pb-1">
             <template #prepend>
-              <v-avatar :color="hub.color" size="48">
-                <v-icon :icon="hub.icon" size="24" color="white" />
+              <v-avatar color="primary" size="36">
+                <v-icon icon="mdi-handshake" size="20" color="white" />
               </v-avatar>
             </template>
-            <v-card-title>{{ hub.title }}</v-card-title>
-            <v-card-subtitle>{{ hub.subtitle }}</v-card-subtitle>
+            <v-card-title class="text-subtitle-1">Partnerships</v-card-title>
           </v-card-item>
-          
-          <v-divider />
-          
-          <v-card-text>
-            <v-row dense>
-              <v-col
-                v-for="stat in hub.stats"
-                :key="stat.label"
-                :cols="12 / hub.stats.length"
-                class="text-center"
-              >
-                <div
-                  class="text-h5 font-weight-bold"
-                  :class="{ 'text-error': stat.alert }"
-                >
-                  {{ stat.value }}
-                  <v-icon
-                    v-if="stat.alert"
-                    icon="mdi-alert"
-                    size="small"
-                    color="error"
-                  />
-                </div>
-                <div class="text-caption text-medium-emphasis">
-                  {{ stat.label }}
-                </div>
-              </v-col>
-            </v-row>
+          <v-card-text class="pt-0">
+            <div class="d-flex justify-space-between text-center">
+              <div>
+                <div class="text-h6 font-weight-bold">{{ partnerStats?.total || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Total</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-success">{{ partnerStats?.active || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Active</div>
+              </div>
+            </div>
           </v-card-text>
-          
-          <v-card-actions>
-            <v-spacer />
-            <v-btn
-              :color="hub.color"
-              variant="text"
-              append-icon="mdi-arrow-right"
-            >
-              View All
-            </v-btn>
-          </v-card-actions>
         </v-card>
       </v-col>
-    </v-row>
 
-    <!-- Events Stats Tile - Current Month Summary -->
-    <v-row class="mt-4">
-      <v-col cols="12" md="4">
-        <v-card to="/growth/events" hover class="h-100">
-          <v-card-item>
+      <!-- Influencer Hub -->
+      <v-col cols="12" sm="6" lg="2" xl="2">
+        <v-card to="/marketing/influencers" hover class="h-100" density="compact">
+          <v-card-item class="pb-1">
             <template #prepend>
-              <v-avatar color="info" size="48">
-                <v-icon icon="mdi-calendar-star" size="24" color="white" />
+              <v-avatar color="secondary" size="36">
+                <v-icon icon="mdi-star-circle" size="20" color="white" />
               </v-avatar>
             </template>
-            <v-card-title>Events Performance</v-card-title>
-            <v-card-subtitle>{{ currentMonthName }}</v-card-subtitle>
+            <v-card-title class="text-subtitle-1">Influencers</v-card-title>
           </v-card-item>
-          
-          <v-divider />
-          
-          <v-card-text>
-            <v-row dense>
-              <v-col cols="3" class="text-center">
-                <div class="text-h5 font-weight-bold">{{ eventStats?.totalEvents || 0 }}</div>
+          <v-card-text class="pt-0">
+            <div class="d-flex justify-space-between text-center">
+              <div>
+                <div class="text-h6 font-weight-bold">{{ influencerStats?.total || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Total</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-info">{{ formatNumber(influencerStats?.totalReach || 0) }}</div>
+                <div class="text-caption text-medium-emphasis">Reach</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Inventory Hub -->
+      <v-col cols="12" sm="6" lg="2" xl="2">
+        <v-card to="/marketing/inventory" hover class="h-100" density="compact">
+          <v-card-item class="pb-1">
+            <template #prepend>
+              <v-avatar color="warning" size="36">
+                <v-icon icon="mdi-package-variant-closed" size="20" color="white" />
+              </v-avatar>
+            </template>
+            <v-card-title class="text-subtitle-1">Inventory</v-card-title>
+          </v-card-item>
+          <v-card-text class="pt-0">
+            <div class="d-flex justify-space-between text-center">
+              <div>
+                <div class="text-h6 font-weight-bold">{{ inventoryStats?.total || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Items</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold" :class="(inventoryStats?.lowStock || 0) > 0 ? 'text-error' : 'text-success'">
+                  {{ inventoryStats?.lowStock || 0 }}
+                  <v-icon v-if="(inventoryStats?.lowStock || 0) > 0" icon="mdi-alert" size="14" color="error" />
+                </div>
+                <div class="text-caption text-medium-emphasis">Low</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Referral Partners Hub -->
+      <v-col cols="12" sm="6" lg="2" xl="2">
+        <v-card to="/marketing/partnerships" hover class="h-100" density="compact">
+          <v-card-item class="pb-1">
+            <template #prepend>
+              <v-avatar color="success" size="36">
+                <v-icon icon="mdi-account-group" size="20" color="white" />
+              </v-avatar>
+            </template>
+            <v-card-title class="text-subtitle-1">Referrals</v-card-title>
+          </v-card-item>
+          <v-card-text class="pt-0">
+            <div class="d-flex justify-space-between text-center">
+              <div>
+                <div class="text-h6 font-weight-bold">{{ referralStats?.total || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Total</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-amber">{{ referralStats?.platinum || 0 }}/{{ referralStats?.gold || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Plat/Gold</div>
+              </div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Events Performance Hub -->
+      <v-col cols="12" sm="6" lg="4" xl="4">
+        <v-card to="/growth/events" hover class="h-100" density="compact">
+          <v-card-item class="pb-1">
+            <template #prepend>
+              <v-avatar color="info" size="36">
+                <v-icon icon="mdi-calendar-star" size="20" color="white" />
+              </v-avatar>
+            </template>
+            <v-card-title class="text-subtitle-1">Events ({{ currentMonthName }})</v-card-title>
+          </v-card-item>
+          <v-card-text class="pt-0">
+            <div class="d-flex justify-space-between text-center">
+              <div>
+                <div class="text-h6 font-weight-bold">{{ eventStats?.totalEvents || 0 }}</div>
                 <div class="text-caption text-medium-emphasis">Events</div>
-              </v-col>
-              <v-col cols="3" class="text-center">
-                <div class="text-h5 font-weight-bold">{{ eventStats?.totalVisitors || 0 }}</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-success">{{ eventStats?.totalVisitors || 0 }}</div>
                 <div class="text-caption text-medium-emphasis">Visitors</div>
-              </v-col>
-              <v-col cols="3" class="text-center">
-                <div class="text-h5 font-weight-bold">{{ eventStats?.totalLeads || 0 }}</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-secondary">{{ eventStats?.totalLeads || 0 }}</div>
                 <div class="text-caption text-medium-emphasis">Leads</div>
-              </v-col>
-              <v-col cols="3" class="text-center">
-                <div class="text-h5 font-weight-bold">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
+              </div>
+              <div>
+                <div class="text-h6 font-weight-bold text-warning">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
                 <div class="text-caption text-medium-emphasis">Revenue</div>
-              </v-col>
-            </v-row>
+              </div>
+            </div>
           </v-card-text>
-          
-          <v-card-actions>
-            <v-spacer />
-            <v-btn color="info" variant="text" append-icon="mdi-arrow-right">
-              View All
-            </v-btn>
-          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Quick Actions -->
-    <v-row class="mt-4">
-      <v-col cols="12">
-        <v-card>
-          <v-card-title class="d-flex align-center">
-            <v-icon icon="mdi-lightning-bolt" class="mr-2" />
-            Quick Actions
-          </v-card-title>
-          <v-card-text>
-            <v-row>
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  block
-                  color="primary"
-                  variant="tonal"
-                  prepend-icon="mdi-plus"
-                  to="/marketing/partners?action=add"
-                >
-                  Add Partner
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  block
-                  color="secondary"
-                  variant="tonal"
-                  prepend-icon="mdi-account-plus"
-                  to="/marketing/influencers?action=add"
-                >
-                  Add Influencer
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  block
-                  color="warning"
-                  variant="tonal"
-                  prepend-icon="mdi-package-variant-plus"
-                  to="/marketing/inventory?action=add"
-                >
-                  Add Inventory Item
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  block
-                  color="info"
-                  variant="tonal"
-                  prepend-icon="mdi-alert-circle"
-                  to="/marketing/inventory?filter=low_stock"
-                >
-                  View Low Stock
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="6" md="3">
-                <v-btn
-                  block
-                  color="success"
-                  variant="tonal"
-                  prepend-icon="mdi-account-plus"
-                  to="/marketing/partnerships?action=add"
-                >
-                  Add Referral
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Quick Actions - Compact inline buttons -->
+    <v-card class="mt-3" density="compact">
+      <v-card-text class="py-2">
+        <div class="d-flex align-center flex-wrap gap-2">
+          <span class="text-caption text-medium-emphasis mr-2">
+            <v-icon size="16">mdi-lightning-bolt</v-icon> Quick:
+          </span>
+          <v-btn
+            v-for="action in quickActions"
+            :key="action.label"
+            :color="action.color"
+            :to="action.to"
+            :prepend-icon="action.icon"
+            variant="tonal"
+            size="small"
+            density="compact"
+          >
+            {{ action.label }}
+          </v-btn>
+        </div>
+      </v-card-text>
+    </v-card>
   </v-container>
 </template>
