@@ -244,43 +244,47 @@ function formatNumber(num: number): string {
 
     <!-- Events Stats Tile - Current Month Summary -->
     <v-row class="mt-4">
-      <v-col cols="12">
-        <v-card color="info" variant="tonal">
+      <v-col cols="12" md="4">
+        <v-card to="/growth/events" hover class="h-100">
           <v-card-item>
             <template #prepend>
               <v-avatar color="info" size="48">
                 <v-icon icon="mdi-calendar-star" size="24" color="white" />
               </v-avatar>
             </template>
-            <v-card-title class="text-h6">Events Performance - {{ currentMonthName }}</v-card-title>
-            <v-card-subtitle>Monthly event summary at a glance</v-card-subtitle>
-            <template #append>
-              <v-btn color="info" variant="outlined" to="/growth/events" append-icon="mdi-arrow-right">
-                View All Events
-              </v-btn>
-            </template>
+            <v-card-title>Events Performance</v-card-title>
+            <v-card-subtitle>{{ currentMonthName }}</v-card-subtitle>
           </v-card-item>
           
+          <v-divider />
+          
           <v-card-text>
-            <v-row>
-              <v-col cols="6" sm="3" class="text-center">
-                <div class="text-h4 font-weight-bold text-info">{{ eventStats?.totalEvents || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Events This Month</div>
+            <v-row dense>
+              <v-col cols="3" class="text-center">
+                <div class="text-h5 font-weight-bold">{{ eventStats?.totalEvents || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Events</div>
               </v-col>
-              <v-col cols="6" sm="3" class="text-center">
-                <div class="text-h4 font-weight-bold text-success">{{ eventStats?.totalVisitors || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Total Visitors</div>
+              <v-col cols="3" class="text-center">
+                <div class="text-h5 font-weight-bold">{{ eventStats?.totalVisitors || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Visitors</div>
               </v-col>
-              <v-col cols="6" sm="3" class="text-center">
-                <div class="text-h4 font-weight-bold text-secondary">{{ eventStats?.totalLeads || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Leads Captured</div>
+              <v-col cols="3" class="text-center">
+                <div class="text-h5 font-weight-bold">{{ eventStats?.totalLeads || 0 }}</div>
+                <div class="text-caption text-medium-emphasis">Leads</div>
               </v-col>
-              <v-col cols="6" sm="3" class="text-center">
-                <div class="text-h4 font-weight-bold text-warning">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
-                <div class="text-caption text-medium-emphasis">Revenue Generated</div>
+              <v-col cols="3" class="text-center">
+                <div class="text-h5 font-weight-bold">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
+                <div class="text-caption text-medium-emphasis">Revenue</div>
               </v-col>
             </v-row>
           </v-card-text>
+          
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="info" variant="text" append-icon="mdi-arrow-right">
+              View All
+            </v-btn>
+          </v-card-actions>
         </v-card>
       </v-col>
     </v-row>

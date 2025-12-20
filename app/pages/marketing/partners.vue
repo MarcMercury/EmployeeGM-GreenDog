@@ -32,6 +32,11 @@ interface Partner {
   created_at: string
   updated_at?: string
   last_contact_date?: string | null
+  // Account credentials
+  account_email?: string | null
+  account_password?: string | null
+  account_number?: string | null
+  category?: string | null
   // Relationship fields
   relationship_score?: number | null
   relationship_status?: string | null
@@ -271,6 +276,7 @@ const statsByType = computed(() => {
 
 // Dialog state
 const dialogOpen = ref(false)
+const saving = ref(false)
 const editingPartner = ref<Partner | null>(null)
 const formData = ref({
   name: '',
@@ -286,7 +292,11 @@ const formData = ref({
   membership_end: '',
   instagram_handle: '',
   services_provided: '',
-  notes: ''
+  notes: '',
+  account_email: '',
+  account_password: '',
+  account_number: '',
+  category: ''
 })
 
 // Influencer dialog state
@@ -429,7 +439,11 @@ function openAddDialog() {
     membership_end: '',
     instagram_handle: '',
     services_provided: '',
-    notes: ''
+    notes: '',
+    account_email: '',
+    account_password: '',
+    account_number: '',
+    category: ''
   }
   dialogOpen.value = true
 }
@@ -450,7 +464,11 @@ function openEditDialog(partner: Partner) {
     membership_end: partner.membership_end || '',
     instagram_handle: partner.instagram_handle || '',
     services_provided: partner.services_provided || '',
-    notes: partner.notes || ''
+    notes: partner.notes || '',
+    account_email: partner.account_email || '',
+    account_password: partner.account_password || '',
+    account_number: partner.account_number || '',
+    category: partner.category || ''
   }
   dialogOpen.value = true
 }
@@ -464,6 +482,8 @@ async function savePartner() {
     showError('Category is required')
     return
   }
+  
+  saving.value = true
   
   const payload = {
     name: formData.value.name,
@@ -479,7 +499,11 @@ async function savePartner() {
     membership_end: formData.value.membership_end || null,
     instagram_handle: formData.value.instagram_handle || null,
     services_provided: formData.value.services_provided || null,
-    notes: formData.value.notes || null
+    notes: formData.value.notes || null,
+    account_email: formData.value.account_email || null,
+    account_password: formData.value.account_password || null,
+    account_number: formData.value.account_number || null,
+    category: formData.value.category || null
   }
   
   try {
@@ -505,6 +529,8 @@ async function savePartner() {
   } catch (err: any) {
     console.error('[Partners] Save error:', err)
     showError('Failed to save partner: ' + (err.message || 'Unknown error'))
+  } finally {
+    saving.value = false
   }
 }
 
@@ -1365,6 +1391,53 @@ function getPriorityColor(priority: string | null | undefined): string {
             
             <v-col cols="12">
               <v-divider class="my-2" />
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">Account Credentials</div>
+            </v-col>
+            
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="formData.category"
+                :items="categoryOptions"
+                label="Partner Category"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.account_email"
+                label="Login Email"
+                variant="outlined"
+                density="compact"
+                type="email"
+                prepend-inner-icon="mdi-email-lock"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="formData.account_password"
+                label="Password"
+                variant="outlined"
+                density="compact"
+                :type="showPassword ? 'text' : 'password'"
+                prepend-inner-icon="mdi-lock"
+                :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                @click:append-inner="showPassword = !showPassword"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formData.account_number"
+                label="Account Number"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-pound"
+              />
+            </v-col>
+            
+            <v-col cols="12">
+              <v-divider class="my-2" />
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Membership Details</div>
             </v-col>
             
@@ -1421,8 +1494,8 @@ function getPriorityColor(priority: string | null | undefined): string {
         
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="dialogOpen = false">Cancel</v-btn>
-          <v-btn color="primary" @click="savePartner">
+          <v-btn variant="text" @click="dialogOpen = false" :disabled="saving">Cancel</v-btn>
+          <v-btn color="primary" :loading="saving" @click="savePartner">
             {{ editingPartner ? 'Save Changes' : 'Add Partner' }}
           </v-btn>
         </v-card-actions>
