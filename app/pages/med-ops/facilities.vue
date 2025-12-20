@@ -762,6 +762,11 @@ const resourceTypes = [
   { value: 'it_support', title: 'IT Support' },
   { value: 'appliance_repair', title: 'Appliance Repair' },
   { value: 'roofing', title: 'Roofing' },
+  { value: 'painting', title: 'Painting' },
+  { value: 'design', title: 'Design / Signage' },
+  { value: 'cabinetry', title: 'Cabinetry' },
+  { value: 'countertops', title: 'Stone / Counters' },
+  { value: 'general_contractor', title: 'General Contractor' },
   { value: 'other', title: 'Other' }
 ]
 
@@ -843,6 +848,11 @@ function getTypeColor(type: string) {
     it_support: 'indigo',
     appliance_repair: 'blue-grey',
     roofing: 'deep-orange',
+    painting: 'pink',
+    design: 'lime',
+    cabinetry: 'amber-darken-2',
+    countertops: 'blue-grey-darken-1',
+    general_contractor: 'deep-purple',
     other: 'grey'
   }
   return colors[type] || 'grey'
@@ -862,6 +872,11 @@ function getTypeIcon(type: string) {
     it_support: 'mdi-desktop-classic',
     appliance_repair: 'mdi-washing-machine',
     roofing: 'mdi-home-roof',
+    painting: 'mdi-format-paint',
+    design: 'mdi-palette',
+    cabinetry: 'mdi-cabinet',
+    countertops: 'mdi-counter',
+    general_contractor: 'mdi-account-hard-hat',
     other: 'mdi-tools'
   }
   return icons[type] || 'mdi-tools'
