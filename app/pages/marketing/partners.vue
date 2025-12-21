@@ -909,7 +909,16 @@ function openEditContactDialog(contact: PartnerContact) {
 
 // Save new or update existing contact
 async function saveContact() {
-  if (!selectedPartner.value || !contactForm.value.name.trim()) return
+  console.log('[Partners] saveContact called', { 
+    selectedPartner: selectedPartner.value?.id, 
+    contactName: contactForm.value.name,
+    editingContactId: editingContactId.value 
+  })
+  
+  if (!selectedPartner.value || !contactForm.value.name.trim()) {
+    console.log('[Partners] saveContact early return - missing selectedPartner or name')
+    return
+  }
   
   const contactData = {
     name: contactForm.value.name.trim(),
@@ -921,7 +930,10 @@ async function saveContact() {
     category: contactForm.value.category || null
   }
   
+  console.log('[Partners] Saving contact data:', contactData)
+  
   let error
+  let count = 0
   
   if (editingContactId.value) {
     // Update existing contact
@@ -929,7 +941,10 @@ async function saveContact() {
       .from('marketing_partner_contacts')
       .update(contactData)
       .eq('id', editingContactId.value)
+      .select()
     error = result.error
+    count = result.data?.length || 0
+    console.log('[Partners] Update result:', { error, count, data: result.data })
   } else {
     // Insert new contact
     const result = await supabase
@@ -939,11 +954,21 @@ async function saveContact() {
         partner_id: selectedPartner.value.id,
         created_by: user.value?.id
       })
+      .select()
     error = result.error
+    count = result.data?.length || 0
+    console.log('[Partners] Insert result:', { error, count, data: result.data })
   }
   
   if (error) {
+    console.error('[Partners] Save contact error:', error)
     showError(editingContactId.value ? 'Failed to update contact' : 'Failed to add contact')
+    return
+  }
+  
+  if (editingContactId.value && count === 0) {
+    console.error('[Partners] No rows updated - possible RLS issue')
+    showError('Failed to update contact - permission denied')
     return
   }
   
