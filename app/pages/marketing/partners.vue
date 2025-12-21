@@ -338,6 +338,9 @@ const newNoteContent = ref('')
 const newNoteType = ref('general')
 const loadingProfile = ref(false)
 
+// Password visibility for form
+const showPassword = ref(false)
+
 // Note type options
 const noteTypeOptions = [
   { title: 'General', value: 'general' },
@@ -1860,6 +1863,47 @@ function getPriorityColor(priority: string | null | undefined): string {
                 <v-col v-if="selectedPartner.notes" cols="12">
                   <div class="text-subtitle-2 mb-1">Notes</div>
                   <p class="text-body-2">{{ selectedPartner.notes }}</p>
+                </v-col>
+                
+                <!-- Account Credentials Section -->
+                <v-col 
+                  v-if="selectedPartner.account_email || selectedPartner.account_password || selectedPartner.account_number" 
+                  cols="12"
+                >
+                  <v-divider class="my-3" />
+                  <div class="text-subtitle-2 mb-3">
+                    <v-icon size="small" class="mr-1">mdi-lock</v-icon>
+                    Account Credentials
+                  </div>
+                  <v-row dense>
+                    <v-col v-if="selectedPartner.account_email" cols="12" md="4">
+                      <div class="text-caption text-medium-emphasis mb-1">Login Email</div>
+                      <UiSecureField 
+                        :value="selectedPartner.account_email" 
+                        label="Login Email"
+                        maskType="partial"
+                        :showLabel="false"
+                      />
+                    </v-col>
+                    <v-col v-if="selectedPartner.account_password" cols="12" md="4">
+                      <div class="text-caption text-medium-emphasis mb-1">Password</div>
+                      <UiSecureField 
+                        :value="selectedPartner.account_password" 
+                        label="Password"
+                        maskType="password"
+                        :showLabel="false"
+                      />
+                    </v-col>
+                    <v-col v-if="selectedPartner.account_number" cols="12" md="4">
+                      <div class="text-caption text-medium-emphasis mb-1">Account Number</div>
+                      <UiSecureField 
+                        :value="selectedPartner.account_number" 
+                        label="Account Number"
+                        maskType="account"
+                        :showLabel="false"
+                      />
+                    </v-col>
+                  </v-row>
                 </v-col>
               </v-row>
             </v-tabs-window-item>

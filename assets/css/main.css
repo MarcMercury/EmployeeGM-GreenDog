@@ -1,4 +1,75 @@
 /* Employee GM - Main Styles */
+/* ===================================
+   CSS VARIABLES & DESIGN TOKENS
+   =================================== */
+
+:root {
+  /* Brand Colors */
+  --color-primary: #2E7D32;
+  --color-primary-dark: #1B5E20;
+  --color-primary-light: #4CAF50;
+  --color-secondary: #1565C0;
+  --color-accent: #FF6F00;
+  
+  /* Semantic Colors */
+  --color-success: #388E3C;
+  --color-warning: #FFA000;
+  --color-error: #D32F2F;
+  --color-info: #0288D1;
+  
+  /* Skill Level Colors */
+  --color-skill-learning: #FF9800;
+  --color-skill-competent: #2196F3;
+  --color-skill-mentor: #4CAF50;
+  
+  /* Neutral Colors */
+  --color-background: #F5F5F5;
+  --color-surface: #FFFFFF;
+  --color-text-primary: #212121;
+  --color-text-secondary: #666666;
+  --color-text-muted: #9e9e9e;
+  --color-border: #e0e0e0;
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  
+  /* Typography */
+  --font-sans: 'Roboto', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Roboto Mono', 'Monaco', 'Consolas', monospace;
+  
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+  
+  /* Touch Targets (Accessibility) */
+  --touch-target-min: 44px;
+  
+  /* Z-Index Scale */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+}
 
 /* Mobile-first responsive design */
 * {
@@ -6,11 +77,13 @@
 }
 
 html, body {
-  font-family: 'Roboto', sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: #F5F5F5;
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Baseball Card Styles */
@@ -269,4 +342,208 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+/* ===================================
+   ACCESSIBILITY UTILITIES
+   =================================== */
+
+/* Skip Link for Keyboard Users */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: 8px 16px;
+  z-index: 1000;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Focus Visible Styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===================================
+   RESPONSIVE UTILITIES
+   =================================== */
+
+/* Mobile-only */
+.mobile-only {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* Desktop-only */
+.desktop-only {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* ===================================
+   PAGE LAYOUT UTILITIES  
+   =================================== */
+
+.page-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+@media (max-width: 600px) {
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+}
+
+.page-header p {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+/* Content Card */
+.content-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* ===================================
+   BUTTON ENHANCEMENTS
+   =================================== */
+
+/* Ensure all buttons have minimum touch target on mobile */
+@media (max-width: 600px) {
+  .v-btn:not(.v-btn--icon) {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .v-btn--icon {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  
+  .v-list-item {
+    min-height: 56px !important;
+  }
+  
+  /* Larger form inputs on mobile */
+  .v-field {
+    min-height: 48px !important;
+  }
+}
+
+/* ===================================
+   TABLE RESPONSIVE UTILITIES
+   =================================== */
+
+/* Hide columns on mobile */
+@media (max-width: 600px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+/* Truncate long text */
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===================================
+   LOADING STATES
+   =================================== */
+
+/* Improved skeleton shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04) 0%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===================================
+   PRINT STYLES
+   =================================== */
+
+@media print {
+  /* Hide navigation */
+  aside,
+  .mobile-header,
+  .bottom-nav {
+    display: none !important;
+  }
+  
+  /* Full width content */
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Remove shadows */
+  .v-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
 }

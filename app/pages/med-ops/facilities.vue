@@ -1,15 +1,13 @@
 <template>
   <div class="facilities-resources-page">
     <!-- Page Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
-      <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Facilities Resources</h1>
-        <p class="text-body-1 text-grey-darken-1">
-          Directory of facility vendors and contractors for physical facility maintenance
-        </p>
-      </div>
-      <div class="d-flex gap-2">
-        <v-btn-toggle v-model="showInactive" density="compact" variant="outlined">
+    <UiPageHeader
+      title="Facilities Resources"
+      subtitle="Directory of facility vendors and contractors for physical facility maintenance"
+      icon="mdi-tools"
+    >
+      <template #actions>
+        <v-btn-toggle v-model="showInactive" density="compact" variant="outlined" class="hide-mobile">
           <v-btn :value="false">Active Only</v-btn>
           <v-btn :value="true">Show All</v-btn>
         </v-btn-toggle>
@@ -19,16 +17,17 @@
           prepend-icon="mdi-plus"
           @click="openAddDialog"
         >
-          Add Resource
+          <span class="desktop-only">Add Resource</span>
+          <span class="mobile-only">Add</span>
         </v-btn>
-      </div>
-    </div>
+      </template>
+    </UiPageHeader>
 
     <!-- Search and Filters -->
     <v-card rounded="lg" class="mb-6">
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" md="4">
+      <v-card-text class="pb-3">
+        <v-row dense>
+          <v-col cols="12" sm="6" md="4">
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
@@ -39,7 +38,7 @@
               hide-details
             />
           </v-col>
-          <v-col cols="12" md="3">
+          <v-col cols="6" sm="6" md="3">
             <v-select
               v-model="typeFilter"
               :items="resourceTypes"
@@ -50,7 +49,7 @@
               hide-details
             />
           </v-col>
-          <v-col cols="12" md="3">
+          <v-col cols="6" sm="6" md="3">
             <v-select
               v-model="locationFilter"
               :items="locationOptions"
@@ -63,57 +62,58 @@
               hide-details
             />
           </v-col>
-          <v-col cols="12" md="2">
-            <v-btn-toggle v-model="viewMode" mandatory density="compact" class="h-100">
-              <v-btn value="grid" icon="mdi-view-grid" />
-              <v-btn value="list" icon="mdi-view-list" />
+          <v-col cols="12" sm="6" md="2" class="d-flex align-center justify-end gap-2">
+            <!-- Mobile: Show inactive toggle here -->
+            <v-switch
+              v-model="showInactive"
+              label="All"
+              density="compact"
+              hide-details
+              class="mobile-only flex-shrink-0"
+            />
+            <v-btn-toggle v-model="viewMode" mandatory density="compact">
+              <v-btn value="grid" icon="mdi-view-grid" size="small" />
+              <v-btn value="list" icon="mdi-view-list" size="small" />
             </v-btn-toggle>
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
-    <!-- Stats Cards -->
-    <v-row class="mb-6">
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="primary" class="mb-2">mdi-account-hard-hat</v-icon>
-            <div class="text-h4 font-weight-bold">{{ resources.length }}</div>
-            <div class="text-body-2 text-grey">Total Vendors</div>
+    <!-- Stats Cards (scrollable on mobile) -->
+    <div class="stats-scroll-container mb-6">
+      <div class="stats-scroll-inner">
+        <v-card rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="24" color="primary" class="mb-1">mdi-account-hard-hat</v-icon>
+            <div class="text-h5 font-weight-bold">{{ resources.length }}</div>
+            <div class="text-caption text-grey">Vendors</div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="warning" class="mb-2">mdi-alert-circle</v-icon>
-            <div class="text-h4 font-weight-bold">{{ emergencyCount }}</div>
-            <div class="text-body-2 text-grey">Emergency Contacts</div>
+        <v-card rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="24" color="warning" class="mb-1">mdi-alert-circle</v-icon>
+            <div class="text-h5 font-weight-bold">{{ emergencyCount }}</div>
+            <div class="text-caption text-grey">Emergency</div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="success" class="mb-2">mdi-star</v-icon>
-            <div class="text-h4 font-weight-bold">{{ preferredCount }}</div>
-            <div class="text-body-2 text-grey">Preferred Vendors</div>
+        <v-card rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="24" color="success" class="mb-1">mdi-star</v-icon>
+            <div class="text-h5 font-weight-bold">{{ preferredCount }}</div>
+            <div class="text-caption text-grey">Preferred</div>
           </v-card-text>
         </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="info" class="mb-2">mdi-view-grid</v-icon>
-            <div class="text-h4 font-weight-bold">{{ uniqueTypes.length }}</div>
-            <div class="text-body-2 text-grey">Service Types</div>
+        <v-card rounded="lg" class="stat-card">
+          <v-card-text class="text-center pa-3">
+            <v-icon size="24" color="info" class="mb-1">mdi-view-grid</v-icon>
+            <div class="text-h5 font-weight-bold">{{ uniqueTypes.length }}</div>
+            <div class="text-caption text-grey">Types</div>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Loading State -->
+      </div>
+    </div>
+            <!-- Loading State -->
     <div v-if="loading" class="d-flex justify-center py-12">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
@@ -1148,6 +1148,54 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Stats horizontal scroll for mobile */
+.stats-scroll-container {
+  overflow-x: auto;
+  margin: 0 -16px;
+  padding: 0 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.stats-scroll-inner {
+  display: flex;
+  gap: 12px;
+  min-width: min-content;
+}
+
+.stat-card {
+  min-width: 100px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 600px) {
+  .stats-scroll-container {
+    overflow-x: visible;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .stats-scroll-inner {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  
+  .stat-card {
+    min-width: unset;
+  }
+}
+
+/* Hide elements on mobile/desktop */
+.hide-mobile {
+  display: flex;
+}
+
+@media (max-width: 599px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
 .resource-card {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;

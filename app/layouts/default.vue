@@ -129,16 +129,45 @@ async function handleSignOut() {
     window.location.href = '/auth/login'
   }
 }
+
+// Mobile sidebar state
+const mobileMenuOpen = ref(false)
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
 </script>
 
 <template>
   <v-app>
     <div class="min-h-screen bg-gray-50">
     
-      <!-- Fixed Sidebar - Collapsible -->
+      <!-- Mobile Navigation Component -->
+      <LayoutMobileNav 
+        :notification-count="unreadNotificationCount"
+        @toggle-sidebar="toggleMobileMenu"
+      />
+      
+      <!-- Mobile Sidebar Overlay -->
+      <Transition name="fade">
+        <div 
+          v-if="mobileMenuOpen" 
+          class="mobile-overlay lg:hidden"
+          @click="closeMobileMenu"
+        />
+      </Transition>
+    
+      <!-- Fixed Sidebar - Collapsible (hidden on mobile by default) -->
       <aside 
         class="fixed inset-y-0 left-0 z-50 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white border-r border-slate-800/50 flex flex-col shadow-2xl transition-all duration-300"
-        :class="sidebarCollapsed ? 'w-16' : 'w-64'"
+        :class="[
+          sidebarCollapsed ? 'w-16' : 'w-64',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        ]"
       >
       
         <!-- Logo Header with Toggle -->
@@ -515,10 +544,17 @@ async function handleSignOut() {
       <!-- Main Content Area -->
       <main 
         class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 transition-all duration-300"
-        :class="sidebarCollapsed ? 'ml-16' : 'ml-64'"
+        :class="[
+          'lg:ml-64',
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
+          'ml-0' // No margin on mobile
+        ]"
       >
-        <div class="p-6 lg:p-8">
-          <slot />
+        <!-- Mobile top padding to account for header -->
+        <div class="pt-16 pb-20 lg:pt-0 lg:pb-0">
+          <div class="p-4 lg:p-6 xl:p-8">
+            <slot />
+          </div>
         </div>
       </main>
 
@@ -527,6 +563,25 @@ async function handleSignOut() {
 </template>
 
 <style scoped>
+/* Mobile Overlay */
+.mobile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+
+/* Fade transition for overlay */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 /* Navigation Link Styles */
 .nav-link {
   display: flex;
