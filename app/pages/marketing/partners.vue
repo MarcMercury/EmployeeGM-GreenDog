@@ -1269,8 +1269,9 @@ function getPriorityColor(priority: string | null | undefined): string {
     <v-card>
       <v-progress-linear v-if="pending || influencersPending" indeterminate color="primary" />
       
-      <v-list v-if="filteredPartners.length > 0" lines="three">
+      <v-list v-if="filteredPartners.length > 0" lines="two">
         <template v-for="(partner, index) in filteredPartners" :key="partner.id">
+          <v-divider v-if="index > 0" />
           <v-list-item @click="handleItemClick(partner)">
             <template #prepend>
               <v-avatar :color="getTypeColor(partner.partner_type)" size="40">

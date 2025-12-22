@@ -539,17 +539,14 @@ function getStatusLabel(status: string | null): string {
             @click="openEditDialog(visitor)"
           >
             <td>
-              <div class="d-flex align-center py-2">
-                <v-avatar :color="getTypeColor(visitor.visitor_type)" size="36" class="mr-3">
-                  <v-icon size="small" color="white">{{ getTypeIcon(visitor.visitor_type) }}</v-icon>
+              <div class="d-flex align-center py-1">
+                <v-avatar :color="getTypeColor(visitor.visitor_type)" size="32" class="mr-2">
+                  <v-icon size="x-small" color="white">{{ getTypeIcon(visitor.visitor_type) }}</v-icon>
                 </v-avatar>
                 <div>
-                  <div class="font-weight-medium">{{ visitor.first_name }} {{ visitor.last_name }}</div>
+                  <div class="font-weight-medium text-body-2">{{ visitor.first_name }} {{ visitor.last_name }}</div>
                   <div class="text-caption text-medium-emphasis">
                     {{ visitor.visitor_type.replace('_', ' ') }}
-                    <span v-if="visitor.school_of_origin && visitor.school_of_origin !== 'Not Applicable'">
-                      · {{ visitor.school_of_origin }}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -594,17 +591,7 @@ function getStatusLabel(status: string | null): string {
               {{ visitor.location || '—' }}
             </td>
             
-            <td class="text-right">
-              <v-btn
-                icon
-                variant="text"
-                size="x-small"
-                color="primary"
-                @click.stop="openEditDialog(visitor)"
-              >
-                <v-icon size="small">mdi-eye</v-icon>
-                <v-tooltip activator="parent" location="top">View Details</v-tooltip>
-              </v-btn>
+            <td class="text-right" style="white-space: nowrap;">
               <v-btn
                 v-if="visitor.phone"
                 icon
