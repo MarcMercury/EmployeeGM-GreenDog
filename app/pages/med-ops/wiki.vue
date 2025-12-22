@@ -92,8 +92,47 @@
       </v-card-text>
     </v-card>
 
+    <!-- Policies Section -->
+    <template v-if="showPolicies">
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6 font-weight-bold">Company Policies & Important Links</h3>
+        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showPolicies = false">
+          Back to Wiki
+        </v-btn>
+      </div>
+      
+      <v-row>
+        <v-col v-for="category in policyCategories" :key="category.title" cols="12" md="4">
+          <v-card variant="outlined" rounded="lg" class="h-100">
+            <v-card-title class="d-flex align-center" :class="`text-${category.color}`">
+              <v-icon :color="category.color" class="mr-2">{{ category.icon }}</v-icon>
+              {{ category.title }}
+            </v-card-title>
+            <v-divider />
+            <v-list density="compact" class="py-0">
+              <v-list-item
+                v-for="link in category.links"
+                :key="link.name"
+                :href="link.url"
+                target="_blank"
+                class="policy-link"
+              >
+                <template #prepend>
+                  <v-icon size="small" color="grey">mdi-file-document-outline</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ link.name }}</v-list-item-title>
+                <template #append>
+                  <v-icon size="small" color="grey">mdi-open-in-new</v-icon>
+                </template>
+              </v-list-item>
+            </v-list>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
+
     <!-- Popular Topics -->
-    <template v-if="!searchResults.length && !aiResponse">
+    <template v-if="!searchResults.length && !aiResponse && !showPolicies">
       <h3 class="text-subtitle-1 font-weight-bold mb-3">Popular Topics</h3>
       <v-row>
         <v-col v-for="topic in popularTopics" :key="topic.id" cols="12" md="4">
@@ -192,6 +231,52 @@ const aiResponse = ref('')
 const articleDialog = ref(false)
 const selectedArticle = ref<any>(null)
 const recentSearches = ref(['Canine parvovirus', 'Feline kidney disease', 'Anesthesia protocols'])
+const showPolicies = ref(false)
+
+// Policy Links
+const policyCategories = [
+  {
+    title: 'Employee Development',
+    color: 'primary',
+    icon: 'mdi-trending-up',
+    links: [
+      { name: 'Roles & Responsibilities Lists', url: 'https://docs.google.com/document/d/roles-responsibilities' },
+      { name: 'Core Attributes', url: 'https://docs.google.com/document/d/core-attributes' },
+      { name: 'Compensation Overview', url: 'https://docs.google.com/document/d/compensation-overview' },
+      { name: 'Employee Wellness', url: 'https://docs.google.com/document/d/employee-wellness' }
+    ]
+  },
+  {
+    title: 'HR / Protocols / Policies',
+    color: 'teal',
+    icon: 'mdi-file-document-multiple',
+    links: [
+      { name: 'GDD Master Protocols Sheet', url: 'https://docs.google.com/spreadsheets/d/master-protocols' },
+      { name: 'GDD Continuing Education Policy', url: 'https://docs.google.com/document/d/ce-policy' },
+      { name: 'GDD Respectful Workplace Policy', url: 'https://docs.google.com/document/d/respectful-workplace' },
+      { name: 'GDD Employee Pet Policy', url: 'https://docs.google.com/document/d/pet-policy' },
+      { name: 'GDD PTO/Sick Time/Unpaid Time Off Policy', url: 'https://docs.google.com/document/d/pto-policy' },
+      { name: 'Safety Manual', url: 'https://docs.google.com/document/d/safety-manual' },
+      { name: 'Pregnancy Safety', url: 'https://docs.google.com/document/d/pregnancy-safety' },
+      { name: 'GDD Urgent Care Locations and Injury Protocol', url: 'https://docs.google.com/document/d/injury-protocol' },
+      { name: 'Hazard Reporting Form', url: 'https://docs.google.com/forms/d/hazard-reporting' },
+      { name: 'Review Process Policy', url: 'https://docs.google.com/document/d/review-process' },
+      { name: 'GDD Harassment Policy', url: 'https://docs.google.com/document/d/harassment-policy' },
+      { name: 'GDD Workplace Relationships Policy', url: 'https://docs.google.com/document/d/workplace-relationships' },
+      { name: 'Employee Covid Protocol', url: 'https://docs.google.com/document/d/covid-protocol' },
+      { name: 'GDD Non-Employee Discounts', url: 'https://docs.google.com/document/d/non-employee-discounts' }
+    ]
+  },
+  {
+    title: 'Disciplinary',
+    color: 'error',
+    icon: 'mdi-alert-circle',
+    links: [
+      { name: 'Call Outs and Tardiness Policy', url: 'https://docs.google.com/document/d/callouts-tardiness' },
+      { name: 'GDD Disciplinary Policy', url: 'https://docs.google.com/document/d/disciplinary-policy' }
+    ]
+  }
+]
 
 const categories = [
   { id: 'conditions', name: 'Conditions', icon: 'mdi-hospital', color: 'red' },
@@ -344,7 +429,17 @@ For more detailed information, consult the relevant articles in our database or 
 }
 
 function selectCategory(category: any) {
+  // Handle Policies category specially
+  if (category.id === 'policies') {
+    showPolicies.value = true
+    searchQuery.value = ''
+    aiResponse.value = ''
+    searchResults.value = []
+    return
+  }
+  
   // Filter by category instead of putting category name in search
+  showPolicies.value = false
   searchQuery.value = ''
   aiResponse.value = ''
   searchResults.value = popularTopics.filter(t =>
@@ -406,5 +501,9 @@ function openArticle(article: any) {
 .wiki-content p {
   margin-bottom: 1rem;
   line-height: 1.7;
+}
+
+.policy-link:hover {
+  background-color: rgba(var(--v-theme-primary), 0.05);
 }
 </style>
