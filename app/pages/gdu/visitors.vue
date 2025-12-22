@@ -48,6 +48,7 @@ const selectedType = ref<string | null>(null)
 const selectedStatus = ref<string | null>(null)
 const selectedLocation = ref<string | null>(null)
 const showActiveOnly = ref(false)
+const quickFilter = ref('all')
 
 const typeOptions = [
   { title: 'All Types', value: null },
@@ -101,6 +102,13 @@ const { data: visitors, pending, refresh } = await useAsyncData('visitors', asyn
 const filteredVisitors = computed(() => {
   let result = visitors.value || []
   
+  // Apply quick filter
+  if (quickFilter.value === 'active') {
+    result = result.filter(v => v.is_active)
+  } else if (quickFilter.value === 'upcoming') {
+    result = result.filter(v => v.visit_status === 'upcoming')
+  }
+  
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(v => 
@@ -125,10 +133,6 @@ const filteredVisitors = computed(() => {
   
   if (selectedLocation.value) {
     result = result.filter(v => v.location === selectedLocation.value)
-  }
-  
-  if (showActiveOnly.value) {
-    result = result.filter(v => v.is_active)
   }
   
   return result
@@ -409,39 +413,39 @@ function getStatusLabel(status: string | null): string {
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="primary">
-          <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.total }}</div>
-            <div class="text-caption">Total Visitors</div>
-          </v-card-text>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="primary">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.total }}</div>
+          <div class="text-caption text-white">Total Visitors</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="blue">
-          <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.upcoming }}</div>
-            <div class="text-caption">Upcoming</div>
-          </v-card-text>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="success">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.active }}</div>
+          <div class="text-caption text-white">Active</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="success">
-          <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.current }}</div>
-            <div class="text-caption">Currently Here</div>
-          </v-card-text>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="info">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.upcoming }}</div>
+          <div class="text-caption text-white">Upcoming</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="6">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-subtitle-2 mb-2">By Type</div>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="teal">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.current }}</div>
+          <div class="text-caption text-white">Currently Here</div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" class="h-100">
+          <v-card-text class="py-2">
+            <div class="text-caption mb-1">By Type</div>
             <div class="d-flex flex-wrap gap-1">
               <v-chip
                 v-for="stat in stats.byType.filter(s => s.count > 0)"
                 :key="stat.type"
-                size="small"
+                size="x-small"
                 :color="getTypeColor(stat.type.toLowerCase())"
                 variant="tonal"
               >
@@ -498,18 +502,20 @@ function getStatusLabel(status: string | null): string {
               hide-details
             />
           </v-col>
-          <v-col cols="3" md="1">
-            <v-switch
-              v-model="showActiveOnly"
-              label="Active"
-              color="success"
+          <v-col cols="12" md="3" class="d-flex justify-end align-center">
+            <v-btn-toggle
+              v-model="quickFilter"
+              mandatory
               density="compact"
-              hide-details
-            />
-          </v-col>
-          <v-col cols="3" md="2" class="text-right">
-            <v-chip color="primary" variant="tonal">
-              {{ filteredVisitors.length }} Visitors
+              color="primary"
+              class="mr-2"
+            >
+              <v-btn value="all" size="small">All</v-btn>
+              <v-btn value="active" size="small">Active</v-btn>
+              <v-btn value="upcoming" size="small">Upcoming</v-btn>
+            </v-btn-toggle>
+            <v-chip color="primary" variant="tonal" size="small">
+              {{ filteredVisitors.length }}
             </v-chip>
           </v-col>
         </v-row>
@@ -530,7 +536,7 @@ function getStatusLabel(status: string | null): string {
             <th>Coordinator</th>
             <th>Mentor</th>
             <th>Location</th>
-            <th></th>
+            <th class="text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -596,16 +602,51 @@ function getStatusLabel(status: string | null): string {
               {{ visitor.location || '—' }}
             </td>
             
-            <td>
+            <td class="text-right">
               <v-btn
                 icon
                 variant="text"
-                size="small"
+                size="x-small"
+                color="primary"
+                @click.stop="openEditDialog(visitor)"
+              >
+                <v-icon size="small">mdi-eye</v-icon>
+                <v-tooltip activator="parent" location="top">View Details</v-tooltip>
+              </v-btn>
+              <v-btn
+                v-if="visitor.phone"
+                icon
+                variant="text"
+                size="x-small"
+                color="success"
+                :href="`tel:${visitor.phone}`"
+                @click.stop
+              >
+                <v-icon size="small">mdi-phone</v-icon>
+                <v-tooltip activator="parent" location="top">Call</v-tooltip>
+              </v-btn>
+              <v-btn
+                v-if="visitor.email"
+                icon
+                variant="text"
+                size="x-small"
+                color="info"
+                :href="`mailto:${visitor.email}`"
+                @click.stop
+              >
+                <v-icon size="small">mdi-email</v-icon>
+                <v-tooltip activator="parent" location="top">Email</v-tooltip>
+              </v-btn>
+              <v-btn
+                icon
+                variant="text"
+                size="x-small"
                 color="error"
                 :loading="deleting === visitor.id"
                 @click.stop="deleteVisitor(visitor.id)"
               >
-                <v-icon>mdi-delete</v-icon>
+                <v-icon size="small">mdi-delete</v-icon>
+                <v-tooltip activator="parent" location="top">Delete</v-tooltip>
               </v-btn>
             </td>
           </tr>

@@ -18,6 +18,52 @@
       </v-btn>
     </div>
 
+    <!-- Stats Row -->
+    <v-row class="mb-4">
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="primary">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.total }}</div>
+          <div class="text-caption text-white">Total Team</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="success">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.active }}</div>
+          <div class="text-caption text-white">Active</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="warning">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.onLeave }}</div>
+          <div class="text-caption text-white">On Leave</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="grey">
+          <div class="text-h5 font-weight-bold text-white">{{ stats.inactive }}</div>
+          <div class="text-caption text-white">Inactive</div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" class="h-100">
+          <v-card-text class="py-2">
+            <div class="text-caption mb-1">By Department</div>
+            <div class="d-flex flex-wrap gap-1">
+              <v-chip
+                v-for="dept in stats.byDepartment.filter(d => d.count > 0)"
+                :key="dept.name"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+              >
+                {{ dept.name }}: {{ dept.count }}
+              </v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Filters Card -->
     <v-card rounded="lg" class="mb-4" elevation="1">
       <v-card-text class="py-3">
@@ -578,6 +624,21 @@ const departments = computed(() => {
 
 // Status options
 const statusOptions = ['active', 'on_leave', 'inactive', 'terminated']
+
+// Stats computed
+const stats = computed(() => {
+  const all = employees.value || []
+  return {
+    total: all.length,
+    active: all.filter(e => e.employment_status === 'active').length,
+    onLeave: all.filter(e => e.employment_status === 'on_leave').length,
+    inactive: all.filter(e => e.employment_status === 'inactive' || e.employment_status === 'terminated').length,
+    byDepartment: departmentsList.value?.slice(0, 5).map(d => ({
+      name: d.name,
+      count: all.filter(e => e.department?.name === d.name).length
+    })) || []
+  }
+})
 
 // Filtered employees
 const filteredEmployees = computed(() => {

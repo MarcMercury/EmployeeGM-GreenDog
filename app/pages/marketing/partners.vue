@@ -274,6 +274,18 @@ const statsByType = computed(() => {
   return stats
 })
 
+// Summary stats for header cards
+const summaryStats = computed(() => {
+  const all = combinedList.value || []
+  return {
+    total: all.length,
+    active: all.filter(p => p.status === 'active' || p.status === 'current').length,
+    prospects: all.filter(p => p.status === 'prospect').length,
+    needsFollowup: all.filter(p => p.needs_followup).length,
+    inactive: all.filter(p => p.status === 'inactive' || p.status === 'former').length
+  }
+})
+
 // Dialog state
 const dialogOpen = ref(false)
 const saving = ref(false)
@@ -1137,6 +1149,40 @@ function getPriorityColor(priority: string | null | undefined): string {
         Add Partner
       </v-btn>
     </div>
+
+    <!-- Stats Row -->
+    <v-row class="mb-4">
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="primary">
+          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.total }}</div>
+          <div class="text-caption text-white">Total Partners</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="success">
+          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.active }}</div>
+          <div class="text-caption text-white">Active</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="info">
+          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.prospects }}</div>
+          <div class="text-caption text-white">Prospects</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="warning">
+          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.needsFollowup }}</div>
+          <div class="text-caption text-white">Needs Follow-up</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" color="grey">
+          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.inactive }}</div>
+          <div class="text-caption text-white">Inactive</div>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Type Pills -->
     <div class="d-flex flex-wrap gap-2 mb-4">

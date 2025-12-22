@@ -1,18 +1,18 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Lead CRM</h1>
-        <p class="text-body-1 text-grey-darken-1">
+        <p class="text-body-2 text-grey-darken-1">
           Track and manage your marketing leads
         </p>
       </div>
       <div class="d-flex gap-2">
         <v-btn
           variant="outlined"
-          color="secondary"
           prepend-icon="mdi-download"
+          size="small"
           @click="exportCSV"
         >
           Export CSV
@@ -23,42 +23,77 @@
       </div>
     </div>
 
+    <!-- Stats Row -->
+    <v-row class="mb-4">
+      <v-col cols="6" sm="3">
+        <v-card class="text-center pa-3" color="primary">
+          <div class="text-h5 font-weight-bold text-white">{{ leads.length }}</div>
+          <div class="text-caption text-white">Total Leads</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card class="text-center pa-3" color="info">
+          <div class="text-h5 font-weight-bold text-white">{{ statusCounts.new }}</div>
+          <div class="text-caption text-white">New</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card class="text-center pa-3" color="warning">
+          <div class="text-h5 font-weight-bold text-grey-darken-4">{{ statusCounts.contacted }}</div>
+          <div class="text-caption text-grey-darken-2">Contacted</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card class="text-center pa-3" color="success">
+          <div class="text-h5 font-weight-bold text-white">{{ statusCounts.converted }}</div>
+          <div class="text-caption text-white">Converted</div>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Filters -->
-    <v-card class="mb-4" rounded="lg">
-      <v-card-text>
-        <v-row>
+    <v-card class="mb-4" rounded="lg" variant="outlined">
+      <v-card-text class="py-3">
+        <v-row dense align="center">
           <v-col cols="12" md="4">
             <v-text-field
               v-model="search"
               prepend-inner-icon="mdi-magnify"
-              label="Search leads..."
+              placeholder="Search leads..."
               variant="outlined"
               density="compact"
               hide-details
               clearable
             />
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col cols="6" md="2">
             <v-select
               v-model="eventFilter"
               :items="eventOptions"
-              label="Filter by Event Source"
+              label="Source"
               variant="outlined"
               density="compact"
               hide-details
               clearable
             />
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col cols="6" md="2">
             <v-select
               v-model="statusFilter"
               :items="statusOptions"
-              label="Filter by Status"
+              label="Status"
               variant="outlined"
               density="compact"
               hide-details
               clearable
             />
+          </v-col>
+          <v-col cols="12" md="4" class="d-flex justify-end">
+            <v-btn-toggle v-model="quickFilter" density="compact" variant="outlined">
+              <v-btn value="all" size="small">All</v-btn>
+              <v-btn value="new" size="small" color="info">New</v-btn>
+              <v-btn value="contacted" size="small" color="warning">Contacted</v-btn>
+            </v-btn-toggle>
           </v-col>
         </v-row>
       </v-card-text>
@@ -329,6 +364,7 @@ const deleting = ref(false)
 const search = ref('')
 const eventFilter = ref<string | null>(null)
 const statusFilter = ref<string | null>(null)
+const quickFilter = ref('all')
 const leadDialog = ref(false)
 const deleteDialog = ref(false)
 const editMode = ref(false)
@@ -376,8 +412,23 @@ const eventOptions = computed(() => [
   { title: 'Social Media', value: 'Social Media' }
 ])
 
+const statusCounts = computed(() => {
+  const counts = { new: 0, contacted: 0, converted: 0, lost: 0 }
+  leads.value.forEach(l => {
+    if (counts[l.status as keyof typeof counts] !== undefined) {
+      counts[l.status as keyof typeof counts]++
+    }
+  })
+  return counts
+})
+
 const filteredLeads = computed(() => {
   let result = leads.value
+
+  // Quick filter
+  if (quickFilter.value !== 'all') {
+    result = result.filter(l => l.status === quickFilter.value)
+  }
 
   if (eventFilter.value) {
     result = result.filter(l => l.source === eventFilter.value)
