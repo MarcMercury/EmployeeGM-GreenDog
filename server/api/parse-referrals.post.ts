@@ -4,7 +4,7 @@
  * Uses pdf2json for reliable Node.js PDF parsing
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 import PDFParser from 'pdf2json'
 
 interface ParsedReferral {
@@ -275,11 +275,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
     
-    // Get supabase client
+    // Get supabase client (regular for operations, service role for auth check)
     const supabase = await serverSupabaseClient(event)
+    const supabaseAdmin = await serverSupabaseServiceRole(event)
     
-    // Check if user is admin or marketing_admin
-    const { data: profile, error: profileError } = await supabase
+    // Check if user is admin or marketing_admin using service role (bypasses RLS)
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('auth_user_id', user.id)
