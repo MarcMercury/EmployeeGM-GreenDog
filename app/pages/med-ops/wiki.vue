@@ -240,10 +240,10 @@ const policyCategories = [
     color: 'primary',
     icon: 'mdi-trending-up',
     links: [
-      { name: 'Roles & Responsibilities Lists', url: 'https://docs.google.com/document/d/roles-responsibilities' },
-      { name: 'Core Attributes', url: 'https://docs.google.com/document/d/core-attributes' },
-      { name: 'Compensation Overview', url: 'https://docs.google.com/document/d/compensation-overview' },
-      { name: 'Employee Wellness', url: 'https://docs.google.com/document/d/employee-wellness' }
+      { name: 'Roles & Responsibilities Lists', url: 'https://docs.google.com/document/d/1OeZxk5pEDc4oHQxW0-QcCm41h2E-t9AWA4G_OQIV5pA/edit' },
+      { name: 'Core Attributes', url: 'https://docs.google.com/document/d/12QrK1R-9QXiAx-nhuITHY-G6nmphEbbf1k6XarXYGX8/edit' },
+      { name: 'Compensation Overview', url: 'https://docs.google.com/document/d/1p9t2Pzpp7CkeayTM8H9FS5CBE-LoJ7s8c2U8KgrLOlU/edit' },
+      { name: 'Employee Wellness', url: 'https://docs.google.com/document/d/1cU2bH6OM0AlWb-w-tb-6-HXih2U9ZpiuDPHAV4LVzT8/edit' }
     ]
   },
   {
@@ -251,20 +251,20 @@ const policyCategories = [
     color: 'teal',
     icon: 'mdi-file-document-multiple',
     links: [
-      { name: 'GDD Master Protocols Sheet', url: 'https://docs.google.com/spreadsheets/d/master-protocols' },
-      { name: 'GDD Continuing Education Policy', url: 'https://docs.google.com/document/d/ce-policy' },
-      { name: 'GDD Respectful Workplace Policy', url: 'https://docs.google.com/document/d/respectful-workplace' },
-      { name: 'GDD Employee Pet Policy', url: 'https://docs.google.com/document/d/pet-policy' },
-      { name: 'GDD PTO/Sick Time/Unpaid Time Off Policy', url: 'https://docs.google.com/document/d/pto-policy' },
-      { name: 'Safety Manual', url: 'https://docs.google.com/document/d/safety-manual' },
-      { name: 'Pregnancy Safety', url: 'https://docs.google.com/document/d/pregnancy-safety' },
-      { name: 'GDD Urgent Care Locations and Injury Protocol', url: 'https://docs.google.com/document/d/injury-protocol' },
-      { name: 'Hazard Reporting Form', url: 'https://docs.google.com/forms/d/hazard-reporting' },
-      { name: 'Review Process Policy', url: 'https://docs.google.com/document/d/review-process' },
-      { name: 'GDD Harassment Policy', url: 'https://docs.google.com/document/d/harassment-policy' },
-      { name: 'GDD Workplace Relationships Policy', url: 'https://docs.google.com/document/d/workplace-relationships' },
-      { name: 'Employee Covid Protocol', url: 'https://docs.google.com/document/d/covid-protocol' },
-      { name: 'GDD Non-Employee Discounts', url: 'https://docs.google.com/document/d/non-employee-discounts' }
+      { name: 'GDD Master Protocols Sheet', url: 'https://docs.google.com/document/d/1m_b6JW0ORuDbWrD_3i9jdLKGKpw1Lt02Odyan3fX5tI/edit' },
+      { name: 'GDD Continuing Education Policy', url: 'https://docs.google.com/document/d/1RnIB7gLo_BdHgAj-79r8W1DFSF5jMdGEaCxcx8PfYW8/edit' },
+      { name: 'GDD Respectful Workplace Policy', url: 'https://docs.google.com/document/d/1q9JjdcQnsA8lHQlWGjQyg0I2z7TqWw5h/edit' },
+      { name: 'GDD Employee Pet Policy', url: 'https://docs.google.com/document/d/1QoMgpOhzGwVCjM6NiC4E1MaahDGhyORmHzCYX5Rd-Ps/edit' },
+      { name: 'GDD PTO/Sick Time/Unpaid Time Off Policy', url: 'https://docs.google.com/document/d/1J8nq-cy3eWrOuixB8dMRJzxa7xiWrIKXu39Rgc7yuJM/edit' },
+      { name: 'Safety Manual', url: 'https://docs.google.com/document/d/10WHDG-7kplVDYcQa4MDfLLZqsJHeyQF1/edit' },
+      { name: 'Pregnancy Safety', url: 'https://docs.google.com/document/d/1G-rfxGC2zsEFShFeSen7CsbqjUAAy_Cn/edit' },
+      { name: 'GDD Urgent Care Locations and Injury Protocol', url: 'https://docs.google.com/document/d/1_pqe4NlBTIy3ZYS1Y5obP_vAZfu-oWjnIJEnS9v8OKQ/edit' },
+      { name: 'Hazard Reporting Form', url: 'https://docs.google.com/document/d/1qbre_4ymIMle3lf7pg1Tr87r3ULZ8ZN9/edit' },
+      { name: 'Review Process Policy', url: 'https://docs.google.com/document/d/1brfUtwLOMU14MFx_25-sfrgbGvVOX2X27D9-ZnJuxTE/edit' },
+      { name: 'GDD Harassment Policy', url: 'https://docs.google.com/document/d/1LxdmlY1mS4e8xzzO0KOtnieOYqJt4BbAJcZTC34JQ7Y/edit' },
+      { name: 'GDD Workplace Relationships Policy', url: 'https://docs.google.com/document/d/1-WESyPVBW8Jt-oZCR7-qpdKtdVl-9oz31uynSC_w8KQ/edit' },
+      { name: 'Employee Covid Protocol', url: 'https://docs.google.com/document/d/1oVnI1U_sgFZ9Y54TzQevoLLliuK8TCzGQsAjCPyzgxc/edit' },
+      { name: 'GDD Non-Employee Discounts', url: 'https://docs.google.com/document/d/19CZDbS73rDokbLlu2iGc1-VfAm4cYzcK/edit' }
     ]
   },
   {
@@ -272,7 +272,7 @@ const policyCategories = [
     color: 'error',
     icon: 'mdi-alert-circle',
     links: [
-      { name: 'Call Outs and Tardiness Policy', url: 'https://docs.google.com/document/d/callouts-tardiness' },
+      { name: 'Call Outs and Tardiness Policy', url: 'https://docs.google.com/document/d/1OERyRhaB-_e70jWw4pYGsUrbeje1GP1m/edit' },
       { name: 'GDD Disciplinary Policy', url: 'https://docs.google.com/document/d/disciplinary-policy' }
     ]
   }
