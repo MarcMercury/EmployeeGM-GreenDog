@@ -39,15 +39,15 @@
     <div class="mb-6">
       <h3 class="text-subtitle-1 font-weight-bold mb-3">Browse by Category</h3>
       <v-row>
-        <v-col v-for="category in categories" :key="category.id" cols="6" sm="4" md="2">
+        <v-col v-for="category in categories" :key="category.id" cols="6" sm="4" md="true">
           <v-card
             variant="outlined"
             rounded="lg"
-            class="category-card text-center pa-4"
+            class="category-card text-center pa-3"
             @click="selectCategory(category)"
           >
-            <v-icon :color="category.color" size="32" class="mb-2">{{ category.icon }}</v-icon>
-            <div class="text-body-2 font-weight-medium">{{ category.name }}</div>
+            <v-icon :color="category.color" size="28" class="mb-1">{{ category.icon }}</v-icon>
+            <div class="text-caption font-weight-medium">{{ category.name }}</div>
           </v-card>
         </v-col>
       </v-row>
@@ -199,7 +199,8 @@ const categories = [
   { id: 'medications', name: 'Medications', icon: 'mdi-pill', color: 'green' },
   { id: 'diagnostics', name: 'Diagnostics', icon: 'mdi-test-tube', color: 'purple' },
   { id: 'nutrition', name: 'Nutrition', icon: 'mdi-food-apple', color: 'orange' },
-  { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' }
+  { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' },
+  { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal' }
 ]
 
 const popularTopics = [
