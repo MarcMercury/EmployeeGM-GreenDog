@@ -25,28 +25,40 @@
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="3">
-        <v-card class="text-center pa-3" color="primary">
-          <div class="text-h5 font-weight-bold text-white">{{ leads.length }}</div>
-          <div class="text-caption text-white">Total Leads</div>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="primary">
+          <div class="text-h5 font-weight-bold">{{ leads.length }}</div>
+          <div class="text-caption">Total Leads</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="text-center pa-3" color="info">
-          <div class="text-h5 font-weight-bold text-white">{{ statusCounts.new }}</div>
-          <div class="text-caption text-white">New</div>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="success">
+          <div class="text-h5 font-weight-bold">{{ statusCounts.new }}</div>
+          <div class="text-caption">New</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="text-center pa-3" color="warning">
-          <div class="text-h5 font-weight-bold text-grey-darken-4">{{ statusCounts.contacted }}</div>
-          <div class="text-caption text-grey-darken-2">Contacted</div>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="warning">
+          <div class="text-h5 font-weight-bold">{{ statusCounts.contacted }}</div>
+          <div class="text-caption">Contacted</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
-        <v-card class="text-center pa-3" color="success">
-          <div class="text-h5 font-weight-bold text-white">{{ statusCounts.converted }}</div>
-          <div class="text-caption text-white">Converted</div>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="teal">
+          <div class="text-h5 font-weight-bold">{{ statusCounts.converted }}</div>
+          <div class="text-caption">Converted</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="info">
+          <div class="text-h5 font-weight-bold">{{ statusCounts.qualified || 0 }}</div>
+          <div class="text-caption">Qualified</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="secondary">
+          <div class="text-h5 font-weight-bold">{{ statusCounts.lost || 0 }}</div>
+          <div class="text-caption">Lost</div>
         </v-card>
       </v-col>
     </v-row>
@@ -100,7 +112,7 @@
     </v-card>
 
     <!-- Leads Table -->
-    <v-card rounded="lg">
+    <v-card variant="outlined">
       <v-data-table
         :headers="headers"
         :items="filteredLeads"
@@ -413,7 +425,7 @@ const eventOptions = computed(() => [
 ])
 
 const statusCounts = computed(() => {
-  const counts = { new: 0, contacted: 0, converted: 0, lost: 0 }
+  const counts = { new: 0, contacted: 0, converted: 0, qualified: 0, lost: 0 }
   leads.value.forEach(l => {
     if (counts[l.status as keyof typeof counts] !== undefined) {
       counts[l.status as keyof typeof counts]++

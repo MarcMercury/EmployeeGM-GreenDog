@@ -21,51 +21,45 @@
     <!-- Stats Row -->
     <v-row class="mb-4">
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="primary">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.total }}</div>
-          <div class="text-caption text-white">Total Team</div>
+        <v-card class="text-center pa-3" variant="tonal" color="primary">
+          <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
+          <div class="text-caption">Total Team</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="success">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.active }}</div>
-          <div class="text-caption text-white">Active</div>
+        <v-card class="text-center pa-3" variant="tonal" color="success">
+          <div class="text-h5 font-weight-bold">{{ stats.active }}</div>
+          <div class="text-caption">Active</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="warning">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.onLeave }}</div>
-          <div class="text-caption text-white">On Leave</div>
+        <v-card class="text-center pa-3" variant="tonal" color="warning">
+          <div class="text-h5 font-weight-bold">{{ stats.onLeave }}</div>
+          <div class="text-caption">On Leave</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="grey">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.inactive }}</div>
-          <div class="text-caption text-white">Inactive</div>
+        <v-card class="text-center pa-3" variant="tonal" color="secondary">
+          <div class="text-h5 font-weight-bold">{{ stats.inactive }}</div>
+          <div class="text-caption">Inactive</div>
         </v-card>
       </v-col>
-      <v-col cols="12" md="4">
-        <v-card variant="outlined" class="h-100">
-          <v-card-text class="py-2">
-            <div class="text-caption mb-1">By Department</div>
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip
-                v-for="dept in stats.byDepartment.filter(d => d.count > 0)"
-                :key="dept.name"
-                size="x-small"
-                color="primary"
-                variant="tonal"
-              >
-                {{ dept.name }}: {{ dept.count }}
-              </v-chip>
-            </div>
-          </v-card-text>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="teal">
+          <div class="text-h5 font-weight-bold">{{ stats.byDepartment[0]?.count || 0 }}</div>
+          <div class="text-caption">{{ stats.byDepartment[0]?.name || 'Dept 1' }}</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="info">
+          <div class="text-h5 font-weight-bold">{{ stats.byDepartment[1]?.count || 0 }}</div>
+          <div class="text-caption">{{ stats.byDepartment[1]?.name || 'Dept 2' }}</div>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- Filters Card -->
-    <v-card rounded="lg" class="mb-4" elevation="1">
+    <v-card class="mb-4" variant="outlined">
       <v-card-text class="py-3">
         <v-row dense align="center">
           <v-col cols="12" sm="6" md="4">
@@ -150,7 +144,7 @@
     />
 
     <!-- Table View -->
-    <v-card v-else-if="viewMode === 'table'" rounded="lg" elevation="1">
+    <v-card v-else-if="viewMode === 'table'" variant="outlined">
       <v-data-table
         :headers="tableHeaders"
         :items="filteredEmployees"

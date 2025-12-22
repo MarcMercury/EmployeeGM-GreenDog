@@ -414,52 +414,46 @@ function getStatusLabel(status: string | null): string {
     <!-- Stats Row -->
     <v-row class="mb-4">
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="primary">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.total }}</div>
-          <div class="text-caption text-white">Total Visitors</div>
+        <v-card class="text-center pa-3" variant="tonal" color="primary">
+          <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
+          <div class="text-caption">Total Visitors</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="success">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.active }}</div>
-          <div class="text-caption text-white">Active</div>
+        <v-card class="text-center pa-3" variant="tonal" color="success">
+          <div class="text-h5 font-weight-bold">{{ stats.active }}</div>
+          <div class="text-caption">Active</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="info">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.upcoming }}</div>
-          <div class="text-caption text-white">Upcoming</div>
+        <v-card class="text-center pa-3" variant="tonal" color="info">
+          <div class="text-h5 font-weight-bold">{{ stats.upcoming }}</div>
+          <div class="text-caption">Upcoming</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="teal">
-          <div class="text-h5 font-weight-bold text-white">{{ stats.current }}</div>
-          <div class="text-caption text-white">Currently Here</div>
+        <v-card class="text-center pa-3" variant="tonal" color="teal">
+          <div class="text-h5 font-weight-bold">{{ stats.current }}</div>
+          <div class="text-caption">Currently Here</div>
         </v-card>
       </v-col>
-      <v-col cols="12" md="4">
-        <v-card variant="outlined" class="h-100">
-          <v-card-text class="py-2">
-            <div class="text-caption mb-1">By Type</div>
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip
-                v-for="stat in stats.byType.filter(s => s.count > 0)"
-                :key="stat.type"
-                size="x-small"
-                :color="getTypeColor(stat.type.toLowerCase())"
-                variant="tonal"
-              >
-                {{ stat.type }}: {{ stat.count }}
-              </v-chip>
-            </div>
-          </v-card-text>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="secondary">
+          <div class="text-h5 font-weight-bold">{{ stats.byType.find(s => s.type === 'Intern')?.count || 0 }}</div>
+          <div class="text-caption">Interns</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="warning">
+          <div class="text-h5 font-weight-bold">{{ stats.byType.find(s => s.type === 'Extern')?.count || 0 }}</div>
+          <div class="text-caption">Externs</div>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- Filters -->
-    <v-card class="mb-4">
-      <v-card-text>
+    <v-card class="mb-4" variant="outlined">
+      <v-card-text class="py-3">
         <v-row dense align="center">
           <v-col cols="12" md="3">
             <v-text-field
@@ -505,14 +499,12 @@ function getStatusLabel(status: string | null): string {
           <v-col cols="12" md="3" class="d-flex justify-end align-center">
             <v-btn-toggle
               v-model="quickFilter"
-              mandatory
               density="compact"
-              color="primary"
-              class="mr-2"
+              variant="outlined"
             >
               <v-btn value="all" size="small">All</v-btn>
-              <v-btn value="active" size="small">Active</v-btn>
-              <v-btn value="upcoming" size="small">Upcoming</v-btn>
+              <v-btn value="active" size="small" color="success">Active</v-btn>
+              <v-btn value="upcoming" size="small" color="info">Upcoming</v-btn>
             </v-btn-toggle>
             <v-chip color="primary" variant="tonal" size="small">
               {{ filteredVisitors.length }}
@@ -523,7 +515,7 @@ function getStatusLabel(status: string | null): string {
     </v-card>
 
     <!-- Visitors Table -->
-    <v-card>
+    <v-card variant="outlined">
       <v-progress-linear v-if="pending" indeterminate color="primary" />
       
       <v-table v-if="filteredVisitors.length > 0" hover>

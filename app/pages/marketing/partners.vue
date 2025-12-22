@@ -1153,33 +1153,39 @@ function getPriorityColor(priority: string | null | undefined): string {
     <!-- Stats Row -->
     <v-row class="mb-4">
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="primary">
-          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.total }}</div>
-          <div class="text-caption text-white">Total Partners</div>
+        <v-card class="text-center pa-3" variant="tonal" color="primary">
+          <div class="text-h5 font-weight-bold">{{ summaryStats.total }}</div>
+          <div class="text-caption">Total Partners</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="success">
-          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.active }}</div>
-          <div class="text-caption text-white">Active</div>
+        <v-card class="text-center pa-3" variant="tonal" color="success">
+          <div class="text-h5 font-weight-bold">{{ summaryStats.active }}</div>
+          <div class="text-caption">Active</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="info">
-          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.prospects }}</div>
-          <div class="text-caption text-white">Prospects</div>
+        <v-card class="text-center pa-3" variant="tonal" color="info">
+          <div class="text-h5 font-weight-bold">{{ summaryStats.prospects }}</div>
+          <div class="text-caption">Prospects</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="warning">
-          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.needsFollowup }}</div>
-          <div class="text-caption text-white">Needs Follow-up</div>
+        <v-card class="text-center pa-3" variant="tonal" color="warning">
+          <div class="text-h5 font-weight-bold">{{ summaryStats.needsFollowup }}</div>
+          <div class="text-caption">Needs Follow-up</div>
         </v-card>
       </v-col>
       <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" color="grey">
-          <div class="text-h5 font-weight-bold text-white">{{ summaryStats.inactive }}</div>
-          <div class="text-caption text-white">Inactive</div>
+        <v-card class="text-center pa-3" variant="tonal" color="secondary">
+          <div class="text-h5 font-weight-bold">{{ summaryStats.inactive }}</div>
+          <div class="text-caption">Inactive</div>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="text-center pa-3" variant="tonal" color="teal">
+          <div class="text-h5 font-weight-bold">{{ statsByType['influencer'] || 0 }}</div>
+          <div class="text-caption">Influencers</div>
         </v-card>
       </v-col>
     </v-row>
