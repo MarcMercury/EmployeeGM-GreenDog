@@ -270,6 +270,7 @@ export default defineEventHandler(async (event) => {
     
     // Get authenticated user
     const user = await serverSupabaseUser(event)
+    console.log('[parse-referrals] User from serverSupabaseUser:', user?.id, user?.email)
     if (!user) {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
@@ -277,16 +278,22 @@ export default defineEventHandler(async (event) => {
     // Get supabase client
     const supabase = await serverSupabaseClient(event)
     
-    // Check if user is admin
-    const { data: profile } = await supabase
+    // Check if user is admin or marketing_admin
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('auth_user_id', user.id)
       .single()
     
-    if (!profile || profile.role !== 'admin') {
-      throw createError({ statusCode: 403, message: 'Admin access required' })
+    console.log('[parse-referrals] Profile lookup result:', { profile, error: profileError?.message })
+    
+    const allowedRoles = ['admin', 'marketing_admin']
+    if (!profile || !allowedRoles.includes(profile.role)) {
+      console.log('[parse-referrals] Access denied for role:', profile?.role)
+      throw createError({ statusCode: 403, message: 'Admin or Marketing Admin access required' })
     }
+    
+    console.log('[parse-referrals] Access granted for role:', profile.role)
     
     // Read multipart form data
     const formData = await readMultipartFormData(event)

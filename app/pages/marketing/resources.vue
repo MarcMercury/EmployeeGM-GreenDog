@@ -172,6 +172,25 @@
                 </v-card-text>
               </v-card>
             </v-col>
+            <v-col v-if="isAdmin" cols="12" sm="6" md="3">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                :to="'/marketing/inventory'"
+              >
+                <v-card-text class="text-center py-6">
+                  <v-avatar size="64" color="amber" class="mb-3">
+                    <v-icon size="32" color="white">mdi-package-variant-closed</v-icon>
+                  </v-avatar>
+                  <h3 class="text-subtitle-1 font-weight-bold">Inventory</h3>
+                  <p class="text-caption text-grey mb-2">Marketing supplies & materials</p>
+                  <v-chip size="x-small" color="amber" variant="tonal">
+                    <v-icon start size="x-small">mdi-arrow-right</v-icon>
+                    View Inventory
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
           </v-row>
         </div>
 

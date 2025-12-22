@@ -410,15 +410,11 @@ const closeMobileMenu = () => {
                 </NuxtLink>
               </template>
               
-              <!-- Partners, Inventory - admin/marketing_admin only -->
+              <!-- Partners - admin/marketing_admin only -->
               <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
                   Partners
-                </NuxtLink>
-                <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
-                  Inventory
                 </NuxtLink>
               </template>
               
@@ -545,13 +541,11 @@ const closeMobileMenu = () => {
       <main 
         class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 transition-all duration-300"
         :class="[
-          'lg:ml-64',
-          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
-          'ml-0' // No margin on mobile
+          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         ]"
       >
-        <!-- Mobile top padding to account for header -->
-        <div class="pt-16 pb-20 lg:pt-0 lg:pb-0">
+        <!-- Mobile top padding to account for header, desktop has no extra padding -->
+        <div class="pt-14 pb-20 lg:pt-0 lg:pb-0">
           <div class="p-4 lg:p-6 xl:p-8">
             <slot />
           </div>
