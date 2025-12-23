@@ -384,6 +384,38 @@ export default defineEventHandler(async (event) => {
     
     console.log('[parse-referrals] Date range:', startMatch?.[1], 'to', endMatch?.[1])
     
+    // Parse dates for comparison
+    let parsedStartDate: string | null = null
+    let parsedEndDate: string | null = null
+    
+    if (startMatch?.[1]) {
+      const [month, day, year] = startMatch[1].split('-')
+      parsedStartDate = `${year}-${month}-${day}`
+    }
+    if (endMatch?.[1]) {
+      const [month, day, year] = endMatch[1].split('-')
+      parsedEndDate = `${year}-${month}-${day}`
+    }
+    
+    // Check if this date range has already been processed (prevent duplicate uploads)
+    if (parsedStartDate && parsedEndDate) {
+      const { data: existingSync } = await supabase
+        .from('referral_sync_history')
+        .select('id, created_at')
+        .eq('date_range_start', parsedStartDate)
+        .eq('date_range_end', parsedEndDate)
+        .limit(1)
+      
+      if (existingSync && existingSync.length > 0) {
+        const uploadedAt = new Date(existingSync[0].created_at).toLocaleDateString()
+        console.log('[parse-referrals] Duplicate date range detected, already uploaded on:', uploadedAt)
+        throw createError({
+          statusCode: 409,
+          message: `This report (${startMatch[1]} to ${endMatch[1]}) was already uploaded on ${uploadedAt}. Duplicate uploads are prevented to avoid double-counting data.`
+        })
+      }
+    }
+    
     // Parse referrals using both methods
     const referrals1 = parsePdfContent(text)
     const referrals2 = parsePdfContentV2(text)
@@ -464,17 +496,17 @@ export default defineEventHandler(async (event) => {
     const unknownCount = (text.match(/unknown clinic/gi) || []).length
     result.skipped = unknownCount
     
-    // Log sync history
+    // Log sync history (for audit trail and duplicate prevention)
     const { data: profileData } = await supabase
       .from('profiles')
       .select('id')
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', userId)
       .single()
     
     await supabase.from('referral_sync_history').insert({
       filename: file.filename || 'referrer-revenue.pdf',
-      date_range_start: startMatch ? new Date(startMatch[1].replace(/-/g, '/')).toISOString().split('T')[0] : null,
-      date_range_end: endMatch ? new Date(endMatch[1].replace(/-/g, '/')).toISOString().split('T')[0] : null,
+      date_range_start: parsedStartDate,
+      date_range_end: parsedEndDate,
       total_rows_parsed: referrals.length,
       total_rows_matched: result.updated,
       total_rows_skipped: result.skipped,
@@ -483,7 +515,11 @@ export default defineEventHandler(async (event) => {
       sync_details: {
         notMatched: result.notMatched,
         visitorsAdded: result.visitorsAdded,
-        clinicDetails: result.details
+        clinicDetails: result.details,
+        dateRangeRaw: {
+          start: startMatch?.[1],
+          end: endMatch?.[1]
+        }
       }
     })
     
