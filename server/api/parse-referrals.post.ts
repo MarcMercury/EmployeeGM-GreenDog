@@ -268,24 +268,31 @@ export default defineEventHandler(async (event) => {
   try {
     console.log('[parse-referrals] Starting PDF parse request')
     
-    // Get authenticated user
+    // Get authenticated user - serverSupabaseUser returns the auth user object
     const user = await serverSupabaseUser(event)
-    console.log('[parse-referrals] User from serverSupabaseUser:', user?.id, user?.email)
-    if (!user) {
-      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    const userId = user?.id
+    
+    console.log('[parse-referrals] User from serverSupabaseUser:', { 
+      userId, 
+      email: user?.email,
+      userKeys: user ? Object.keys(user) : 'null'
+    })
+    
+    if (!user || !userId) {
+      throw createError({ statusCode: 401, message: 'Unauthorized - no user session found' })
     }
     
     // Get supabase client (regular for operations, service role for auth check)
     const supabase = await serverSupabaseClient(event)
     const supabaseAdmin = await serverSupabaseServiceRole(event)
     
-    console.log('[parse-referrals] Looking up profile for auth_user_id:', user.id)
+    console.log('[parse-referrals] Looking up profile for auth_user_id:', userId)
     
     // Check if user is admin or marketing_admin using service role (bypasses RLS)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, role, email, auth_user_id')
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', userId)
       .single()
     
     console.log('[parse-referrals] Profile lookup result:', { 
