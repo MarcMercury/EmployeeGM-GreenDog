@@ -35,6 +35,11 @@
         <v-icon start>mdi-history</v-icon>
         Activity
       </v-tab>
+      <v-tab value="upload-log">
+        <v-icon start>mdi-file-alert-outline</v-icon>
+        Upload Log
+        <v-badge v-if="unmatchedEntries.length" :content="unmatchedEntries.length" color="warning" inline class="ml-1" />
+      </v-tab>
     </v-tabs>
 
     <v-window v-model="mainTab">
@@ -335,6 +340,94 @@
               <div class="text-grey">No recent activity</div>
             </v-timeline-item>
           </v-timeline>
+        </v-card>
+      </v-window-item>
+
+      <!-- UPLOAD LOG TAB -->
+      <v-window-item value="upload-log">
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div>
+              <span>Unmatched Upload Entries</span>
+              <div class="text-caption text-grey">Clinics from PDF uploads that didn't match existing partners</div>
+            </div>
+            <v-btn size="small" variant="text" :loading="loadingUploadLog" @click="loadUploadLog">
+              <v-icon>mdi-refresh</v-icon>
+            </v-btn>
+          </v-card-title>
+          
+          <v-card-text v-if="loadingUploadLog">
+            <v-skeleton-loader type="table-row@5" />
+          </v-card-text>
+          
+          <v-card-text v-else-if="unmatchedEntries.length === 0">
+            <v-alert type="success" variant="tonal" class="mb-0">
+              <v-icon start>mdi-check-circle</v-icon>
+              All uploaded entries have been matched or logged. Great job!
+            </v-alert>
+          </v-card-text>
+          
+          <v-data-table
+            v-else
+            :headers="uploadLogHeaders"
+            :items="unmatchedEntries"
+            :items-per-page="25"
+            class="elevation-0"
+          >
+            <template #item.clinicName="{ item }">
+              <div class="font-weight-medium">{{ item.clinicName }}</div>
+            </template>
+            
+            <template #item.visits="{ item }">
+              <v-chip size="small" color="info" variant="tonal">{{ item.visits }}</v-chip>
+            </template>
+            
+            <template #item.revenue="{ item }">
+              <span class="font-weight-medium text-success">${{ item.revenue?.toLocaleString() || 0 }}</span>
+            </template>
+            
+            <template #item.uploadDate="{ item }">
+              <span class="text-caption">{{ formatDate(item.uploadDate) }}</span>
+            </template>
+            
+            <template #item.dateRange="{ item }">
+              <span class="text-caption">{{ item.dateRange || 'Unknown' }}</span>
+            </template>
+            
+            <template #item.actions="{ item }">
+              <v-btn
+                size="small"
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-check"
+                :loading="item.logging"
+                @click="markAsLogged(item)"
+              >
+                Logged
+              </v-btn>
+            </template>
+          </v-data-table>
+        </v-card>
+        
+        <!-- Upload History Summary -->
+        <v-card variant="outlined" class="mt-4">
+          <v-card-title>Upload History</v-card-title>
+          <v-data-table
+            :headers="uploadHistoryHeaders"
+            :items="uploadHistory"
+            :items-per-page="10"
+            class="elevation-0"
+          >
+            <template #item.created_at="{ item }">
+              {{ formatDate(item.created_at) }}
+            </template>
+            <template #item.date_range_start="{ item }">
+              {{ item.date_range_start }} - {{ item.date_range_end }}
+            </template>
+            <template #item.total_revenue_added="{ item }">
+              <span class="text-success">${{ item.total_revenue_added?.toLocaleString() || 0 }}</span>
+            </template>
+          </v-data-table>
         </v-card>
       </v-window-item>
     </v-window>
@@ -1241,6 +1334,30 @@ const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
 
+// Upload Log state
+const loadingUploadLog = ref(false)
+const unmatchedEntries = ref<any[]>([])
+const uploadHistory = ref<any[]>([])
+
+// Upload Log table headers
+const uploadLogHeaders = [
+  { title: 'Clinic Name', key: 'clinicName', sortable: true },
+  { title: 'Visits', key: 'visits', sortable: true, align: 'center' },
+  { title: 'Revenue', key: 'revenue', sortable: true, align: 'end' },
+  { title: 'Upload Date', key: 'uploadDate', sortable: true },
+  { title: 'Date Range', key: 'dateRange', sortable: false },
+  { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
+]
+
+const uploadHistoryHeaders = [
+  { title: 'Upload Date', key: 'created_at', sortable: true },
+  { title: 'File', key: 'filename', sortable: false },
+  { title: 'Date Range', key: 'date_range_start', sortable: true },
+  { title: 'Rows Parsed', key: 'total_rows_parsed', sortable: true },
+  { title: 'Matched', key: 'total_rows_matched', sortable: true },
+  { title: 'Revenue Added', key: 'total_revenue_added', sortable: true }
+]
+
 // Computed to check if file is selected
 const hasUploadFile = computed(() => {
   if (!uploadFile.value) return false
@@ -2035,10 +2152,115 @@ function closeUploadDialog() {
   uploadResult.value = null
 }
 
+// Upload Log functions
+async function loadUploadLog() {
+  loadingUploadLog.value = true
+  
+  try {
+    // Load upload history
+    const { data: history, error: historyError } = await supabase
+      .from('referral_sync_history')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    
+    if (historyError) throw historyError
+    uploadHistory.value = history || []
+    
+    // Extract unmatched entries from sync_details
+    const unmatched: any[] = []
+    
+    for (const sync of (history || [])) {
+      const details = sync.sync_details?.clinicDetails || []
+      for (const detail of details) {
+        if (!detail.matched && !detail.logged) {
+          unmatched.push({
+            id: `${sync.id}-${detail.clinicName}`,
+            syncId: sync.id,
+            clinicName: detail.clinicName,
+            visits: detail.visits || 0,
+            revenue: detail.revenue || 0,
+            uploadDate: sync.created_at,
+            dateRange: sync.date_range_start && sync.date_range_end 
+              ? `${sync.date_range_start} - ${sync.date_range_end}` 
+              : null,
+            logging: false
+          })
+        }
+      }
+    }
+    
+    unmatchedEntries.value = unmatched
+    
+  } catch (err: any) {
+    console.error('[UploadLog] Error loading:', err)
+    snackbar.message = 'Failed to load upload log'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    loadingUploadLog.value = false
+  }
+}
+
+async function markAsLogged(entry: any) {
+  entry.logging = true
+  
+  try {
+    // Get the current sync record
+    const { data: sync, error: fetchError } = await supabase
+      .from('referral_sync_history')
+      .select('sync_details')
+      .eq('id', entry.syncId)
+      .single()
+    
+    if (fetchError) throw fetchError
+    
+    // Update the specific entry's logged status
+    const details = sync.sync_details || {}
+    const clinicDetails = details.clinicDetails || []
+    
+    const updatedDetails = clinicDetails.map((d: any) => {
+      if (d.clinicName === entry.clinicName && !d.matched) {
+        return { ...d, logged: true, loggedAt: new Date().toISOString() }
+      }
+      return d
+    })
+    
+    // Save back to database
+    const { error: updateError } = await supabase
+      .from('referral_sync_history')
+      .update({
+        sync_details: {
+          ...details,
+          clinicDetails: updatedDetails
+        }
+      })
+      .eq('id', entry.syncId)
+    
+    if (updateError) throw updateError
+    
+    // Remove from local list
+    unmatchedEntries.value = unmatchedEntries.value.filter(e => e.id !== entry.id)
+    
+    snackbar.message = `"${entry.clinicName}" marked as logged`
+    snackbar.color = 'success'
+    snackbar.show = true
+    
+  } catch (err: any) {
+    console.error('[UploadLog] Error marking as logged:', err)
+    snackbar.message = 'Failed to mark as logged'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    entry.logging = false
+  }
+}
+
 // Init
 onMounted(() => {
   loadPartners()
   loadRecentActivity()
+  loadUploadLog() // Load upload log on mount
 })
 </script>
 
