@@ -279,19 +279,30 @@ export default defineEventHandler(async (event) => {
     const supabase = await serverSupabaseClient(event)
     const supabaseAdmin = await serverSupabaseServiceRole(event)
     
+    console.log('[parse-referrals] Looking up profile for auth_user_id:', user.id)
+    
     // Check if user is admin or marketing_admin using service role (bypasses RLS)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('id, role, email, auth_user_id')
       .eq('auth_user_id', user.id)
       .single()
     
-    console.log('[parse-referrals] Profile lookup result:', { profile, error: profileError?.message })
+    console.log('[parse-referrals] Profile lookup result:', { 
+      profile, 
+      error: profileError?.message,
+      code: profileError?.code 
+    })
     
     const allowedRoles = ['admin', 'marketing_admin']
+    if (profileError) {
+      console.log('[parse-referrals] Profile lookup error:', profileError)
+      throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
+    }
+    
     if (!profile || !allowedRoles.includes(profile.role)) {
       console.log('[parse-referrals] Access denied for role:', profile?.role)
-      throw createError({ statusCode: 403, message: 'Admin or Marketing Admin access required' })
+      throw createError({ statusCode: 403, message: `Admin or Marketing Admin access required. Your role: ${profile?.role || 'unknown'}` })
     }
     
     console.log('[parse-referrals] Access granted for role:', profile.role)
