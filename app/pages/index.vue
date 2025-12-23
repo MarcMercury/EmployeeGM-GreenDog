@@ -796,6 +796,15 @@ const formatShiftTime = (time: string) => {
         </div>
       </UiGlassCard>
       
+      <!-- Role-Based Dashboard Widgets -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <!-- Manager Widget - for admins and office admins -->
+        <DashboardManagerWidget v-if="isAdmin || currentUserProfile?.role === 'office_admin'" />
+        
+        <!-- Admin Widget - for admins only -->
+        <DashboardAdminWidget v-if="isAdmin" />
+      </div>
+      
       </template><!-- End Company View -->
     </template><!-- End v-else loading -->
 
