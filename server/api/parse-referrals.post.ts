@@ -277,6 +277,58 @@ function findBestMatch(
   return bestMatch
 }
 
+// Common first/last name patterns that contain "Pet" but are NOT clinics
+// e.g., Peter, Peterson, Petunia, Pete, Petrov, etc.
+// This is a MODULE-LEVEL function used by both parsers
+const petNamePatterns = [
+  /^[A-Za-z]+,\s*Pet/i,        // "Smith, Peter" or "Abrahams, Peter"
+  /^Pete\s+[A-Z]/,              // "Pete Maul" (first name Pete)
+  /^Peter\s+[A-Z]/,             // "Peter Smith"
+  /^Petunia\s/i,                // First name Petunia
+  /^[A-Za-z]+\s+Pet[a-z]+$/i,   // "Sophia Petreca", "Murphy Petrella", "John Peterson"
+  /^Pet[a-z]+\s+[A-Z]/i,        // "Petey Karp", "Petty Vigil"
+  /Pet[a-z]+$/i,                // Ends with a Pet-like surname (Peterson, Petrov, Petrokubi, etc.)
+  /^[A-Za-z]+\s+Pet[a-z]*$/i,   // "FirstName Pet*" pattern (Chunky Petrosyan, Daisy Peterson)
+  /^Pet[a-z]+$/i,               // Single word starting with Pet (Petey, Peter, etc.)
+]
+
+// Check if a line looks like a person/pet name rather than a clinic name
+function isLikelyPersonName(line: string): boolean {
+  const trimmed = line.trim()
+  
+  // Check against known person name patterns
+  for (const pattern of petNamePatterns) {
+    if (pattern.test(trimmed)) return true
+  }
+  
+  // Check for "LastName, FirstName" pattern without clinic keywords
+  if (/^[A-Za-z]+,\s*[A-Za-z]+$/.test(trimmed)) {
+    const lower = trimmed.toLowerCase()
+    if (!lower.includes('vet') && !lower.includes('animal') && 
+        !lower.includes('hospital') && !lower.includes('clinic')) {
+      return true
+    }
+  }
+  
+  // Check for simple "FirstName LastName" pattern (2 words, both alphabetic only)
+  // that doesn't contain clinic keywords
+  const words = trimmed.split(/\s+/)
+  if (words.length === 2 && 
+      /^[A-Za-z]+$/.test(words[0]) && 
+      /^[A-Za-z]+$/.test(words[1])) {
+    const lower = trimmed.toLowerCase()
+    if (!lower.includes('vet') && !lower.includes('animal') && 
+        !lower.includes('hospital') && !lower.includes('clinic') &&
+        !lower.includes('care') && !lower.includes('center') &&
+        !lower.includes('medical') && !lower.includes('vca')) {
+      // This looks like "FirstName LastName" without any clinic keywords
+      return true
+    }
+  }
+  
+  return false
+}
+
 // Parse the PDF content and extract referral data
 // Each row in the PDF represents one appointment/visit
 // We need to count each row where the Partner (clinic) is NOT "Unknown"
@@ -296,30 +348,6 @@ function parsePdfContent(text: string): ParsedReferral[] {
   // Track all entries to help with debugging
   let totalAmountLines = 0
   let skippedUnknownClinic = 0
-  
-  // Common first/last name patterns that contain "Pet" but are NOT clinics
-  // e.g., Peter, Peterson, Petunia, Pete, Petrov, etc.
-  const petNamePatterns = [
-    /^[A-Za-z]+,\s*Pet/i,     // "Smith, Peter" or "Abrahams, Peter"
-    /^Pete\s+[A-Z]/,           // "Pete Maul" (first name Pete)
-    /^Peter\s+[A-Z]/,          // "Peter Smith"
-    /^Petunia\s/i,             // First name Petunia
-    /^[A-Za-z]+\s+Pet[a-z]+$/i, // "Sophia Petreca", "Murphy Petrella", "John Peterson"
-    /^Pet[a-z]+\s+[A-Z]/i,     // "Petey Karp", "Petty Vigil"
-    /Pet[a-z]*\s*$/i,          // Ends with a Pet-like name (Peterson, Petrov, etc.)
-  ]
-  
-  function isLikelyPersonName(line: string): boolean {
-    // Check if this looks like a person's name rather than a clinic
-    for (const pattern of petNamePatterns) {
-      if (pattern.test(line)) return true
-    }
-    // Also check for "LastName, FirstName" pattern without clinic keywords
-    if (/^[A-Za-z]+,\s*[A-Za-z]+$/.test(line) && !line.toLowerCase().includes('vet') && !line.toLowerCase().includes('animal')) {
-      return true
-    }
-    return false
-  }
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -431,7 +459,10 @@ function parsePdfContentV2(text: string): ParsedReferral[] {
   
   // Known clinic name patterns with amounts following
   // This captures: ClinicName Amount
-  const clinicAmountPattern = /((?:VCA|Southpaw|Modern|[\w\s]+(?:Vet(?:erinary)?|Animal|Hospital|Clinic|Care|Center|Pet))[\w\s]*?)\s+(\d+(?:\.\d{1,2})?)\s/gi
+  // IMPORTANT: "Pet" alone is NOT enough - it must be followed by clinic keywords
+  // to avoid matching person names like "Pete Maul" or "Daisy Peterson"
+  // Pattern requires explicit clinic keywords: Veterinary, Vet, Animal, Hospital, Clinic, etc.
+  const clinicAmountPattern = /((?:VCA|Southpaw|Modern Animal|[\w\s]+(?:Vet(?:erinary)?|Animal\s+(?:Hospital|Clinic|Center|Care)|Pet\s+(?:Hospital|Clinic|Medical|Care|Doctors)|Hospital|Clinic|Care\s+Center|Medical\s+Center))[\w\s]*?)\s+(\d+(?:\.\d{1,2})?)\s/gi
   
   let match
   
@@ -441,6 +472,11 @@ function parsePdfContentV2(text: string): ParsedReferral[] {
     // Skip Unknown Clinic entries (but NOT "Unknown Vet" which is just the vet person)
     if (rawClinicName.toLowerCase().includes('unknown clinic') ||
         rawClinicName.toLowerCase() === 'unknown') {
+      continue
+    }
+    
+    // CRITICAL: Filter out person/pet names that may have slipped through
+    if (isLikelyPersonName(rawClinicName)) {
       continue
     }
     
