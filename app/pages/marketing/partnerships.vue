@@ -1994,7 +1994,8 @@ async function processUpload() {
     
     const response = await $fetch<any>('/api/parse-referrals', {
       method: 'POST',
-      body: formData
+      body: formData,
+      credentials: 'include' // Include cookies for auth
     })
     
     uploadResult.value = response
