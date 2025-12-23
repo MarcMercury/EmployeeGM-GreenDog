@@ -1992,10 +1992,18 @@ async function processUpload() {
       formData.append('file', file)
     }
     
+    // Get the current session token to pass to the server
+    const { data: { session } } = await client.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session - please log in again')
+    }
+    
     const response = await $fetch<any>('/api/parse-referrals', {
       method: 'POST',
       body: formData,
-      credentials: 'include' // Include cookies for auth
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
     })
     
     uploadResult.value = response

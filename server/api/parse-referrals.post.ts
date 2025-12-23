@@ -3,8 +3,9 @@
  * Parses EzyVet "Referrer Revenue" PDF reports and updates referral_partners stats
  * Uses pdf2json for reliable Node.js PDF parsing
  */
-import { createError, defineEventHandler, readMultipartFormData } from 'h3'
+import { createError, defineEventHandler, readMultipartFormData, getHeader } from 'h3'
 import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import PDFParser from 'pdf2json'
 
 interface ParsedReferral {
@@ -268,21 +269,57 @@ export default defineEventHandler(async (event) => {
   try {
     console.log('[parse-referrals] Starting PDF parse request')
     
-    // Get authenticated user - serverSupabaseUser returns the auth user object
-    const user = await serverSupabaseUser(event)
-    const userId = user?.id
+    // Get the Authorization header with Bearer token
+    const authHeader = getHeader(event, 'authorization')
+    const config = useRuntimeConfig()
     
-    console.log('[parse-referrals] User from serverSupabaseUser:', { 
-      userId, 
-      email: user?.email,
-      userKeys: user ? Object.keys(user) : 'null'
-    })
+    let userId: string | undefined
+    let userEmail: string | undefined
     
-    if (!user || !userId) {
+    // Try to get user from Authorization header first (more reliable)
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '')
+      console.log('[parse-referrals] Found Bearer token, verifying...')
+      
+      // Create a client with the user's token to get their info
+      const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL
+      const supabaseKey = config.public.supabaseKey || process.env.SUPABASE_KEY
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw createError({ statusCode: 500, message: 'Supabase configuration missing' })
+      }
+      
+      const userClient = createClient(supabaseUrl, supabaseKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      })
+      
+      const { data: { user }, error: userError } = await userClient.auth.getUser()
+      
+      if (userError || !user) {
+        console.log('[parse-referrals] Token verification failed:', userError?.message)
+        throw createError({ statusCode: 401, message: 'Invalid or expired token' })
+      }
+      
+      userId = user.id
+      userEmail = user.email
+      console.log('[parse-referrals] User verified from token:', { userId, userEmail })
+    } else {
+      // Fallback to serverSupabaseUser
+      const user = await serverSupabaseUser(event)
+      userId = user?.id
+      userEmail = user?.email
+      console.log('[parse-referrals] User from serverSupabaseUser:', { userId, userEmail })
+    }
+    
+    if (!userId) {
       throw createError({ statusCode: 401, message: 'Unauthorized - no user session found' })
     }
     
-    // Get supabase client (regular for operations, service role for auth check)
+    // Get supabase clients
     const supabase = await serverSupabaseClient(event)
     const supabaseAdmin = await serverSupabaseServiceRole(event)
     
