@@ -95,23 +95,27 @@ const KNOWN_LOCATIONS = [
 ]
 
 // Clean clinic name by removing location prefixes and stray numbers
+// PDF format appears to be: "Location NumericID ActualClinicName"
 function cleanClinicName(name: string): string {
   let cleaned = name.toLowerCase().trim()
   
-  // Remove leading numbers (like "226" from "Sherman Oaks 226 Beverly...")
+  // Remove leading numbers only (like "33" or "226")
   cleaned = cleaned.replace(/^\d+\s+/, '')
   
-  // Remove known location prefixes
+  // Only strip location prefix if it's followed by a NUMBER
+  // This indicates the location is metadata, not part of the clinic name
+  // e.g., "Sherman Oaks 249 Glendale Hospital" → strip "Sherman Oaks 249"
+  // but "Sherman Oaks Veterinary Group" → keep as is (no number after location)
   for (const location of KNOWN_LOCATIONS) {
-    if (cleaned.startsWith(location + ' ')) {
-      cleaned = cleaned.substring(location.length).trim()
-      // Check for trailing numbers after location removal
-      cleaned = cleaned.replace(/^\d+\s+/, '')
+    // Check if it starts with "location <number>"
+    const pattern = new RegExp(`^${location}\\s+\\d+\\s+`, 'i')
+    if (pattern.test(cleaned)) {
+      cleaned = cleaned.replace(pattern, '').trim()
       break
     }
   }
   
-  // Remove any remaining leading numbers
+  // If the result still starts with a number, remove it
   cleaned = cleaned.replace(/^\d+\s+/, '')
   
   // Title case the result
