@@ -47,8 +47,9 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
     
     pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
       try {
-        // Extract text from all pages
-        let text = ''
+        // Extract all text items with their positions
+        const items: {text: string, y: number, x: number}[] = []
+        
         if (pdfData.Pages) {
           for (const page of pdfData.Pages) {
             if (page.Texts) {
@@ -56,17 +57,90 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
                 if (textItem.R) {
                   for (const run of textItem.R) {
                     if (run.T) {
-                      text += decodeURIComponent(run.T) + ' '
+                      const decoded = decodeURIComponent(run.T).trim()
+                      if (decoded) {
+                        items.push({ 
+                          text: decoded, 
+                          y: textItem.y,
+                          x: textItem.x || 0
+                        })
+                      }
                     }
                   }
                 }
-                text += '\n'
               }
             }
-            text += '\n--- PAGE BREAK ---\n'
           }
         }
-        resolve(text)
+        
+        // Process items to join split clinic names
+        // Pattern: "Centinela Animal" followed by "Hospital" at similar Y position
+        // Or: "Centinela" followed by "Animal Hospital"
+        const processedLines: string[] = []
+        let i = 0
+        
+        while (i < items.length) {
+          let currentText = items[i].text
+          const currentY = items[i].y
+          
+          // Check if this looks like a partial clinic name that needs joining
+          // Pattern 1: "Something Animal" needs "Hospital/Clinic" from next item
+          const hasAnimal = currentText.includes('Animal') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic')
+          const hasVet = currentText.includes('Veterinary') && !currentText.toLowerCase().includes('center') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic')
+          const hasPet = currentText.includes('Pet') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic') && !currentText.toLowerCase().includes('care')
+          
+          // Pattern 2: Single clinic name (e.g., "Centinela") needs "Animal Hospital" from next items
+          const knownClinics = ['centinela', 'encino', 'tarzana', 'valley', 'westside', 'pasadena', 'burbank', 'glendale']
+          const isKnownClinicStart = knownClinics.some(c => currentText.toLowerCase() === c)
+          
+          // Try to join for multi-part clinic names
+          if (isKnownClinicStart && i + 1 < items.length) {
+            const next1 = items[i + 1]
+            
+            // Pattern 2a: Next item is "Animal Hospital" or "Animal Clinic" (combined)
+            if (next1.text.toLowerCase().includes('animal hospital') || next1.text.toLowerCase().includes('animal clinic')) {
+              currentText = currentText + ' ' + next1.text
+              i++ // Skip the joined item
+              processedLines.push(currentText)
+              i++
+              continue
+            }
+            
+            // Pattern 2b: Next items are "Animal" + "Hospital" (separate)
+            if (i + 2 < items.length && next1.text.toLowerCase() === 'animal') {
+              const next2 = items[i + 2]
+              if (next2.text.toLowerCase().includes('hospital') || next2.text.toLowerCase().includes('clinic')) {
+                currentText = currentText + ' ' + next1.text + ' ' + next2.text
+                i += 2 // Skip both joined items
+                processedLines.push(currentText)
+                i++
+                continue
+              }
+            }
+          }
+          
+          const needsJoin = hasAnimal || hasVet || hasPet
+          
+          // Look ahead for continuation
+          if (needsJoin && i + 1 < items.length) {
+            const nextText = items[i + 1].text
+            const nextY = items[i + 1].y
+            
+            // Join if Y is close (within 2 units) and next item completes the clinic name
+            const clinicSuffixes = ['hospital', 'clinic', 'center', 'care', 'group', 'medical', 'wellness']
+            const hasClinicSuffix = clinicSuffixes.some(s => nextText.toLowerCase().includes(s))
+            
+            if (Math.abs(nextY - currentY) < 2 && hasClinicSuffix) {
+              currentText = currentText + ' ' + nextText
+              i++ // Skip the joined item
+            }
+          }
+          
+          processedLines.push(currentText)
+          i++
+        }
+        
+        resolve(processedLines.join('\n'))
       } catch (err) {
         reject(err)
       }
