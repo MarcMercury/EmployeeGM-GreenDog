@@ -204,18 +204,24 @@ function findBestMatch(
 }
 
 // Parse the PDF content and extract referral data
+// Each row in the PDF represents one appointment/visit
+// We need to count each row where the Partner (clinic) is NOT "Unknown"
 function parsePdfContent(text: string): ParsedReferral[] {
   const referrals: ParsedReferral[] = []
   const lines = text.split('\n').map(l => l.trim()).filter(l => l)
   
   // Pattern to match date: MM-DD-YYYY
   const datePattern = /(\d{2}-\d{2}-\d{4})/
-  // Pattern to match amount (number with optional decimals)
-  const amountPattern = /(\d+(?:\.\d{1,2})?)/
+  // Pattern to match amount (standalone number or with decimals)
+  const amountPattern = /^(\d+(?:\.\d{1,2})?)$/
   
   let currentDate = ''
   let currentClinic = ''
-  let skipRecord = false
+  let lastClinicLine = -1  // Track when we last saw a clinic name
+  
+  // Track all entries to help with debugging
+  let totalAmountLines = 0
+  let skippedUnknownClinic = 0
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -237,19 +243,23 @@ function parsePdfContent(text: string): ParsedReferral[] {
     const dateMatch = line.match(datePattern)
     if (dateMatch && line.startsWith(dateMatch[1])) {
       currentDate = dateMatch[1]
-      skipRecord = false
+      continue
+    }
+    
+    // Check for "Unknown Clinic" in the Partner column
+    // This indicates the clinic/partner is unknown - skip these
+    // BUT: "Unknown Vet" (referring vet person) is OK to count
+    const lineLower = line.toLowerCase()
+    if (lineLower.includes('unknown clinic') || 
+        (lineLower === 'unknown' && !currentClinic)) {
+      // This is an unknown partner - skip and clear clinic
       currentClinic = ''
+      skippedUnknownClinic++
       continue
     }
     
-    // Check for "Unknown Clinic" - skip these records
-    if (line.toLowerCase().includes('unknown clinic') || 
-        line.toLowerCase().includes('unknown vet')) {
-      skipRecord = true
-      continue
-    }
-    
-    // Identify clinic names
+    // Identify clinic names (Partner column)
+    // These lines contain veterinary/hospital keywords
     const isClinicName = (
       line.includes('Vet') || 
       line.includes('Animal') || 
@@ -259,58 +269,74 @@ function parsePdfContent(text: string): ParsedReferral[] {
       line.includes('Center') ||
       line.includes('Southpaw') ||
       line.includes('VCA') ||
-      line.includes('Pet')
-    ) && !line.toLowerCase().includes('unknown')
+      line.includes('Pet') ||
+      line.includes('Modern')
+    ) && !lineLower.includes('unknown clinic')
     
-    if (isClinicName && !skipRecord) {
+    if (isClinicName) {
       // Clean the clinic name to remove location prefixes and stray numbers
       currentClinic = cleanClinicName(line.replace(/\s+/g, ' ').trim())
+      lastClinicLine = i
     }
     
-    // Check for amount (standalone number or at end of line)
-    const amountMatch = line.match(/^(\d+(?:\.\d{1,2})?)$/)
-    if (amountMatch && currentClinic && !skipRecord) {
+    // Check for amount (standalone number - this represents one appointment row)
+    // Each amount = 1 visit
+    const amountMatch = line.match(amountPattern)
+    if (amountMatch) {
+      totalAmountLines++
       const amount = parseFloat(amountMatch[1])
-      if (!isNaN(amount) && amount > 0) {
+      
+      // Only count if we have a valid clinic (not Unknown)
+      if (!isNaN(amount) && amount > 0 && currentClinic) {
         referrals.push({
           clinicName: currentClinic,
           amount,
           date: currentDate || new Date().toISOString().split('T')[0]
         })
-        // Don't reset clinic - same clinic may have multiple entries
+        // DON'T reset currentClinic - the next amount line may also belong to this clinic
+        // The clinic name appears once, followed by multiple appointment amounts
       }
     }
   }
+  
+  console.log('[parse-referrals] Parsing stats: totalAmountLines=', totalAmountLines, 
+              'skippedUnknownClinic=', skippedUnknownClinic, 
+              'validReferrals=', referrals.length)
   
   return referrals
 }
 
 // Alternative parsing - regex based for robustness
+// This method scans for patterns where clinic names are followed by amounts
 function parsePdfContentV2(text: string): ParsedReferral[] {
   const referrals: ParsedReferral[] = []
   
   // Clean the text
   const cleanText = text.replace(/\s+/g, ' ').trim()
   
+  // Skip if this appears to be the Unknown Clinic
+  const unknownPattern = /unknown\s+clinic/gi
+  
   // Known clinic name patterns with amounts following
-  const clinicAmountPattern = /((?:VCA|Southpaw|[\w\s]+(?:Vet(?:erinary)?|Animal|Hospital|Clinic|Care|Center|Pet))[\w\s]*?)\s+(\d+(?:\.\d{1,2})?)\s/gi
+  // This captures: ClinicName Amount
+  const clinicAmountPattern = /((?:VCA|Southpaw|Modern|[\w\s]+(?:Vet(?:erinary)?|Animal|Hospital|Clinic|Care|Center|Pet))[\w\s]*?)\s+(\d+(?:\.\d{1,2})?)\s/gi
   
   let match
-  const seen = new Map<string, number>()
   
   while ((match = clinicAmountPattern.exec(cleanText)) !== null) {
+    const rawClinicName = match[1].trim()
+    
+    // Skip Unknown Clinic entries (but NOT "Unknown Vet" which is just the vet person)
+    if (rawClinicName.toLowerCase().includes('unknown clinic') ||
+        rawClinicName.toLowerCase() === 'unknown') {
+      continue
+    }
+    
     // Clean the clinic name to remove location prefixes
-    const clinicName = cleanClinicName(match[1].trim())
+    const clinicName = cleanClinicName(rawClinicName)
     const amount = parseFloat(match[2])
     
-    // Skip unknown clinics
-    if (clinicName.toLowerCase().includes('unknown')) continue
-    
     if (!isNaN(amount) && amount > 0 && clinicName.length > 3) {
-      // Deduplicate by clinic name, keeping track of count
-      const key = clinicName.toLowerCase()
-      seen.set(key, (seen.get(key) || 0) + 1)
-      
       referrals.push({
         clinicName,
         amount,
@@ -497,15 +523,21 @@ export default defineEventHandler(async (event) => {
     const referrals1 = parsePdfContent(text)
     const referrals2 = parsePdfContentV2(text)
     
-    console.log('[parse-referrals] Method 1 found:', referrals1.length, 'entries')
-    console.log('[parse-referrals] Method 2 found:', referrals2.length, 'entries')
+    console.log('[parse-referrals] Method 1 found:', referrals1.length, 'entries (individual visits)')
+    console.log('[parse-referrals] Method 2 found:', referrals2.length, 'entries (individual visits)')
     
     // Use the method that found more records
     const referrals = referrals1.length >= referrals2.length ? referrals1 : referrals2
+    console.log('[parse-referrals] Using method', referrals1.length >= referrals2.length ? '1' : '2', 'with', referrals.length, 'total visits')
     
-    // Aggregate by clinic
+    // Aggregate by clinic - sum up visits and revenue per clinic
     const aggregated = aggregateByClinic(referrals)
     console.log('[parse-referrals] Aggregated to', aggregated.length, 'unique clinics')
+    
+    // Log some sample aggregated data for debugging
+    for (const agg of aggregated.slice(0, 5)) {
+      console.log(`  - ${agg.clinicName}: ${agg.totalVisits} visits, $${agg.totalRevenue}`)
+    }
     
     // Fetch all partners for matching
     const { data: partners } = await supabase
@@ -569,9 +601,15 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Calculate skipped (Unknown Clinic entries)
-    const unknownCount = (text.match(/unknown clinic/gi) || []).length
-    result.skipped = unknownCount
+    // Calculate skipped (Unknown Clinic entries - where Partner is Unknown)
+    // Count only "Unknown Clinic" patterns, NOT "Unknown Vet" (that's just the vet person name)
+    const unknownClinicMatches = text.match(/unknown\s+clinic/gi) || []
+    const unknownOnlyMatches = text.split('\n').filter(line => {
+      const trimmed = line.trim().toLowerCase()
+      // Count lines that are just "Unknown" (likely Partner column)
+      return trimmed === 'unknown'
+    })
+    result.skipped = unknownClinicMatches.length + unknownOnlyMatches.length
     
     // Log sync history (for audit trail and duplicate prevention)
     const { data: profileData } = await supabase
