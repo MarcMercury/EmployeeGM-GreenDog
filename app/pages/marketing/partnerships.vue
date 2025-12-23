@@ -957,6 +957,7 @@
             <v-tab value="basic">Basic</v-tab>
             <v-tab value="crm">CRM</v-tab>
             <v-tab value="targeting">Targeting</v-tab>
+            <v-tab value="stats">Stats</v-tab>
           </v-tabs>
 
           <v-window v-model="formTab">
@@ -1028,6 +1029,39 @@
                 </v-col>
                 <v-col cols="12">
                   <v-switch v-model="form.needs_followup" label="Needs Follow-up" color="warning" hide-details />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <v-window-item value="stats">
+              <v-row dense>
+                <v-col cols="12">
+                  <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+                    These stats are typically updated automatically via PDF upload, but you can manually adjust them here if needed.
+                  </v-alert>
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field 
+                    v-model.number="form.total_referrals_all_time" 
+                    label="Total Referrals (Visits)" 
+                    type="number" 
+                    variant="outlined" 
+                    density="compact"
+                    min="0"
+                    prepend-inner-icon="mdi-account-group"
+                  />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field 
+                    v-model.number="form.total_revenue_all_time" 
+                    label="Total Revenue" 
+                    type="number" 
+                    variant="outlined" 
+                    density="compact"
+                    min="0"
+                    prefix="$"
+                    prepend-inner-icon="mdi-currency-usd"
+                  />
                 </v-col>
               </v-row>
             </v-window-item>
@@ -1471,7 +1505,9 @@ const form = reactive({
   preferred_visit_time: null as string | null,
   best_contact_person: '',
   next_followup_date: '',
-  needs_followup: false
+  needs_followup: false,
+  total_referrals_all_time: 0,
+  total_revenue_all_time: 0
 })
 
 const visitForm = reactive({
@@ -1748,7 +1784,9 @@ function openEditPartner(partner: any) {
     preferred_visit_time: partner.preferred_visit_time || null,
     best_contact_person: partner.best_contact_person || '',
     next_followup_date: partner.next_followup_date || '',
-    needs_followup: partner.needs_followup || false
+    needs_followup: partner.needs_followup || false,
+    total_referrals_all_time: partner.total_referrals_all_time || 0,
+    total_revenue_all_time: partner.total_revenue_all_time || 0
   })
   formTab.value = 'basic'
   showPartnerDialog.value = true
@@ -1852,7 +1890,9 @@ async function savePartner() {
       preferred_visit_time: form.preferred_visit_time,
       best_contact_person: form.best_contact_person || null,
       next_followup_date: form.next_followup_date || null,
-      needs_followup: form.needs_followup
+      needs_followup: form.needs_followup,
+      total_referrals_all_time: form.total_referrals_all_time || 0,
+      total_revenue_all_time: form.total_revenue_all_time || 0
     }
     if (editMode.value) {
       const { error } = await supabase.from('referral_partners').update(payload).eq('id', form.id)

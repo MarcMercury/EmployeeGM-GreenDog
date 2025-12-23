@@ -77,7 +77,63 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
   })
 }
 
-// Fuzzy match score - simple word overlap matching
+// Known LA-area locations that may prefix clinic names in PDFs
+const KNOWN_LOCATIONS = [
+  'sherman oaks', 'studio city', 'encino', 'tarzana', 'woodland hills',
+  'van nuys', 'north hollywood', 'burbank', 'glendale', 'pasadena',
+  'los angeles', 'west hollywood', 'beverly hills', 'santa monica',
+  'culver city', 'mar vista', 'playa vista', 'venice', 'marina del rey',
+  'westchester', 'el segundo', 'manhattan beach', 'redondo beach',
+  'torrance', 'palos verdes', 'san pedro', 'long beach', 'lakewood',
+  'downey', 'whittier', 'la mirada', 'fullerton', 'anaheim', 'irvine',
+  'costa mesa', 'newport beach', 'huntington beach', 'orange', 'tustin',
+  'mission viejo', 'laguna', 'san clemente', 'oceanside', 'carlsbad',
+  'la jolla', 'san diego', 'chula vista', 'north hills', 'reseda',
+  'canoga park', 'chatsworth', 'northridge', 'granada hills', 'sylmar',
+  'sun valley', 'arleta', 'pacoima', 'panorama city', 'lake balboa',
+  'west hills', 'calabasas', 'agoura hills', 'thousand oaks', 'simi valley'
+]
+
+// Clean clinic name by removing location prefixes and stray numbers
+function cleanClinicName(name: string): string {
+  let cleaned = name.toLowerCase().trim()
+  
+  // Remove leading numbers (like "226" from "Sherman Oaks 226 Beverly...")
+  cleaned = cleaned.replace(/^\d+\s+/, '')
+  
+  // Remove known location prefixes
+  for (const location of KNOWN_LOCATIONS) {
+    if (cleaned.startsWith(location + ' ')) {
+      cleaned = cleaned.substring(location.length).trim()
+      // Check for trailing numbers after location removal
+      cleaned = cleaned.replace(/^\d+\s+/, '')
+      break
+    }
+  }
+  
+  // Remove any remaining leading numbers
+  cleaned = cleaned.replace(/^\d+\s+/, '')
+  
+  // Title case the result
+  return cleaned
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .trim()
+}
+
+// Normalize words for better matching (e.g., "veterinarian" -> "vet")
+function normalizeWord(word: string): string {
+  const w = word.toLowerCase()
+  // Normalize veterinary variations
+  if (w.startsWith('veterinar') || w === 'vet') return 'vet'
+  if (w === 'hosp' || w === 'hospital') return 'hospital'
+  if (w === 'ctr' || w === 'center') return 'center'
+  if (w === 'anim' || w === 'animal') return 'animal'
+  return w
+}
+
+// Fuzzy match score - improved word overlap matching with normalization
 function fuzzyMatch(str1: string, str2: string): number {
   const s1 = str1.toLowerCase().trim()
   const s2 = str2.toLowerCase().trim()
@@ -88,24 +144,39 @@ function fuzzyMatch(str1: string, str2: string): number {
   // Contains match
   if (s1.includes(s2) || s2.includes(s1)) return 0.9
   
-  // Word overlap matching
-  const words1 = s1.split(/\s+/).filter(w => w.length > 2)
-  const words2 = s2.split(/\s+/).filter(w => w.length > 2)
+  // Word overlap matching with normalization
+  const stopWords = ['the', 'and', 'of', 'for', 'in', 'at', 'llc', 'inc', 'corp', 'pc']
+  const words1 = s1.split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.includes(w))
+    .map(normalizeWord)
+  const words2 = s2.split(/\s+/)
+    .filter(w => w.length > 1 && !stopWords.includes(w))
+    .map(normalizeWord)
   
   let matchedWords = 0
   for (const w1 of words1) {
     for (const w2 of words2) {
-      if (w1 === w2 || w1.includes(w2) || w2.includes(w1)) {
+      // Check exact match, partial match, or normalized match
+      if (w1 === w2 || 
+          (w1.length > 3 && w2.length > 3 && (w1.includes(w2) || w2.includes(w1))) ||
+          (w1.length >= 3 && w2.length >= 3 && w1.substring(0, 3) === w2.substring(0, 3))) {
         matchedWords++
         break
       }
     }
   }
   
-  const maxWords = Math.max(words1.length, words2.length)
-  if (maxWords === 0) return 0
+  // Use the smaller word count as denominator for more lenient matching
+  const minWords = Math.min(words1.length, words2.length)
+  if (minWords === 0) return 0
   
-  return matchedWords / maxWords
+  // Boost score if we matched most of the shorter name
+  const baseScore = matchedWords / minWords
+  
+  // Penalize slightly if word counts differ significantly
+  const lengthRatio = minWords / Math.max(words1.length, words2.length)
+  
+  return baseScore * (0.7 + 0.3 * lengthRatio)
 }
 
 // Find best matching partner from database
@@ -188,7 +259,8 @@ function parsePdfContent(text: string): ParsedReferral[] {
     ) && !line.toLowerCase().includes('unknown')
     
     if (isClinicName && !skipRecord) {
-      currentClinic = line.replace(/\s+/g, ' ').trim()
+      // Clean the clinic name to remove location prefixes and stray numbers
+      currentClinic = cleanClinicName(line.replace(/\s+/g, ' ').trim())
     }
     
     // Check for amount (standalone number or at end of line)
@@ -223,7 +295,8 @@ function parsePdfContentV2(text: string): ParsedReferral[] {
   const seen = new Map<string, number>()
   
   while ((match = clinicAmountPattern.exec(cleanText)) !== null) {
-    const clinicName = match[1].trim()
+    // Clean the clinic name to remove location prefixes
+    const clinicName = cleanClinicName(match[1].trim())
     const amount = parseFloat(match[2])
     
     // Skip unknown clinics
