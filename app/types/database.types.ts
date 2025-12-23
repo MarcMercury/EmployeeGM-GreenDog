@@ -3121,6 +3121,15 @@ export type Database = {
           notes: string | null
           updated_at: string | null
           website: string | null
+          products: string[] | null
+          icon: string | null
+          color: string | null
+          account_number: string | null
+          account_rep: string | null
+          average_monthly_spend: number | null
+          spend_ytd: number | null
+          spend_last_year: number | null
+          last_contact_date: string | null
         }
         Insert: {
           address?: string | null
@@ -3138,6 +3147,15 @@ export type Database = {
           notes?: string | null
           updated_at?: string | null
           website?: string | null
+          products?: string[] | null
+          icon?: string | null
+          color?: string | null
+          account_number?: string | null
+          account_rep?: string | null
+          average_monthly_spend?: number | null
+          spend_ytd?: number | null
+          spend_last_year?: number | null
+          last_contact_date?: string | null
         }
         Update: {
           address?: string | null
@@ -3155,8 +3173,114 @@ export type Database = {
           notes?: string | null
           updated_at?: string | null
           website?: string | null
+          products?: string[] | null
+          icon?: string | null
+          color?: string | null
+          account_number?: string | null
+          account_rep?: string | null
+          average_monthly_spend?: number | null
+          spend_ytd?: number | null
+          spend_last_year?: number | null
+          last_contact_date?: string | null
         }
         Relationships: []
+      }
+      med_ops_partner_contacts: {
+        Row: {
+          id: string
+          partner_id: string
+          name: string
+          title: string | null
+          email: string | null
+          phone: string | null
+          is_primary: boolean | null
+          preferred_contact_method: string | null
+          relationship_notes: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          name: string
+          title?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean | null
+          preferred_contact_method?: string | null
+          relationship_notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          partner_id?: string
+          name?: string
+          title?: string | null
+          email?: string | null
+          phone?: string | null
+          is_primary?: boolean | null
+          preferred_contact_method?: string | null
+          relationship_notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "med_ops_partner_contacts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "med_ops_partners"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      med_ops_partner_notes: {
+        Row: {
+          id: string
+          partner_id: string
+          visit_type: string
+          visit_date: string
+          contacted_person: string | null
+          summary: string
+          outcome: string | null
+          next_steps: string | null
+          created_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          visit_type?: string
+          visit_date?: string
+          contacted_person?: string | null
+          summary: string
+          outcome?: string | null
+          next_steps?: string | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          partner_id?: string
+          visit_type?: string
+          visit_date?: string
+          contacted_person?: string | null
+          summary?: string
+          outcome?: string | null
+          next_steps?: string | null
+          created_by?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "med_ops_partner_notes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "med_ops_partners"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       medical_boards: {
         Row: {
@@ -4268,6 +4392,9 @@ export type Database = {
           status: string | null
           tier: string
           total_referrals: number
+          total_referrals_all_time: number | null
+          total_revenue_all_time: number | null
+          last_sync_date: string | null
           updated_at: string
           website: string | null
         }
@@ -4304,6 +4431,9 @@ export type Database = {
           status?: string | null
           tier?: string
           total_referrals?: number
+          total_referrals_all_time?: number | null
+          total_revenue_all_time?: number | null
+          last_sync_date?: string | null
           updated_at?: string
           website?: string | null
         }
@@ -4340,6 +4470,9 @@ export type Database = {
           status?: string | null
           tier?: string
           total_referrals?: number
+          total_referrals_all_time?: number | null
+          total_revenue_all_time?: number | null
+          last_sync_date?: string | null
           updated_at?: string
           website?: string | null
         }

@@ -24,26 +24,26 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card color="amber-darken-2" variant="flat" rounded="lg">
+        <v-card color="success" variant="flat" rounded="lg">
           <v-card-text class="text-white">
-            <p class="text-overline opacity-80">High Volume</p>
-            <p class="text-h4 font-weight-bold">{{ highVolumeCount }}</p>
+            <p class="text-overline opacity-80">Total Referrals</p>
+            <p class="text-h4 font-weight-bold">{{ totalReferrals.toLocaleString() }}</p>
           </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card color="success" variant="flat" rounded="lg">
+        <v-card color="amber-darken-2" variant="flat" rounded="lg">
           <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Active</p>
-            <p class="text-h4 font-weight-bold">{{ activeCount }}</p>
+            <p class="text-overline opacity-80">Total Revenue</p>
+            <p class="text-h4 font-weight-bold">{{ formatCurrency(totalRevenue) }}</p>
           </v-card-text>
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
         <v-card color="secondary" variant="flat" rounded="lg">
           <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Referrals</p>
-            <p class="text-h4 font-weight-bold">{{ totalReferrals }}</p>
+            <p class="text-overline opacity-80">Active Partners</p>
+            <p class="text-h4 font-weight-bold">{{ activeCount }}</p>
           </v-card-text>
         </v-card>
       </v-col>
@@ -82,10 +82,16 @@
               <span class="text-body-2">{{ partner.contact_person || 'No contact' }}</span>
             </div>
 
-            <!-- Referral Count -->
-            <div class="d-flex align-center mb-2">
-              <v-icon size="18" color="grey" class="mr-2">mdi-handshake</v-icon>
-              <span class="text-body-2">{{ partner.total_referrals }} referrals</span>
+            <!-- Referral Count & Revenue -->
+            <div class="d-flex align-center gap-4 mb-2">
+              <div class="d-flex align-center">
+                <v-icon size="18" color="grey" class="mr-2">mdi-handshake</v-icon>
+                <span class="text-body-2 font-weight-medium">{{ partner.total_referrals.toLocaleString() }} referrals</span>
+              </div>
+              <div v-if="partner.total_revenue" class="d-flex align-center">
+                <v-icon size="18" color="success" class="mr-1">mdi-currency-usd</v-icon>
+                <span class="text-body-2 font-weight-medium text-success">{{ formatCurrency(partner.total_revenue) }}</span>
+              </div>
             </div>
 
             <!-- Notes Preview -->
@@ -192,7 +198,13 @@
                       <template #prepend>
                         <v-icon color="success" size="20">mdi-handshake</v-icon>
                       </template>
-                      <v-list-item-title>{{ selectedPartner.total_referrals }} total referrals</v-list-item-title>
+                      <v-list-item-title>{{ (selectedPartner.total_referrals || 0).toLocaleString() }} total referrals</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.total_revenue">
+                      <template #prepend>
+                        <v-icon color="amber-darken-2" size="20">mdi-currency-usd</v-icon>
+                      </template>
+                      <v-list-item-title>${{ selectedPartner.total_revenue.toLocaleString() }} total revenue</v-list-item-title>
                     </v-list-item>
                     <v-list-item>
                       <template #prepend>
@@ -729,6 +741,16 @@ const totalReferrals = computed(() =>
   partners.value.reduce((sum, p) => sum + p.total_referrals, 0)
 )
 
+const totalRevenue = computed(() =>
+  partners.value.reduce((sum, p) => sum + (p.total_revenue || 0), 0)
+)
+
+const formatCurrency = (value: number) => {
+  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
+  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`
+  return `$${value.toLocaleString()}`
+}
+
 // Methods
 const showNotification = (message: string, color = 'success') => {
   snackbarText.value = message
@@ -994,7 +1016,7 @@ const savePartner = async () => {
           phone: partnerFormData.phone || null,
           address: partnerFormData.address || null,
           tier: partnerFormData.tier,
-          total_referrals: partnerFormData.total_referrals,
+          total_referrals_all_time: partnerFormData.total_referrals,
           notes: partnerFormData.notes || null,
           is_active: partnerFormData.is_active
         })
@@ -1012,7 +1034,7 @@ const savePartner = async () => {
           phone: partnerFormData.phone || null,
           address: partnerFormData.address || null,
           tier: partnerFormData.tier,
-          total_referrals: partnerFormData.total_referrals,
+          total_referrals_all_time: partnerFormData.total_referrals,
           notes: partnerFormData.notes || null,
           is_active: partnerFormData.is_active
         })
@@ -1067,7 +1089,13 @@ const fetchPartners = async () => {
       .order('hospital_name')
 
     if (error) throw error
-    partners.value = data || []
+    // Map total_referrals_all_time to total_referrals for display
+    // The actual stats come from the all_time columns populated by import scripts
+    partners.value = (data || []).map(p => ({
+      ...p,
+      total_referrals: p.total_referrals_all_time || p.total_referrals || 0,
+      total_revenue: p.total_revenue_all_time || 0
+    }))
   } catch (error) {
     console.error('Error fetching partners:', error)
   } finally {

@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Med Ops Partners</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Directory of medical equipment manufacturers and suppliers
+          Equipment vendors, software providers, labs, and supply chain partners
         </p>
       </div>
       <div class="d-flex gap-2">
@@ -880,15 +880,12 @@ const partnerForm = reactive({
 })
 
 const categories = [
-  'Imaging Equipment',
-  'Surgical Instruments',
-  'Laboratory',
-  'Pharmaceuticals',
-  'Anesthesia',
-  'Dental',
-  'Monitoring',
-  'Consumables',
-  'Software',
+  'Practice Management Software',
+  'Diagnostics & Reference Labs',
+  'Distributors',
+  'Equipment & Hardware',
+  'Pharmacy & Compounding',
+  'Client Communication & Payment',
   'Other'
 ]
 
@@ -941,13 +938,22 @@ const partners = ref<any[]>([])
 async function loadPartners() {
   loading.value = true
   try {
-    const { data, error } = await supabase
-      .from('referral_partners')
+    const { data, error } = await (supabase as any)
+      .from('med_ops_partners')
       .select('*')
       .order('name')
     
     if (error) throw error
-    partners.value = data || []
+    // Map fields for compatibility with template
+    partners.value = (data || []).map((p: any) => ({
+      ...p,
+      status: p.is_active ? 'active' : 'inactive',
+      phone: p.contact_phone,
+      email: p.contact_email,
+      average_monthly_revenue: p.average_monthly_spend,
+      revenue_ytd: p.spend_ytd,
+      revenue_last_year: p.spend_last_year
+    }))
   } catch (err: any) {
     showError('Failed to load partners: ' + err.message)
     console.error('Error loading partners:', err)
@@ -968,7 +974,7 @@ const filteredPartners = computed(() => {
       p.name.toLowerCase().includes(search.value.toLowerCase()) ||
       (p.description || '').toLowerCase().includes(search.value.toLowerCase())
     const matchesCategory = !categoryFilter.value || p.category === categoryFilter.value
-    const matchesStatus = showInactive.value || p.status === 'active'
+    const matchesStatus = showInactive.value || p.is_active !== false
     return matchesSearch && matchesCategory && matchesStatus
   })
 })
@@ -1021,8 +1027,8 @@ function getVisitTypeColor(type: string) {
 async function loadPartnerContacts() {
   if (!selectedPartner.value?.id) return
   try {
-    const { data, error } = await supabase
-      .from('partner_contacts')
+    const { data, error } = await (supabase as any)
+      .from('med_ops_partner_contacts')
       .select('*')
       .eq('partner_id', selectedPartner.value.id)
       .order('is_primary', { ascending: false })
@@ -1087,16 +1093,16 @@ async function saveContact() {
     }
 
     if (editingContact.value) {
-      const { error } = await supabase
-        .from('partner_contacts')
+      const { error } = await (supabase as any)
+        .from('med_ops_partner_contacts')
         .update(contactData)
         .eq('id', editingContact.value.id)
       
       if (error) throw error
       showSuccess('Contact updated')
     } else {
-      const { error } = await supabase
-        .from('partner_contacts')
+      const { error } = await (supabase as any)
+        .from('med_ops_partner_contacts')
         .insert(contactData)
       
       if (error) throw error
@@ -1116,14 +1122,14 @@ async function saveContact() {
 async function setAsPrimaryContact(contact: any) {
   try {
     // First, unset all others
-    await supabase
-      .from('partner_contacts')
+    await (supabase as any)
+      .from('med_ops_partner_contacts')
       .update({ is_primary: false })
       .eq('partner_id', selectedPartner.value.id)
     
     // Then set this one as primary
-    const { error } = await supabase
-      .from('partner_contacts')
+    const { error } = await (supabase as any)
+      .from('med_ops_partner_contacts')
       .update({ is_primary: true })
       .eq('id', contact.id)
     
@@ -1139,8 +1145,8 @@ async function deleteContact(contact: any) {
   if (!confirm('Delete this contact?')) return
   
   try {
-    const { error } = await supabase
-      .from('partner_contacts')
+    const { error } = await (supabase as any)
+      .from('med_ops_partner_contacts')
       .delete()
       .eq('id', contact.id)
     
@@ -1156,8 +1162,8 @@ async function deleteContact(contact: any) {
 async function loadPartnerNotes() {
   if (!selectedPartner.value?.id) return
   try {
-    const { data, error } = await supabase
-      .from('partner_visit_logs')
+    const { data, error } = await (supabase as any)
+      .from('med_ops_partner_notes')
       .select('*')
       .eq('partner_id', selectedPartner.value.id)
       .order('visit_date', { ascending: false })
@@ -1197,11 +1203,11 @@ async function saveNote() {
       summary: noteForm.summary,
       outcome: noteForm.outcome || null,
       next_steps: noteForm.next_steps || null,
-      logged_by: userStore.employee?.id || null
+      created_by: userStore.employee?.id || null
     }
 
-    const { error } = await supabase
-      .from('partner_visit_logs')
+    const { error } = await (supabase as any)
+      .from('med_ops_partner_notes')
       .insert(noteData)
     
     if (error) throw error
@@ -1225,21 +1231,21 @@ async function saveNote() {
 async function saveRevenue() {
   savingRevenue.value = true
   try {
-    const { error } = await supabase
-      .from('referral_partners')
+    const { error } = await (supabase as any)
+      .from('med_ops_partners')
       .update({
-        average_monthly_revenue: revenueForm.average_monthly_revenue || 0,
-        revenue_ytd: revenueForm.revenue_ytd || 0,
-        revenue_last_year: revenueForm.revenue_last_year || 0
+        average_monthly_spend: revenueForm.average_monthly_revenue || 0,
+        spend_ytd: revenueForm.revenue_ytd || 0,
+        spend_last_year: revenueForm.revenue_last_year || 0
       })
       .eq('id', selectedPartner.value.id)
     
     if (error) throw error
-    showSuccess('Revenue updated')
+    showSuccess('Spend data updated')
     await loadPartners()
     selectedPartner.value = partners.value.find(p => p.id === selectedPartner.value.id)
   } catch (err: any) {
-    showError('Failed to save revenue: ' + err.message)
+    showError('Failed to save spend data: ' + err.message)
   } finally {
     savingRevenue.value = false
   }
@@ -1331,12 +1337,12 @@ async function savePartner() {
       name: partnerForm.name,
       category: partnerForm.category,
       contact_name: partnerForm.contact_name || null,
-      phone: partnerForm.phone || null,
-      email: partnerForm.email || null,
+      contact_phone: partnerForm.phone || null,
+      contact_email: partnerForm.email || null,
       website: partnerForm.website || null,
       description: partnerForm.description || null,
       address: partnerForm.address || null,
-      status: partnerForm.status,
+      is_active: partnerForm.status === 'active',
       icon: partnerForm.icon,
       color: partnerForm.color,
       products: partnerForm.products
@@ -1344,8 +1350,8 @@ async function savePartner() {
 
     if (isEditing.value) {
       // Update existing partner
-      const { error } = await supabase
-        .from('referral_partners')
+      const { error } = await (supabase as any)
+        .from('med_ops_partners')
         .update(partnerData)
         .eq('id', partnerForm.id)
       
@@ -1353,8 +1359,8 @@ async function savePartner() {
       showSuccess('Partner updated successfully')
     } else {
       // Create new partner
-      const { error } = await supabase
-        .from('referral_partners')
+      const { error } = await (supabase as any)
+        .from('med_ops_partners')
         .insert(partnerData)
       
       if (error) throw error
@@ -1378,8 +1384,8 @@ function confirmDelete() {
 async function deletePartner() {
   deleting.value = true
   try {
-    const { error } = await supabase
-      .from('referral_partners')
+    const { error } = await (supabase as any)
+      .from('med_ops_partners')
       .delete()
       .eq('id', partnerForm.id)
     
@@ -1400,9 +1406,9 @@ async function deletePartner() {
 async function disablePartner() {
   deleting.value = true
   try {
-    const { error } = await supabase
-      .from('referral_partners')
-      .update({ status: 'inactive' })
+    const { error } = await (supabase as any)
+      .from('med_ops_partners')
+      .update({ is_active: false })
       .eq('id', partnerForm.id)
     
     if (error) throw error

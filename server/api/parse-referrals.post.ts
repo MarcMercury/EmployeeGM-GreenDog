@@ -223,6 +223,30 @@ function parsePdfContent(text: string): ParsedReferral[] {
   let totalAmountLines = 0
   let skippedUnknownClinic = 0
   
+  // Common first/last name patterns that contain "Pet" but are NOT clinics
+  // e.g., Peter, Peterson, Petunia, Pete, Petrov, etc.
+  const petNamePatterns = [
+    /^[A-Za-z]+,\s*Pet/i,     // "Smith, Peter" or "Abrahams, Peter"
+    /^Pete\s+[A-Z]/,           // "Pete Maul" (first name Pete)
+    /^Peter\s+[A-Z]/,          // "Peter Smith"
+    /^Petunia\s/i,             // First name Petunia
+    /^[A-Za-z]+\s+Pet[a-z]+$/i, // "Sophia Petreca", "Murphy Petrella", "John Peterson"
+    /^Pet[a-z]+\s+[A-Z]/i,     // "Petey Karp", "Petty Vigil"
+    /Pet[a-z]*\s*$/i,          // Ends with a Pet-like name (Peterson, Petrov, etc.)
+  ]
+  
+  function isLikelyPersonName(line: string): boolean {
+    // Check if this looks like a person's name rather than a clinic
+    for (const pattern of petNamePatterns) {
+      if (pattern.test(line)) return true
+    }
+    // Also check for "LastName, FirstName" pattern without clinic keywords
+    if (/^[A-Za-z]+,\s*[A-Za-z]+$/.test(line) && !line.toLowerCase().includes('vet') && !line.toLowerCase().includes('animal')) {
+      return true
+    }
+    return false
+  }
+  
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     
@@ -251,26 +275,40 @@ function parsePdfContent(text: string): ParsedReferral[] {
     // BUT: "Unknown Vet" (referring vet person) is OK to count
     const lineLower = line.toLowerCase()
     if (lineLower.includes('unknown clinic') || 
-        (lineLower === 'unknown' && !currentClinic)) {
+        lineLower === 'unknown') {
       // This is an unknown partner - skip and clear clinic
       currentClinic = ''
       skippedUnknownClinic++
       continue
     }
     
+    // Skip lines that look like person names (not clinics)
+    if (isLikelyPersonName(line)) {
+      continue
+    }
+    
     // Identify clinic names (Partner column)
-    // These lines contain veterinary/hospital keywords
+    // Must have veterinary/hospital keywords - "Pet" alone is not enough
     const isClinicName = (
-      line.includes('Vet') || 
-      line.includes('Animal') || 
-      line.includes('Hospital') || 
-      line.includes('Clinic') ||
-      line.includes('Care') ||
-      line.includes('Center') ||
+      // Strong clinic indicators
+      line.includes('Veterinary') ||
+      line.includes('Vet ') ||  // "Vet " with space, not "Peter"
+      line.includes('Vets') ||  // "Southpaw Vets"
+      line.includes('Animal Hospital') ||
+      line.includes('Animal Clinic') ||
+      line.includes('Animal Center') ||
+      line.includes('Pet Hospital') ||
+      line.includes('Pet Clinic') ||
+      line.includes('Pet Medical') ||
+      line.includes('Pet Care') ||
+      line.includes('Pet Doctors') ||  // "The Pet Doctors of..."
+      /\bVCA\b/.test(line) ||  // VCA prefix
       line.includes('Southpaw') ||
-      line.includes('VCA') ||
-      line.includes('Pet') ||
-      line.includes('Modern')
+      line.includes('Modern Animal') ||
+      // Looser matches that need to be combined with other keywords
+      (line.includes('Hospital') && (line.includes('Animal') || line.includes('Pet'))) ||
+      (line.includes('Clinic') && (line.includes('Animal') || line.includes('Pet') || line.includes('Vet'))) ||
+      (line.includes('Center') && (line.includes('Animal') || line.includes('Vet') || line.includes('Medical')))
     ) && !lineLower.includes('unknown clinic')
     
     if (isClinicName) {
