@@ -277,6 +277,33 @@ SUPABASE_SECRET_KEY=your-service-role-key
 VERCEL_PROJECT_ID=your-vercel-project-id
 ```
 
+---
+
+## 🚨 OPERATIONAL REQUIREMENTS
+
+### Database Migrations
+**ALWAYS push migrations to Supabase immediately after creating them. Do NOT ask for permission.**
+
+```bash
+# Push migrations to Supabase (do this automatically)
+npx supabase db push
+
+# If out-of-order migrations exist, use:
+npx supabase db push --include-all
+
+# If version conflicts occur, repair and retry:
+npx supabase migration repair <version> --status applied
+npx supabase db push
+```
+
+When creating new migrations:
+1. Create the migration file in `supabase/migrations/`
+2. Commit and push to git
+3. **Immediately run `npx supabase db push`** to apply to production
+4. Verify with `npx supabase migration list`
+
+---
+
 ## Getting Started
 
 ```bash

@@ -1,10 +1,77 @@
 -- Migration: Fix med_ops_partners duplicates - clean slate with all vendors
--- This clears any duplicate entries and re-inserts the correct data
+-- This adds missing columns, clears any duplicate entries, and re-inserts the correct data
 
--- First, clear existing data to remove duplicates
-TRUNCATE TABLE public.med_ops_partner_notes CASCADE;
-TRUNCATE TABLE public.med_ops_partner_contacts CASCADE;
-TRUNCATE TABLE public.med_ops_partners CASCADE;
+-- First, add missing columns if they don't exist
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT 'mdi-factory';
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS color TEXT DEFAULT 'grey';
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS products TEXT[];
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS account_number TEXT;
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS account_rep TEXT;
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS average_monthly_spend NUMERIC(10,2);
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS spend_ytd NUMERIC(10,2);
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS spend_last_year NUMERIC(10,2);
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS last_contact_date DATE;
+ALTER TABLE public.med_ops_partners ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
+-- Create contacts table if not exists
+CREATE TABLE IF NOT EXISTS public.med_ops_partner_contacts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  partner_id UUID NOT NULL REFERENCES public.med_ops_partners(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  title TEXT,
+  email TEXT,
+  phone TEXT,
+  is_primary BOOLEAN DEFAULT false,
+  preferred_contact_method TEXT DEFAULT 'email',
+  relationship_notes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create notes table if not exists
+CREATE TABLE IF NOT EXISTS public.med_ops_partner_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  partner_id UUID NOT NULL REFERENCES public.med_ops_partners(id) ON DELETE CASCADE,
+  visit_type TEXT NOT NULL DEFAULT 'phone',
+  visit_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  contacted_person TEXT,
+  summary TEXT NOT NULL,
+  outcome TEXT,
+  next_steps TEXT,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE public.med_ops_partner_contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.med_ops_partner_notes ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for contacts
+DROP POLICY IF EXISTS "Authenticated users can view med_ops_partner_contacts" ON public.med_ops_partner_contacts;
+CREATE POLICY "Authenticated users can view med_ops_partner_contacts"
+  ON public.med_ops_partner_contacts FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can manage med_ops_partner_contacts" ON public.med_ops_partner_contacts;
+CREATE POLICY "Authenticated users can manage med_ops_partner_contacts"
+  ON public.med_ops_partner_contacts FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- RLS Policies for notes
+DROP POLICY IF EXISTS "Authenticated users can view med_ops_partner_notes" ON public.med_ops_partner_notes;
+CREATE POLICY "Authenticated users can view med_ops_partner_notes"
+  ON public.med_ops_partner_notes FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can manage med_ops_partner_notes" ON public.med_ops_partner_notes;
+CREATE POLICY "Authenticated users can manage med_ops_partner_notes"
+  ON public.med_ops_partner_notes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS idx_med_ops_partner_contacts_partner_id ON public.med_ops_partner_contacts(partner_id);
+CREATE INDEX IF NOT EXISTS idx_med_ops_partner_notes_partner_id ON public.med_ops_partner_notes(partner_id);
+
+-- Clear existing data to remove duplicates
+DELETE FROM public.med_ops_partner_notes;
+DELETE FROM public.med_ops_partner_contacts;
+DELETE FROM public.med_ops_partners;
 
 -- ============================================================
 -- SEED DATA: Equipment Vendors and Suppliers (Clean Insert)
