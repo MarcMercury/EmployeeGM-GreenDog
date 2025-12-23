@@ -1993,7 +1993,7 @@ async function processUpload() {
     }
     
     // Get the current session token to pass to the server
-    const { data: { session } } = await client.auth.getSession()
+    const { data: { session } } = await supabase.auth.getSession()
     if (!session?.access_token) {
       throw new Error('No active session - please log in again')
     }
