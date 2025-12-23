@@ -258,13 +258,46 @@ function fuzzyMatch(str1: string, str2: string): number {
 }
 
 // Find best matching partner from database
+// IMPROVED: Prioritizes exact and near-exact matches before fuzzy matching
 function findBestMatch(
   clinicName: string, 
   partners: Array<{ id: string; name: string }>
 ): { id: string; name: string; score: number } | null {
+  const normalizedClinic = clinicName.toLowerCase().trim()
+  
+  // FIRST PASS: Check for exact match (case-insensitive)
+  for (const partner of partners) {
+    if (partner.name.toLowerCase().trim() === normalizedClinic) {
+      return { ...partner, score: 1.0 }
+    }
+  }
+  
+  // SECOND PASS: Check for contains match (one contains the other)
+  for (const partner of partners) {
+    const normalizedPartner = partner.name.toLowerCase().trim()
+    if (normalizedPartner.includes(normalizedClinic) || normalizedClinic.includes(normalizedPartner)) {
+      return { ...partner, score: 0.95 }
+    }
+  }
+  
+  // THIRD PASS: Check for exact first word match (more specific than prefix)
+  const clinicFirstWord = normalizedClinic.split(/\s+/)[0]
+  for (const partner of partners) {
+    const partnerFirstWord = partner.name.toLowerCase().trim().split(/\s+/)[0]
+    // Both first words must match exactly (not just prefix)
+    if (clinicFirstWord === partnerFirstWord && clinicFirstWord.length > 3) {
+      // Now do full fuzzy match for ordering
+      const score = fuzzyMatch(clinicName, partner.name)
+      if (score >= 0.7) {
+        return { ...partner, score }
+      }
+    }
+  }
+  
+  // FOURTH PASS: Fuzzy matching with higher threshold
   let bestMatch = null
   let bestScore = 0
-  const threshold = 0.6 // Minimum 60% match required
+  const threshold = 0.7 // Increased from 0.6 for stricter matching
   
   for (const partner of partners) {
     const score = fuzzyMatch(clinicName, partner.name)
