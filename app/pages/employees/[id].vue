@@ -1123,43 +1123,62 @@ async function loadCECredits() {
 
 async function loadReliabilityScore() {
   try {
-    // Calculate from time_punches and shifts
+    // Try to use the new attendance system first
+    const { getReliabilityScore } = useAttendance()
+    const score = await getReliabilityScore(employeeId.value, 90)
+    reliabilityScore.value = score
+    
+    // Get total shifts count for display
     const { data: shifts } = await supabase
       .from('shifts')
-      .select('id, start_at')
+      .select('id', { count: 'exact', head: true })
       .eq('employee_id', employeeId.value)
       .eq('status', 'completed')
       .lte('start_at', new Date().toISOString())
-
-    const { data: punches } = await supabase
-      .from('time_punches')
-      .select('id, punch_in, shift_id')
-      .eq('employee_id', employeeId.value)
-      .not('punch_in', 'is', null)
-
-    totalShifts.value = shifts?.length || 0
     
-    if (totalShifts.value === 0) {
-      reliabilityScore.value = 100
-      return
-    }
-
-    // Count on-time arrivals (punched in within 5 min of shift start)
-    let onTimeCount = 0
-    shifts?.forEach(shift => {
-      const punch = punches?.find(p => p.shift_id === shift.id)
-      if (punch) {
-        const shiftStart = new Date(shift.start_at)
-        const punchIn = new Date(punch.punch_in)
-        const diffMinutes = (punchIn.getTime() - shiftStart.getTime()) / 60000
-        if (diffMinutes <= 5) onTimeCount++
-      }
-    })
-
-    reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+    totalShifts.value = shifts?.length || 0
   } catch (err) {
-    console.log('[Profile] Reliability score not available:', err)
-    reliabilityScore.value = 100
+    console.log('[Profile] Reliability score not available, using fallback:', err)
+    
+    // Fallback to legacy calculation
+    try {
+      const { data: shifts } = await supabase
+        .from('shifts')
+        .select('id, start_at')
+        .eq('employee_id', employeeId.value)
+        .eq('status', 'completed')
+        .lte('start_at', new Date().toISOString())
+
+      const { data: entries } = await supabase
+        .from('time_entries')
+        .select('id, clock_in_at, shift_id')
+        .eq('employee_id', employeeId.value)
+        .not('clock_in_at', 'is', null)
+
+      totalShifts.value = shifts?.length || 0
+      
+      if (totalShifts.value === 0) {
+        reliabilityScore.value = 100
+        return
+      }
+
+      // Count on-time arrivals (clocked in within 5 min of shift start)
+      let onTimeCount = 0
+      shifts?.forEach(shift => {
+        const entry = entries?.find(e => e.shift_id === shift.id)
+        if (entry && entry.clock_in_at) {
+          const shiftStart = new Date(shift.start_at)
+          const clockIn = new Date(entry.clock_in_at)
+          const diffMinutes = (clockIn.getTime() - shiftStart.getTime()) / 60000
+          if (diffMinutes <= 5) onTimeCount++
+        }
+      })
+
+      reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+    } catch (fallbackErr) {
+      console.log('[Profile] Fallback reliability calculation failed:', fallbackErr)
+      reliabilityScore.value = 100
+    }
   }
 }
 

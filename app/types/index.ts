@@ -154,3 +154,66 @@ export interface PaginatedResponse<T> {
   pageSize: number
   totalPages: number
 }
+
+// =====================================================
+// ATTENDANCE TYPES
+// =====================================================
+
+export type AttendanceStatus = 
+  | 'present' 
+  | 'late' 
+  | 'excused_late' 
+  | 'absent' 
+  | 'excused_absent' 
+  | 'no_show'
+
+export interface AttendanceRecord {
+  id: string
+  employee_id: string
+  shift_id: string | null
+  shift_date: string
+  scheduled_start: string | null
+  actual_start: string | null
+  status: AttendanceStatus
+  minutes_late: number
+  excused_at: string | null
+  excused_by_employee_id: string | null
+  excuse_reason: string | null
+  notes: string | null
+  penalty_weight: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AttendanceBreakdownStats {
+  present: number
+  late: number
+  excused_late: number
+  absent: number
+  excused_absent: number
+  no_show: number
+  total: number
+  reliabilityScore: number
+}
+
+export interface AttendanceDetailRecord {
+  id: string
+  shift_date: string
+  scheduled_start: string | null
+  actual_start: string | null
+  minutes_late: number
+  notes: string | null
+  excuse_reason: string | null
+  excused_at: string | null
+  excused_by_name: string | null
+}
+
+// Penalty weights for attendance scoring
+export const ATTENDANCE_PENALTY_WEIGHTS: Record<AttendanceStatus, number> = {
+  present: 0.0,
+  late: 1.0,
+  excused_late: 0.25,
+  absent: 1.0,
+  excused_absent: 0.25,
+  no_show: 1.0
+}

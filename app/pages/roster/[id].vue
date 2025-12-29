@@ -55,9 +55,18 @@
 
             <v-divider />
 
-            <!-- Reliability Score (Donut Chart) -->
-            <div v-if="canViewSensitiveData" class="reliability-section text-center pa-4">
-              <div class="text-overline text-grey-darken-1 mb-2">RELIABILITY SCORE</div>
+            <!-- Reliability Score (Donut Chart) - Clickable to view attendance tab -->
+            <div 
+              v-if="canViewSensitiveData" 
+              class="reliability-section text-center pa-4 cursor-pointer"
+              @click="activeTab = 'attendance'"
+              style="transition: background 0.2s;"
+              title="Click to view attendance details"
+            >
+              <div class="text-overline text-grey-darken-1 mb-2">
+                RELIABILITY SCORE
+                <v-icon size="12" class="ml-1">mdi-chevron-right</v-icon>
+              </div>
               <v-progress-circular
                 :model-value="reliabilityScore"
                 :color="getReliabilityColor(reliabilityScore)"
@@ -71,7 +80,7 @@
                 </div>
               </v-progress-circular>
               <div class="text-caption text-grey">
-                Based on {{ totalShifts }} completed shifts
+                Click to view attendance details
               </div>
             </div>
           </v-card>
@@ -223,6 +232,10 @@
             <v-tab value="skills">
               <v-icon start size="18">mdi-star-circle</v-icon>
               Growth & Skills
+            </v-tab>
+            <v-tab v-if="canViewSensitiveData" value="attendance">
+              <v-icon start size="18">mdi-calendar-clock</v-icon>
+              Attendance
             </v-tab>
             <v-tab v-if="canViewSensitiveData" value="history">
               <v-icon start size="18">mdi-history</v-icon>
@@ -788,6 +801,43 @@
                       <v-icon size="32" color="grey-lighten-2">mdi-flag-outline</v-icon>
                       <p class="text-caption text-grey mt-1">No learning goals set</p>
                     </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-window-item>
+
+          <!-- TAB: ATTENDANCE -->
+          <v-window-item v-if="canViewSensitiveData" value="attendance">
+            <v-row>
+              <!-- Attendance Breakdown Widget -->
+              <v-col cols="12" md="4">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="primary">mdi-chart-donut</v-icon>
+                    Reliability Overview
+                  </v-card-title>
+                  <v-card-text>
+                    <EmployeeAttendanceBreakdown
+                      ref="attendanceBreakdownRef"
+                      :employee-id="employeeId"
+                      :lookback-days="90"
+                      @score-updated="(score) => reliabilityScore = score"
+                    />
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Attendance History -->
+              <v-col cols="12" md="8">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-text>
+                    <EmployeeAttendanceHistory
+                      ref="attendanceHistoryRef"
+                      :employee-id="employeeId"
+                      :lookback-days="90"
+                      @attendance-updated="onAttendanceUpdated"
+                    />
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -1642,6 +1692,10 @@ const documents = ref<any[]>([])
 const assets = ref<any[]>([])
 const auditLogs = ref<any[]>([])
 
+// Attendance component refs
+const attendanceBreakdownRef = ref<any>(null)
+const attendanceHistoryRef = ref<any>(null)
+
 // Week days for availability
 const weekDays = [
   { label: 'Monday', value: 'monday' },
@@ -2198,44 +2252,67 @@ async function loadEmployeeData() {
 
 async function loadReliabilityScore() {
   try {
-    // Get completed shifts
-    const { data: shifts } = await supabase
-      .from('shifts')
-      .select('id, start_at')
-      .eq('employee_id', employeeId.value)
-      .eq('status', 'completed')
-      .lte('start_at', new Date().toISOString())
-
-    // Get time entries (clock-ins)
-    const { data: entries } = await supabase
-      .from('time_entries')
-      .select('id, clock_in_at, shift_id')
-      .eq('employee_id', employeeId.value)
-      .not('clock_in_at', 'is', null)
-
-    totalShifts.value = shifts?.length || 0
+    // Try to use the new attendance system first
+    const { getReliabilityScore, getAttendanceBreakdown } = useAttendance()
     
-    if (totalShifts.value === 0) {
-      reliabilityScore.value = 100
-      return
-    }
-
-    // Count on-time arrivals (clocked in within 5 min of shift start)
-    let onTimeCount = 0
-    shifts?.forEach(shift => {
-      const entry = entries?.find(e => e.shift_id === shift.id)
-      if (entry) {
-        const shiftStart = new Date(shift.start_at)
-        const clockIn = new Date(entry.clock_in_at)
-        const diffMinutes = (clockIn.getTime() - shiftStart.getTime()) / 60000
-        if (diffMinutes <= 5) onTimeCount++
-      }
-    })
-
-    reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+    // Get the breakdown which includes reliability score and total count
+    const breakdown = await getAttendanceBreakdown(employeeId.value, 90)
+    reliabilityScore.value = breakdown.reliabilityScore
+    totalShifts.value = breakdown.total
+    
   } catch (err) {
-    console.log('[Profile] Reliability score not available:', err)
-    reliabilityScore.value = 100
+    console.log('[Profile] Attendance system not available, using fallback:', err)
+    
+    // Fallback to legacy calculation
+    try {
+      const { data: shifts } = await supabase
+        .from('shifts')
+        .select('id, start_at')
+        .eq('employee_id', employeeId.value)
+        .eq('status', 'completed')
+        .lte('start_at', new Date().toISOString())
+
+      const { data: entries } = await supabase
+        .from('time_entries')
+        .select('id, clock_in_at, shift_id')
+        .eq('employee_id', employeeId.value)
+        .not('clock_in_at', 'is', null)
+
+      totalShifts.value = shifts?.length || 0
+      
+      if (totalShifts.value === 0) {
+        reliabilityScore.value = 100
+        return
+      }
+
+      // Count on-time arrivals (clocked in within 5 min of shift start)
+      let onTimeCount = 0
+      shifts?.forEach(shift => {
+        const entry = entries?.find(e => e.shift_id === shift.id)
+        if (entry && entry.clock_in_at) {
+          const shiftStart = new Date(shift.start_at)
+          const clockIn = new Date(entry.clock_in_at)
+          const diffMinutes = (clockIn.getTime() - shiftStart.getTime()) / 60000
+          if (diffMinutes <= 5) onTimeCount++
+        }
+      })
+
+      reliabilityScore.value = Math.round((onTimeCount / totalShifts.value) * 100)
+    } catch (fallbackErr) {
+      console.log('[Profile] Fallback reliability calculation failed:', fallbackErr)
+      reliabilityScore.value = 100
+    }
+  }
+}
+
+/**
+ * Handler for when attendance records are updated (e.g., excused)
+ * Refreshes the attendance breakdown to recalculate the reliability score
+ */
+async function onAttendanceUpdated() {
+  // Refresh the breakdown component which will recalculate the score
+  if (attendanceBreakdownRef.value) {
+    await attendanceBreakdownRef.value.refresh()
   }
 }
 

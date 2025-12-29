@@ -8,11 +8,36 @@
           Generate and export payroll data for processing
         </p>
       </div>
-      <v-chip color="warning" variant="flat">
-        <v-icon start>mdi-shield-crown</v-icon>
-        Admin Only
-      </v-chip>
+      <div class="d-flex ga-2">
+        <v-btn
+          variant="outlined"
+          color="primary"
+          prepend-icon="mdi-clipboard-check-outline"
+          to="/admin/payroll/review"
+        >
+          Review Workbench
+        </v-btn>
+        <v-chip color="warning" variant="flat">
+          <v-icon start>mdi-shield-crown</v-icon>
+          Admin Only
+        </v-chip>
+      </div>
     </div>
+    
+    <!-- Approval Warning Banner -->
+    <v-alert
+      v-if="payrollStore.unapprovedCount > 0"
+      type="warning"
+      variant="tonal"
+      class="mb-4"
+      closable
+    >
+      <template #title>Payroll Review Required</template>
+      {{ payrollStore.unapprovedCount }} employee(s) have not been approved for this pay period.
+      <NuxtLink to="/admin/payroll/review" class="text-warning font-weight-medium ml-1">
+        Open Review Workbench →
+      </NuxtLink>
+    </v-alert>
 
     <!-- Export Configuration -->
     <v-row>
@@ -231,7 +256,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="previewDialog = false">Close</v-btn>
-          <v-btn color="primary" @click="exportPayroll">
+          <v-btn color="primary" @click="exportPayroll" :disabled="!allowExport">
             <v-icon start>mdi-download</v-icon>
             Export CSV
           </v-btn>
@@ -247,6 +272,8 @@
 </template>
 
 <script setup lang="ts">
+import { usePayrollStore } from '~/stores/payroll'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'admin']
@@ -258,6 +285,7 @@ useHead({
 
 const supabase = useSupabaseClient()
 const { employees } = useAppData()
+const payrollStore = usePayrollStore()
 
 // State
 const formRef = ref()
@@ -270,6 +298,12 @@ const snackbar = reactive({
   show: false,
   message: '',
   color: 'success'
+})
+
+// Computed: Check if export is allowed (all employees approved)
+const allowExport = computed(() => {
+  // Allow export if all employees are approved, or show warning
+  return payrollStore.allApproved || payrollStore.employees.length === 0
 })
 
 // Get default date range (current pay period)
@@ -339,28 +373,52 @@ async function loadDepartments() {
 }
 
 async function calculateStats() {
-  // In production, this would query actual time tracking data
-  stats.value = {
-    totalEmployees: employees.value?.length || 0,
-    totalHours: (employees.value?.length || 0) * 80, // Simulated
-    overtimeHours: Math.floor(Math.random() * 50),
-    ptoHours: Math.floor(Math.random() * 100)
+  // Use data from payroll store if available, otherwise fallback to simulated
+  if (payrollStore.employees.length > 0) {
+    stats.value = {
+      totalEmployees: payrollStore.stats.totalEmployees,
+      totalHours: payrollStore.stats.totalRegularHours + payrollStore.stats.totalOvertimeHours,
+      overtimeHours: payrollStore.stats.totalOvertimeHours,
+      ptoHours: payrollStore.stats.totalPTOHours
+    }
+  } else {
+    stats.value = {
+      totalEmployees: employees.value?.length || 0,
+      totalHours: (employees.value?.length || 0) * 80, // Simulated
+      overtimeHours: Math.floor(Math.random() * 50),
+      ptoHours: Math.floor(Math.random() * 100)
+    }
   }
 }
 
 async function previewPayroll() {
   previewing.value = true
   try {
-    // Generate preview data
-    previewData.value = (employees.value || []).map((emp: any) => ({
-      employee_id: emp.id.substring(0, 8),
-      name: `${emp.first_name} ${emp.last_name}`,
-      department: emp.department?.name || 'Unassigned',
-      regular_hours: 80,
-      overtime: Math.floor(Math.random() * 10),
-      pto_hours: Math.floor(Math.random() * 8),
-      total_hours: 80 + Math.floor(Math.random() * 10)
-    }))
+    // Use payroll store data if available, otherwise fallback to simulated
+    if (payrollStore.employees.length > 0) {
+      previewData.value = payrollStore.employees.map((emp) => ({
+        employee_id: emp.employee_id.substring(0, 8),
+        name: emp.employee_name,
+        department: emp.department_name || 'Unassigned',
+        regular_hours: emp.regular_hours.toFixed(2),
+        overtime: (emp.overtime_hours + emp.double_time_hours).toFixed(2),
+        pto_hours: emp.pto_hours.toFixed(2),
+        total_hours: (emp.regular_hours + emp.overtime_hours + emp.double_time_hours + emp.pto_hours).toFixed(2),
+        gross_pay: emp.gross_pay_estimate.toFixed(2),
+        status: emp.status
+      }))
+    } else {
+      // Fallback to simulated data
+      previewData.value = (employees.value || []).map((emp: any) => ({
+        employee_id: emp.id.substring(0, 8),
+        name: `${emp.first_name} ${emp.last_name}`,
+        department: emp.department?.name || 'Unassigned',
+        regular_hours: 80,
+        overtime: Math.floor(Math.random() * 10),
+        pto_hours: Math.floor(Math.random() * 8),
+        total_hours: 80 + Math.floor(Math.random() * 10)
+      }))
+    }
     
     previewDialog.value = true
   } catch (err) {
@@ -376,30 +434,57 @@ async function previewPayroll() {
 async function exportPayroll() {
   exporting.value = true
   try {
-    // Generate CSV content
-    const headers = ['Employee ID', 'First Name', 'Last Name', 'Email', 'Department', 'Position', 'Regular Hours', 'Overtime', 'PTO', 'Total Hours']
+    // Generate CSV content using payroll store data when available
+    const headers = ['Employee ID', 'Name', 'Email', 'Department', 'Position', 'Pay Rate', 'Pay Type', 'Regular Hours', 'Overtime Hours', 'Double-Time Hours', 'PTO Hours', 'Adjustments', 'Gross Pay', 'Status']
     
-    const rows = (employees.value || []).map((emp: any) => {
-      const regularHours = 80
-      const overtime = Math.floor(Math.random() * 10)
-      const pto = Math.floor(Math.random() * 8)
-      return [
-        emp.id.substring(0, 8),
-        emp.first_name,
-        emp.last_name,
-        emp.email || '',
-        emp.department?.name || '',
-        emp.position?.title || '',
-        regularHours,
-        overtime,
-        pto,
-        regularHours + overtime
-      ]
-    })
+    let rows: (string | number)[][]
+    
+    if (payrollStore.employees.length > 0) {
+      // Use real payroll data
+      rows = payrollStore.employees.map((emp) => [
+        emp.employee_id.substring(0, 8),
+        emp.employee_name,
+        '', // Email would need to be fetched separately
+        emp.department_name || '',
+        '', // Position would need to be fetched separately
+        emp.pay_rate.toFixed(2),
+        emp.pay_type,
+        emp.regular_hours.toFixed(2),
+        emp.overtime_hours.toFixed(2),
+        emp.double_time_hours.toFixed(2),
+        emp.pto_hours.toFixed(2),
+        emp.adjustments_total.toFixed(2),
+        emp.gross_pay_estimate.toFixed(2),
+        emp.status
+      ])
+    } else {
+      // Fallback to simulated data
+      rows = (employees.value || []).map((emp: any) => {
+        const regularHours = 80
+        const overtime = Math.floor(Math.random() * 10)
+        const pto = Math.floor(Math.random() * 8)
+        return [
+          emp.id.substring(0, 8),
+          `${emp.first_name} ${emp.last_name}`,
+          emp.email || '',
+          emp.department?.name || '',
+          emp.position?.title || '',
+          emp.compensation?.pay_rate?.toFixed(2) || '0.00',
+          emp.compensation?.pay_type || 'Hourly',
+          regularHours,
+          overtime,
+          0,
+          pto,
+          0,
+          (regularHours * (emp.compensation?.pay_rate || 0)).toFixed(2),
+          'pending'
+        ]
+      })
+    }
 
     const csvContent = [
       headers.join(','),
-      ...rows.map((row: (string | number)[]) => row.join(','))
+      ...rows.map((row: (string | number)[]) => row.map(v => `"${v}"`).join(','))
     ].join('\n')
 
     // Create and download file
@@ -435,10 +520,22 @@ async function exportPayroll() {
 
 // Initialize
 onMounted(async () => {
+  // Sync payroll store period with export config
+  payrollStore.setPeriod(exportConfig.startDate, exportConfig.endDate)
+  
   await Promise.all([
     loadDepartments(),
-    calculateStats()
+    payrollStore.fetchPayrollSummary()
   ])
+  
+  // Calculate stats after payroll data is loaded
+  await calculateStats()
+})
+
+// Watch for date changes and update payroll store
+watch(() => [exportConfig.startDate, exportConfig.endDate], ([start, end]) => {
+  payrollStore.setPeriod(start, end)
+  payrollStore.fetchPayrollSummary().then(() => calculateStats())
 })
 </script>
 
