@@ -6667,3 +6667,61 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// Custom types for application use
+export interface HireCandidatePayload {
+  candidate_id: string
+  employment_type: 'full_time' | 'part_time' | 'contractor' | 'intern'
+  job_title_id?: string
+  start_date: string
+  starting_wage: number
+  pay_type: 'Hourly' | 'Salary'
+  department_id?: string
+  location_id?: string
+}
+
+export interface CandidateInterview {
+  id: string
+  candidate_id: string
+  interview_type: 'phone_screen' | 'initial' | 'technical' | 'panel' | 'working_interview' | 'final' | 'other'
+  round_number: number
+  scheduled_at: string | null
+  duration_minutes: number
+  location: string | null
+  video_link: string | null
+  interviewer_employee_id: string | null
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
+  technical_score: number | null
+  communication_score: number | null
+  cultural_fit_score: number | null
+  overall_score: number | null
+  recommendation: 'strong_yes' | 'yes' | 'neutral' | 'no' | 'strong_no' | null
+  notes: string | null
+  strengths: string | null
+  concerns: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CandidateShadowVisit {
+  id: string
+  candidate_id: string
+  visit_date: string
+  start_time: string | null
+  end_time: string | null
+  location_id: string | null
+  host_employee_id: string | null
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  punctuality_score: number | null
+  engagement_score: number | null
+  teamwork_score: number | null
+  skill_demonstration_score: number | null
+  overall_impression: 'excellent' | 'good' | 'acceptable' | 'concerning' | 'not_recommended' | null
+  observer_notes: string | null
+  candidate_questions: string | null
+  areas_of_strength: string | null
+  areas_for_development: string | null
+  created_at: string
+  updated_at: string
+}

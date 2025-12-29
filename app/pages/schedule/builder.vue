@@ -302,17 +302,17 @@ async function confirmPublish() {
   try {
     const draftShifts = shifts.value.filter(s => s.status === 'draft')
     
-    // Update all draft shifts to 'scheduled' status
+    // Update all draft shifts to 'published' status
     const { error } = await supabase
       .from('shifts')
-      .update({ status: 'scheduled' })
+      .update({ status: 'published' })
       .in('id', draftShifts.map(s => s.id))
     
     if (error) throw error
     
     // Update local state
     shifts.value = shifts.value.map(s => 
-      s.status === 'draft' ? { ...s, status: 'scheduled' } : s
+      s.status === 'draft' ? { ...s, status: 'published' } : s
     )
     
     toast.success(`Published ${draftShifts.length} shifts to employee schedules!`)

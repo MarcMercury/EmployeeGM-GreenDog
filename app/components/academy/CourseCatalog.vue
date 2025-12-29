@@ -185,6 +185,18 @@
                   {{ getLessonCount(course.id) }} lessons
                 </div>
 
+                <!-- Skill Award Badge -->
+                <v-chip
+                  v-if="course.skill_name"
+                  color="secondary"
+                  variant="tonal"
+                  size="small"
+                  class="mt-2"
+                  prepend-icon="mdi-star-circle"
+                >
+                  Awards: {{ course.skill_name }} (Level {{ course.skill_level_awarded }})
+                </v-chip>
+
                 <!-- Progress Bar (if enrolled) -->
                 <div v-if="getEnrollment(course.id)" class="mt-3">
                   <div class="d-flex justify-space-between text-caption mb-1">

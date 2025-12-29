@@ -741,12 +741,30 @@ export const useOperationsStore = defineStore('operations', {
     async createTimeEntry(employeeId: string) {
       const supabase = useSupabaseClient()
       const today = new Date().toISOString().split('T')[0]
+      const now = new Date()
 
-      // Find matching shift for today
-      const todayShift = this.shifts.find(s =>
+      // Ensure shifts are loaded for today
+      if (this.shifts.length === 0) {
+        await this.fetchShifts(today, today)
+      }
+
+      // Find matching shift for today - prefer one that overlaps with current time
+      let todayShift = this.shifts.find(s =>
         s.employee_id === employeeId &&
-        s.start_at.startsWith(today)
+        s.start_at.startsWith(today) &&
+        s.status === 'published' &&
+        new Date(s.start_at) <= now &&
+        new Date(s.end_at) >= now
       )
+      
+      // Fallback: any published shift for today
+      if (!todayShift) {
+        todayShift = this.shifts.find(s =>
+          s.employee_id === employeeId &&
+          s.start_at.startsWith(today) &&
+          s.status === 'published'
+        )
+      }
 
       // Get first clock in and last clock out
       const clockIn = this.todayPunches.find(p => p.punch_type === 'in')

@@ -483,49 +483,26 @@ const hireCandidate = async () => {
   converting.value = true
   
   try {
-    // 1. Create employee record from candidate data
-    const { data: newEmployee, error: empError } = await client
-      .from('employees')
-      .insert({
-        first_name: candidate.value.first_name,
-        last_name: candidate.value.last_name,
-        email: candidate.value.email,
-        phone: candidate.value.phone,
-        position_id: candidate.value.target_position_id,
-        hire_date: new Date().toISOString().split('T')[0],
-        status: 'active'
-      } as any)
-      .select()
-      .single()
+    // Use the RPC function that properly migrates all candidate data
+    const { data: newEmployeeId, error: rpcError } = await client
+      .rpc('promote_candidate_to_employee', {
+        p_candidate_id: candidate.value.id,
+        p_employment_type: candidate.value.target_position_type || 'full_time',
+        p_job_title_id: candidate.value.target_position_id || null,
+        p_start_date: candidate.value.desired_start_date || new Date().toISOString().split('T')[0],
+        p_starting_wage: parseFloat(candidate.value.desired_salary) || 0,
+        p_pay_type: 'Hourly',
+        p_department_id: null,
+        p_location_id: null
+      })
     
-    if (empError) throw empError
-    
-    // 2. Copy candidate skills to employee skills
-    if (candidateSkills.value.length > 0) {
-      const skillInserts = candidateSkills.value.map(cs => ({
-        employee_id: newEmployee.id,
-        skill_id: (cs as any).skill_id,
-        skill_level: cs.skill_level
-      }))
-      
-      const { error: skillError } = await client
-        .from('employee_skills')
-        .insert(skillInserts as any)
-      
-      if (skillError) console.error('Error copying skills:', skillError)
-    }
-    
-    // 3. Delete candidate record (or mark as converted)
-    await client
-      .from('candidates')
-      .update({ status: 'converted', converted_employee_id: newEmployee.id } as any)
-      .eq('id', candidate.value.id)
+    if (rpcError) throw rpcError
     
     toast.success(`${candidate.value.first_name} ${candidate.value.last_name} is now an employee!`)
     showHireDialog.value = false
     
     // Navigate to new employee profile
-    navigateTo(`/employees/${newEmployee.id}`)
+    navigateTo(`/employees/${newEmployeeId}`)
   } catch (error) {
     console.error('Error converting candidate:', error)
     toast.error('Failed to convert candidate to employee')

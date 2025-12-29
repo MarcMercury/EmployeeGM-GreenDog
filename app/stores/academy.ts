@@ -292,21 +292,23 @@ export const useAcademyStore = defineStore('academy', {
       this.error = null
 
       try {
-        // Fetch courses with lesson count
+        // Fetch courses with lesson count and skill info
         const { data: courses, error } = await supabase
           .from('training_courses')
           .select(`
             *,
-            lessons:training_lessons(count)
+            lessons:training_lessons(count),
+            skill:skill_library(id, name)
           `)
           .order('title')
 
         if (error) throw error
 
-        // Map lesson count
+        // Map lesson count and skill name
         let coursesData = (courses || []).map(c => ({
           ...c,
-          lessons_count: c.lessons?.[0]?.count || 0
+          lessons_count: c.lessons?.[0]?.count || 0,
+          skill_name: c.skill?.name || null
         })) as TrainingCourse[]
 
         // If employee provided, fetch enrollments and progress

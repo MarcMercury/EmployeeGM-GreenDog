@@ -1038,7 +1038,11 @@ onMounted(async () => {
     const endDate = new Date(now.setDate(now.getDate() + 30)).toISOString().split('T')[0] || ''
     
     await opsStore.fetchShifts(startDate, endDate)
-    myShifts.value = opsStore.shifts.filter(s => s.employee_id === employeeId)
+    // Only show published or completed shifts to employees
+    myShifts.value = opsStore.shifts.filter(s => 
+      s.employee_id === employeeId && 
+      ['published', 'completed'].includes(s.status)
+    )
   }
   
   await employeeStore.fetchEmployees?.()
