@@ -7,7 +7,21 @@ Stack: Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth).
 
 ---
 
-## 🚨 DEVELOPMENT STANDARDS (READ BEFORE ANY CHANGE)
+## � INTEGRATIONS (READ FIRST!)
+
+> **CRITICAL:** Before suggesting ANY integration setup, CHECK [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md)
+> 
+> The following are ALREADY LIVE and configured:
+> - ✅ **Supabase** - Database, Auth, RLS (PRODUCTION)
+> - ✅ **Vercel** - Hosting with custom domain (PRODUCTION)
+> - ✅ **GoDaddy** - Email domain connected to Supabase Auth
+> - ✅ **GitHub** - Auto-deploy to Vercel on push to main
+>
+> **DO NOT** suggest re-connecting these services. They are working.
+
+---
+
+## �🚨 DEVELOPMENT STANDARDS (READ BEFORE ANY CHANGE)
 
 ### Role: Full-Stack Expert
 

@@ -246,6 +246,27 @@ async function saveEvent() {
     // Try dual-write to marketing calendar
     await createMarketingEvent(data.id)
     
+    // Send Slack notification about new event
+    try {
+      const eventDate = new Date(formData.value.event_date_start).toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      })
+      
+      await $fetch('/api/slack/send', {
+        method: 'POST',
+        body: {
+          type: 'channel',
+          channel: '#ce-events', // Will post to CE events channel if it exists
+          text: `📚 *New CE Event Created*\n\n*${formData.value.title}*\n📅 ${eventDate}\n📍 ${formData.value.location_name}\n⏱️ ${formData.value.ce_hours_offered} CE Hours\n\n_View in Employee GM to register attendees_`
+        }
+      })
+    } catch (slackError) {
+      console.error('Failed to send Slack notification:', slackError)
+    }
+    
     // Navigate to the event detail page
     router.push(`/gdu/events/${data.id}`)
   } catch (e) {

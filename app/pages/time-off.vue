@@ -274,6 +274,26 @@ async function submitRequest() {
     requestDialog.value = false
     uiStore.showSuccess('Time off request submitted')
     
+    // Send Slack notification to managers
+    try {
+      const employeeName = `${authStore.profile?.first_name || ''} ${authStore.profile?.last_name || ''}`.trim()
+      const startFormatted = formatDate(form.start_date)
+      const endFormatted = formatDate(form.end_date)
+      const reason = form.reason || 'No reason provided'
+      
+      await $fetch('/api/slack/send', {
+        method: 'POST',
+        body: {
+          type: 'channel',
+          channel: '#time-off-requests', // Will need to exist or be configured
+          text: `📅 *New Time Off Request*\n*Employee:* ${employeeName}\n*Dates:* ${startFormatted} - ${endFormatted}\n*Reason:* ${reason}\n\n_Please review in Employee GM_`
+        }
+      })
+    } catch (slackError) {
+      // Don't fail the request if Slack notification fails
+      console.error('Failed to send Slack notification:', slackError)
+    }
+    
     // Reset form
     Object.assign(form, { start_date: '', end_date: '', reason: '' })
   } catch {
