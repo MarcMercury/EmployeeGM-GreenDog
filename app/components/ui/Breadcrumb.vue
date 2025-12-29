@@ -66,7 +66,6 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     'goals': 'Goals',
     'mentorship': 'Mentorship',
     'activity': 'Activity',
-    'org-chart': 'Org Chart',
     'my-schedule': 'My Schedule',
     'my-ops': 'My Ops',
     'development': 'Development',

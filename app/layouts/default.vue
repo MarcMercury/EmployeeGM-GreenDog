@@ -304,10 +304,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
                   Roster
                 </NuxtLink>
-                <NuxtLink to="/org-chart" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-teal-500/20">🏢</div>
-                  Org Chart
-                </NuxtLink>
                 <NuxtLink to="/schedule/builder" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📅</div>
                   Team Schedule
