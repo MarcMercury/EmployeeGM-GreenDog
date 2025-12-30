@@ -3,6 +3,7 @@
  * ============================
  * Provides functions to send messages to Slack channels and users.
  * Uses the Slack Bot Token configured in environment variables.
+ * Includes notification helpers for common Employee GM events.
  */
 
 interface SlackMessage {
@@ -22,6 +23,10 @@ interface SlackUser {
   email: string
   real_name: string
   display_name: string
+}
+
+interface NotificationData {
+  [key: string]: any
 }
 
 export const useSlack = () => {
@@ -143,10 +148,148 @@ export const useSlack = () => {
 8. *Reason for Visit:* ${reason}`
   }
 
+  /**
+   * Send a notification for a specific event type
+   * Uses the notification queue for reliable delivery
+   */
+  const sendEventNotification = async (
+    eventType: string,
+    data: NotificationData
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const response = await $fetch('/api/slack/notifications/send-event', {
+        method: 'POST',
+        body: { eventType, data }
+      })
+      return response as { ok: boolean; error?: string }
+    } catch (error: any) {
+      console.error('Slack sendEventNotification error:', error)
+      return { ok: false, error: error.message }
+    }
+  }
+
+  /**
+   * Notify about new employee onboarding
+   */
+  const notifyNewEmployee = async (employee: {
+    first_name: string
+    last_name: string
+    position?: string
+    department?: string
+    start_date?: string
+    slack_user_id?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('employee_onboarding', {
+      employee_name: `${employee.first_name} ${employee.last_name}`,
+      position: employee.position || 'New Team Member',
+      department: employee.department || '',
+      start_date: employee.start_date || 'Soon',
+      slack_user_id: employee.slack_user_id
+    })
+  }
+
+  /**
+   * Notify about visitor arrival
+   */
+  const notifyVisitorArrival = async (visitor: {
+    visitor_type: string
+    first_name: string
+    last_name: string
+    coordinator?: string
+    location?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('visitor_arrival', {
+      visitor_name: `${visitor.first_name} ${visitor.last_name}`,
+      visit_type: visitor.visitor_type,
+      coordinator: visitor.coordinator || 'TBD',
+      location: visitor.location || ''
+    })
+  }
+
+  /**
+   * Notify about time off request (to manager)
+   */
+  const notifyTimeOffRequest = async (request: {
+    employee_name: string
+    dates: string
+    manager_slack_id?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('time_off_requested', {
+      employee_name: request.employee_name,
+      dates: request.dates,
+      slack_user_id: request.manager_slack_id
+    })
+  }
+
+  /**
+   * Notify employee about time off approval
+   */
+  const notifyTimeOffApproved = async (request: {
+    dates: string
+    employee_slack_id?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('time_off_approved', {
+      dates: request.dates,
+      slack_user_id: request.employee_slack_id
+    })
+  }
+
+  /**
+   * Notify about schedule being published
+   */
+  const notifySchedulePublished = async (schedule: {
+    period: string
+    location?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('schedule_published', {
+      period: schedule.period,
+      location: schedule.location || ''
+    })
+  }
+
+  /**
+   * Notify about training completion
+   */
+  const notifyTrainingCompleted = async (training: {
+    employee_name: string
+    training_name: string
+    employee_slack_id?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('training_completed', {
+      employee_name: training.employee_name,
+      training_name: training.training_name,
+      slack_user_id: training.employee_slack_id
+    })
+  }
+
+  /**
+   * Notify about expiring certification
+   */
+  const notifyCertificationExpiring = async (cert: {
+    certification_name: string
+    expiry_date: string
+    employee_slack_id?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    return sendEventNotification('certification_expiring', {
+      certification_name: cert.certification_name,
+      expiry_date: cert.expiry_date,
+      slack_user_id: cert.employee_slack_id
+    })
+  }
+
   return {
     sendToChannel,
     sendDM,
     findUserByEmail,
-    formatVisitorAnnouncement
+    formatVisitorAnnouncement,
+    // Event notifications
+    sendEventNotification,
+    notifyNewEmployee,
+    notifyVisitorArrival,
+    notifyTimeOffRequest,
+    notifyTimeOffApproved,
+    notifySchedulePublished,
+    notifyTrainingCompleted,
+    notifyCertificationExpiring
   }
 }

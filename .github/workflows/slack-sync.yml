@@ -1,0 +1,57 @@
+name: Slack Sync Scheduler
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  sync-slack-users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Slack Sync
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/slack/sync/scheduled")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Sync failed with status $http_code"
+            exit 1
+          fi
+          
+          # Check if sync was successful
+          if echo "$body" | grep -q '"ok":true'; then
+            echo "✅ Slack sync completed successfully"
+          else
+            echo "❌ Slack sync reported issues"
+            exit 1
+          fi
+
+      - name: Process Notification Queue
+        run: |
+          response=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/slack/notifications/process")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Notification queue processed"
+          else
+            echo "⚠️ Notification processing had issues (non-critical)"
+          fi

@@ -118,21 +118,20 @@ All required env vars are already configured:
 
 ## 💬 Slack
 
-**Status:** ✅ Bot Configured
+**Status:** ✅ Bot Configured with Full Sync System
 
 | Property | Value |
 |----------|-------|
 | App Name | EmployeeGM Greendog |
 | App ID | `A0A5UE1HEAF` |
-| Bot Token | `xoxb-1114684765620-10233198903472-jz6o9fWYEMcak4doYRlLvE03` |
-| Client ID | `1114684765620.10198477592355` |
-| Client Secret | `3e598e5f9c32921de7660cfaeb343385` |
-| Signing Secret | `575475d8436d14422d125a2a7ddf35c9` |
+| Bot Token | Configured in environment |
+| Integration Features | User Sync, Notifications, Health Monitoring |
 
 ### Environment Variables (add to Vercel & .env)
 ```env
-SLACK_BOT_TOKEN=xoxb-1114684765620-10233198903472-jz6o9fWYEMcak4doYRlLvE03
-SLACK_SIGNING_SECRET=575475d8436d14422d125a2a7ddf35c9
+SLACK_BOT_TOKEN=xoxb-your-token-here
+SLACK_SIGNING_SECRET=your-signing-secret-here
+CRON_SECRET=optional-for-scheduled-sync
 ```
 
 ### Bot Permissions (Scopes)
@@ -141,12 +140,67 @@ SLACK_SIGNING_SECRET=575475d8436d14422d125a2a7ddf35c9
 - `users:read` - Look up users
 - `users:read.email` - Match users by email
 - `im:write` - Send direct messages
+- `channels:read` - List available channels
 
-### Use Cases
-1. **Visitor Announcements** - Auto-post when new visitors are added
-2. **Time-Off Requests** - Notify managers of pending requests
-3. **Shift Changes** - Alert affected employees
-4. **Direct Messages** - Send notifications to specific users
+### Features
+
+#### 1. User Synchronization
+Automatic matching of Employee GM users with Slack accounts:
+- Email-based matching (primary identifier)
+- Status tracking: linked, unlinked, deactivated, pending_review
+- Conflict resolution for manual review
+- Scheduled sync (every 6 hours recommended)
+
+**Admin UI:** `/admin/slack` → User Sync tab
+
+#### 2. Notification System
+One-way notification flow from Employee GM to Slack:
+- Configurable event triggers
+- Message templates with placeholders
+- Queue-based delivery with retry logic
+- Channel and DM support
+
+**Supported Events:**
+- New employee onboarding
+- Visitor arrivals
+- Schedule published
+- Time-off requests/approvals
+- Training completion
+- Certification expiring
+
+**Admin UI:** `/admin/slack` → Notification Triggers tab
+
+#### 3. Health Monitoring
+Real-time health check endpoint: `GET /api/slack/health`
+
+### API Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/api/slack/sync/run` | Run user synchronization |
+| `/api/slack/sync/status` | Get sync status & stats |
+| `/api/slack/sync/conflicts` | List pending conflicts |
+| `/api/slack/sync/resolve` | Resolve a conflict |
+| `/api/slack/sync/scheduled` | Cron endpoint for scheduled sync |
+| `/api/slack/notifications/send-event` | Send event notification |
+| `/api/slack/notifications/process` | Process notification queue |
+| `/api/slack/health` | Health check |
+
+### Database Tables
+- `slack_sync_logs` - Sync operation history
+- `slack_sync_conflicts` - Pending conflicts
+- `notification_triggers` - Event configuration
+- `notification_queue` - Pending notifications
+
+### Scheduled Tasks
+Set up cron job for automated sync:
+```bash
+# Every 6 hours
+0 */6 * * * curl -H "X-Cron-Secret: $CRON_SECRET" https://your-app.com/api/slack/sync/scheduled
+```
+
+### Documentation
+Full documentation: [docs/SLACK_INTEGRATION.md](./SLACK_INTEGRATION.md)
 
 ---
 
@@ -194,8 +248,9 @@ OPENAI_ADMIN_KEY=sk-admin-ysmQ8BqneZHObpuAz1LaWM7wA9oypXWTFVsAfWrfefUrjL2_nt536P
 
 ## 🔄 Last Updated
 
-**Date:** December 29, 2025
+**Date:** December 30, 2025
 **Updated By:** AI Agent (Copilot)
+**Changes:** Added comprehensive Slack synchronization and notification system
 
 ---
 
