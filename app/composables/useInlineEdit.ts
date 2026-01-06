@@ -4,6 +4,10 @@
  * Provides inline editing functionality for table cells
  * Click-to-edit for common fields like phone, status, notes
  * 
+ * SYNC BEHAVIOR:
+ * When editing 'employees' table fields that are shared with 'profiles', 
+ * updates are automatically synced to both tables via useEmployeeSync.
+ * 
  * Usage:
  * const { editingCell, startEdit, saveEdit, cancelEdit, isEditing } = useInlineEdit()
  * 
@@ -15,6 +19,10 @@
  *   <template v-else>{{ item.phone }}</template>
  * </td>
  */
+
+// Fields that should be synced between employees and profiles
+const SYNCED_EMPLOYEE_FIELDS = ['first_name', 'last_name', 'email_work', 'phone_mobile', 'slack_avatar_url']
+const SYNCED_PROFILE_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'avatar_url']
 
 interface EditingCell {
   itemId: string | number | null
@@ -31,6 +39,7 @@ interface SaveOptions {
 export function useInlineEdit(options?: SaveOptions) {
   const client = useSupabaseClient()
   const toast = useToast()
+  const { updateEmployee, updateProfile } = useEmployeeSync()
   
   // Current editing state
   const editingCell = ref<EditingCell>({
@@ -115,11 +124,34 @@ export function useInlineEdit(options?: SaveOptions) {
       // Default: use options to save to Supabase
       if (options?.table) {
         const idField = options.idField || 'id'
+        const fieldName = editingCell.value.field
+        const fieldValue = editingCell.value.value
+        const itemId = String(editingCell.value.itemId)
         
+        // Check if this is a synced field that needs cross-table updates
+        if (options.table === 'employees' && SYNCED_EMPLOYEE_FIELDS.includes(fieldName)) {
+          // Use sync composable for employees
+          const result = await updateEmployee(itemId, { [fieldName]: fieldValue })
+          if (!result.success) throw new Error(result.error)
+          
+          toast.success(`Updated successfully (synced to ${result.updatedTables.length} tables)`)
+          cancelEdit()
+          return true
+        } else if (options.table === 'profiles' && SYNCED_PROFILE_FIELDS.includes(fieldName)) {
+          // Use sync composable for profiles
+          const result = await updateProfile(itemId, { [fieldName]: fieldValue } as any)
+          if (!result.success) throw new Error(result.error)
+          
+          toast.success(`Updated successfully (synced to ${result.updatedTables.length} tables)`)
+          cancelEdit()
+          return true
+        }
+        
+        // Standard single-table update for non-synced fields
         const { error } = await client
           .from(options.table)
           .update({ 
-            [editingCell.value.field]: editingCell.value.value,
+            [fieldName]: fieldValue,
             updated_at: new Date().toISOString()
           })
           .eq(idField, editingCell.value.itemId)

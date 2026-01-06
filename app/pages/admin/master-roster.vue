@@ -1326,11 +1326,15 @@ const saveChanges = async () => {
       if (compError) throw compError
     }
 
-    // 3. Update profile if exists
+    // 3. Update profile if exists (sync name, email, phone, role, active status)
     if (editingEmployee.value.profile_id) {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          email: editForm.email_work || undefined,
+          phone: editForm.phone_mobile || undefined,
           role: editForm.profile_role,
           is_active: editForm.profile_is_active,
           updated_at: new Date().toISOString()

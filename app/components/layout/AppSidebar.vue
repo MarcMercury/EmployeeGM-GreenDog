@@ -41,20 +41,20 @@
         class="nav-item mb-1"
       />
 
-      <!-- Roster Group - Collapsible -->
-      <v-list-group v-if="!rail" value="roster">
+      <!-- Contact List Group - Collapsible -->
+      <v-list-group v-if="!rail" value="contacts">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
             prepend-icon="mdi-account-group"
-            title="Roster"
+            title="Contact List"
             rounded="lg"
             class="nav-item"
           />
         </template>
         <v-list-item to="/roster" title="All Staff" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Roster" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Contacts" rounded="lg" class="nav-item mb-1" />
 
       <!-- People & Skills Group - Collapsible -->
       <v-list-group v-if="!rail" value="skills">

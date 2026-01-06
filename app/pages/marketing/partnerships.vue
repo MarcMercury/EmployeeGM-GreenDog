@@ -2355,6 +2355,9 @@ function toggleDiscussionItem(item: string) {
 }
 
 // Speech Recognition
+let finalTranscript = ''
+let existingNotes = ''
+
 function initSpeechRecognition() {
   if (typeof window === 'undefined') return
   
@@ -2367,16 +2370,29 @@ function initSpeechRecognition() {
   
   speechSupported.value = true
   recognition = new SpeechRecognition()
-  recognition.continuous = true
-  recognition.interimResults = true
+  recognition.continuous = false  // Changed: single utterance mode prevents duplicate words
+  recognition.interimResults = false  // Changed: only use final results to prevent duplicates
   recognition.lang = 'en-US'
+  recognition.maxAlternatives = 1
   
   recognition.onresult = (event: any) => {
-    let transcript = ''
-    for (let i = 0; i < event.results.length; i++) {
-      transcript += event.results[i][0].transcript
+    // Get only the final transcript from this recognition session
+    let newText = ''
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        newText += event.results[i][0].transcript
+      }
     }
-    quickVisitForm.visit_notes = transcript
+    
+    if (newText) {
+      // Append new text to existing notes with proper spacing
+      const currentNotes = quickVisitForm.visit_notes || ''
+      if (currentNotes && !currentNotes.endsWith(' ') && !currentNotes.endsWith('.')) {
+        quickVisitForm.visit_notes = currentNotes + ' ' + newText.trim()
+      } else {
+        quickVisitForm.visit_notes = currentNotes + newText.trim()
+      }
+    }
   }
   
   recognition.onerror = (event: any) => {
@@ -2385,7 +2401,14 @@ function initSpeechRecognition() {
   }
   
   recognition.onend = () => {
-    isListening.value = false
+    // Auto-restart if still in listening mode (allows continuous dictation with pauses)
+    if (isListening.value) {
+      try {
+        recognition.start()
+      } catch (e) {
+        isListening.value = false
+      }
+    }
   }
 }
 
