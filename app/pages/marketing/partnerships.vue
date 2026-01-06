@@ -1507,16 +1507,14 @@ const isListening = ref(false)
 const speechSupported = ref(false)
 let recognition: any = null
 
-// Discussion items for Quick Visit
+// Discussion items for Quick Visit - Services discussed
 const discussionItems = [
-  { value: 'dental_cleaning', label: 'Dental Cleaning', icon: 'mdi-tooth' },
-  { value: 'extractions', label: 'Extractions', icon: 'mdi-tooth-outline' },
-  { value: 'specialty_surgery', label: 'Specialty Surgery', icon: 'mdi-medical-bag' },
-  { value: 'referral_process', label: 'Referral Process', icon: 'mdi-file-send' },
-  { value: 'general_checkin', label: 'General Check-in', icon: 'mdi-hand-wave' },
-  { value: 'marketing_materials', label: 'Marketing Materials', icon: 'mdi-file-document' },
-  { value: 'lunch_learn', label: 'Lunch & Learn', icon: 'mdi-food' },
-  { value: 'pricing', label: 'Pricing/Packages', icon: 'mdi-currency-usd' }
+  { value: 'surgery', label: 'Surgery', icon: 'mdi-medical-bag' },
+  { value: 'dental_surgery', label: 'Dental Surgery', icon: 'mdi-tooth' },
+  { value: 'im', label: 'IM', icon: 'mdi-stethoscope' },
+  { value: 'exotics', label: 'Exotics', icon: 'mdi-bird' },
+  { value: 'urgent_care', label: 'Urgent Care', icon: 'mdi-ambulance' },
+  { value: 'other', label: 'Other', icon: 'mdi-dots-horizontal' }
 ]
 
 // Quick Visit form
