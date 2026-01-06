@@ -949,7 +949,7 @@ import QrcodeVue from 'qrcode.vue'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'marketing-admin']
 })
 
 interface MarketingEvent {
@@ -1564,5 +1564,10 @@ const fetchData = async () => {
 
 onMounted(() => {
   fetchData()
+  // Handle action query param from marketing pages
+  const route = useRoute()
+  if (route.query.action === 'add') {
+    openCreateDialog()
+  }
 })
 </script>

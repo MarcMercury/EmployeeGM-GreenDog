@@ -431,10 +431,16 @@ const contactCategoryOptions = [
   { title: 'Other', value: 'other' }
 ]
 
-// Check if we should open add dialog from URL
+// Category options for partner form (alias for consistency)
+const categoryOptions = contactCategoryOptions
+
+// Check if we should open add dialog or apply filter from URL
 onMounted(() => {
   if (route.query.action === 'add') {
     openAddDialog()
+  }
+  if (route.query.filter && typeof route.query.filter === 'string') {
+    selectedType.value = route.query.filter
   }
 })
 

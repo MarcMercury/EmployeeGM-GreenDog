@@ -11,6 +11,18 @@ jobs:
   sync-slack-users:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate Configuration
+        run: |
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ ERROR: APP_URL secret is not configured"
+            echo "Please add APP_URL to your repository secrets (e.g., https://your-app.vercel.app)"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "⚠️ WARNING: CRON_SECRET is not configured (sync may fail authentication)"
+          fi
+          echo "✅ Configuration validated"
+
       - name: Run Slack Sync
         run: |
           response=$(curl -s -w "\n%{http_code}" \

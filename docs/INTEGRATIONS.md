@@ -71,13 +71,22 @@ supabase gen types typescript --project-id [ref] > types/database.types.ts
 | Output Directory | `.output` |
 | Node Version | 18.x |
 
-### Custom Domain
-**Production URL:** (your custom domain is configured in Vercel)
+### Domains
+| Domain | Status |
+|--------|--------|
+| `employeegmgreendog.com` | Production (Custom Domain) |
+| `www.employeegmgreendog.com` | Production (Custom Domain) |
+| `employee-gm-green-dog.vercel.app` | Production (Vercel Default) |
 
 ### Deployment
 - **Auto-Deploy:** Connected to GitHub `main` branch
 - **Preview Deploys:** Every PR gets a preview URL
 - **Environment Variables:** Set in Vercel Dashboard
+
+### GitHub Actions Integration
+For scheduled workflows (like Slack sync), set these repository secrets:
+- `APP_URL` = `https://employeegmgreendog.com`
+- `CRON_SECRET` = (matching value from Vercel env vars)
 
 ### Environment Variables in Vercel
 All required env vars are already configured:
