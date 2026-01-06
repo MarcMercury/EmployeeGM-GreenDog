@@ -801,7 +801,6 @@ interface Employee {
     time_off_type_id: string
     balance_hours: number
     year: number
-    time_off_type: { name: string; code: string } | null
   }[] | null
 }
 
@@ -1027,8 +1026,7 @@ const fetchAllData = async () => {
           compensation:employee_compensation(*),
           profile:profiles!employees_profile_id_fkey(id, role, is_active, email, auth_user_id),
           time_off_balances:employee_time_off_balances(
-            id, time_off_type_id, balance_hours, year,
-            time_off_type:time_off_types(name, code)
+            id, time_off_type_id, balance_hours, year
           )
         `)
         .order('last_name'),
