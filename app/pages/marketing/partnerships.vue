@@ -213,8 +213,7 @@
 
             <template #item.actions="{ item }">
               <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" @click.stop="openPartnerDetail(item)" />
-              <v-btn icon="mdi-phone" size="x-small" variant="text" title="Log Call" @click.stop="openLogVisit(item, 'call')" />
-              <v-btn icon="mdi-calendar-check" size="x-small" variant="text" title="Log Visit" @click.stop="openLogVisit(item, 'visit')" />
+              <v-btn icon="mdi-map-marker-plus" size="x-small" variant="text" color="success" title="Log Visit" @click.stop="openLogVisit(item)" />
               <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditPartner(item)" />
             </template>
           </v-data-table>
@@ -282,7 +281,7 @@
                     Last visit: {{ partner.last_visit_date ? formatDate(partner.last_visit_date) : 'Never' }}
                   </v-list-item-subtitle>
                   <template #append>
-                    <v-btn size="x-small" color="primary" variant="tonal" @click.stop="openLogVisit(partner, 'visit')">
+                    <v-btn size="x-small" color="success" variant="tonal" @click.stop="openLogVisit(partner)">
                       Log Visit
                     </v-btn>
                   </template>
@@ -847,8 +846,8 @@
             <!-- Visits -->
             <v-window-item value="visits">
               <div class="d-flex justify-end mb-2">
-                <v-btn size="small" color="primary" variant="tonal" @click="openLogVisit(selectedPartner, 'visit')">
-                  <v-icon start>mdi-plus</v-icon> Log Visit
+                <v-btn size="small" color="success" variant="tonal" @click="openLogVisit(selectedPartner)">
+                  <v-icon start>mdi-map-marker-plus</v-icon> Log Visit
                 </v-btn>
               </div>
               <v-timeline density="compact" side="end">
@@ -938,10 +937,7 @@
         </v-card-text>
 
         <v-card-actions class="pa-4">
-          <v-btn variant="outlined" prepend-icon="mdi-phone" @click="openLogVisit(selectedPartner, 'call')">
-            Log Call
-          </v-btn>
-          <v-btn variant="outlined" prepend-icon="mdi-calendar-check" @click="openLogVisit(selectedPartner, 'visit')">
+          <v-btn variant="outlined" color="success" prepend-icon="mdi-map-marker-plus" @click="openLogVisit(selectedPartner)">
             Log Visit
           </v-btn>
           <v-spacer />
@@ -1074,40 +1070,6 @@
           <v-spacer />
           <v-btn variant="text" @click="showPartnerDialog = false">Cancel</v-btn>
           <v-btn color="primary" :loading="saving" @click="savePartner">{{ editMode ? 'Update' : 'Add' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- LOG VISIT DIALOG -->
-    <v-dialog v-model="showVisitDialog" max-width="500">
-      <v-card>
-        <v-card-title>Log {{ visitForm.visit_type }}</v-card-title>
-        <v-card-text>
-          <v-row dense>
-            <v-col cols="6">
-              <v-text-field v-model="visitForm.visit_date" label="Date" type="date" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-select v-model="visitForm.visit_type" :items="visitTypeOptions" label="Type" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field v-model="visitForm.contacted_person" label="Contacted Person" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea v-model="visitForm.summary" label="Summary *" variant="outlined" density="compact" rows="2" />
-            </v-col>
-            <v-col cols="12">
-              <v-select v-model="visitForm.outcome" :items="outcomeOptions" label="Outcome" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea v-model="visitForm.next_steps" label="Next Steps" variant="outlined" density="compact" rows="2" />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="showVisitDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveVisitLog">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1615,7 +1577,6 @@ const marketingEvents = ref<any[]>([]) // For event selection dropdown
 // Dialog state
 const showDetailDialog = ref(false)
 const showPartnerDialog = ref(false)
-const showVisitDialog = ref(false)
 const showContactDialog = ref(false)
 const showGoalDialog = ref(false)
 const showEventDialog = ref(false)
@@ -1656,7 +1617,6 @@ const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annuall
 const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 const timeOptions = ['morning', 'midday', 'afternoon']
 const agreementOptions = ['none', 'informal', 'formal', 'exclusive']
-const visitTypeOptions = ['visit', 'call', 'email', 'meeting', 'lunch_and_learn', 'ce_event']
 const outcomeOptions = ['successful', 'follow_up_needed', 'no_answer', 'voicemail', 'rescheduled', 'declined']
 const goalTypeOptions = ['referral', 'revenue', 'relationship', 'event', 'custom']
 
@@ -1711,16 +1671,6 @@ const form = reactive({
   needs_followup: false,
   total_referrals_all_time: 0,
   total_revenue_all_time: 0
-})
-
-const visitForm = reactive({
-  partner_id: '',
-  visit_date: new Date().toISOString().split('T')[0],
-  visit_type: 'visit',
-  contacted_person: '',
-  summary: '',
-  outcome: '',
-  next_steps: ''
 })
 
 const contactForm = reactive({
@@ -1995,15 +1945,19 @@ function openEditPartner(partner: any) {
   showPartnerDialog.value = true
 }
 
-function openLogVisit(partner: any, type: string) {
-  visitForm.partner_id = partner.id
-  visitForm.visit_date = new Date().toISOString().split('T')[0]
-  visitForm.visit_type = type
-  visitForm.contacted_person = partner.best_contact_person || partner.contact_name || ''
-  visitForm.summary = ''
-  visitForm.outcome = ''
-  visitForm.next_steps = ''
-  showVisitDialog.value = true
+function openLogVisit(partner: any) {
+  // Pre-populate Quick Visit form with selected partner
+  quickVisitForm.partner_id = partner.id
+  quickVisitForm.clinic_name = partner.name
+  quickVisitForm.visit_date = new Date().toISOString().split('T')[0]
+  quickVisitForm.spoke_to = partner.best_contact_person || partner.contact_name || ''
+  quickVisitForm.items_discussed = []
+  quickVisitForm.next_visit_date = null
+  quickVisitForm.visit_notes = ''
+  
+  // Initialize speech recognition and show dialog
+  initSpeechRecognition()
+  showQuickVisitDialog.value = true
 }
 
 function openAddContact() {
@@ -2113,44 +2067,6 @@ async function savePartner() {
   } catch (e: any) {
     console.error('Error saving partner:', e)
     snackbar.message = e.message || 'Error saving partner'
-    snackbar.color = 'error'
-    snackbar.show = true
-  } finally {
-    saving.value = false
-  }
-}
-
-async function saveVisitLog() {
-  if (!visitForm.summary) {
-    snackbar.message = 'Summary is required'
-    snackbar.color = 'warning'
-    snackbar.show = true
-    return
-  }
-  saving.value = true
-  try {
-    const { error } = await supabase.from('partner_visit_logs').insert({
-      partner_id: visitForm.partner_id,
-      visit_date: visitForm.visit_date,
-      visit_type: visitForm.visit_type,
-      contacted_person: visitForm.contacted_person || null,
-      summary: visitForm.summary,
-      outcome: visitForm.outcome || null,
-      next_steps: visitForm.next_steps || null,
-      logged_by: user.value?.id
-    })
-    if (error) throw error
-    snackbar.message = 'Visit logged'
-    snackbar.color = 'success'
-    snackbar.show = true
-    showVisitDialog.value = false
-    await loadPartners()
-    if (selectedPartner.value?.id === visitForm.partner_id) {
-      await loadPartnerDetails(visitForm.partner_id)
-    }
-  } catch (e: any) {
-    console.error('Error logging visit:', e)
-    snackbar.message = e.message || 'Error logging visit'
     snackbar.color = 'error'
     snackbar.show = true
   } finally {
