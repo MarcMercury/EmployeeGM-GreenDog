@@ -8,7 +8,10 @@
           Manage referral clinics, contacts, and relationship touchpoints
         </p>
       </div>
-      <div class="d-flex gap-2">
+      <div class="d-flex gap-2 flex-wrap">
+        <v-btn color="success" variant="flat" prepend-icon="mdi-map-marker-plus" size="small" class="quick-visit-btn" @click="openQuickVisit">
+          Quick Visit
+        </v-btn>
         <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
           Upload EzyVet Report
         </v-btn>
@@ -1332,6 +1335,167 @@
       </v-card>
     </v-dialog>
 
+    <!-- QUICK VISIT DIALOG - Mobile Optimized -->
+    <v-dialog 
+      v-model="showQuickVisitDialog" 
+      :fullscreen="$vuetify.display.smAndDown"
+      :max-width="$vuetify.display.smAndDown ? undefined : 600"
+      persistent
+      scrollable
+    >
+      <v-card class="quick-visit-card">
+        <v-toolbar color="success" density="compact">
+          <v-btn icon @click="closeQuickVisit">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+          <v-toolbar-title>
+            <v-icon class="mr-2">mdi-map-marker-plus</v-icon>
+            Log Clinic Visit
+          </v-toolbar-title>
+          <v-spacer />
+          <v-btn 
+            variant="text" 
+            :loading="quickVisitSaving" 
+            :disabled="!quickVisitForm.clinic_name"
+            @click="saveQuickVisit"
+          >
+            Save
+          </v-btn>
+        </v-toolbar>
+
+        <v-card-text class="pa-4 quick-visit-form">
+          <!-- Visit Date -->
+          <v-text-field
+            v-model="quickVisitForm.visit_date"
+            label="Visit Date"
+            type="date"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-calendar"
+            class="mb-4"
+          />
+
+          <!-- Clinic Selection -->
+          <v-autocomplete
+            v-model="quickVisitForm.partner_id"
+            :items="partnerOptions"
+            item-title="name"
+            item-value="id"
+            label="Clinic / Partner"
+            placeholder="Search or select clinic..."
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-hospital-building"
+            clearable
+            class="mb-4"
+            @update:model-value="onClinicSelect"
+          >
+            <template #no-data>
+              <v-list-item>
+                <v-list-item-title>No matching clinics</v-list-item-title>
+                <v-list-item-subtitle>Type a custom name below if needed</v-list-item-subtitle>
+              </v-list-item>
+            </template>
+          </v-autocomplete>
+
+          <!-- Custom clinic name if not in list -->
+          <v-text-field
+            v-if="!quickVisitForm.partner_id"
+            v-model="quickVisitForm.clinic_name"
+            label="Clinic Name (if not in list)"
+            placeholder="Enter clinic name..."
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-domain"
+            class="mb-4"
+          />
+
+          <!-- Who they spoke to -->
+          <v-text-field
+            v-model="quickVisitForm.spoke_to"
+            label="Spoke With"
+            placeholder="Who did you meet with?"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-account"
+            class="mb-4"
+          />
+
+          <!-- Items Discussed - Toggleable Pills -->
+          <div class="mb-4">
+            <div class="text-body-2 text-grey-darken-1 mb-2">
+              <v-icon size="small" class="mr-1">mdi-chat-processing</v-icon>
+              Items Discussed
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <v-chip
+                v-for="item in discussionItems"
+                :key="item.value"
+                :color="quickVisitForm.items_discussed.includes(item.value) ? 'success' : 'default'"
+                :variant="quickVisitForm.items_discussed.includes(item.value) ? 'flat' : 'outlined'"
+                size="large"
+                class="discussion-chip"
+                @click="toggleDiscussionItem(item.value)"
+              >
+                <v-icon start size="small">{{ item.icon }}</v-icon>
+                {{ item.label }}
+              </v-chip>
+            </div>
+          </div>
+
+          <!-- Next Visit Date -->
+          <v-text-field
+            v-model="quickVisitForm.next_visit_date"
+            label="Next Visit Date (Optional)"
+            type="date"
+            variant="outlined"
+            density="comfortable"
+            prepend-inner-icon="mdi-calendar-clock"
+            clearable
+            class="mb-4"
+          />
+
+          <!-- Voice-to-Text Notes Section -->
+          <div class="mb-2">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="text-body-2 text-grey-darken-1">
+                <v-icon size="small" class="mr-1">mdi-note-text</v-icon>
+                Visit Notes
+              </div>
+              <v-btn
+                :color="isListening ? 'error' : 'primary'"
+                :variant="isListening ? 'flat' : 'tonal'"
+                size="small"
+                :class="{ 'pulse-animation': isListening }"
+                @mousedown="startListening"
+                @mouseup="stopListening"
+                @mouseleave="stopListening"
+                @touchstart.prevent="startListening"
+                @touchend.prevent="stopListening"
+              >
+                <v-icon start>{{ isListening ? 'mdi-microphone' : 'mdi-microphone-outline' }}</v-icon>
+                {{ isListening ? 'Listening...' : 'Hold to Speak' }}
+              </v-btn>
+            </div>
+            <v-textarea
+              v-model="quickVisitForm.visit_notes"
+              placeholder="Tap the microphone and speak, or type your notes here..."
+              variant="outlined"
+              density="comfortable"
+              rows="4"
+              auto-grow
+              :readonly="isListening"
+              :class="{ 'listening-textarea': isListening }"
+            />
+            <div v-if="!speechSupported" class="text-caption text-warning">
+              <v-icon size="small">mdi-alert</v-icon>
+              Voice input not supported in this browser
+            </div>
+          </div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -1349,6 +1513,7 @@ useHead({ title: 'Medical Partnerships CRM' })
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+const authStore = useAuthStore()
 
 // State
 const loading = ref(false)
@@ -1372,6 +1537,44 @@ const uploadResult = ref<any>(null)
 const loadingUploadLog = ref(false)
 const unmatchedEntries = ref<any[]>([])
 const uploadHistory = ref<any[]>([])
+
+// Quick Visit state
+const showQuickVisitDialog = ref(false)
+const quickVisitSaving = ref(false)
+const isListening = ref(false)
+const speechSupported = ref(false)
+let recognition: any = null
+
+// Discussion items for Quick Visit
+const discussionItems = [
+  { value: 'dental_cleaning', label: 'Dental Cleaning', icon: 'mdi-tooth' },
+  { value: 'extractions', label: 'Extractions', icon: 'mdi-tooth-outline' },
+  { value: 'specialty_surgery', label: 'Specialty Surgery', icon: 'mdi-medical-bag' },
+  { value: 'referral_process', label: 'Referral Process', icon: 'mdi-file-send' },
+  { value: 'general_checkin', label: 'General Check-in', icon: 'mdi-hand-wave' },
+  { value: 'marketing_materials', label: 'Marketing Materials', icon: 'mdi-file-document' },
+  { value: 'lunch_learn', label: 'Lunch & Learn', icon: 'mdi-food' },
+  { value: 'pricing', label: 'Pricing/Packages', icon: 'mdi-currency-usd' }
+]
+
+// Quick Visit form
+const quickVisitForm = reactive({
+  partner_id: null as string | null,
+  clinic_name: '',
+  visit_date: new Date().toISOString().split('T')[0],
+  spoke_to: '',
+  items_discussed: [] as string[],
+  next_visit_date: null as string | null,
+  visit_notes: ''
+})
+
+// Computed for partner options
+const partnerOptions = computed(() => {
+  return partners.value.map(p => ({
+    id: p.id,
+    name: p.name
+  })).sort((a, b) => a.name.localeCompare(b.name))
+})
 
 // Upload Log table headers
 const uploadLogHeaders = [
@@ -2192,6 +2395,171 @@ function closeUploadDialog() {
   uploadResult.value = null
 }
 
+// =====================================================
+// QUICK VISIT FUNCTIONS
+// =====================================================
+
+function openQuickVisit() {
+  // Reset form to defaults
+  quickVisitForm.partner_id = null
+  quickVisitForm.clinic_name = ''
+  quickVisitForm.visit_date = new Date().toISOString().split('T')[0]
+  quickVisitForm.spoke_to = ''
+  quickVisitForm.items_discussed = []
+  quickVisitForm.next_visit_date = null
+  quickVisitForm.visit_notes = ''
+  
+  // Initialize speech recognition if available
+  initSpeechRecognition()
+  
+  showQuickVisitDialog.value = true
+}
+
+function closeQuickVisit() {
+  stopListening()
+  showQuickVisitDialog.value = false
+}
+
+function onClinicSelect(partnerId: string | null) {
+  if (partnerId) {
+    const partner = partners.value.find(p => p.id === partnerId)
+    if (partner) {
+      quickVisitForm.clinic_name = partner.name
+    }
+  } else {
+    quickVisitForm.clinic_name = ''
+  }
+}
+
+function toggleDiscussionItem(item: string) {
+  const idx = quickVisitForm.items_discussed.indexOf(item)
+  if (idx >= 0) {
+    quickVisitForm.items_discussed.splice(idx, 1)
+  } else {
+    quickVisitForm.items_discussed.push(item)
+  }
+}
+
+// Speech Recognition
+function initSpeechRecognition() {
+  if (typeof window === 'undefined') return
+  
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  
+  if (!SpeechRecognition) {
+    speechSupported.value = false
+    return
+  }
+  
+  speechSupported.value = true
+  recognition = new SpeechRecognition()
+  recognition.continuous = true
+  recognition.interimResults = true
+  recognition.lang = 'en-US'
+  
+  recognition.onresult = (event: any) => {
+    let transcript = ''
+    for (let i = 0; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript
+    }
+    quickVisitForm.visit_notes = transcript
+  }
+  
+  recognition.onerror = (event: any) => {
+    console.error('[SpeechRecognition] Error:', event.error)
+    isListening.value = false
+  }
+  
+  recognition.onend = () => {
+    isListening.value = false
+  }
+}
+
+function startListening() {
+  if (!speechSupported.value || !recognition) {
+    initSpeechRecognition()
+    if (!recognition) return
+  }
+  
+  try {
+    recognition.start()
+    isListening.value = true
+  } catch (e) {
+    console.error('[SpeechRecognition] Start error:', e)
+  }
+}
+
+function stopListening() {
+  if (recognition && isListening.value) {
+    try {
+      recognition.stop()
+    } catch (e) {
+      console.error('[SpeechRecognition] Stop error:', e)
+    }
+  }
+  isListening.value = false
+}
+
+async function saveQuickVisit() {
+  if (!quickVisitForm.clinic_name && !quickVisitForm.partner_id) {
+    snackbar.message = 'Please select or enter a clinic name'
+    snackbar.color = 'warning'
+    snackbar.show = true
+    return
+  }
+  
+  quickVisitSaving.value = true
+  
+  try {
+    // Get profile_id from auth store
+    const profileId = authStore.profile?.id || null
+    
+    const { error } = await supabase.from('clinic_visits').insert({
+      user_id: user.value?.id,
+      profile_id: profileId,
+      partner_id: quickVisitForm.partner_id,
+      clinic_name: quickVisitForm.clinic_name || 
+        partners.value.find(p => p.id === quickVisitForm.partner_id)?.name || 'Unknown',
+      visit_date: quickVisitForm.visit_date,
+      spoke_to: quickVisitForm.spoke_to || null,
+      items_discussed: quickVisitForm.items_discussed,
+      next_visit_date: quickVisitForm.next_visit_date || null,
+      visit_notes: quickVisitForm.visit_notes || null,
+      logged_via: 'web'
+    })
+    
+    if (error) throw error
+    
+    // If next_visit_date is set and partner_id exists, update partner's next_followup_date
+    if (quickVisitForm.next_visit_date && quickVisitForm.partner_id) {
+      await supabase
+        .from('referral_partners')
+        .update({ 
+          next_followup_date: quickVisitForm.next_visit_date,
+          needs_followup: true 
+        })
+        .eq('id', quickVisitForm.partner_id)
+    }
+    
+    snackbar.message = 'Visit Logged ✓'
+    snackbar.color = 'success'
+    snackbar.show = true
+    
+    closeQuickVisit()
+    
+    // Refresh partners to show updated last_visit_date
+    await loadPartners()
+    
+  } catch (err: any) {
+    console.error('[QuickVisit] Save error:', err)
+    snackbar.message = err.message || 'Failed to log visit'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    quickVisitSaving.value = false
+  }
+}
+
 // Upload Log functions
 async function loadUploadLog() {
   loadingUploadLog.value = true
@@ -2307,5 +2675,71 @@ onMounted(() => {
 <style scoped>
 .partnerships-page {
   max-width: 1400px;
+}
+
+/* Quick Visit Button - High Visibility */
+.quick-visit-btn {
+  min-height: 44px;
+  font-weight: 600;
+}
+
+/* Quick Visit Dialog Styles */
+.quick-visit-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-visit-form {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Discussion Chips - Large Touch Targets */
+.discussion-chip {
+  min-height: 44px !important;
+  padding: 0 16px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.discussion-chip:hover {
+  transform: scale(1.02);
+}
+
+/* Voice-to-Text Styles */
+.listening-textarea :deep(.v-field) {
+  border-color: #f44336 !important;
+  background-color: rgba(244, 67, 54, 0.05);
+}
+
+/* Pulse Animation for Microphone */
+.pulse-animation {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
+/* Mobile Optimizations */
+@media (max-width: 600px) {
+  .quick-visit-form {
+    padding: 16px !important;
+  }
+  
+  .discussion-chip {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
 }
 </style>
