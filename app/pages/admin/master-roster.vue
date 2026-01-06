@@ -1025,7 +1025,7 @@ const fetchAllData = async () => {
           position:job_positions(id, title),
           location:locations(id, name),
           compensation:employee_compensation(*),
-          profile:profiles(id, role, is_active, email, auth_user_id),
+          profile:profiles!employees_profile_id_fkey(id, role, is_active, email, auth_user_id),
           time_off_balances:employee_time_off_balances(
             id, time_off_type_id, balance_hours, year,
             time_off_type:time_off_types(name, code)
