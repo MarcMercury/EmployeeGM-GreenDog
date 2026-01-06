@@ -1015,7 +1015,7 @@ const formatPay = (comp: Employee['compensation']) => {
 const fetchAllData = async () => {
   loading.value = true
   try {
-    const [empRes, deptRes, posRes, locRes, typeRes] = await Promise.all([
+    const [empRes, deptRes, posRes, locRes, typeRes, ptoRes, profileRes] = await Promise.all([
       supabase
         .from('employees')
         .select(`
@@ -1023,24 +1023,45 @@ const fetchAllData = async () => {
           department:departments(id, name),
           position:job_positions(id, title),
           location:locations(id, name),
-          compensation:employee_compensation(*),
-          profile:profiles!employees_profile_id_fkey(id, role, is_active, email, auth_user_id),
-          time_off_balances:employee_time_off_balances(
-            id, time_off_type_id, balance_hours, year
-          )
+          compensation:employee_compensation(*)
         `)
         .order('last_name'),
       supabase.from('departments').select('id, name').order('name'),
       supabase.from('job_positions').select('id, title').order('title'),
       supabase.from('locations').select('id, name').order('name'),
-      supabase.from('time_off_types').select('id, name, code').order('name')
+      supabase.from('time_off_types').select('id, name, code').order('name'),
+      // Fetch PTO balances separately to avoid PostgREST relationship issues
+      supabase.from('employee_time_off_balances').select('id, employee_id, time_off_type_id, balance_hours, year'),
+      // Fetch profiles separately
+      supabase.from('profiles').select('id, role, is_active, email, auth_user_id')
     ])
 
     if (empRes.error) throw empRes.error
 
+    // Build a map of employee_id -> time_off_balances
+    const ptoByEmployee = new Map<string, any[]>()
+    if (ptoRes.data) {
+      for (const bal of ptoRes.data) {
+        if (!ptoByEmployee.has(bal.employee_id)) {
+          ptoByEmployee.set(bal.employee_id, [])
+        }
+        ptoByEmployee.get(bal.employee_id)!.push(bal)
+      }
+    }
+
+    // Build a map of profile_id -> profile
+    const profilesById = new Map<string, any>()
+    if (profileRes.data) {
+      for (const p of profileRes.data) {
+        profilesById.set(p.id, p)
+      }
+    }
+
     employees.value = (empRes.data || []).map((e: any) => ({
       ...e,
-      full_name: `${e.first_name} ${e.last_name}`
+      full_name: `${e.first_name} ${e.last_name}`,
+      time_off_balances: ptoByEmployee.get(e.id) || [],
+      profile: e.profile_id ? profilesById.get(e.profile_id) || null : null
     }))
     departments.value = deptRes.data || []
     positions.value = posRes.data || []
