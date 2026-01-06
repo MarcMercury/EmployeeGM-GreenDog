@@ -183,7 +183,7 @@
     </v-card>
 
     <!-- Master Edit Dialog -->
-    <v-dialog v-model="editDialog" max-width="900" scrollable>
+    <v-dialog v-model="editDialog" max-width="1000" scrollable>
       <v-card>
         <v-card-title class="d-flex align-center bg-primary text-white">
           <v-icon start>mdi-account-edit</v-icon>
@@ -194,60 +194,84 @@
           </v-btn>
         </v-card-title>
 
-        <v-card-text class="pa-4" style="max-height: 70vh; overflow-y: auto;">
-          <v-form ref="editForm" v-model="formValid">
-            <!-- Personal Information -->
-            <p class="text-overline text-grey mb-2">PERSONAL INFORMATION</p>
-            <v-row dense>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.first_name"
-                  label="First Name"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.last_name"
-                  label="Last Name"
-                  variant="outlined"
-                  density="compact"
-                  :rules="[v => !!v || 'Required']"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.preferred_name"
-                  label="Preferred Name"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.employee_number"
-                  label="Employee #"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.date_of_birth"
-                  label="Date of Birth"
-                  type="date"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.hire_date"
-                  label="Hire Date"
-                  type="date"
-                  variant="outlined"
+        <!-- Tabs -->
+        <v-tabs v-model="editDialogTab" bg-color="grey-lighten-4">
+          <v-tab value="info">
+            <v-icon start size="small">mdi-account</v-icon>
+            Personal Info
+          </v-tab>
+          <v-tab value="compensation">
+            <v-icon start size="small">mdi-cash</v-icon>
+            Compensation
+          </v-tab>
+          <v-tab value="pto">
+            <v-icon start size="small">mdi-beach</v-icon>
+            PTO Balances
+          </v-tab>
+          <v-tab value="history">
+            <v-icon start size="small">mdi-history</v-icon>
+            Change History
+            <v-badge v-if="changeHistory.length" :content="changeHistory.length" color="info" inline class="ml-1" />
+          </v-tab>
+        </v-tabs>
+
+        <v-card-text class="pa-4" style="max-height: 65vh; overflow-y: auto;">
+          <v-window v-model="editDialogTab">
+            <!-- PERSONAL INFO TAB -->
+            <v-window-item value="info">
+              <v-form ref="editFormRef" v-model="formValid">
+                <!-- Personal Information -->
+                <p class="text-overline text-grey mb-2">PERSONAL INFORMATION</p>
+                <v-row dense>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.first_name"
+                      label="First Name"
+                      variant="outlined"
+                      density="compact"
+                      :rules="[v => !!v || 'Required']"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.last_name"
+                      label="Last Name"
+                      variant="outlined"
+                      density="compact"
+                      :rules="[v => !!v || 'Required']"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.preferred_name"
+                      label="Preferred Name"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.employee_number"
+                      label="Employee #"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.date_of_birth"
+                      label="Date of Birth"
+                      type="date"
+                      variant="outlined"
+                      density="compact"
+                    />
+                  </v-col>
+                  <v-col cols="12" md="4">
+                    <v-text-field
+                      v-model="editForm.hire_date"
+                      label="Hire Date"
+                      type="date"
+                      variant="outlined"
                   density="compact"
                 />
               </v-col>
@@ -288,6 +312,76 @@
                 <v-text-field
                   v-model="editForm.phone_work"
                   label="Work Phone"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <v-divider class="my-4" />
+
+            <!-- Address -->
+            <p class="text-overline text-grey mb-2">ADDRESS</p>
+            <v-row dense>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="editForm.address_street"
+                  label="Street Address"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="5">
+                <v-text-field
+                  v-model="editForm.address_city"
+                  label="City"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-text-field
+                  v-model="editForm.address_state"
+                  label="State"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="6" md="4">
+                <v-text-field
+                  v-model="editForm.address_zip"
+                  label="ZIP Code"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <v-divider class="my-4" />
+
+            <!-- Emergency Contact -->
+            <p class="text-overline text-grey mb-2">EMERGENCY CONTACT</p>
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="editForm.emergency_contact_name"
+                  label="Contact Name"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="editForm.emergency_contact_phone"
+                  label="Contact Phone"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="editForm.emergency_contact_relationship"
+                  label="Relationship"
                   variant="outlined"
                   density="compact"
                 />
@@ -365,73 +459,10 @@
                   clearable
                 />
               </v-col>
-            </v-row>
-
-            <v-divider class="my-4" />
-
-            <!-- Compensation -->
-            <p class="text-overline text-grey mb-2">COMPENSATION</p>
-            <v-row dense>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="editForm.pay_type"
-                  :items="['Hourly', 'Salary']"
-                  label="Pay Type"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-text-field
-                  v-model.number="editForm.pay_rate"
-                  label="Pay Rate"
-                  type="number"
-                  prefix="$"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-select
-                  v-model="editForm.comp_employment_status"
-                  :items="['Full Time', 'Part Time', 'Contractor', 'Per Diem']"
-                  label="Comp Status"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="3">
-                <v-checkbox
-                  v-model="editForm.benefits_enrolled"
-                  label="Benefits Enrolled"
-                  density="compact"
-                  hide-details
-                />
-              </v-col>
               <v-col cols="12" md="4">
                 <v-text-field
-                  v-model.number="editForm.ce_budget_total"
-                  label="CE Budget Total"
-                  type="number"
-                  prefix="$"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model.number="editForm.ce_budget_used"
-                  label="CE Budget Used"
-                  type="number"
-                  prefix="$"
-                  variant="outlined"
-                  density="compact"
-                />
-              </v-col>
-              <v-col cols="12" md="4">
-                <v-text-field
-                  v-model="editForm.effective_date"
-                  label="Effective Date"
+                  v-model="editForm.termination_date"
+                  label="Termination Date"
                   type="date"
                   variant="outlined"
                   density="compact"
@@ -447,7 +478,7 @@
               <v-col cols="12" md="4">
                 <v-select
                   v-model="editForm.profile_role"
-                  :items="['admin', 'user']"
+                  :items="['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user']"
                   label="System Role"
                   variant="outlined"
                   density="compact"
@@ -474,7 +505,161 @@
               rows="2"
               auto-grow
             />
-          </v-form>
+              </v-form>
+            </v-window-item>
+
+            <!-- COMPENSATION TAB -->
+            <v-window-item value="compensation">
+              <p class="text-overline text-grey mb-2">COMPENSATION DETAILS</p>
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="editForm.pay_type"
+                    :items="['Hourly', 'Salary']"
+                    label="Pay Type"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="editForm.pay_rate"
+                    label="Pay Rate"
+                    type="number"
+                    prefix="$"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="editForm.comp_employment_status"
+                    :items="['Full Time', 'Part Time', 'Contractor', 'Per Diem']"
+                    label="Comp Status"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model="editForm.effective_date"
+                    label="Effective Date"
+                    type="date"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-checkbox
+                    v-model="editForm.benefits_enrolled"
+                    label="Benefits Enrolled"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <p class="text-overline text-grey mb-2">CE BUDGET</p>
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="editForm.ce_budget_total"
+                    label="CE Budget Total"
+                    type="number"
+                    prefix="$"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    v-model.number="editForm.ce_budget_used"
+                    label="CE Budget Used"
+                    type="number"
+                    prefix="$"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field
+                    :model-value="(editForm.ce_budget_total || 0) - (editForm.ce_budget_used || 0)"
+                    label="CE Budget Remaining"
+                    prefix="$"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                    bg-color="grey-lighten-4"
+                  />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- PTO BALANCES TAB -->
+            <v-window-item value="pto">
+              <p class="text-overline text-grey mb-2">TIME OFF BALANCES ({{ new Date().getFullYear() }})</p>
+              <v-row dense>
+                <v-col v-for="tot in timeOffTypes" :key="tot.id" cols="12" md="4">
+                  <v-text-field
+                    v-model.number="editForm.pto_balances[tot.id]"
+                    :label="`${tot.name} (${tot.code})`"
+                    type="number"
+                    suffix="hrs"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-alert type="info" variant="tonal" class="mt-4">
+                <v-icon start>mdi-information</v-icon>
+                Changes to PTO balances will be logged in the Change History tab.
+              </v-alert>
+            </v-window-item>
+
+            <!-- CHANGE HISTORY TAB -->
+            <v-window-item value="history">
+              <div v-if="loadingHistory" class="text-center py-8">
+                <v-progress-circular indeterminate color="primary" />
+                <p class="text-body-2 text-grey mt-2">Loading change history...</p>
+              </div>
+
+              <div v-else-if="changeHistory.length === 0" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-history</v-icon>
+                <p class="text-body-2 text-grey mt-2">No changes logged yet</p>
+              </div>
+
+              <v-timeline v-else density="compact" side="end">
+                <v-timeline-item
+                  v-for="change in changeHistory"
+                  :key="change.id"
+                  size="small"
+                  :dot-color="getChangeColor(change.table_name)"
+                >
+                  <template #opposite>
+                    <span class="text-caption text-grey">
+                      {{ formatChangeDate(change.created_at) }}
+                    </span>
+                  </template>
+                  <v-card variant="tonal" density="compact" class="pa-2">
+                    <div class="d-flex align-center gap-2">
+                      <v-chip size="x-small" :color="getChangeColor(change.table_name)" label>
+                        {{ change.field_label || change.field_name }}
+                      </v-chip>
+                      <span class="text-caption">by {{ change.changed_by_name }}</span>
+                    </div>
+                    <div class="text-body-2 mt-1">
+                      <span class="text-decoration-line-through text-grey">{{ change.old_value || '(empty)' }}</span>
+                      <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>
+                      <span class="font-weight-medium">{{ change.new_value || '(empty)' }}</span>
+                    </div>
+                  </v-card>
+                </v-timeline-item>
+              </v-timeline>
+            </v-window-item>
+          </v-window>
         </v-card-text>
 
         <v-divider />
@@ -501,7 +686,7 @@
             color="primary"
             variant="flat"
             :loading="saving"
-            :disabled="!formValid"
+            :disabled="!formValid && editDialogTab === 'info'"
             @click="saveChanges"
           >
             Save All Changes
@@ -584,6 +769,13 @@ interface Employee {
   termination_date: string | null
   date_of_birth: string | null
   notes_internal: string | null
+  address_street: string | null
+  address_city: string | null
+  address_state: string | null
+  address_zip: string | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
+  emergency_contact_relationship: string | null
   department: { id: string; name: string } | null
   position: { id: string; title: string } | null
   location: { id: string; name: string } | null
@@ -598,6 +790,20 @@ interface Employee {
     effective_date: string | null
   } | null
   profile: {
+    id: string
+    role: string
+    is_active: boolean
+    email: string
+    auth_user_id: string | null
+  } | null
+  time_off_balances: {
+    id: string
+    time_off_type_id: string
+    balance_hours: number
+    year: number
+    time_off_type: { name: string; code: string } | null
+  }[] | null
+}
     id: string
     role: string
     is_active: boolean
@@ -621,6 +827,7 @@ interface Location {
 }
 
 const supabase = useSupabaseClient()
+const authStore = useAuthStore()
 
 // State
 const loading = ref(true)
@@ -632,12 +839,17 @@ const employees = ref<Employee[]>([])
 const departments = ref<Department[]>([])
 const positions = ref<Position[]>([])
 const locations = ref<Location[]>([])
+const timeOffTypes = ref<{ id: string; name: string; code: string }[]>([])
 
 // Dialog
 const editDialog = ref(false)
+const editDialogTab = ref('info') // 'info' | 'compensation' | 'pto' | 'history'
 const editingEmployee = ref<Employee | null>(null)
+const originalFormData = ref<any>(null) // For change tracking
 const formValid = ref(false)
-const editForm = ref({
+
+// Edit form - using reactive for better pre-population
+const editForm = reactive({
   // Employee fields
   first_name: '',
   last_name: '',
@@ -645,10 +857,18 @@ const editForm = ref({
   employee_number: '',
   date_of_birth: '',
   hire_date: '',
+  termination_date: '',
   email_work: '',
   email_personal: '',
   phone_mobile: '',
   phone_work: '',
+  address_street: '',
+  address_city: '',
+  address_state: '',
+  address_zip: '',
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
+  emergency_contact_relationship: '',
   department_id: null as string | null,
   position_id: null as string | null,
   location_id: null as string | null,
@@ -666,8 +886,14 @@ const editForm = ref({
   effective_date: '',
   // Profile fields
   profile_role: 'user',
-  profile_is_active: true
+  profile_is_active: true,
+  // PTO balances (keyed by time_off_type_id)
+  pto_balances: {} as Record<string, number>
 })
+
+// Change History
+const changeHistory = ref<any[]>([])
+const loadingHistory = ref(false)
 
 // Snackbar
 const snackbar = ref(false)
@@ -767,6 +993,26 @@ const formatDate = (dateStr: string | null) => {
   })
 }
 
+const formatChangeDate = (dateStr: string | null) => {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  })
+}
+
+const getChangeColor = (tableName: string) => {
+  const colors: Record<string, string> = {
+    employees: 'primary',
+    employee_compensation: 'success',
+    profiles: 'warning',
+    employee_time_off_balances: 'info'
+  }
+  return colors[tableName] || 'grey'
+}
+
 const formatPay = (comp: Employee['compensation']) => {
   if (!comp?.pay_rate) return '—'
   const rate = comp.pay_rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -776,7 +1022,7 @@ const formatPay = (comp: Employee['compensation']) => {
 const fetchAllData = async () => {
   loading.value = true
   try {
-    const [empRes, deptRes, posRes, locRes] = await Promise.all([
+    const [empRes, deptRes, posRes, locRes, typeRes] = await Promise.all([
       supabase
         .from('employees')
         .select(`
@@ -785,12 +1031,17 @@ const fetchAllData = async () => {
           position:job_positions(id, title),
           location:locations(id, name),
           compensation:employee_compensation(*),
-          profile:profiles(id, role, is_active, email)
+          profile:profiles(id, role, is_active, email, auth_user_id),
+          time_off_balances:employee_time_off_balances(
+            id, time_off_type_id, balance_hours, year,
+            time_off_type:time_off_types(name, code)
+          )
         `)
         .order('last_name'),
       supabase.from('departments').select('id, name').order('name'),
       supabase.from('job_positions').select('id, title').order('title'),
-      supabase.from('locations').select('id, name').order('name')
+      supabase.from('locations').select('id, name').order('name'),
+      supabase.from('time_off_types').select('id, name, code').order('name')
     ])
 
     if (empRes.error) throw empRes.error
@@ -802,6 +1053,7 @@ const fetchAllData = async () => {
     departments.value = deptRes.data || []
     positions.value = posRes.data || []
     locations.value = locRes.data || []
+    timeOffTypes.value = typeRes.data || []
   } catch (err) {
     console.error('Error fetching data:', err)
     showNotification('Failed to load data', 'error')
@@ -810,21 +1062,47 @@ const fetchAllData = async () => {
   }
 }
 
-const openEditDialog = (employee: Employee) => {
+const openEditDialog = async (employee: Employee) => {
   editingEmployee.value = employee
+  editDialogTab.value = 'info'
   
-  // Populate form with employee data
-  editForm.value = {
-    first_name: employee.first_name,
-    last_name: employee.last_name,
+  // Build PTO balances object keyed by time_off_type_id
+  const ptoBalances: Record<string, number> = {}
+  const currentYear = new Date().getFullYear()
+  if (employee.time_off_balances) {
+    for (const bal of employee.time_off_balances) {
+      if (bal.year === currentYear) {
+        ptoBalances[bal.time_off_type_id] = bal.balance_hours || 0
+      }
+    }
+  }
+  // Ensure all time off types have an entry
+  for (const tot of timeOffTypes.value) {
+    if (!(tot.id in ptoBalances)) {
+      ptoBalances[tot.id] = 0
+    }
+  }
+  
+  // Populate form with employee data using Object.assign for reactive
+  Object.assign(editForm, {
+    first_name: employee.first_name || '',
+    last_name: employee.last_name || '',
     preferred_name: employee.preferred_name || '',
     employee_number: employee.employee_number || '',
     date_of_birth: employee.date_of_birth || '',
     hire_date: employee.hire_date || '',
+    termination_date: employee.termination_date || '',
     email_work: employee.email_work || '',
     email_personal: employee.email_personal || '',
     phone_mobile: employee.phone_mobile || '',
     phone_work: employee.phone_work || '',
+    address_street: employee.address_street || '',
+    address_city: employee.address_city || '',
+    address_state: employee.address_state || '',
+    address_zip: employee.address_zip || '',
+    emergency_contact_name: employee.emergency_contact_name || '',
+    emergency_contact_phone: employee.emergency_contact_phone || '',
+    emergency_contact_relationship: employee.emergency_contact_relationship || '',
     department_id: employee.department_id,
     position_id: employee.position_id,
     location_id: employee.location_id,
@@ -842,38 +1120,187 @@ const openEditDialog = (employee: Employee) => {
     effective_date: employee.compensation?.effective_date || new Date().toISOString().split('T')[0],
     // Profile
     profile_role: employee.profile?.role || 'user',
-    profile_is_active: employee.profile?.is_active ?? true
-  }
+    profile_is_active: employee.profile?.is_active ?? true,
+    // PTO
+    pto_balances: ptoBalances
+  })
+  
+  // Store original data for change tracking
+  originalFormData.value = JSON.parse(JSON.stringify(editForm))
+  
+  // Load change history for this employee
+  loadChangeHistory(employee.id)
   
   editDialog.value = true
+}
+
+// Load change history for an employee
+const loadChangeHistory = async (employeeId: string) => {
+  loadingHistory.value = true
+  try {
+    const { data, error } = await supabase
+      .from('employee_change_log')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    
+    if (error) throw error
+    changeHistory.value = data || []
+  } catch (err) {
+    console.error('Error loading change history:', err)
+    changeHistory.value = []
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+// Field labels for change log
+const fieldLabels: Record<string, string> = {
+  first_name: 'First Name',
+  last_name: 'Last Name',
+  preferred_name: 'Preferred Name',
+  employee_number: 'Employee Number',
+  date_of_birth: 'Date of Birth',
+  hire_date: 'Hire Date',
+  termination_date: 'Termination Date',
+  email_work: 'Work Email',
+  email_personal: 'Personal Email',
+  phone_mobile: 'Mobile Phone',
+  phone_work: 'Work Phone',
+  address_street: 'Street Address',
+  address_city: 'City',
+  address_state: 'State',
+  address_zip: 'ZIP Code',
+  emergency_contact_name: 'Emergency Contact Name',
+  emergency_contact_phone: 'Emergency Contact Phone',
+  emergency_contact_relationship: 'Emergency Contact Relationship',
+  department_id: 'Department',
+  position_id: 'Position',
+  location_id: 'Location',
+  employment_type: 'Employment Type',
+  employment_status: 'Employment Status',
+  manager_employee_id: 'Manager',
+  notes_internal: 'Internal Notes',
+  pay_type: 'Pay Type',
+  pay_rate: 'Pay Rate',
+  comp_employment_status: 'Compensation Status',
+  benefits_enrolled: 'Benefits Enrolled',
+  ce_budget_total: 'CE Budget Total',
+  ce_budget_used: 'CE Budget Used',
+  effective_date: 'Effective Date',
+  profile_role: 'System Role',
+  profile_is_active: 'Profile Active'
+}
+
+// Log changes to the change log
+const logChanges = async (employeeId: string, employeeName: string, changes: Array<{table: string, field: string, oldValue: any, newValue: any}>) => {
+  if (changes.length === 0) return
+  
+  const user = await supabase.auth.getUser()
+  if (!user.data.user) return
+  
+  const changerName = authStore.profile 
+    ? `${authStore.profile.first_name || ''} ${authStore.profile.last_name || ''}`.trim()
+    : user.data.user.email || 'Unknown'
+  
+  const changeRecords = changes.map(c => ({
+    changed_by_user_id: user.data.user!.id,
+    changed_by_profile_id: authStore.profile?.id || null,
+    changed_by_name: changerName,
+    employee_id: employeeId,
+    employee_name: employeeName,
+    table_name: c.table,
+    field_name: c.field,
+    field_label: fieldLabels[c.field] || c.field,
+    old_value: c.oldValue?.toString() || null,
+    new_value: c.newValue?.toString() || null,
+    change_source: 'master_roster'
+  }))
+  
+  try {
+    await supabase.from('employee_change_log').insert(changeRecords)
+  } catch (err) {
+    console.error('Failed to log changes:', err)
+  }
+}
+
+// Detect changes between original and current form
+const detectChanges = (original: any, current: any, tableName: string, fields: string[]): Array<{table: string, field: string, oldValue: any, newValue: any}> => {
+  const changes: Array<{table: string, field: string, oldValue: any, newValue: any}> = []
+  
+  for (const field of fields) {
+    const oldVal = original[field]
+    const newVal = current[field]
+    
+    // Compare values (handle null/undefined/empty string as equivalent)
+    const oldNorm = oldVal === null || oldVal === undefined || oldVal === '' ? null : oldVal
+    const newNorm = newVal === null || newVal === undefined || newVal === '' ? null : newVal
+    
+    if (oldNorm !== newNorm) {
+      changes.push({ table: tableName, field, oldValue: oldVal, newValue: newVal })
+    }
+  }
+  
+  return changes
 }
 
 const saveChanges = async () => {
   if (!editingEmployee.value) return
   
   saving.value = true
+  const allChanges: Array<{table: string, field: string, oldValue: any, newValue: any}> = []
+  
   try {
+    // Detect employee field changes
+    const employeeFields = [
+      'first_name', 'last_name', 'preferred_name', 'employee_number',
+      'date_of_birth', 'hire_date', 'termination_date',
+      'email_work', 'email_personal', 'phone_mobile', 'phone_work',
+      'address_street', 'address_city', 'address_state', 'address_zip',
+      'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
+      'department_id', 'position_id', 'location_id',
+      'employment_type', 'employment_status', 'manager_employee_id', 'notes_internal'
+    ]
+    allChanges.push(...detectChanges(originalFormData.value, editForm, 'employees', employeeFields))
+    
+    // Detect compensation changes
+    const compFields = ['pay_type', 'pay_rate', 'comp_employment_status', 'benefits_enrolled', 'ce_budget_total', 'ce_budget_used', 'effective_date']
+    allChanges.push(...detectChanges(originalFormData.value, editForm, 'employee_compensation', compFields))
+    
+    // Detect profile changes
+    const profileFields = ['profile_role', 'profile_is_active']
+    allChanges.push(...detectChanges(originalFormData.value, editForm, 'profiles', profileFields))
+
     // 1. Update employees table
     const { error: empError } = await supabase
       .from('employees')
       .update({
-        first_name: editForm.value.first_name,
-        last_name: editForm.value.last_name,
-        preferred_name: editForm.value.preferred_name || null,
-        employee_number: editForm.value.employee_number || null,
-        date_of_birth: editForm.value.date_of_birth || null,
-        hire_date: editForm.value.hire_date || null,
-        email_work: editForm.value.email_work || null,
-        email_personal: editForm.value.email_personal || null,
-        phone_mobile: editForm.value.phone_mobile || null,
-        phone_work: editForm.value.phone_work || null,
-        department_id: editForm.value.department_id,
-        position_id: editForm.value.position_id,
-        location_id: editForm.value.location_id,
-        employment_type: editForm.value.employment_type,
-        employment_status: editForm.value.employment_status,
-        manager_employee_id: editForm.value.manager_employee_id,
-        notes_internal: editForm.value.notes_internal || null,
+        first_name: editForm.first_name,
+        last_name: editForm.last_name,
+        preferred_name: editForm.preferred_name || null,
+        employee_number: editForm.employee_number || null,
+        date_of_birth: editForm.date_of_birth || null,
+        hire_date: editForm.hire_date || null,
+        termination_date: editForm.termination_date || null,
+        email_work: editForm.email_work || null,
+        email_personal: editForm.email_personal || null,
+        phone_mobile: editForm.phone_mobile || null,
+        phone_work: editForm.phone_work || null,
+        address_street: editForm.address_street || null,
+        address_city: editForm.address_city || null,
+        address_state: editForm.address_state || null,
+        address_zip: editForm.address_zip || null,
+        emergency_contact_name: editForm.emergency_contact_name || null,
+        emergency_contact_phone: editForm.emergency_contact_phone || null,
+        emergency_contact_relationship: editForm.emergency_contact_relationship || null,
+        department_id: editForm.department_id,
+        position_id: editForm.position_id,
+        location_id: editForm.location_id,
+        employment_type: editForm.employment_type,
+        employment_status: editForm.employment_status,
+        manager_employee_id: editForm.manager_employee_id,
+        notes_internal: editForm.notes_internal || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', editingEmployee.value.id)
@@ -883,24 +1310,22 @@ const saveChanges = async () => {
     // 2. Update or insert compensation
     const compData = {
       employee_id: editingEmployee.value.id,
-      pay_type: editForm.value.pay_type,
-      pay_rate: editForm.value.pay_rate || null,
-      employment_status: editForm.value.comp_employment_status,
-      benefits_enrolled: editForm.value.benefits_enrolled,
-      ce_budget_total: editForm.value.ce_budget_total || 0,
-      ce_budget_used: editForm.value.ce_budget_used || 0,
-      effective_date: editForm.value.effective_date || null
+      pay_type: editForm.pay_type,
+      pay_rate: editForm.pay_rate || null,
+      employment_status: editForm.comp_employment_status,
+      benefits_enrolled: editForm.benefits_enrolled,
+      ce_budget_total: editForm.ce_budget_total || 0,
+      ce_budget_used: editForm.ce_budget_used || 0,
+      effective_date: editForm.effective_date || null
     }
 
     if (editingEmployee.value.compensation?.id) {
-      // Update existing
       const { error: compError } = await supabase
         .from('employee_compensation')
         .update(compData)
         .eq('id', editingEmployee.value.compensation.id)
       if (compError) throw compError
     } else {
-      // Insert new
       const { error: compError } = await supabase
         .from('employee_compensation')
         .insert(compData)
@@ -912,8 +1337,8 @@ const saveChanges = async () => {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          role: editForm.value.profile_role,
-          is_active: editForm.value.profile_is_active,
+          role: editForm.profile_role,
+          is_active: editForm.profile_is_active,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingEmployee.value.profile_id)
@@ -921,9 +1346,44 @@ const saveChanges = async () => {
       if (profileError) throw profileError
     }
 
-    showNotification('Employee updated successfully')
+    // 4. Update PTO balances
+    const currentYear = new Date().getFullYear()
+    for (const [typeId, hours] of Object.entries(editForm.pto_balances)) {
+      // Check if old value was different
+      const oldHours = originalFormData.value?.pto_balances?.[typeId] || 0
+      if (hours !== oldHours) {
+        const typeName = timeOffTypes.value.find(t => t.id === typeId)?.name || typeId
+        allChanges.push({
+          table: 'employee_time_off_balances',
+          field: `pto_${typeName.toLowerCase().replace(/\s+/g, '_')}`,
+          oldValue: oldHours,
+          newValue: hours
+        })
+      }
+      
+      // Upsert the balance
+      await supabase
+        .from('employee_time_off_balances')
+        .upsert({
+          employee_id: editingEmployee.value.id,
+          time_off_type_id: typeId,
+          balance_hours: hours,
+          year: currentYear
+        }, { onConflict: 'employee_id,time_off_type_id,year' })
+    }
+
+    // 5. Log all changes
+    if (allChanges.length > 0) {
+      await logChanges(
+        editingEmployee.value.id,
+        `${editingEmployee.value.first_name} ${editingEmployee.value.last_name}`,
+        allChanges
+      )
+    }
+
+    showNotification(`Employee updated successfully${allChanges.length > 0 ? ` (${allChanges.length} changes logged)` : ''}`)
     editDialog.value = false
-    await fetchAllData() // Refresh data
+    await fetchAllData()
   } catch (err: any) {
     console.error('Error saving:', err)
     showNotification(err.message || 'Failed to save changes', 'error')
