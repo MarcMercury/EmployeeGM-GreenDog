@@ -483,6 +483,18 @@
           <v-chip size="small" variant="tonal" color="grey">
             ID: {{ editingEmployee?.id?.slice(0, 8) }}...
           </v-chip>
+          <v-btn
+            v-if="editingEmployee?.profile?.id && canDisableLogin(editingEmployee)"
+            color="error"
+            variant="outlined"
+            size="small"
+            prepend-icon="mdi-lock-off"
+            :loading="disablingLogin"
+            class="ml-2"
+            @click="confirmDisableLogin"
+          >
+            Disable Login
+          </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
           <v-btn
@@ -502,6 +514,45 @@
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="3000">
       {{ snackbarText }}
     </v-snackbar>
+
+    <!-- Disable Login Confirmation Dialog -->
+    <v-dialog v-model="disableLoginDialog" max-width="450">
+      <v-card>
+        <v-card-title class="bg-error text-white d-flex align-center">
+          <v-icon start>mdi-lock-off</v-icon>
+          Disable Login Access
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <v-alert type="warning" variant="tonal" class="mb-4">
+            <strong>This action takes effect immediately.</strong>
+          </v-alert>
+          <p class="text-body-1 mb-2">
+            You are about to disable login access for:
+          </p>
+          <p class="text-h6 font-weight-bold text-error mb-4">
+            {{ editingEmployee?.full_name }}
+          </p>
+          <p class="text-body-2 text-grey-darken-1">
+            Their password will be changed and they will be unable to access the system. 
+            This is typically done when terminating an employee.
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="disableLoginDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            variant="flat"
+            :loading="disablingLogin"
+            @click="executeDisableLogin"
+          >
+            Disable Login Now
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -622,6 +673,10 @@ const editForm = ref({
 const snackbar = ref(false)
 const snackbarText = ref('')
 const snackbarColor = ref('success')
+
+// Disable Login
+const disableLoginDialog = ref(false)
+const disablingLogin = ref(false)
 
 // Static options
 const headers = [
@@ -903,6 +958,61 @@ const exportCSV = () => {
   a.click()
   URL.revokeObjectURL(url)
   showNotification('CSV exported')
+}
+
+// Disable Login Functions
+const canDisableLogin = (employee: Employee) => {
+  // Can disable if employee has a profile with auth_user_id linked
+  // Don't show for current user (handled in API too)
+  return employee.profile?.id
+}
+
+const confirmDisableLogin = () => {
+  disableLoginDialog.value = true
+}
+
+const executeDisableLogin = async () => {
+  if (!editingEmployee.value?.profile) return
+  
+  disablingLogin.value = true
+  try {
+    // Get the auth_user_id from the profile
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('auth_user_id')
+      .eq('id', editingEmployee.value.profile.id)
+      .single()
+    
+    if (fetchError || !profile?.auth_user_id) {
+      throw new Error('Could not find auth user for this employee')
+    }
+
+    // Get current session token
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session')
+    }
+
+    // Call the API to disable login
+    const response = await $fetch('/api/admin/disable-login', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: {
+        authUserId: profile.auth_user_id
+      }
+    })
+
+    showNotification(`Login disabled for ${editingEmployee.value.full_name}`, 'success')
+    disableLoginDialog.value = false
+    editDialog.value = false
+  } catch (err: any) {
+    console.error('Error disabling login:', err)
+    showNotification(err.data?.message || err.message || 'Failed to disable login', 'error')
+  } finally {
+    disablingLogin.value = false
+  }
 }
 
 // Lifecycle
