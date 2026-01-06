@@ -10,6 +10,7 @@ interface AuthState {
 
 // Role hierarchy for access level comparisons
 const roleHierarchy: Record<string, number> = {
+  super_admin: 200,
   admin: 100,
   office_admin: 50,
   marketing_admin: 40,
@@ -36,16 +37,17 @@ export const useAuthStore = defineStore('auth', {
     
     // Role checks
     userRole: (state): UserRole => (state.profile?.role as UserRole) || 'user',
-    isAdmin: (state) => state.profile?.role === 'admin',
+    isSuperAdmin: (state) => state.profile?.role === 'super_admin',
+    isAdmin: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
     isOfficeAdmin: (state) => state.profile?.role === 'office_admin',
     isMarketingAdmin: (state) => state.profile?.role === 'marketing_admin',
     isUser: (state) => state.profile?.role === 'user',
     
     // Access level checks (for section visibility)
-    hasManagementAccess: (state) => ['admin', 'office_admin'].includes(state.profile?.role || ''),
-    hasMarketingEditAccess: (state) => ['admin', 'marketing_admin'].includes(state.profile?.role || ''),
-    hasGduAccess: (state) => ['admin', 'marketing_admin'].includes(state.profile?.role || ''),
-    hasAdminOpsAccess: (state) => state.profile?.role === 'admin',
+    hasManagementAccess: (state) => ['super_admin', 'admin', 'office_admin'].includes(state.profile?.role || ''),
+    hasMarketingEditAccess: (state) => ['super_admin', 'admin', 'marketing_admin'].includes(state.profile?.role || ''),
+    hasGduAccess: (state) => ['super_admin', 'admin', 'marketing_admin'].includes(state.profile?.role || ''),
+    hasAdminOpsAccess: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
     
     // Role tier for comparison
     roleTier: (state): number => roleHierarchy[state.profile?.role || 'user'] || 10,
@@ -53,6 +55,7 @@ export const useAuthStore = defineStore('auth', {
     // Display helpers
     roleDisplayName: (state): string => {
       const names: Record<string, string> = {
+        super_admin: '👑 Master Admin',
         admin: '⭐ System Admin',
         office_admin: '🏢 Office Admin',
         marketing_admin: '📣 Marketing Admin',

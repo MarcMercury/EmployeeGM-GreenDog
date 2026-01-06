@@ -16,62 +16,67 @@
 import type { UserRole } from '~/types'
 
 // Permission definitions - maps permissions to required roles
+// super_admin has access to EVERYTHING and is always first in the list
 const PERMISSION_ROLES: Record<string, UserRole[]> = {
   // Roster & Team Management
-  'view:roster': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:roster': ['admin', 'office_admin'],
-  'edit:employee': ['admin', 'office_admin'],
-  'delete:employee': ['admin'],
-  'view:salary': ['admin', 'office_admin'],
+  'view:roster': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:roster': ['super_admin', 'admin', 'office_admin'],
+  'edit:employee': ['super_admin', 'admin', 'office_admin'],
+  'delete:employee': ['super_admin', 'admin'],
+  'view:salary': ['super_admin', 'admin', 'office_admin'],
   
   // Schedule Management
-  'view:schedule': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:schedule': ['admin', 'office_admin'],
-  'approve:timeoff': ['admin', 'office_admin'],
-  'edit:own-schedule': ['admin', 'office_admin', 'marketing_admin', 'user'],
+  'view:schedule': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:schedule': ['super_admin', 'admin', 'office_admin'],
+  'approve:timeoff': ['super_admin', 'admin', 'office_admin'],
+  'edit:own-schedule': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
   
   // Recruiting
-  'view:candidates': ['admin', 'office_admin', 'marketing_admin'],
-  'manage:candidates': ['admin', 'office_admin'],
-  'delete:candidates': ['admin'],
-  'hire:candidate': ['admin', 'office_admin'],
+  'view:candidates': ['super_admin', 'admin', 'office_admin', 'marketing_admin'],
+  'manage:candidates': ['super_admin', 'admin', 'office_admin'],
+  'delete:candidates': ['super_admin', 'admin'],
+  'hire:candidate': ['super_admin', 'admin', 'office_admin'],
   
   // Marketing & GDU
-  'view:marketing': ['admin', 'marketing_admin'],
-  'manage:marketing': ['admin', 'marketing_admin'],
-  'view:gdu': ['admin', 'marketing_admin'],
-  'manage:gdu': ['admin', 'marketing_admin'],
-  'view:leads': ['admin', 'marketing_admin'],
-  'manage:leads': ['admin', 'marketing_admin'],
-  'view:partners': ['admin', 'marketing_admin'],
-  'manage:partners': ['admin', 'marketing_admin'],
+  'view:marketing': ['super_admin', 'admin', 'marketing_admin'],
+  'manage:marketing': ['super_admin', 'admin', 'marketing_admin'],
+  'view:gdu': ['super_admin', 'admin', 'marketing_admin'],
+  'manage:gdu': ['super_admin', 'admin', 'marketing_admin'],
+  'view:leads': ['super_admin', 'admin', 'marketing_admin'],
+  'manage:leads': ['super_admin', 'admin', 'marketing_admin'],
+  'view:partners': ['super_admin', 'admin', 'marketing_admin'],
+  'manage:partners': ['super_admin', 'admin', 'marketing_admin'],
   
   // Academy & Training
-  'view:academy': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:academy': ['admin', 'office_admin'],
-  'create:course': ['admin', 'office_admin'],
-  'enroll:course': ['admin', 'office_admin', 'marketing_admin', 'user'],
+  'view:academy': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:academy': ['super_admin', 'admin', 'office_admin'],
+  'create:course': ['super_admin', 'admin', 'office_admin'],
+  'enroll:course': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
   
   // Admin Operations
-  'view:admin': ['admin'],
-  'manage:settings': ['admin'],
-  'view:audit-logs': ['admin'],
-  'manage:integrations': ['admin'],
-  'export:data': ['admin', 'office_admin'],
-  'bulk:delete': ['admin'],
-  'bulk:edit': ['admin', 'office_admin'],
+  'view:admin': ['super_admin', 'admin'],
+  'manage:settings': ['super_admin', 'admin'],
+  'view:audit-logs': ['super_admin', 'admin'],
+  'manage:integrations': ['super_admin', 'admin'],
+  'export:data': ['super_admin', 'admin', 'office_admin'],
+  'bulk:delete': ['super_admin', 'admin'],
+  'bulk:edit': ['super_admin', 'admin', 'office_admin'],
   
   // Medical Ops
-  'view:med-ops': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:med-ops': ['admin', 'office_admin'],
-  'view:referrals': ['admin', 'office_admin'],
-  'manage:referrals': ['admin', 'office_admin'],
+  'view:med-ops': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:med-ops': ['super_admin', 'admin', 'office_admin'],
+  'view:referrals': ['super_admin', 'admin', 'office_admin'],
+  'manage:referrals': ['super_admin', 'admin', 'office_admin'],
   
   // Performance & Reviews
-  'view:reviews': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:reviews': ['admin', 'office_admin'],
-  'view:goals': ['admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:team-goals': ['admin', 'office_admin'],
+  'view:reviews': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:reviews': ['super_admin', 'admin', 'office_admin'],
+  'view:goals': ['super_admin', 'admin', 'office_admin', 'marketing_admin', 'user'],
+  'manage:team-goals': ['super_admin', 'admin', 'office_admin'],
+  
+  // Super Admin Exclusive
+  'super:override': ['super_admin'],
+  'manage:super-admin': ['super_admin'],
 }
 
 // Feature names for "Request Access" display
@@ -162,6 +167,7 @@ export function usePermissions() {
   // Role hierarchy check
   function hasMinimumRole(role: UserRole): boolean {
     const hierarchy: Record<UserRole, number> = {
+      super_admin: 200,
       admin: 100,
       office_admin: 50,
       marketing_admin: 40,
@@ -170,14 +176,16 @@ export function usePermissions() {
     return (hierarchy[userRole.value] || 0) >= (hierarchy[role] || 0)
   }
   
-  // Check if user is admin
-  const isAdmin = computed(() => userRole.value === 'admin')
+  // Check if user is admin (super_admin or admin)
+  const isSuperAdmin = computed(() => userRole.value === 'super_admin')
+  const isAdmin = computed(() => ['super_admin', 'admin'].includes(userRole.value))
   const isOfficeAdmin = computed(() => userRole.value === 'office_admin')
   const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin')
   
   return {
     // State
     userRole,
+    isSuperAdmin,
     isAdmin,
     isOfficeAdmin,
     isMarketingAdmin,

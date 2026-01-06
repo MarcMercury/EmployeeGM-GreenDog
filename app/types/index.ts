@@ -6,7 +6,7 @@ export * from './database.types'
 // =====================================================
 
 // User roles in order of access level (highest to lowest)
-export type UserRole = 'admin' | 'office_admin' | 'marketing_admin' | 'user'
+export type UserRole = 'super_admin' | 'admin' | 'office_admin' | 'marketing_admin' | 'user'
 
 // Permission structure for each section
 export interface SectionPermissions {
@@ -53,10 +53,16 @@ export interface RoleDefinition {
 
 // Role hierarchy for access checks
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  super_admin: 200,
   admin: 100,
   office_admin: 50,
   marketing_admin: 40,
   user: 10
+}
+
+// Helper to check if role is admin-level (super_admin or admin)
+export function isAdminRole(role: UserRole): boolean {
+  return role === 'super_admin' || role === 'admin'
 }
 
 // Additional app-level types
