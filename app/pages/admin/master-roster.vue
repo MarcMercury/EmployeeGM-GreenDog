@@ -804,12 +804,6 @@ interface Employee {
     time_off_type: { name: string; code: string } | null
   }[] | null
 }
-    id: string
-    role: string
-    is_active: boolean
-    email: string
-  } | null
-}
 
 interface Department {
   id: string
