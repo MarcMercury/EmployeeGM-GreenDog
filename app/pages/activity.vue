@@ -18,7 +18,7 @@
             {{ unreadCount }} unread
           </v-chip>
           <v-btn 
-            v-if="unreadCount > 0"
+            v-if="unreadCount > 0 && !showClosed"
             variant="outlined" 
             size="small"
             prepend-icon="mdi-check-all"
@@ -26,6 +26,17 @@
             :loading="markingAllRead"
           >
             Mark All Read
+          </v-btn>
+          <v-btn 
+            v-if="totalCount > 0 && !showClosed"
+            variant="outlined" 
+            size="small"
+            color="grey"
+            prepend-icon="mdi-archive-arrow-down"
+            @click="closeAllNotifications"
+            :loading="closingAll"
+          >
+            Close All
           </v-btn>
           <v-btn 
             variant="text" 
@@ -39,24 +50,24 @@
 
     <!-- Stats Summary -->
     <v-row class="mb-6">
-      <v-col cols="6" sm="3">
+      <v-col cols="6" sm="3" md="2">
         <v-card 
           class="stat-card" 
-          :class="{ 'stat-card--active': !selectedCategories.length }"
+          :class="{ 'stat-card--active': !selectedCategories.length && !showClosed && !showPriorityOnly }"
           @click="clearFilters"
           rounded="xl"
         >
           <v-card-text class="text-center py-4">
             <div class="stat-icon mb-2">📬</div>
             <div class="text-h4 font-weight-bold text-primary">{{ totalCount }}</div>
-            <div class="text-caption text-grey">All Updates</div>
+            <div class="text-caption text-grey">Open</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="6" sm="3" md="2">
         <v-card 
           class="stat-card"
-          :class="{ 'stat-card--active': showPriorityOnly }"
+          :class="{ 'stat-card--active': showPriorityOnly && !showClosed }"
           @click="togglePriorityFilter"
           rounded="xl"
         >
@@ -67,7 +78,7 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="6" sm="3" md="2">
         <v-card class="stat-card" rounded="xl">
           <v-card-text class="text-center py-4">
             <div class="stat-icon mb-2">📅</div>
@@ -76,12 +87,26 @@
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3">
+      <v-col cols="6" sm="3" md="2">
         <v-card class="stat-card" rounded="xl">
           <v-card-text class="text-center py-4">
             <div class="stat-icon mb-2">📆</div>
             <div class="text-h4 font-weight-bold text-success">{{ thisWeekCount }}</div>
             <div class="text-caption text-grey">This Week</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3" md="2">
+        <v-card 
+          class="stat-card"
+          :class="{ 'stat-card--active': showClosed }"
+          @click="showClosed = !showClosed; showPriorityOnly = false"
+          rounded="xl"
+        >
+          <v-card-text class="text-center py-4">
+            <div class="stat-icon mb-2">📦</div>
+            <div class="text-h4 font-weight-bold text-grey">{{ closedCount }}</div>
+            <div class="text-caption text-grey">Closed</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -91,7 +116,9 @@
     <v-card rounded="xl" class="mb-6 filters-card">
       <v-card-text class="py-3">
         <div class="d-flex align-center gap-4 flex-wrap">
-          <span class="text-caption font-weight-bold text-grey-darken-1">FILTER BY:</span>
+          <span class="text-caption font-weight-bold text-grey-darken-1">
+            {{ showClosed ? 'CLOSED NOTIFICATIONS' : 'FILTER BY:' }}
+          </span>
           
           <v-chip-group
             v-model="selectedCategories"
@@ -116,7 +143,7 @@
           </v-chip-group>
 
           <v-btn
-            v-if="selectedCategories.length > 0 || showPriorityOnly"
+            v-if="selectedCategories.length > 0 || showPriorityOnly || showClosed"
             variant="text"
             size="small"
             color="grey"
@@ -137,22 +164,26 @@
     <!-- Empty State -->
     <v-card v-else-if="filteredNotifications.length === 0" rounded="xl" class="text-center py-12">
       <div class="empty-state">
-        <div class="empty-icon mb-4">🎉</div>
-        <h3 class="text-h5 font-weight-bold mb-2">All Caught Up!</h3>
+        <div class="empty-icon mb-4">{{ showClosed ? '📦' : '🎉' }}</div>
+        <h3 class="text-h5 font-weight-bold mb-2">
+          {{ showClosed ? 'No Closed Notifications' : 'All Caught Up!' }}
+        </h3>
         <p class="text-grey">
-          {{ selectedCategories.length > 0 || showPriorityOnly 
-            ? 'No notifications match your current filters.' 
-            : 'No new notifications. Check back later!' 
+          {{ showClosed 
+            ? 'Notifications you close will appear here for reference.'
+            : (selectedCategories.length > 0 || showPriorityOnly 
+              ? 'No notifications match your current filters.' 
+              : 'No new notifications. Check back later!') 
           }}
         </p>
         <v-btn 
-          v-if="selectedCategories.length > 0 || showPriorityOnly" 
+          v-if="selectedCategories.length > 0 || showPriorityOnly || showClosed" 
           variant="text" 
           color="primary"
           @click="clearFilters"
           class="mt-4"
         >
-          Clear Filters
+          {{ showClosed ? 'View Open Notifications' : 'Clear Filters' }}
         </v-btn>
       </div>
     </v-card>
@@ -169,8 +200,9 @@
         <v-card
           class="notification-card h-100"
           :class="{
-            'notification-card--unread': !notification.is_read,
-            'notification-card--priority': notification.requires_action
+            'notification-card--unread': !notification.is_read && !notification.closed_at,
+            'notification-card--priority': notification.requires_action && !notification.closed_at,
+            'notification-card--closed': notification.closed_at
           }"
           rounded="xl"
           @click="openNotification(notification)"
@@ -212,7 +244,7 @@
             </p>
 
             <!-- Action Button -->
-            <div v-if="notification.action_url" class="mt-auto">
+            <div v-if="notification.action_url && !showClosed" class="mt-auto mb-2">
               <v-btn
                 :to="notification.action_url"
                 variant="tonal"
@@ -224,10 +256,36 @@
                 <v-icon end size="16">mdi-arrow-right</v-icon>
               </v-btn>
             </div>
+
+            <!-- Close/Reopen Button -->
+            <div class="mt-auto">
+              <v-btn
+                v-if="!showClosed"
+                variant="text"
+                size="small"
+                color="grey"
+                block
+                @click.stop="closeNotification(notification)"
+              >
+                <v-icon start size="16">mdi-archive-arrow-down</v-icon>
+                Close
+              </v-btn>
+              <v-btn
+                v-else
+                variant="text"
+                size="small"
+                color="primary"
+                block
+                @click.stop="reopenNotification(notification)"
+              >
+                <v-icon start size="16">mdi-archive-arrow-up</v-icon>
+                Reopen
+              </v-btn>
+            </div>
           </v-card-text>
 
           <!-- Unread Indicator -->
-          <div v-if="!notification.is_read" class="unread-dot"></div>
+          <div v-if="!notification.is_read && !notification.closed_at" class="unread-dot"></div>
         </v-card>
       </v-col>
     </v-row>
@@ -292,15 +350,33 @@
 
         <v-card-actions class="pa-4">
           <v-btn
-            v-if="!selectedNotification.is_read"
+            v-if="!selectedNotification.is_read && !selectedNotification.closed_at"
             variant="text"
             @click="markAsRead(selectedNotification)"
           >
             Mark as Read
           </v-btn>
+          <v-btn
+            v-if="!selectedNotification.closed_at"
+            variant="text"
+            color="grey"
+            @click="closeNotification(selectedNotification)"
+          >
+            <v-icon start size="16">mdi-archive-arrow-down</v-icon>
+            Close
+          </v-btn>
+          <v-btn
+            v-else
+            variant="text"
+            color="primary"
+            @click="reopenNotification(selectedNotification)"
+          >
+            <v-icon start size="16">mdi-archive-arrow-up</v-icon>
+            Reopen
+          </v-btn>
           <v-spacer />
           <v-btn
-            v-if="selectedNotification.action_url"
+            v-if="selectedNotification.action_url && !selectedNotification.closed_at"
             :to="selectedNotification.action_url"
             color="primary"
             variant="flat"
@@ -340,6 +416,7 @@ interface Notification {
   data: Record<string, any> | null
   is_read: boolean
   read_at: string | null
+  closed_at: string | null
   created_at: string
   // Computed/derived fields
   category: string
@@ -363,9 +440,11 @@ const categories = [
 const loading = ref(true)
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
+const closingAll = ref(false)
 const notifications = ref<Notification[]>([])
 const selectedCategories = ref<string[]>([])
 const showPriorityOnly = ref(false)
+const showClosed = ref(false)
 const detailDialog = ref(false)
 const selectedNotification = ref<Notification | null>(null)
 const page = ref(1)
@@ -373,24 +452,28 @@ const pageSize = 30
 const hasMore = ref(true)
 
 // Computed
-const totalCount = computed(() => notifications.value.length)
-const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).length)
-const priorityCount = computed(() => notifications.value.filter(n => n.requires_action).length)
+const openNotifications = computed(() => notifications.value.filter(n => !n.closed_at))
+const closedNotifications = computed(() => notifications.value.filter(n => n.closed_at))
+const totalCount = computed(() => openNotifications.value.length)
+const closedCount = computed(() => closedNotifications.value.length)
+const unreadCount = computed(() => openNotifications.value.filter(n => !n.is_read).length)
+const priorityCount = computed(() => openNotifications.value.filter(n => n.requires_action).length)
 const todayCount = computed(() => {
   const today = new Date().toDateString()
-  return notifications.value.filter(n => new Date(n.created_at).toDateString() === today).length
+  return openNotifications.value.filter(n => new Date(n.created_at).toDateString() === today).length
 })
 const thisWeekCount = computed(() => {
   const weekAgo = new Date()
   weekAgo.setDate(weekAgo.getDate() - 7)
-  return notifications.value.filter(n => new Date(n.created_at) >= weekAgo).length
+  return openNotifications.value.filter(n => new Date(n.created_at) >= weekAgo).length
 })
 
 const filteredNotifications = computed(() => {
-  let result = [...notifications.value]
+  // Start with either open or closed notifications based on toggle
+  let result = showClosed.value ? [...closedNotifications.value] : [...openNotifications.value]
   
-  // Filter by priority
-  if (showPriorityOnly.value) {
+  // Filter by priority (only applies to open notifications)
+  if (showPriorityOnly.value && !showClosed.value) {
     result = result.filter(n => n.requires_action)
   }
   
@@ -539,9 +622,83 @@ const markAllAsRead = async () => {
   }
 }
 
+const closeNotification = async (notification: Notification) => {
+  try {
+    const closedAt = new Date().toISOString()
+    await supabase
+      .from('notifications')
+      .update({ closed_at: closedAt, is_read: true, read_at: notification.read_at || closedAt })
+      .eq('id', notification.id)
+    
+    // Update local state
+    const idx = notifications.value.findIndex(n => n.id === notification.id)
+    const item = notifications.value[idx]
+    if (item) {
+      item.closed_at = closedAt
+      item.is_read = true
+      if (!item.read_at) item.read_at = closedAt
+    }
+    
+    // Close detail dialog if this notification was selected
+    if (selectedNotification.value?.id === notification.id) {
+      detailDialog.value = false
+    }
+  } catch (err) {
+    console.error('Error closing notification:', err)
+  }
+}
+
+const closeAllNotifications = async () => {
+  closingAll.value = true
+  
+  try {
+    const openIds = openNotifications.value.map(n => n.id)
+    
+    if (openIds.length > 0) {
+      const closedAt = new Date().toISOString()
+      await supabase
+        .from('notifications')
+        .update({ closed_at: closedAt, is_read: true, read_at: closedAt })
+        .in('id', openIds)
+      
+      // Update local state
+      notifications.value.forEach(n => {
+        if (!n.closed_at) {
+          n.closed_at = closedAt
+          n.is_read = true
+          if (!n.read_at) n.read_at = closedAt
+        }
+      })
+    }
+  } catch (err) {
+    console.error('Error closing all notifications:', err)
+  } finally {
+    closingAll.value = false
+  }
+}
+
+const reopenNotification = async (notification: Notification) => {
+  try {
+    await supabase
+      .from('notifications')
+      .update({ closed_at: null })
+      .eq('id', notification.id)
+    
+    // Update local state
+    const idx = notifications.value.findIndex(n => n.id === notification.id)
+    const item = notifications.value[idx]
+    if (item) {
+      item.closed_at = null
+    }
+  } catch (err) {
+    console.error('Error reopening notification:', err)
+  }
+}
+
 const clearFilters = () => {
   selectedCategories.value = []
   showPriorityOnly.value = false
+  showClosed.value = false
 }
 
 const togglePriorityFilter = () => {
@@ -549,7 +706,8 @@ const togglePriorityFilter = () => {
 }
 
 const getCategoryCount = (category: string) => {
-  return notifications.value.filter(n => n.category === category).length
+  const source = showClosed.value ? closedNotifications.value : openNotifications.value
+  return source.filter(n => n.category === category).length
 }
 
 const getCategoryEmoji = (category: string) => {
@@ -675,6 +833,15 @@ onMounted(() => {
 .notification-card--priority {
   border-color: rgba(var(--v-theme-error), 0.4);
   background: linear-gradient(135deg, rgba(var(--v-theme-error), 0.05) 0%, transparent 100%);
+}
+
+.notification-card--closed {
+  opacity: 0.7;
+  background: rgba(158, 158, 158, 0.05);
+}
+
+.notification-card--closed:hover {
+  opacity: 1;
 }
 
 .priority-badge {

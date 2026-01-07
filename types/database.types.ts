@@ -3425,6 +3425,7 @@ export type Database = {
           action_url: string | null
           body: string | null
           category: string | null
+          closed_at: string | null
           created_at: string
           data: Json | null
           id: string
@@ -3439,6 +3440,7 @@ export type Database = {
           action_url?: string | null
           body?: string | null
           category?: string | null
+          closed_at?: string | null
           created_at?: string
           data?: Json | null
           id?: string
@@ -3453,6 +3455,7 @@ export type Database = {
           action_url?: string | null
           body?: string | null
           category?: string | null
+          closed_at?: string | null
           created_at?: string
           data?: Json | null
           id?: string

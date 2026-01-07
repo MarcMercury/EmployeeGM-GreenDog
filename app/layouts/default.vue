@@ -82,6 +82,7 @@ const fetchUnreadCount = async () => {
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('is_read', false)
+      .is('closed_at', null)
     
     if (!error) {
       unreadNotificationCount.value = count || 0
