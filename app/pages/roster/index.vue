@@ -20,40 +20,28 @@
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="2">
+      <v-col cols="6" sm="4" md="3">
         <v-card class="text-center pa-3" variant="tonal" color="primary">
           <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
           <div class="text-caption">Total Team</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="4" md="2">
+      <v-col cols="6" sm="4" md="3">
         <v-card class="text-center pa-3" variant="tonal" color="success">
           <div class="text-h5 font-weight-bold">{{ stats.active }}</div>
           <div class="text-caption">Active</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="4" md="2">
+      <v-col cols="6" sm="4" md="3">
         <v-card class="text-center pa-3" variant="tonal" color="warning">
           <div class="text-h5 font-weight-bold">{{ stats.onLeave }}</div>
           <div class="text-caption">On Leave</div>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="4" md="2">
+      <v-col cols="6" sm="4" md="3">
         <v-card class="text-center pa-3" variant="tonal" color="secondary">
           <div class="text-h5 font-weight-bold">{{ stats.inactive }}</div>
           <div class="text-caption">Inactive</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="teal">
-          <div class="text-h5 font-weight-bold">{{ stats.byDepartment[0]?.count || 0 }}</div>
-          <div class="text-caption">{{ stats.byDepartment[0]?.name || 'Dept 1' }}</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="info">
-          <div class="text-h5 font-weight-bold">{{ stats.byDepartment[1]?.count || 0 }}</div>
-          <div class="text-caption">{{ stats.byDepartment[1]?.name || 'Dept 2' }}</div>
         </v-card>
       </v-col>
     </v-row>
