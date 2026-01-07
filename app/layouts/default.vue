@@ -222,7 +222,7 @@ const closeMobileMenu = () => {
                 </span>
               </div>
             </NuxtLink>
-            <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
+            <NuxtLink to="/roster" class="nav-link group justify-center" title="Contact List">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
             </NuxtLink>
             <NuxtLink to="/profile" class="nav-link group justify-center" title="Profile">
@@ -303,7 +303,7 @@ const closeMobileMenu = () => {
               <div class="section-content" :class="{ 'section-open': sections.management }">
                 <NuxtLink to="/roster" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
-                  Roster
+                  Contact List
                 </NuxtLink>
                 <NuxtLink to="/schedule/builder" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📅</div>
