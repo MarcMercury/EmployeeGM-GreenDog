@@ -54,10 +54,13 @@ export default defineNuxtConfig({
     slackSigningSecret: process.env.SLACK_SIGNING_SECRET,
     openaiApiKey: process.env.OPENAI_API_KEY,
     openaiAdminKey: process.env.OPENAI_ADMIN_KEY,
+    resendApiKey: process.env.RESEND_API_KEY,
+    resendFromEmail: process.env.RESEND_FROM_EMAIL,
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY
+      supabaseKey: process.env.SUPABASE_KEY,
+      appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL
     }
   },
 
