@@ -48,12 +48,10 @@
     <div v-else-if="formConfig" class="max-w-3xl mx-auto py-12 px-4">
       <!-- Header -->
       <div class="text-center mb-8">
-        <img 
-          src="/logo.png" 
-          alt="Green Dog" 
-          class="h-16 mx-auto mb-4"
-          @error="($event.target as HTMLImageElement).style.display = 'none'"
-        />
+        <div class="flex items-center justify-center gap-2 mb-4">
+          <span class="text-4xl">🐕</span>
+          <span class="text-2xl font-bold text-green-600">Green Dog</span>
+        </div>
         <h1 class="text-3xl font-bold text-gray-900">{{ formConfig.form.title }}</h1>
         <p class="mt-2 text-gray-600">{{ formConfig.form.description }}</p>
         
