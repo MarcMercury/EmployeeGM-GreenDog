@@ -25,3 +25,8 @@ logs
 .supabase/
 .env.local
 .supabase-credentials
+
+# Backup files
+*.bak
+*.backup
+*.orig
