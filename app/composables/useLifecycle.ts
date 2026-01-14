@@ -15,7 +15,16 @@ import type {
   PersonLifecycleStage,
   IntakeLinkType,
   CreateIntakeLinkRequest,
-  PromotePersonRequest
+  PromotePersonRequest,
+  MasterProfileView,
+  PersonCrmData,
+  PersonRecruitingData,
+  PersonEmployeeData,
+  AddCrmHatRequest,
+  AddRecruitingHatRequest,
+  AddEmployeeHatRequest,
+  GrantAccessRequest,
+  RevokeAccessRequest
 } from '~/types/lifecycle.types'
 
 export function useLifecycle() {
@@ -411,6 +420,438 @@ export function useLifecycle() {
     return stageInfo[stage] || { color: 'gray', icon: 'i-heroicons-user', label: stage }
   }
 
+  // =====================================================
+  // MASTER PROFILE FUNCTIONS
+  // =====================================================
+
+  /**
+   * Get the unified master profile view for a person
+   */
+  async function getMasterProfile(personId: string): Promise<MasterProfileView | null> {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('master_profile_view')
+        .select('*')
+        .eq('id', personId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      return data as unknown as MasterProfileView
+    } catch (err) {
+      console.error('Error fetching master profile:', err)
+      return null
+    }
+  }
+
+  /**
+   * Search for a person by email (dedupe-safe)
+   */
+  async function findOrCreatePerson(
+    email: string,
+    firstName?: string,
+    lastName?: string,
+    sourceType?: string,
+    sourceDetail?: string
+  ): Promise<string | null> {
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('find_or_create_person', {
+          p_email: email,
+          p_first_name: firstName,
+          p_last_name: lastName,
+          p_source_type: sourceType,
+          p_source_detail: sourceDetail
+        })
+
+      if (rpcError) throw rpcError
+
+      return data as string
+    } catch (err) {
+      console.error('Error finding/creating person:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to find or create person',
+        color: 'red'
+      })
+      return null
+    }
+  }
+
+  // =====================================================
+  // "ADD HAT" FUNCTIONS
+  // =====================================================
+
+  /**
+   * Add CRM data to a person (make them a lead)
+   */
+  async function addCrmHat(request: AddCrmHatRequest): Promise<string | null> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('add_crm_hat', {
+          p_person_id: request.personId,
+          p_acquisition_source: request.acquisitionSource,
+          p_acquisition_detail: request.acquisitionDetail,
+          p_tags: JSON.stringify(request.tags || []),
+          p_notes: request.notes
+        })
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'CRM Data Added',
+        description: 'Person is now a tracked lead',
+        color: 'green'
+      })
+
+      return data as string
+    } catch (err) {
+      console.error('Error adding CRM hat:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to add CRM data',
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Add recruiting data to a person (make them an applicant)
+   */
+  async function addRecruitingHat(request: AddRecruitingHatRequest): Promise<string | null> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('add_recruiting_hat', {
+          p_person_id: request.personId,
+          p_target_position_id: request.targetPositionId,
+          p_target_department_id: request.targetDepartmentId,
+          p_target_location_id: request.targetLocationId,
+          p_candidate_type: request.candidateType || 'applicant',
+          p_resume_url: request.resumeUrl
+        })
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'Recruiting Data Added',
+        description: 'Person is now an applicant',
+        color: 'green'
+      })
+
+      return data as string
+    } catch (err) {
+      console.error('Error adding recruiting hat:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to add recruiting data',
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Add employee data to a person (hire them)
+   */
+  async function addEmployeeHat(request: AddEmployeeHatRequest): Promise<string | null> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('add_employee_hat', {
+          p_person_id: request.personId,
+          p_position_id: request.positionId,
+          p_department_id: request.departmentId,
+          p_location_id: request.locationId,
+          p_hire_date: request.hireDate,
+          p_employment_type: request.employmentType || 'full_time',
+          p_pay_rate: request.payRate,
+          p_pay_type: request.payType || 'hourly'
+        })
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'Employee Created',
+        description: 'Person is now an employee',
+        color: 'green'
+      })
+
+      return data as string
+    } catch (err) {
+      console.error('Error adding employee hat:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to create employee',
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // =====================================================
+  // ACCESS MANAGEMENT FUNCTIONS
+  // =====================================================
+
+  /**
+   * Grant system access to a person (create login)
+   */
+  async function grantAccess(request: GrantAccessRequest): Promise<string | null> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('grant_person_access', {
+          p_person_id: request.personId,
+          p_role: request.role || 'employee',
+          p_send_welcome_email: request.sendWelcomeEmail ?? true
+        })
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'Access Granted',
+        description: 'Person can now log into the system',
+        color: 'green'
+      })
+
+      return data as string
+    } catch (err: any) {
+      console.error('Error granting access:', err)
+      toast.add({
+        title: 'Error',
+        description: err.message || 'Failed to grant access',
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Revoke system access from a person (disable login)
+   */
+  async function revokeAccess(request: RevokeAccessRequest): Promise<boolean> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('revoke_person_access', {
+          p_person_id: request.personId,
+          p_reason: request.reason
+        })
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'Access Revoked',
+        description: 'Person can no longer log into the system',
+        color: 'orange'
+      })
+
+      return true
+    } catch (err: any) {
+      console.error('Error revoking access:', err)
+      toast.add({
+        title: 'Error',
+        description: err.message || 'Failed to revoke access',
+        color: 'red'
+      })
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // =====================================================
+  // EXTENSION TABLE QUERIES
+  // =====================================================
+
+  /**
+   * Get CRM data for a person
+   */
+  async function getPersonCrmData(personId: string): Promise<PersonCrmData | null> {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('person_crm_data')
+        .select('*')
+        .eq('person_id', personId)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
+
+      return data as unknown as PersonCrmData
+    } catch (err) {
+      console.error('Error fetching CRM data:', err)
+      return null
+    }
+  }
+
+  /**
+   * Get recruiting data for a person
+   */
+  async function getPersonRecruitingData(personId: string): Promise<PersonRecruitingData | null> {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('person_recruiting_data')
+        .select('*')
+        .eq('person_id', personId)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
+
+      return data as unknown as PersonRecruitingData
+    } catch (err) {
+      console.error('Error fetching recruiting data:', err)
+      return null
+    }
+  }
+
+  /**
+   * Get employee data for a person
+   */
+  async function getPersonEmployeeData(personId: string): Promise<PersonEmployeeData | null> {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('person_employee_data')
+        .select('*')
+        .eq('person_id', personId)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') throw fetchError
+
+      return data as unknown as PersonEmployeeData
+    } catch (err) {
+      console.error('Error fetching employee data:', err)
+      return null
+    }
+  }
+
+  /**
+   * Update CRM data for a person
+   */
+  async function updatePersonCrmData(personId: string, data: Partial<PersonCrmData>): Promise<boolean> {
+    try {
+      const { error: updateError } = await supabase
+        .from('person_crm_data')
+        .update(data)
+        .eq('person_id', personId)
+
+      if (updateError) throw updateError
+
+      toast.add({
+        title: 'CRM Data Updated',
+        color: 'green'
+      })
+
+      return true
+    } catch (err) {
+      console.error('Error updating CRM data:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to update CRM data',
+        color: 'red'
+      })
+      return false
+    }
+  }
+
+  /**
+   * Update recruiting data for a person
+   */
+  async function updatePersonRecruitingData(personId: string, data: Partial<PersonRecruitingData>): Promise<boolean> {
+    try {
+      const { error: updateError } = await supabase
+        .from('person_recruiting_data')
+        .update(data)
+        .eq('person_id', personId)
+
+      if (updateError) throw updateError
+
+      toast.add({
+        title: 'Recruiting Data Updated',
+        color: 'green'
+      })
+
+      return true
+    } catch (err) {
+      console.error('Error updating recruiting data:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to update recruiting data',
+        color: 'red'
+      })
+      return false
+    }
+  }
+
+  /**
+   * Update employee data for a person
+   */
+  async function updatePersonEmployeeData(personId: string, data: Partial<PersonEmployeeData>): Promise<boolean> {
+    try {
+      const { error: updateError } = await supabase
+        .from('person_employee_data')
+        .update(data)
+        .eq('person_id', personId)
+
+      if (updateError) throw updateError
+
+      toast.add({
+        title: 'Employee Data Updated',
+        color: 'green'
+      })
+
+      return true
+    } catch (err) {
+      console.error('Error updating employee data:', err)
+      toast.add({
+        title: 'Error',
+        description: 'Failed to update employee data',
+        color: 'red'
+      })
+      return false
+    }
+  }
+
+  /**
+   * Run the migration to populate extension tables from legacy data
+   */
+  async function runMigrationToExtensionTables(): Promise<Record<string, { created: number; updated: number }> | null> {
+    loading.value = true
+    try {
+      const { data, error: rpcError } = await supabase
+        .rpc('migrate_to_extension_tables')
+
+      if (rpcError) throw rpcError
+
+      toast.add({
+        title: 'Migration Complete',
+        description: 'Extension tables have been populated from legacy data',
+        color: 'green'
+      })
+
+      return data as Record<string, { created: number; updated: number }>
+    } catch (err) {
+      console.error('Error running migration:', err)
+      toast.add({
+        title: 'Migration Failed',
+        description: 'Failed to populate extension tables',
+        color: 'red'
+      })
+      return null
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     persons,
@@ -431,6 +872,30 @@ export function useLifecycle() {
     getPersonExtendedData,
     updatePersonExtendedData,
     copyLinkToClipboard,
+
+    // Master Profile
+    getMasterProfile,
+    findOrCreatePerson,
+
+    // Add Hats
+    addCrmHat,
+    addRecruitingHat,
+    addEmployeeHat,
+
+    // Access Management
+    grantAccess,
+    revokeAccess,
+
+    // Extension Table Data
+    getPersonCrmData,
+    getPersonRecruitingData,
+    getPersonEmployeeData,
+    updatePersonCrmData,
+    updatePersonRecruitingData,
+    updatePersonEmployeeData,
+
+    // Migration
+    runMigrationToExtensionTables,
 
     // Helpers
     getAvailablePromotions,

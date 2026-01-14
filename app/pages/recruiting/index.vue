@@ -56,6 +56,90 @@
         </v-col>
       </v-row>
 
+      <!-- Filters -->
+      <v-card class="mb-4" variant="outlined">
+        <v-card-text class="py-3">
+          <v-row dense align="center">
+            <v-col cols="12" md="3">
+              <v-text-field
+                v-model="searchQuery"
+                label="Search candidates..."
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </v-col>
+            <v-col cols="6" md="2">
+              <v-select
+                v-model="selectedPosition"
+                :items="positionOptions"
+                label="Position"
+                variant="outlined"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="6" md="2">
+              <v-select
+                v-model="activeStatusFilter"
+                :items="[
+                  { title: 'All Statuses', value: null },
+                  { title: 'New', value: 'new' },
+                  { title: 'Screening', value: 'screening' },
+                  { title: 'Interview', value: 'interview' },
+                  { title: 'Offer', value: 'offer' },
+                  { title: 'Hired', value: 'hired' },
+                  { title: 'Rejected', value: 'rejected' }
+                ]"
+                label="Status"
+                variant="outlined"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="6" md="2">
+              <v-select
+                v-model="selectedLocation"
+                :items="locationOptions"
+                label="Location"
+                variant="outlined"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="3" class="d-flex justify-end align-center gap-2">
+              <v-btn-toggle
+                v-model="quickFilter"
+                density="compact"
+                variant="outlined"
+              >
+                <v-btn value="all" size="small">All</v-btn>
+                <v-btn value="active" size="small" color="success">Active</v-btn>
+                <v-btn value="new" size="small" color="info">New</v-btn>
+              </v-btn-toggle>
+              <v-chip color="primary" variant="tonal" size="small">
+                {{ filteredCandidates.length }}
+              </v-chip>
+            </v-col>
+          </v-row>
+          <v-row v-if="hasActiveFilters" dense class="mt-2">
+            <v-col cols="12" class="d-flex justify-end">
+              <v-btn
+                variant="text"
+                size="small"
+                color="primary"
+                prepend-icon="mdi-filter-remove"
+                @click="clearAllFilters"
+              >
+                Clear Filters
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
       <!-- BOTTOM: All Applications Data Grid -->
       <v-card rounded="lg">
         <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
@@ -71,16 +155,6 @@
               {{ formatStatus(activeStatusFilter) }}
             </v-chip>
           </span>
-          <v-text-field
-            v-model="searchQuery"
-            prepend-inner-icon="mdi-magnify"
-            placeholder="Search candidates..."
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-            style="max-width: 280px;"
-          />
         </v-card-title>
 
         <v-data-table
@@ -204,6 +278,36 @@ const candidates = ref<Candidate[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const activeStatusFilter = ref<string | null>(null)
+const selectedPosition = ref<string | null>(null)
+const selectedLocation = ref<string | null>(null)
+const selectedDepartment = ref<string | null>(null)
+const quickFilter = ref('all')
+
+// Filter Options
+const positionOptions = computed(() => {
+  const positions = candidates.value
+    .map(c => c.job_positions?.title)
+    .filter((title): title is string => !!title)
+  const unique = [...new Set(positions)]
+  return [{ title: 'All Positions', value: null }, ...unique.map(p => ({ title: p, value: p }))]
+})
+
+const locationOptions = [
+  { title: 'All Locations', value: null },
+  { title: 'Venice', value: 'Venice' },
+  { title: 'The Valley', value: 'The Valley' },
+  { title: 'Sherman Oaks', value: 'Sherman Oaks' },
+  { title: 'Aetna', value: 'Aetna' }
+]
+
+const departmentOptions = [
+  { title: 'All Departments', value: null },
+  { title: 'Veterinary', value: 'Veterinary' },
+  { title: 'Grooming', value: 'Grooming' },
+  { title: 'Daycare', value: 'Daycare' },
+  { title: 'Admin', value: 'Admin' },
+  { title: 'Management', value: 'Management' }
+]
 
 // Table Headers
 const tableHeaders = [
@@ -226,9 +330,68 @@ const pipelineStats = computed(() => [
 ])
 
 const filteredCandidates = computed(() => {
-  if (!activeStatusFilter.value) return candidates.value
-  return candidates.value.filter(c => c.status === activeStatusFilter.value)
+  let result = candidates.value
+
+  // Apply quick filter
+  if (quickFilter.value === 'active') {
+    result = result.filter(c => c.status === 'screening' || c.status === 'interview' || c.status === 'offer')
+  } else if (quickFilter.value === 'new') {
+    result = result.filter(c => c.status === 'new')
+  }
+
+  // Apply status filter
+  if (activeStatusFilter.value) {
+    result = result.filter(c => c.status === activeStatusFilter.value)
+  }
+
+  // Apply search filter
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(c =>
+      c.first_name?.toLowerCase().includes(query) ||
+      c.last_name?.toLowerCase().includes(query) ||
+      c.email?.toLowerCase().includes(query) ||
+      c.job_positions?.title?.toLowerCase().includes(query)
+    )
+  }
+
+  // Apply position filter
+  if (selectedPosition.value) {
+    result = result.filter(c => c.job_positions?.title === selectedPosition.value)
+  }
+
+  // Apply location filter
+  if (selectedLocation.value) {
+    result = result.filter(c => (c as any).location === selectedLocation.value)
+  }
+
+  // Apply department filter
+  if (selectedDepartment.value) {
+    result = result.filter(c => (c as any).department === selectedDepartment.value)
+  }
+
+  return result
 })
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return searchQuery.value || 
+    activeStatusFilter.value || 
+    selectedPosition.value || 
+    selectedLocation.value || 
+    selectedDepartment.value ||
+    quickFilter.value !== 'all'
+})
+
+// Clear all filters
+const clearAllFilters = () => {
+  searchQuery.value = ''
+  activeStatusFilter.value = null
+  selectedPosition.value = null
+  selectedLocation.value = null
+  selectedDepartment.value = null
+  quickFilter.value = 'all'
+}
 
 // Methods
 const getStatusColor = (status: string) => {

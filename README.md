@@ -5,12 +5,14 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - Supabase account
 
 ### Setup
 
 1. **Clone and install dependencies**
+
    ```bash
    npm install
    ```
@@ -31,11 +33,13 @@
 4. **Create your first admin user**
    - Sign up through the app
    - Manually update the user's role in Supabase:
+
    ```sql
    UPDATE public.profiles SET role = 'admin' WHERE email = 'your-email@example.com';
    ```
 
 5. **Start development server**
+
    ```bash
    npm run dev
    ```
@@ -55,12 +59,14 @@
 ## 👥 User Roles
 
 ### Admin
+
 - Full access to all features
 - Manage employees, skills, and schedules
 - Approve/deny time off requests
 - Access marketing and settings
 
 ### User
+
 - View-only profile access
 - Request time off
 - View personal schedule
@@ -71,7 +77,7 @@
 Skills are rated 0-5:
 
 | Level | Category | Description |
-|-------|----------|-------------|
+| ----- | -------- | ----------- |
 | 0-2 | 🟠 Learning | Still developing proficiency |
 | 3-4 | 🔵 Competent | Can perform independently |
 | 5 | 🟢 Mentor | Master level, can teach others |
@@ -79,6 +85,7 @@ Skills are rated 0-5:
 ## 🃏 The Baseball Card
 
 The employee profile is designed as a "Baseball Card" - a visual, at-a-glance view of:
+
 - Employee photo and name
 - Role and department
 - Overall skill stats
@@ -87,7 +94,7 @@ The employee profile is designed as a "Baseball Card" - a visual, at-a-glance vi
 
 ## 📁 Project Structure
 
-```
+```text
 ├── assets/css/          # Global styles
 ├── components/          # Vue components
 │   ├── employee/        # Employee-related components
@@ -143,7 +150,8 @@ npm run typecheck    # Run TypeScript checks
 ## 📄 License
 
 MIT License - Green Dog Dental
-```
+
+---
 
 ## Development Server
 

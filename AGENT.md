@@ -1,87 +1,106 @@
 # Employee GM (Green Dog Dental Edition)
 
+> **🤖 AI CONTEXT FILE:** This is the primary reference document for AI assistants.
+> Read this file first before making any changes.
+
 ## Project Vision
 
-We are building a veterinary hospital management system ("Madden for Vets") for Green Dog Dental.
-Stack: Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth).
+Veterinary hospital management system ("Madden for Vets") for Green Dog Dental.
+
+**Stack:** Nuxt 3, Vuetify, Pinia, Supabase (PostgreSQL + Auth)
 
 ---
 
-## � INTEGRATIONS (READ FIRST!)
+## 📚 DOCUMENTATION INDEX
+
+All documentation is centralized in the `/docs` folder:
+
+| Document | Purpose |
+| -------- | ------- |
+| [`docs/SUPABASE_OPERATIONS.md`](docs/SUPABASE_OPERATIONS.md) | **Migration procedures & API access** |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Live integrations (Supabase, Vercel, Slack) |
+| [`docs/UNIFIED_USER_LIFECYCLE.md`](docs/UNIFIED_USER_LIFECYCLE.md) | Person lifecycle & "hats" architecture |
+| [`docs/SLACK_INTEGRATION.md`](docs/SLACK_INTEGRATION.md) | Slack sync & notifications |
+| [`docs/AUDIT_HISTORY.md`](docs/AUDIT_HISTORY.md) | Historical audit reports (resolved issues) |
+
+### Claude Agents (`.claude/agents/`)
+
+Specialized sub-agents for automated tasks:
+
+| Agent | Purpose |
+| ----- | ------- |
+| `migration-reviewer.md` | Security review for migrations |
+| `git-committer.md` | Commit message formatting |
+| `page-auditor.md` | Page component auditing |
+| `vue-component-creator.md` | Component scaffolding |
+| `nuxt-pattern-checker.md` | Pattern validation |
+| `debugger.md` | Debugging assistance |
+
+---
+
+## 🔌 INTEGRATIONS (READ FIRST!)
 
 > **CRITICAL:** Before suggesting ANY integration setup, CHECK [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md)
-> 
-> The following are ALREADY LIVE and configured:
-> - ✅ **Supabase** - Database, Auth, RLS (PRODUCTION)
-> - ✅ **Vercel** - Hosting with custom domain (PRODUCTION)
-> - ✅ **GoDaddy** - Email domain connected to Supabase Auth
-> - ✅ **GitHub** - Auto-deploy to Vercel on push to main
->
-> **DO NOT** suggest re-connecting these services. They are working.
+
+| Service | Status | Purpose |
+| ------- | ------ | ------- |
+| Supabase | ✅ LIVE | Database, Auth, RLS |
+| Vercel | ✅ LIVE | Hosting & CI/CD |
+| Slack | ✅ LIVE | Team Notifications |
+| GitHub | ✅ LIVE | Auto-deploy to Vercel |
+
+**DO NOT** suggest re-connecting these services. They are working.
 
 ---
 
-## �🚨 DEVELOPMENT STANDARDS (READ BEFORE ANY CHANGE)
+## 🔑 CRITICAL PATTERNS
 
-### Role: Full-Stack Expert
+### Supabase Client Access
 
-You are operating as a **Senior Architect, Developer, UI/UX Expert, and Debugger** simultaneously. Before writing ANY code:
-
-1. **UNDERSTAND** the full context - read related files, check schema, trace data flow
-2. **PLAN** the complete solution - consider all edge cases, race conditions, error states
-3. **VERIFY** compatibility - check Nuxt 3 patterns, Supabase client access, Vue 3 Composition API
-4. **TEST** mentally - trace the code path from user action to database and back
-5. **VALIDATE** after changes - ensure no regressions, check for TypeScript errors
-
-### Critical Nuxt 3 + Supabase Patterns
-
-#### ❌ NEVER DO:
 ```typescript
-// WRONG: Composables inside Pinia actions
+// ❌ WRONG: Composables inside Pinia actions
 async fetchData() {
-  const supabase = useSupabaseClient() // FAILS - composable outside setup
-  const user = useSupabaseUser() // FAILS - ref may be undefined
+  const supabase = useSupabaseClient() // FAILS
 }
-```
 
-#### ✅ ALWAYS DO:
-```typescript
-// CORRECT: Access via nuxtApp in Pinia (note: .client property!)
+// ✅ CORRECT: Use module level or nuxtApp
 const getSupabase = () => (useNuxtApp().$supabase as any)?.client
-
-// CORRECT: Get session directly, not via composable ref
-const { data: { session } } = await supabase.auth.getSession()
-const userId = session?.user?.id // Always defined if session exists
 ```
 
-#### Plugin Ordering (Critical!):
-```typescript
-// @nuxtjs/supabase uses enforce: "pre" and provides { client }
-// Any plugin that needs supabase MUST declare dependency:
-export default defineNuxtPlugin({
-  name: 'auth',
-  dependsOn: ['supabase'],  // Ensures supabase plugin runs first!
-  async setup(nuxtApp) {
-    const supabase = (nuxtApp.$supabase as any)?.client
-    // Now safe to use...
-  }
-})
-```
+### Profile vs Employee ID
 
-### Database Access Patterns
-
-#### Profile Lookup:
 ```typescript
 // profiles.auth_user_id links to auth.users.id (NOT profiles.id)
 .eq('auth_user_id', userId)  // ✅ Correct
 .eq('id', userId)            // ❌ Wrong - different UUIDs
+
+// Employee lookup via profile
+const employee = await supabase
+  .from('employees')
+  .select('*')
+  .eq('profile_id', profileId)
+  .single()
 ```
 
-#### Employee Query with Relations:
+### RLS Policy Pattern
+
+```sql
+-- Admin check function
+public.is_admin()  -- Returns boolean, checks profiles.role = 'admin'
+
+-- Check if user owns the record
+employee_id IN (
+    SELECT e.id FROM public.employees e
+    WHERE e.profile_id = auth.uid()
+)
+```
+
+### Employee Query with Relations
+
 ```typescript
 .from('employees')
 .select(`
-  id, first_name, last_name, email_work, hire_date,
+  id, first_name, last_name, email_work,
   profiles:profile_id ( id, avatar_url, role ),
   job_positions:position_id ( id, title ),
   departments:department_id ( id, name ),
@@ -89,251 +108,167 @@ export default defineNuxtPlugin({
 `)
 ```
 
-### State Management
+---
 
-#### Global Data Layer: `useAppData()`
-- Uses `useState()` for SSR-safe singleton state
-- Fetches employees, skills, departments, positions, locations
-- Provides `currentUserProfile` and `isAdmin` for identity
-- Call `fetchGlobalData()` on app mount
+## 📁 Key File Locations
 
-#### Auth Store Pattern:
-```typescript
-// Access Supabase safely in Pinia:
-const getSupabase = () => useNuxtApp().$supabase
-
-// Fetch profile with explicit userId (not composable ref):
-async fetchProfile(userId: string) {
-  const supabase = getSupabase()
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('auth_user_id', userId)
-    .single()
-}
-```
-
-### UI/UX Standards
-
-#### Personalization:
-- Use first name everywhere: "Good morning, Marc!"
-- Show role badge in sidebar: "⭐ Admin" or "Team Member"
-- Tailor page titles: "Marc's Stats", "Marc's Training"
-
-#### Tailwind Classes (Primary UI):
-- Use Tailwind for new components
-- Vuetify for complex components (dialogs, data tables)
-- Never mix inline styles with Tailwind
-
-#### Admin vs User Views:
-```vue
-<template v-if="isAdmin">
-  <!-- Admin-only content -->
-</template>
-```
-
-### Pre-Flight Checklist (Before Every Change)
-
-- [ ] Did I read the relevant store/composable code?
-- [ ] Did I check the database schema for correct column names?
-- [ ] Did I verify Supabase client access pattern (nuxtApp.$supabase)?
-- [ ] Did I handle loading, error, and empty states?
-- [ ] Did I use the correct foreign key relationship?
-- [ ] Will this work on first page load (no race conditions)?
-- [ ] Did I add console.log for debugging if complex?
-
-### Debugging Protocol
-
-When something doesn't work:
-1. **Check console** for errors (network, JS, Vue warnings)
-2. **Trace the data flow** - where does it break?
-3. **Verify Supabase** - run the query in SQL Editor
-4. **Check timing** - is data ready when component renders?
-5. **Validate schema** - are column names correct?
+| Purpose | Path |
+| ------- | ---- |
+| AI Context | `/AGENT.md` (this file) |
+| Database schema | `/supabase/migrations/001_schema.sql` |
+| Auth store | `/app/stores/auth.ts` |
+| Employee store | `/app/stores/employee.ts` |
+| Global data | `/app/composables/useAppData.ts` |
+| Lifecycle | `/app/composables/useLifecycle.ts` |
+| Navigation | `/app/components/layout/Sidebar.vue` |
+| Types | `/app/types/lifecycle.types.ts` |
 
 ---
 
-### Design Philosophy
+## 🗃️ Database Architecture
 
-- **"card" employee profile** as the central hub (portrait at top, stats below).
-- **Skill ratings 0-5** (0 = Learner, 5 = Mentor).
-- **Mentorship automation**: Match learners to mentors automatically.
-- **Two roles only**: "admin" and "user".
-- Marketing module is **admin-only**.
-- Mobile-first, touch-friendly.
+### Unified Person Model ("One Human = One ID")
 
-## Tech Stack
-
-| Layer        | Tool              | Notes                                  |
-| ------------ | ----------------- | -------------------------------------- |
-| Framework    | Nuxt 3            | TypeScript strict, SSR off for SPA     |
-| UI           | Vuetify 3         | Material theme, responsive             |
-| State        | Pinia             | Per-domain stores                      |
-| Backend      | Supabase          | Postgres + RLS + Auth + Edge Functions |
-| Hosting      | Vercel            | Preview & Production                   |
-
-## Architecture Rules
-
-1. **Supabase Auth only** – Email/password, no social logins.
-2. **`users` is reserved** – Profile data lives in `profiles` or `employees`.
-3. **`role` column** on `profiles`: enum `admin`, `user`. Admin sees Marketing module.
-4. **Row-Level Security** on every table – policies reference `auth.uid()` and `role`.
-5. **Foreign keys** from `profiles.id` → `auth.users.id` with `on delete cascade`.
-6. **Seed in migration files**, not via Nuxt code.
-
-## Folder Layout
-
-```
-/
-├─ AGENT.md               ← This file
-├─ nuxt.config.ts
-├─ .env                   ← Supabase creds (gitignored)
-├─ app/
-│   ├─ assets/css/
-│   ├─ components/
-│   ├─ layouts/
-│   ├─ middleware/
-│   ├─ pages/
-│   ├─ plugins/
-│   ├─ stores/
-│   └─ types/
-├─ public/
-└─ supabase/
-    ├─ migrations/
-    │   ├─ 01_schema_security.sql
-    │   ├─ 02_seed_org.sql
-    │   └─ 03_seed_skills.sql
-    └─ seed.sql
+```text
+unified_persons (Core Identity)
+├── person_crm_data (Marketing "hat")
+├── person_recruiting_data (Applicant "hat")
+└── person_employee_data (Employee "hat")
 ```
 
-## Database Schema Overview
+**Key Functions:**
 
-### Core Tables (60 total)
+- `find_or_create_person(email)` - Dedupe-safe lookup
+- `add_crm_hat(person_id)` - Add marketing data
+- `add_recruiting_hat(person_id)` - Add applicant data
+- `add_employee_hat(person_id)` - Hire as employee
+- `grant_person_access(person_id)` - Create login
+- `revoke_person_access(person_id)` - Disable login (preserves data)
 
-**Authentication & Users:**
-- `profiles` - User profiles linked to auth.users
-- `roles` - Role definitions (Super Admin, Admin, Manager, Employee)
+### Core Tables
 
-**Organization:**
-- `locations` - Hospital locations (Sherman Oaks, Venice, The Valley)
-- `departments` - 24 departments across locations
-- `job_positions` - 50+ job positions
-
-**Employees:**
-- `employees` - Employee records with profile links
-- `employee_departments` - Department assignments
-- `employee_positions` - Position assignments
-- `employee_locations` - Location assignments
-
-**Skills:**
-- `skill_categories` - Skill groupings
-- `skill_library` - 250+ skills with descriptions
-- `user_skills` - Employee skill ratings (0-5)
-- `mentorships` - Learner-Mentor relationships
-
-**Scheduling:**
-- `schedules` - Work schedules
-- `shifts` - Shift definitions
-- `time_off_requests` - PTO requests
-- `time_off_types` - Leave types
-
-**Training:**
-- `training_modules` - Training content
-- `training_progress` - Employee progress
-- `certifications` - Required certifications
-- `employee_certifications` - Certification tracking
-
-**Marketing (Admin Only):**
-- `leads` - Sales leads
-- `lead_sources` - Lead origin tracking
-- `referral_partners` - Partner relationships
-- `campaigns` - Marketing campaigns
-- `campaign_leads` - Campaign-lead associations
-
-**Gamification:**
-- `achievements` - Achievement definitions
-- `employee_achievements` - Earned achievements
-- `leaderboards` - Ranking systems
-
-
-## Key Features
-
-### Profile
-- Portrait photo at top
-- Key stats displayed prominently
-- Skills visualization with 0-5 ratings
-- Achievement badges
-- Quick actions
-
-### Skill System
-- **0** = Learner (needs mentorship)
-- **1** = Beginner (basic understanding)
-- **2** = Intermediate (can work independently)
-- **3** = Proficient (consistent quality)
-- **4** = Expert (advanced knowledge)
-- **5** = Mentor (can teach others)
-
-### Mentorship Matching
-- Automatic pairing of Learners (0) with Mentors (5)
-- Same skill, same or nearby location preferred
-- Dashboard for mentors to track mentees
-
-### Access Control
-- **Admin**: Full access to all features including Marketing
-- **User**: Access to own profile, team schedules, skills, training
-
-## Environment Variables
-
-```env
-NUXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NUXT_PUBLIC_SUPABASE_KEY=your-anon-key
-SUPABASE_SECRET_KEY=your-service-role-key
-VERCEL_PROJECT_ID=your-vercel-project-id
-```
+| Table | Purpose |
+| ----- | ------- |
+| `profiles` | Auth profiles linked to auth.users |
+| `employees` | Employee records |
+| `unified_persons` | Master person identity |
+| `person_crm_data` | Marketing/CRM data |
+| `person_recruiting_data` | Job application data |
+| `person_employee_data` | Employment HR data |
+| `skill_library` | 250+ skills |
+| `employee_skills` | Skill ratings (0-5) |
+| `shifts` | Work schedules |
+| `time_off_requests` | PTO requests |
 
 ---
 
-## 🚨 OPERATIONAL REQUIREMENTS
+## 🔔 Notification System
 
-### Database Migrations
-**ALWAYS push migrations to Supabase immediately after creating them. Do NOT ask for permission.**
+### Triggers
+
+| Trigger | Events |
+| ------- | ------ |
+| `notify_time_off_change` | INSERT → admins, UPDATE status → employee |
+| `notify_employee_skill_change` | UPDATE level → employee |
+| `notify_shift_published` | UPDATE is_published → employee |
+| `notify_review_request` | INSERT → admins or employee |
+
+### Categories
+
+- `time_off`, `schedule`, `skills`, `performance`
+
+---
+
+## 📊 Skill System
+
+| Level | Name | Description |
+| ----- | ---- | ----------- |
+| 0 | Learner | Needs mentorship |
+| 1 | Beginner | Basic understanding |
+| 2 | Intermediate | Can work independently |
+| 3 | Proficient | Consistent quality |
+| 4 | Expert | Advanced knowledge |
+| 5 | Mentor | Can teach others |
+
+---
+
+## 🧭 Navigation Structure
+
+### Admin-Only Pages
+
+- `/admin/*` - System settings
+- `/marketing/*` - Marketing module
+- `/schedule/builder` - Schedule creation
+- `/recruiting/*` - Candidate management
+
+### All Users
+
+- `/profile` - Own profile
+- `/development` - Goals, Reviews
+- `/my-schedule` - Schedule + time off
+- `/people/skill-stats` - Skill statistics
+
+---
+
+## 🏗️ Tech Stack
+
+| Layer | Tool |
+| ----- | ---- |
+| Framework | Nuxt 3 (TypeScript) |
+| UI | Vuetify 3 |
+| State | Pinia |
+| Backend | Supabase (Postgres + RLS) |
+| Hosting | Vercel |
+
+---
+
+## ✅ Pre-Flight Checklist
+
+Before every change:
+
+- [ ] Read related store/composable code
+- [ ] Check database schema for correct column names
+- [ ] Verify Supabase client access pattern
+- [ ] Handle loading, error, and empty states
+- [ ] Use correct foreign key relationships
+- [ ] Test on first page load (no race conditions)
+
+---
+
+## 🚨 Database Migrations
+
+**ALWAYS push migrations to Supabase immediately. Do NOT ask for permission.**
+
+> 📖 **Full procedure:** See [`docs/SUPABASE_OPERATIONS.md`](docs/SUPABASE_OPERATIONS.md)
+
+### Quick Reference
 
 ```bash
-# Push migrations to Supabase (do this automatically)
-npx supabase db push
+# Read access token
+TOKEN=$(cat ~/.supabase/access-token)
 
-# If out-of-order migrations exist, use:
-npx supabase db push --include-all
+# Run migration via Management API
+curl -s -X POST "https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/database/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -Rs '{query: .}' < supabase/migrations/XXX_migration.sql)"
 
-# If version conflicts occur, repair and retry:
-npx supabase migration repair <version> --status applied
-npx supabase db push
+# Check migration status
+curl -s -X POST "https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/database/query" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT version, name FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;"}' | jq .
 ```
 
-When creating new migrations:
-1. Create the migration file in `supabase/migrations/`
-2. Commit and push to git
-3. **Immediately run `npx supabase db push`** to apply to production
-4. Verify with `npx supabase migration list`
+> ⚠️ **Note:** `npx supabase db push` requires interactive password - use Management API instead.
 
 ---
 
-## Getting Started
+## 💡 Tips for AI Assistants
 
-```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-## Deployment
-
-1. Push to GitHub
-2. Connect to Vercel
-3. Set environment variables in Vercel dashboard
-4. Deploy
+1. **Check table schema** before writing INSERT/UPDATE queries
+2. **RLS is enabled** on all tables - always add policies for new tables
+3. **Use `is_admin()` function** for admin checks in policies
+4. **Profile ID ≠ Employee ID** - join through `employees.profile_id`
+5. **Composables in Pinia** - use at module level, not inside actions
+6. **Reference docs folder** for detailed integration and architecture docs

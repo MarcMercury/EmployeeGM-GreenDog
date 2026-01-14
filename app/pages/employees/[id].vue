@@ -489,6 +489,14 @@
             </v-btn>
           </v-card-text>
         </v-card>
+
+        <!-- Geo-Lock Settings (Admin Only) -->
+        <EmployeeGeoLockSettings
+          v-if="isAdmin && employee"
+          :employee="employee"
+          class="mt-4"
+          @update="loadEmployeeData"
+        />
       </v-col>
 
       <!-- Peer View: Limited Column -->

@@ -61,11 +61,34 @@
     <!-- Filters -->
     <v-card class="mb-4" variant="outlined">
       <v-card-text class="py-3">
+        <!-- Row 1: Quick Filter Toggle -->
+        <div class="d-flex justify-space-between align-center mb-3">
+          <v-btn-toggle v-model="quickFilter" density="compact" variant="outlined">
+            <v-btn value="all" size="small">All</v-btn>
+            <v-btn value="new" size="small" color="success">New</v-btn>
+            <v-btn value="screening" size="small" color="secondary">Screening</v-btn>
+            <v-btn value="interview" size="small" color="warning">Interview</v-btn>
+            <v-btn value="offer" size="small" color="teal">Offer</v-btn>
+            <v-btn value="hired" size="small" color="info">Hired</v-btn>
+          </v-btn-toggle>
+          <v-btn
+            v-if="hasActiveFilters"
+            variant="text"
+            size="small"
+            color="primary"
+            prepend-icon="mdi-filter-remove"
+            @click="clearAllFilters"
+          >
+            Clear Filters
+          </v-btn>
+        </div>
+
+        <!-- Row 2: Primary Filters -->
         <v-row align="center" dense>
           <v-col cols="12" md="3">
             <v-text-field
               v-model="search"
-              placeholder="Search candidates..."
+              placeholder="Search by name, email, phone..."
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="compact"
@@ -95,15 +118,115 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" md="5" class="d-flex justify-end">
-            <v-btn-toggle v-model="quickFilter" density="compact" variant="outlined">
-              <v-btn value="all" size="small">All</v-btn>
-              <v-btn value="new" size="small" color="success">New</v-btn>
-              <v-btn value="interview" size="small" color="warning">Interview</v-btn>
-              <v-btn value="offer" size="small" color="teal">Offer</v-btn>
-            </v-btn-toggle>
+          <v-col cols="6" md="2">
+            <v-select
+              v-model="locationFilter"
+              :items="locationOptions"
+              label="Location"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="6" md="3">
+            <v-select
+              v-model="departmentFilter"
+              :items="departmentOptions"
+              label="Department"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
           </v-col>
         </v-row>
+
+        <!-- Row 3: Advanced Filters (collapsible) -->
+        <v-expand-transition>
+          <div v-show="showAdvancedFilters" class="mt-3">
+            <v-row align="center" dense>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="sourceFilter"
+                  :items="sourceOptions"
+                  label="Source"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="candidateTypeFilter"
+                  :items="candidateTypeOptions"
+                  label="Type"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-text-field
+                  v-model="appliedDateFrom"
+                  label="Applied From"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-text-field
+                  v-model="appliedDateTo"
+                  label="Applied To"
+                  type="date"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="experienceFilter"
+                  :items="experienceOptions"
+                  label="Experience"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6" md="2">
+                <v-select
+                  v-model="interviewStatusFilter"
+                  :items="interviewStatusOptions"
+                  label="Interview Status"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+            </v-row>
+          </div>
+        </v-expand-transition>
+
+        <!-- Toggle Advanced Filters -->
+        <div class="d-flex justify-center mt-2">
+          <v-btn
+            variant="text"
+            size="small"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          >
+            <v-icon start>{{ showAdvancedFilters ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            {{ showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters' }}
+          </v-btn>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -128,8 +251,25 @@
           </div>
         </template>
 
+        <template #item.candidate_type="{ item }">
+          <v-chip 
+            v-if="item.candidate_type" 
+            :color="getCandidateTypeColor(item.candidate_type)" 
+            size="x-small" 
+            variant="tonal"
+          >
+            {{ formatCandidateType(item.candidate_type) }}
+          </v-chip>
+          <span v-else class="text-grey">—</span>
+        </template>
+
         <template #item.position="{ item }">
           <span v-if="item.job_positions?.title">{{ item.job_positions.title }}</span>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <template #item.location="{ item }">
+          <span v-if="item.location?.name">{{ item.location.name }}</span>
           <span v-else class="text-grey">—</span>
         </template>
 
@@ -141,13 +281,6 @@
 
         <template #item.applied_at="{ item }">
           <span v-if="item.applied_at">{{ formatDate(item.applied_at) }}</span>
-          <span v-else class="text-grey">—</span>
-        </template>
-
-        <template #item.phone="{ item }">
-          <a v-if="item.phone" :href="`tel:${item.phone}`" class="text-decoration-none" @click.stop>
-            {{ item.phone }}
-          </a>
           <span v-else class="text-grey">—</span>
         </template>
 
@@ -363,10 +496,19 @@ interface Candidate {
   phone: string | null
   target_position_id: string | null
   job_positions: { title: string } | null
+  location_id: string | null
+  location: { name: string } | null
+  department_id: string | null
+  department: { name: string } | null
   resume_url: string | null
   status: string
   notes: string | null
   applied_at: string
+  source: string | null
+  referral_source: string | null
+  experience_years: number | null
+  interview_status: string | null
+  candidate_type: string | null
 }
 
 interface CandidateSkill {
@@ -391,6 +533,8 @@ const candidates = ref<Candidate[]>([])
 const candidateSkills = ref<CandidateSkill[]>([])
 const availableSkills = ref<Skill[]>([])
 const positions = ref<{ id: string; title: string }[]>([])
+const locations = ref<{ id: string; name: string }[]>([])
+const departments = ref<{ id: string; name: string }[]>([])
 const selectedCandidate = ref<Candidate | null>(null)
 const candidateNotes = ref('')
 const loading = ref(true)
@@ -398,7 +542,16 @@ const saving = ref(false)
 const search = ref('')
 const statusFilter = ref<string | null>(null)
 const positionFilter = ref<string | null>(null)
+const locationFilter = ref<string | null>(null)
+const departmentFilter = ref<string | null>(null)
+const sourceFilter = ref<string | null>(null)
+const candidateTypeFilter = ref<string | null>(null)
+const experienceFilter = ref<string | null>(null)
+const interviewStatusFilter = ref<string | null>(null)
+const appliedDateFrom = ref<string | null>(null)
+const appliedDateTo = ref<string | null>(null)
 const quickFilter = ref('all')
+const showAdvancedFilters = ref(false)
 const detailTab = ref('bio')
 const detailDialog = ref(false)
 const addDialog = ref(false)
@@ -423,12 +576,47 @@ const statusOptions = [
   { title: 'Rejected', value: 'rejected' }
 ]
 
+const sourceOptions = [
+  { title: 'Website', value: 'website' },
+  { title: 'Referral', value: 'referral' },
+  { title: 'Indeed', value: 'indeed' },
+  { title: 'LinkedIn', value: 'linkedin' },
+  { title: 'Walk-in', value: 'walk-in' },
+  { title: 'Career Fair', value: 'career_fair' },
+  { title: 'Other', value: 'other' }
+]
+
+const candidateTypeOptions = [
+  { title: 'Applicant', value: 'applicant' },
+  { title: 'Intern', value: 'intern' },
+  { title: 'Extern', value: 'extern' },
+  { title: 'Student', value: 'student' },
+  { title: 'CE Attendee', value: 'ce_attendee' }
+]
+
+const experienceOptions = [
+  { title: '0-1 years', value: '0-1' },
+  { title: '1-3 years', value: '1-3' },
+  { title: '3-5 years', value: '3-5' },
+  { title: '5-10 years', value: '5-10' },
+  { title: '10+ years', value: '10+' }
+]
+
+const interviewStatusOptions = [
+  { title: 'Not Scheduled', value: 'not_scheduled' },
+  { title: 'Scheduled', value: 'scheduled' },
+  { title: 'Completed', value: 'completed' },
+  { title: 'No Show', value: 'no_show' },
+  { title: 'Rescheduled', value: 'rescheduled' }
+]
+
 const tableHeaders = [
   { title: 'Candidate', key: 'name', sortable: true },
+  { title: 'Type', key: 'candidate_type', sortable: true },
   { title: 'Position', key: 'position', sortable: true },
+  { title: 'Location', key: 'location', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Applied', key: 'applied_at', sortable: true },
-  { title: 'Phone', key: 'phone', sortable: false },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
 ]
 
@@ -436,6 +624,46 @@ const tableHeaders = [
 const positionOptions = computed(() => {
   return positions.value.map(p => ({ title: p.title, value: p.id }))
 })
+
+const locationOptions = computed(() => {
+  return locations.value.map(l => ({ title: l.name, value: l.id }))
+})
+
+const departmentOptions = computed(() => {
+  return departments.value.map(d => ({ title: d.name, value: d.id }))
+})
+
+const hasActiveFilters = computed(() => {
+  return !!(
+    search.value ||
+    statusFilter.value ||
+    positionFilter.value ||
+    locationFilter.value ||
+    departmentFilter.value ||
+    sourceFilter.value ||
+    candidateTypeFilter.value ||
+    experienceFilter.value ||
+    interviewStatusFilter.value ||
+    appliedDateFrom.value ||
+    appliedDateTo.value ||
+    (quickFilter.value && quickFilter.value !== 'all')
+  )
+})
+
+const clearAllFilters = () => {
+  search.value = ''
+  statusFilter.value = null
+  positionFilter.value = null
+  locationFilter.value = null
+  departmentFilter.value = null
+  sourceFilter.value = null
+  candidateTypeFilter.value = null
+  experienceFilter.value = null
+  interviewStatusFilter.value = null
+  appliedDateFrom.value = null
+  appliedDateTo.value = null
+  quickFilter.value = 'all'
+}
 
 const statusCounts = computed(() => {
   const counts = { new: 0, screening: 0, interview: 0, offer: 0, hired: 0, rejected: 0 }
@@ -450,24 +678,83 @@ const statusCounts = computed(() => {
 const filteredCandidates = computed(() => {
   let result = candidates.value
 
+  // Quick filter (status toggle)
   if (quickFilter.value !== 'all') {
     result = result.filter(c => c.status === quickFilter.value)
   }
 
+  // Status filter (dropdown)
   if (statusFilter.value) {
     result = result.filter(c => c.status === statusFilter.value)
   }
 
+  // Position filter
   if (positionFilter.value) {
     result = result.filter(c => c.target_position_id === positionFilter.value)
   }
 
+  // Location filter
+  if (locationFilter.value) {
+    result = result.filter(c => c.location_id === locationFilter.value)
+  }
+
+  // Department filter
+  if (departmentFilter.value) {
+    result = result.filter(c => c.department_id === departmentFilter.value)
+  }
+
+  // Source filter
+  if (sourceFilter.value) {
+    result = result.filter(c => 
+      c.source === sourceFilter.value || 
+      c.referral_source === sourceFilter.value
+    )
+  }
+
+  // Candidate type filter
+  if (candidateTypeFilter.value) {
+    result = result.filter(c => c.candidate_type === candidateTypeFilter.value)
+  }
+
+  // Experience filter
+  if (experienceFilter.value) {
+    result = result.filter(c => {
+      const years = c.experience_years ?? 0
+      switch (experienceFilter.value) {
+        case '0-1': return years >= 0 && years <= 1
+        case '1-3': return years > 1 && years <= 3
+        case '3-5': return years > 3 && years <= 5
+        case '5-10': return years > 5 && years <= 10
+        case '10+': return years > 10
+        default: return true
+      }
+    })
+  }
+
+  // Interview status filter
+  if (interviewStatusFilter.value) {
+    result = result.filter(c => c.interview_status === interviewStatusFilter.value)
+  }
+
+  // Applied date range
+  if (appliedDateFrom.value) {
+    const fromDate = new Date(appliedDateFrom.value)
+    result = result.filter(c => new Date(c.applied_at) >= fromDate)
+  }
+  if (appliedDateTo.value) {
+    const toDate = new Date(appliedDateTo.value)
+    toDate.setHours(23, 59, 59, 999)
+    result = result.filter(c => new Date(c.applied_at) <= toDate)
+  }
+
+  // Search filter (name, email, phone)
   if (search.value) {
     const q = search.value.toLowerCase()
     result = result.filter(c =>
       c.first_name.toLowerCase().includes(q) ||
       c.last_name.toLowerCase().includes(q) ||
-      c.email.toLowerCase().includes(q)
+      c.email.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q))
     )
   }
 
@@ -485,6 +772,28 @@ const getStatusColor = (status: string) => {
     rejected: 'grey'
   }
   return colors[status] || 'grey'
+}
+
+const getCandidateTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    applicant: 'primary',
+    intern: 'orange',
+    extern: 'purple',
+    student: 'cyan',
+    ce_attendee: 'deep-purple'
+  }
+  return colors[type] || 'grey'
+}
+
+const formatCandidateType = (type: string) => {
+  const labels: Record<string, string> = {
+    applicant: 'Applicant',
+    intern: 'Intern',
+    extern: 'Extern',
+    student: 'Student',
+    ce_attendee: 'CE Attendee'
+  }
+  return labels[type] || type
 }
 
 const formatStatus = (status: string) => status.charAt(0).toUpperCase() + status.slice(1)
@@ -638,7 +947,12 @@ const fetchData = async () => {
   try {
     const { data: candidatesData } = await client
       .from('candidates')
-      .select(`*, job_positions:target_position_id(title)`)
+      .select(`
+        *,
+        job_positions:target_position_id(title),
+        location:location_id(name),
+        department:department_id(name)
+      `)
       .order('applied_at', { ascending: false })
 
     candidates.value = candidatesData || []
@@ -649,6 +963,21 @@ const fetchData = async () => {
       .order('title')
 
     positions.value = positionsData || []
+
+    const { data: locationsData } = await client
+      .from('locations')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name')
+
+    locations.value = locationsData || []
+
+    const { data: departmentsData } = await client
+      .from('departments')
+      .select('id, name')
+      .order('name')
+
+    departments.value = departmentsData || []
 
     const { data: skillsData } = await client
       .from('skill_library')

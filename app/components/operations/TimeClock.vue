@@ -132,7 +132,7 @@
         </v-card-title>
         <v-card-text>
           <p class="text-body-1 mb-4">
-            This app requires your location to verify clock-in/out from the workplace.
+            {{ isGeoLocked ? 'Your account requires location verification to clock in/out.' : 'This app uses location to verify clock-in/out from the workplace.' }}
           </p>
           <v-list density="compact">
             <v-list-item prepend-icon="mdi-shield-check" title="Your privacy is protected">
@@ -148,12 +148,45 @@
           </v-list>
         </v-card-text>
         <v-card-actions>
-          <v-btn variant="text" @click="skipLocation">
+          <v-btn v-if="!isGeoLocked" variant="text" @click="skipLocation">
             Skip (Not Recommended)
           </v-btn>
           <v-spacer />
           <v-btn color="primary" @click="requestLocation">
             Allow Location
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Geo-Lock Blocked Dialog -->
+    <v-dialog v-model="showGeoLockBlocked" max-width="400">
+      <v-card>
+        <v-card-title class="d-flex align-center ga-2 text-error">
+          <v-icon color="error">mdi-map-marker-off</v-icon>
+          Location Restricted
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="error" variant="tonal" class="mb-4">
+            You must be at an approved location to clock in/out.
+          </v-alert>
+          <p class="text-body-2 mb-3">
+            Your account is geo-locked to specific work locations. You can only clock in/out from:
+          </p>
+          <v-list density="compact" class="bg-grey-lighten-4 rounded">
+            <v-list-item v-for="loc in allowedLocations" :key="loc.id" prepend-icon="mdi-map-marker">
+              <v-list-item-title>{{ loc.name }}</v-list-item-title>
+              <v-list-item-subtitle>{{ loc.address }}</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+          <p class="text-caption text-grey mt-3">
+            If you believe this is an error, please contact your manager or HR.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" @click="showGeoLockBlocked = false">
+            I Understand
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -166,21 +199,34 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useOperationsStore, type TimePunch } from '~/stores/operations'
 import { useUserStore } from '~/stores/user'
 
+interface AllowedLocation {
+  id: string
+  name: string
+  address: string
+}
+
 // Stores
 const opsStore = useOperationsStore()
 const userStore = useUserStore()
+const client = useSupabaseClient()
 
 // State
 const isPunching = ref(false)
 const showGeofenceWarning = ref(false)
 const geofenceWarningMessage = ref('')
 const showLocationPrompt = ref(false)
+const showGeoLockBlocked = ref(false)
 const currentLocation = ref<{ latitude: number; longitude: number; accuracy: number } | null>(null)
 const locationEnabled = ref(false)
 const locationError = ref<string | null>(null)
 const workedTimeInterval = ref<ReturnType<typeof setInterval> | null>(null)
 const displayedWorkedMinutes = ref(0)
 const punchError = ref<string | null>(null)
+
+// Geo-lock state
+const isGeoLocked = ref(false)
+const geoLockLocationIds = ref<string[]>([])
+const allowedLocations = ref<AllowedLocation[]>([])
 
 // Computed
 const employeeId = computed(() => userStore.employee?.id)
@@ -241,8 +287,23 @@ async function handlePunch() {
     return
   }
 
-  // Check if we need location and don't have it
-  if (opsStore.activeGeofences.length > 0 && !currentLocation.value && !locationError.value) {
+  // For geo-locked employees, location is mandatory
+  if (isGeoLocked.value && !currentLocation.value) {
+    showLocationPrompt.value = true
+    return
+  }
+
+  // For geo-locked employees, verify they're at an allowed location
+  if (isGeoLocked.value && currentLocation.value) {
+    const isAtAllowedLocation = await checkGeoLockLocation()
+    if (!isAtAllowedLocation) {
+      showGeoLockBlocked.value = true
+      return
+    }
+  }
+
+  // Check if we need location and don't have it (non geo-locked)
+  if (!isGeoLocked.value && opsStore.activeGeofences.length > 0 && !currentLocation.value && !locationError.value) {
     showLocationPrompt.value = true
     return
   }
@@ -257,8 +318,8 @@ async function handlePunch() {
       result = await opsStore.clockIn(employeeId.value, currentLocation.value || undefined)
     }
 
-    // Show geofence warning if applicable
-    if (result.geofenceWarning) {
+    // Show geofence warning if applicable (for non-geo-locked employees)
+    if (result.geofenceWarning && !isGeoLocked.value) {
       geofenceWarningMessage.value = result.geofenceWarning
       showGeofenceWarning.value = true
     }
@@ -271,6 +332,58 @@ async function handlePunch() {
   } finally {
     isPunching.value = false
   }
+}
+
+// Check if geo-locked employee is at an allowed location
+async function checkGeoLockLocation(): Promise<boolean> {
+  if (!currentLocation.value || geoLockLocationIds.value.length === 0) {
+    return false
+  }
+
+  // Get geofences for allowed locations
+  const allowedGeofences = opsStore.geofences.filter(g => 
+    g.location_id && geoLockLocationIds.value.includes(g.location_id)
+  )
+
+  if (allowedGeofences.length === 0) {
+    // No geofences defined for allowed locations - allow punch but log warning
+    console.warn('No geofences defined for geo-locked employee locations')
+    return true
+  }
+
+  // Check if current location is within any allowed geofence
+  for (const fence of allowedGeofences) {
+    if (fence.latitude && fence.longitude) {
+      const distance = haversineDistance(
+        currentLocation.value.latitude,
+        currentLocation.value.longitude,
+        fence.latitude,
+        fence.longitude
+      )
+      
+      if (distance <= (fence.radius_meters || 100)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+// Haversine distance calculation
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000 // Earth radius in meters
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180)
 }
 
 async function requestLocation() {
@@ -329,12 +442,47 @@ function updateWorkedTime() {
   displayedWorkedMinutes.value = opsStore.todayWorkedMinutes
 }
 
+// Fetch employee geo-lock settings
+async function fetchGeoLockSettings() {
+  if (!employeeId.value) return
+
+  try {
+    const { data, error } = await client
+      .from('employees')
+      .select('geo_lock_enabled, geo_lock_location_ids')
+      .eq('id', employeeId.value)
+      .single()
+
+    if (error) throw error
+
+    isGeoLocked.value = data?.geo_lock_enabled || false
+    geoLockLocationIds.value = data?.geo_lock_location_ids || []
+
+    // Fetch allowed location details for display
+    if (isGeoLocked.value && geoLockLocationIds.value.length > 0) {
+      const { data: locations } = await client
+        .from('locations')
+        .select('id, name, address_line1, city, state')
+        .in('id', geoLockLocationIds.value)
+
+      allowedLocations.value = (locations || []).map(loc => ({
+        id: loc.id,
+        name: loc.name,
+        address: [loc.address_line1, loc.city, loc.state].filter(Boolean).join(', ')
+      }))
+    }
+  } catch (err) {
+    console.error('Error fetching geo-lock settings:', err)
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   if (employeeId.value) {
     await Promise.all([
       opsStore.fetchTodayPunches(employeeId.value),
-      opsStore.fetchGeofences()
+      opsStore.fetchGeofences(),
+      fetchGeoLockSettings()
     ])
     displayedWorkedMinutes.value = opsStore.todayWorkedMinutes
   }

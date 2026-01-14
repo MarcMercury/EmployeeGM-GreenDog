@@ -249,10 +249,18 @@
                     </v-card-text>
                   </v-card>
 
+                  <!-- Event Supplies Component -->
+                  <GrowthEventSupplies
+                    v-if="selectedEvent.id"
+                    :event-id="selectedEvent.id"
+                    :event-budget="selectedEvent.budget || 0"
+                    class="mb-3"
+                  />
+
                   <v-card variant="outlined" class="mb-3">
                     <v-card-text>
-                      <div class="text-subtitle-2 mb-1">Supplies Needed</div>
-                      <p class="text-body-2 mb-0">{{ selectedEvent.supplies_needed || 'Not specified' }}</p>
+                      <div class="text-subtitle-2 mb-1">Supplies Notes</div>
+                      <p class="text-body-2 mb-0">{{ selectedEvent.supplies_needed || 'No additional notes' }}</p>
                     </v-card-text>
                   </v-card>
 

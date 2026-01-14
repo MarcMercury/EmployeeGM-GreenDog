@@ -10,7 +10,7 @@ Employee GM integrates with Slack to provide seamless communication between the 
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Employee GM                               │
 ├─────────────────────────────────────────────────────────────────┤
@@ -54,7 +54,7 @@ CRON_SECRET=your-cron-secret-for-scheduled-endpoint
 
 ### 2. Slack App Configuration
 
-1. Create a Slack App at https://api.slack.com/apps
+1. Create a Slack App at [api.slack.com/apps](https://api.slack.com/apps)
 2. Add Bot Token Scopes:
    - `users:read` - Read user list
    - `users:read.email` - Read user emails
@@ -87,10 +87,12 @@ Run the migration to create required tables:
 ### Running Sync Manually
 
 From the Admin UI:
+
 1. Navigate to Admin → Slack Integration → User Sync
 2. Click "Run Sync Now"
 
 Via API:
+
 ```typescript
 await $fetch('/api/slack/sync/run', {
   method: 'POST',
@@ -110,11 +112,13 @@ Set up a cron job to call the scheduled endpoint every 6 hours:
 ### Resolving Conflicts
 
 Conflicts are created when:
+
 - No Slack user matches the employee email
 - Multiple Slack users match
 - Previously linked user is no longer in Slack
 
 Resolve via Admin UI or API:
+
 ```typescript
 await $fetch('/api/slack/sync/resolve', {
   method: 'POST',
@@ -131,7 +135,7 @@ await $fetch('/api/slack/sync/resolve', {
 ### Supported Event Types
 
 | Event Type | Description | Default Target |
-|------------|-------------|----------------|
+| ---------- | ----------- | -------------- |
 | `employee_onboarding` | New employee starts | #new-hires |
 | `visitor_arrival` | Visitor arrives | #visitors |
 | `schedule_published` | Schedule posted | #schedule |
@@ -143,6 +147,7 @@ await $fetch('/api/slack/sync/resolve', {
 ### Sending Notifications
 
 Using the composable:
+
 ```typescript
 const { notifyNewEmployee } = useSlack()
 
@@ -155,6 +160,7 @@ await notifyNewEmployee({
 ```
 
 Using the API directly:
+
 ```typescript
 await $fetch('/api/slack/notifications/send-event', {
   method: 'POST',
@@ -174,7 +180,8 @@ await $fetch('/api/slack/notifications/send-event', {
 Templates support placeholders: `{{placeholder_name}}`
 
 Example:
-```
+
+```text
 🎉 Welcome {{employee_name}} to the team! 
 They are joining as {{position}} starting {{start_date}}.
 ```
@@ -182,6 +189,7 @@ They are joining as {{position}} starting {{start_date}}.
 ### Processing Queue
 
 Notifications are queued and processed in batches. Process manually:
+
 ```typescript
 await $fetch('/api/slack/notifications/process', { method: 'POST' })
 ```
@@ -191,21 +199,25 @@ Or include in the scheduled cron job.
 ## Security
 
 ### Token Storage
+
 - Tokens are stored ONLY in environment variables
 - Never exposed to client-side code
 - Validated format before use
 
 ### Rate Limiting
+
 - Built-in rate limiting (50 calls/minute)
 - Automatic retry with exponential backoff
 - Respects Slack's `Retry-After` headers
 
 ### Audit Logging
+
 - All API calls logged to `audit_logs` table
 - Includes success/failure status
 - Tracks which endpoints were called
 
 ### Access Control
+
 - Sync management requires admin role
 - Notification triggers readable by all
 - Trigger management requires admin role
@@ -213,11 +225,13 @@ Or include in the scheduled cron job.
 ## Health Monitoring
 
 Check integration health:
+
 ```bash
 curl https://your-app.com/api/slack/health
 ```
 
 Response includes:
+
 - Token configuration status
 - API reachability
 - Authentication status
@@ -228,19 +242,23 @@ Response includes:
 ## Troubleshooting
 
 ### "Slack bot token not configured"
+
 Ensure `SLACK_BOT_TOKEN` is set in environment variables.
 
 ### "User not found" errors
+
 - Verify the user has a valid email in Slack
 - Check if the email matches Employee GM records
 
 ### Notifications not sending
+
 1. Check if trigger is enabled
 2. Verify notification is in queue (`status = 'pending'`)
 3. Check for errors in queue item
 4. Ensure bot has channel access
 
 ### Sync taking too long
+
 - Large workspaces may take several minutes
 - Check for rate limiting (50 calls/min max)
 - Consider running during off-peak hours
@@ -250,7 +268,7 @@ Ensure `SLACK_BOT_TOKEN` is set in environment variables.
 ### Sync Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| ------ | -------- | ----------- |
 | POST | `/api/slack/sync/run` | Run full sync |
 | GET | `/api/slack/sync/status` | Get sync status |
 | GET | `/api/slack/sync/conflicts` | List conflicts |
@@ -262,7 +280,7 @@ Ensure `SLACK_BOT_TOKEN` is set in environment variables.
 ### Notification Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| ------ | -------- | ----------- |
 | POST | `/api/slack/notifications/queue` | Queue notification |
 | POST | `/api/slack/notifications/process` | Process queue |
 | GET | `/api/slack/notifications/triggers` | List triggers |
@@ -272,7 +290,7 @@ Ensure `SLACK_BOT_TOKEN` is set in environment variables.
 ### Messaging Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+| ------ | -------- | ----------- |
 | POST | `/api/slack/send` | Send message |
 | POST | `/api/slack/find-user` | Find user by email |
 | GET | `/api/slack/channels` | List channels |

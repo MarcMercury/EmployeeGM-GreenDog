@@ -422,3 +422,367 @@ export interface PromotePersonResponse {
     person: UnifiedPersonView
   }
 }
+// =====================================================
+// EXTENSION TABLE TYPES ("Hats")
+// These represent the stage-specific data tables
+// =====================================================
+
+/**
+ * CRM Lead Status
+ */
+export type CrmLeadStatus = 
+  | 'new'
+  | 'contacted'
+  | 'qualified'
+  | 'nurturing'
+  | 'converted'
+  | 'lost'
+  | 'archived'
+
+/**
+ * Recruiting Status
+ */
+export type RecruitingStatus =
+  | 'new'
+  | 'reviewing'
+  | 'screening'
+  | 'interviewing'
+  | 'offer_pending'
+  | 'offer_extended'
+  | 'offer_accepted'
+  | 'offer_declined'
+  | 'hired'
+  | 'withdrawn'
+  | 'rejected'
+  | 'on_hold'
+
+/**
+ * Employment Status
+ */
+export type EmploymentStatus =
+  | 'pending'
+  | 'onboarding'
+  | 'active'
+  | 'on_leave'
+  | 'suspended'
+  | 'terminated'
+  | 'resigned'
+
+/**
+ * Person CRM Data (Marketing/Sales Extension)
+ */
+export interface PersonCrmData {
+  id: string
+  personId: string
+  
+  // Status
+  leadStatus: CrmLeadStatus
+  leadScore: number
+  leadTemperature?: 'cold' | 'warm' | 'hot'
+  
+  // Attribution
+  acquisitionSource?: string
+  acquisitionDetail?: string
+  acquisitionCampaign?: string
+  referralPartnerId?: string
+  firstTouchDate?: string
+  
+  // Engagement
+  eventsAttended: Array<{ eventId: string; attendedAt: string }>
+  lastEventAttendedAt?: string
+  eventAttendanceCount: number
+  
+  // Preferences
+  preferredContactMethod?: 'email' | 'phone' | 'text' | 'mail'
+  emailOptIn: boolean
+  smsOptIn: boolean
+  mailOptIn: boolean
+  
+  // Tags & Notes
+  tags: string[]
+  marketingNotes?: string
+  
+  // Context-specific
+  petsInfo?: Array<{ name: string; species: string; breed?: string }>
+  businessInfo?: Record<string, unknown>
+  interests?: string[]
+  
+  // Metadata
+  createdAt: string
+  updatedAt: string
+  createdBy?: string
+  updatedBy?: string
+}
+
+/**
+ * Person Recruiting Data (Job Application Extension)
+ */
+export interface PersonRecruitingData {
+  id: string
+  personId: string
+  
+  // Status
+  recruitingStatus: RecruitingStatus
+  statusChangedAt: string
+  
+  // Target Position
+  targetPositionId?: string
+  targetDepartmentId?: string
+  targetLocationId?: string
+  
+  // Candidate Type
+  candidateType: 'applicant' | 'intern' | 'extern' | 'student' | 'referral' | 'internal'
+  
+  // Documents
+  resumeUrl?: string
+  coverLetterUrl?: string
+  portfolioUrl?: string
+  documents: Array<{ name: string; url: string; type: string }>
+  
+  // Application
+  appliedAt?: string
+  applicationSource?: string
+  applicationData: Record<string, unknown>
+  
+  // Compensation Expectations
+  salaryExpectationMin?: number
+  salaryExpectationMax?: number
+  salaryExpectationType?: 'hourly' | 'salary' | 'negotiable'
+  
+  // Availability
+  availableStartDate?: string
+  preferredSchedule?: string
+  workAuthorization?: string
+  relocationWilling: boolean
+  
+  // Interview
+  interviewScores: Record<string, number>
+  interviewNotes: Array<{ stage: string; notes: string; interviewer?: string; date: string }>
+  overallRating?: number
+  
+  // Skills
+  skillsAssessment: Record<string, number>
+  
+  // References
+  references: Array<{ name: string; relationship: string; phone?: string; email?: string }>
+  backgroundCheckStatus?: 'not_started' | 'pending' | 'passed' | 'failed' | 'requires_review'
+  backgroundCheckDate?: string
+  
+  // Offer
+  offerDetails?: Record<string, unknown>
+  offerExtendedAt?: string
+  offerResponseDeadline?: string
+  offerAcceptedAt?: string
+  
+  // Rejection/Withdrawal
+  rejectionReason?: string
+  rejectionNotes?: string
+  withdrawalReason?: string
+  
+  // Legacy link
+  legacyCandidateId?: string
+  
+  // Metadata
+  createdAt: string
+  updatedAt: string
+  createdBy?: string
+  updatedBy?: string
+}
+
+/**
+ * Person Employee Data (Employment Extension)
+ */
+export interface PersonEmployeeData {
+  id: string
+  personId: string
+  
+  // Status
+  employmentStatus: EmploymentStatus
+  statusChangedAt: string
+  statusReason?: string
+  
+  // Identification
+  employeeNumber?: string
+  ssnLastFour?: string
+  
+  // Position
+  positionId?: string
+  departmentId?: string
+  locationId?: string
+  managerId?: string
+  
+  // Employment Details
+  employmentType: 'full_time' | 'part_time' | 'contractor' | 'intern' | 'extern' | 'per_diem' | 'temp'
+  hireDate?: string
+  originalHireDate?: string
+  probationEndDate?: string
+  
+  // Compensation
+  payRate?: number
+  payType: 'hourly' | 'salary' | 'commission' | 'stipend'
+  payFrequency?: 'weekly' | 'bi_weekly' | 'semi_monthly' | 'monthly'
+  flsaStatus?: 'exempt' | 'non_exempt'
+  compensationHistory: Array<{ date: string; payRate: number; payType: string; reason?: string }>
+  
+  // Schedule
+  defaultSchedule?: Record<string, unknown>
+  ptoBalanceHours: number
+  sickBalanceHours: number
+  
+  // Access
+  role: string
+  permissions: Record<string, boolean>
+  
+  // Benefits
+  benefitsEligible: boolean
+  benefitsEnrolled: Record<string, unknown>
+  benefitsEnrollmentDate?: string
+  
+  // Compliance
+  i9Verified: boolean
+  i9VerifiedAt?: string
+  w4Submitted: boolean
+  w4SubmittedAt?: string
+  employeeHandbookSigned: boolean
+  handbookSignedAt?: string
+  
+  // Termination
+  terminationDate?: string
+  terminationType?: 'voluntary' | 'involuntary' | 'layoff' | 'retirement' | 'contract_end' | 'mutual'
+  terminationReason?: string
+  eligibleForRehire: boolean
+  finalPaycheckIssued: boolean
+  exitInterviewCompleted: boolean
+  
+  // Legacy link
+  legacyEmployeeId?: string
+  
+  // Metadata
+  createdAt: string
+  updatedAt: string
+  createdBy?: string
+  updatedBy?: string
+}
+
+/**
+ * Master Profile View - Unified view of a person with all "hats"
+ */
+export interface MasterProfileView {
+  // Core Identity
+  id: string
+  firstName: string
+  lastName: string
+  preferredName?: string
+  email: string
+  emailSecondary?: string
+  phoneMobile?: string
+  phoneHome?: string
+  phoneWork?: string
+  addressLine1?: string
+  addressLine2?: string
+  city?: string
+  state?: string
+  postalCode?: string
+  country?: string
+  dateOfBirth?: string
+  gender?: string
+  pronouns?: string
+  emergencyContactName?: string
+  emergencyContactPhone?: string
+  emergencyContactRelationship?: string
+  emergencyContactEmail?: string
+  avatarUrl?: string
+  linkedinUrl?: string
+  websiteUrl?: string
+  
+  // Lifecycle
+  currentStage: PersonLifecycleStage
+  stageEnteredAt: string
+  sourceType?: string
+  sourceDetail?: string
+  referralSource?: string
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+  lastActivityAt: string
+  
+  // "Hats" indicators
+  hasCrmData: boolean
+  hasRecruitingData: boolean
+  hasEmployeeData: boolean
+  hasSystemAccess: boolean
+  
+  // CRM Summary
+  leadStatus?: CrmLeadStatus
+  leadScore?: number
+  acquisitionSource?: string
+  crmTags?: string[]
+  
+  // Recruiting Summary
+  recruitingStatus?: RecruitingStatus
+  candidateType?: string
+  targetPositionId?: string
+  targetPositionTitle?: string
+  appliedAt?: string
+  overallRating?: number
+  
+  // Employee Summary
+  employeeNumber?: string
+  employmentStatus?: EmploymentStatus
+  employmentType?: string
+  hireDate?: string
+  currentPositionTitle?: string
+  departmentName?: string
+  locationName?: string
+  payRate?: number
+  payType?: string
+  
+  // Access
+  systemRole?: string
+  accessActive?: boolean
+}
+
+/**
+ * Add Hat Request Types
+ */
+export interface AddCrmHatRequest {
+  personId: string
+  acquisitionSource?: string
+  acquisitionDetail?: string
+  tags?: string[]
+  notes?: string
+}
+
+export interface AddRecruitingHatRequest {
+  personId: string
+  targetPositionId?: string
+  targetDepartmentId?: string
+  targetLocationId?: string
+  candidateType?: string
+  resumeUrl?: string
+}
+
+export interface AddEmployeeHatRequest {
+  personId: string
+  positionId: string
+  departmentId?: string
+  locationId?: string
+  hireDate?: string
+  employmentType?: string
+  payRate?: number
+  payType?: string
+}
+
+/**
+ * Access Management Request Types
+ */
+export interface GrantAccessRequest {
+  personId: string
+  role?: string
+  sendWelcomeEmail?: boolean
+}
+
+export interface RevokeAccessRequest {
+  personId: string
+  reason?: string
+}

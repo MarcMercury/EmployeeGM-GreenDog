@@ -243,6 +243,116 @@ The UUL system integrates with existing tables:
 | `education_visitors` | Created during `promote_to_student()` |
 | `marketing_leads` | Linked via `marketing_lead_id` |
 
+## Extension Tables ("Hats" Architecture)
+
+The Unified Master Profile architecture uses "extension tables" that attach to the core `unified_persons` record. Each extension represents a "hat" that a person wears - they can have multiple hats without duplicating their core identity.
+
+### Philosophy: One Human = One ID
+
+```
+OLD WAY (Silos):
+  Visitor ID 101: "Jane Doe" (Note: Likes coffee)
+  Jane applies → Candidate ID 505: "Jane Doe" ← Data mismatch risk
+  Jane hired → Employee ID 900: "Jane Doe" ← Previous notes lost
+
+NEW WAY (Unified):
+  Person ID 101: "Jane Doe"
+  ├── CRM Hat: (Note: Likes coffee, Source: Career Fair)
+  ├── Recruiting Hat: (Applied for RVT, Interview score: 4.5)
+  └── Employee Hat: (Hired Jan 1, Pay: $25/hr)
+  
+  Result: Full history preserved, one ID throughout lifecycle
+```
+
+### Extension Tables
+
+| Table | Purpose | When Created |
+|-------|---------|--------------|
+| `person_crm_data` | Marketing/sales data (leads, events, tags) | `add_crm_hat()` or lead intake |
+| `person_recruiting_data` | Job application, interview, offer data | `add_recruiting_hat()` or job application |
+| `person_employee_data` | HR/payroll, benefits, employment terms | `add_employee_hat()` or hire completion |
+
+### Adding "Hats" to a Person
+
+```typescript
+// Add CRM tracking to a visitor
+await lifecycle.addCrmHat({
+  personId: 'uuid',
+  acquisitionSource: 'event',
+  acquisitionDetail: 'City Dog Fair 2024',
+  tags: ['dog-owner', 'interested-grooming']
+})
+
+// Convert lead to applicant
+await lifecycle.addRecruitingHat({
+  personId: 'uuid',
+  targetPositionId: 'position-uuid',
+  candidateType: 'applicant',
+  resumeUrl: 'https://...'
+})
+
+// Complete hire to employee
+await lifecycle.addEmployeeHat({
+  personId: 'uuid',
+  positionId: 'position-uuid',
+  departmentId: 'dept-uuid',
+  hireDate: '2024-01-15',
+  employmentType: 'full_time',
+  payRate: 25.00,
+  payType: 'hourly'
+})
+```
+
+### Master Profile View
+
+The `master_profile_view` combines all hats into a single queryable view:
+
+```sql
+SELECT * FROM master_profile_view WHERE id = 'person-uuid';
+
+-- Returns unified view with:
+-- - Core identity fields
+-- - has_crm_data, has_recruiting_data, has_employee_data flags
+-- - Summary fields from each extension
+```
+
+### Access Management (Separate from Data)
+
+System access (login) is managed independently from person data:
+
+```typescript
+// Grant login access (creates auth.users + profile)
+await lifecycle.grantAccess({
+  personId: 'uuid',
+  role: 'employee',
+  sendWelcomeEmail: true
+})
+
+// Revoke access (disables login without deleting data)
+await lifecycle.revokeAccess({
+  personId: 'uuid',
+  reason: 'Employment terminated'
+})
+```
+
+The person record and their complete history remain intact after access revocation.
+
+### Migration from Legacy Tables
+
+To populate extension tables from existing legacy data:
+
+```sql
+SELECT * FROM migrate_to_extension_tables();
+
+-- Returns count of records migrated to each extension table
+```
+
+This function:
+1. Creates `person_crm_data` from `marketing_leads`
+2. Creates `person_recruiting_data` from `candidates`
+3. Creates `person_employee_data` from `employees`
+4. Preserves links to legacy records for data integrity
+
 ## Future Enhancements
 
 1. **Email Integration**: Automatic sending of intake invitations via Resend/SendGrid
