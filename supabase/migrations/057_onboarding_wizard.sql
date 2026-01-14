@@ -526,6 +526,15 @@ GRANT EXECUTE ON FUNCTION public.start_candidate_onboarding TO authenticated;
 -- STEP 12: Updated timestamp triggers
 -- =====================================================
 
+-- Create the update_updated_at_column function if it doesn't exist
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TRIGGER update_onboarding_templates_updated_at
   BEFORE UPDATE ON public.onboarding_templates
   FOR EACH ROW

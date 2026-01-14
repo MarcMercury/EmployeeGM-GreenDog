@@ -3,6 +3,14 @@
 > **🤖 AI CONTEXT FILE:** This is the primary reference document for AI assistants.
 > Read this file first before making any changes.
 
+## 🚨 IMPORTANT DIRECTIVES
+
+### Auto-Push Supabase Migrations
+**DIRECTIVE:** When creating SQL migrations, automatically run them against the database.
+- Run `supabase db reset --local` to test locally first
+- Use `supabase db push` to push to remote (requires auth token)
+- If push fails due to auth, create a combined SQL file in `/scripts/` for manual execution
+
 ## Project Vision
 
 Veterinary hospital management system ("Madden for Vets") for Green Dog Dental.

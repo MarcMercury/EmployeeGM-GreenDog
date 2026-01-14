@@ -173,13 +173,62 @@ function getVisitorTypeIcon(type: string): string {
       </v-col>
     </v-row>
 
-    <!-- Visitor Stats by Type -->
+    <!-- Quick Actions & Navigation -->
+    <v-row class="mb-6">
+      <v-col cols="12" md="4">
+        <v-card color="blue" variant="tonal" to="/gdu/students" class="h-100">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="blue" class="mr-4">
+              <v-icon>mdi-account-school</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-subtitle-1 font-weight-bold">Student Contacts</div>
+              <div class="text-caption">Interns, Externs, Cohorts, Intensives</div>
+            </div>
+            <v-spacer />
+            <v-icon>mdi-chevron-right</v-icon>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card color="amber" variant="tonal" to="/gdu/visitors" class="h-100">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="amber" class="mr-4">
+              <v-icon>mdi-certificate</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-subtitle-1 font-weight-bold">CE Course Contacts</div>
+              <div class="text-caption">Continuing Education Attendees</div>
+            </div>
+            <v-spacer />
+            <v-icon>mdi-chevron-right</v-icon>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card color="success" variant="tonal" to="/gdu/events" class="h-100">
+          <v-card-text class="d-flex align-center">
+            <v-avatar color="success" class="mr-4">
+              <v-icon>mdi-calendar-star</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-subtitle-1 font-weight-bold">CE Events</div>
+              <div class="text-caption">{{ stats?.upcomingEvents || 0 }} upcoming</div>
+            </div>
+            <v-spacer />
+            <v-icon>mdi-chevron-right</v-icon>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Legacy Visitor Stats by Type -->
     <v-row class="mb-6">
       <v-col cols="12" md="6">
         <v-card>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-account-group</v-icon>
-            Visitors by Type
+            Legacy Visitors (Being Migrated)
             <v-spacer />
             <v-btn variant="text" size="small" to="/gdu/visitors">View All</v-btn>
           </v-card-title>
@@ -217,8 +266,8 @@ function getVisitorTypeIcon(type: string): string {
               <v-btn variant="tonal" color="primary" to="/gdu/events/new" prepend-icon="mdi-plus">
                 Create CE Event
               </v-btn>
-              <v-btn variant="tonal" color="secondary" to="/gdu/visitors?action=add" prepend-icon="mdi-account-plus">
-                Add Visitor
+              <v-btn variant="tonal" color="blue" to="/gdu/students" prepend-icon="mdi-account-plus">
+                Invite Student
               </v-btn>
               <v-btn variant="tonal" to="/gdu/events" prepend-icon="mdi-calendar">
                 View All Events

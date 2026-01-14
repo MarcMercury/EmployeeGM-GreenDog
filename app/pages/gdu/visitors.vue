@@ -526,9 +526,9 @@ async function postVisitorToSlack() {
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
-        <h1 class="text-h4 font-weight-bold">Visitor CRM</h1>
+        <h1 class="text-h4 font-weight-bold">CE Course Contacts</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
-          Manage interns, externs, students, and CE attendees
+          Manage CE event attendees and continuing education participants
         </p>
       </div>
       <v-spacer />
@@ -537,7 +537,7 @@ async function postVisitorToSlack() {
         prepend-icon="mdi-account-plus"
         @click="openAddDialog"
       >
-        Add Visitor
+        Add Contact
       </v-btn>
     </div>
 

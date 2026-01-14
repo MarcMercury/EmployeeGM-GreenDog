@@ -98,6 +98,7 @@
           </v-chip>
         </template>
         <template #item.actions="{ item }">
+          <v-btn icon="mdi-account-plus" size="small" variant="text" color="primary" @click="openAssignDialog(item)" title="Assign Course" />
           <v-btn icon="mdi-pencil" size="small" variant="text" @click="editCourse(item)" />
           <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDeleteCourse(item)" />
         </template>
@@ -213,6 +214,110 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Assign Course Dialog -->
+    <v-dialog v-model="assignDialog" max-width="500">
+      <v-card v-if="courseToAssign" rounded="lg">
+        <v-card-title class="d-flex align-center gap-2">
+          <v-icon color="primary">mdi-account-plus</v-icon>
+          Assign Course
+        </v-card-title>
+        
+        <v-divider />
+        
+        <v-card-text class="py-4">
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <strong>{{ courseToAssign.title }}</strong>
+          </v-alert>
+
+          <v-radio-group v-model="assignmentType" class="mb-4">
+            <v-radio value="everyone" color="primary">
+              <template #label>
+                <div>
+                  <div class="font-weight-medium">Everyone</div>
+                  <div class="text-caption text-grey">Assign to all active employees</div>
+                </div>
+              </template>
+            </v-radio>
+            
+            <v-radio value="department" color="blue" class="mt-2">
+              <template #label>
+                <div>
+                  <div class="font-weight-medium">Specific Department</div>
+                  <div class="text-caption text-grey">Target a specific team</div>
+                </div>
+              </template>
+            </v-radio>
+            
+            <v-radio 
+              value="smart" 
+              color="success" 
+              class="mt-2"
+              :disabled="!courseToAssign.skill_id"
+            >
+              <template #label>
+                <div>
+                  <div class="d-flex align-center gap-2">
+                    <span class="font-weight-medium">🧠 Smart Assign</span>
+                    <v-chip size="x-small" color="success" variant="flat">AI</v-chip>
+                  </div>
+                  <div class="text-caption text-grey">
+                    {{ courseToAssign.skill_id 
+                      ? 'Assign to employees with skill below level 3' 
+                      : 'Requires linked skill' 
+                    }}
+                  </div>
+                </div>
+              </template>
+            </v-radio>
+          </v-radio-group>
+
+          <v-select
+            v-if="assignmentType === 'department'"
+            v-model="selectedDepartment"
+            :items="departments"
+            label="Select Department"
+            variant="outlined"
+            class="mb-4"
+          />
+
+          <v-text-field
+            v-model.number="dueDays"
+            label="Days Until Due"
+            type="number"
+            min="1"
+            variant="outlined"
+            class="mb-4"
+          />
+
+          <v-checkbox
+            v-model="requiresSignoff"
+            label="Require manager sign-off for skill advancement"
+            hide-details
+            color="warning"
+          />
+          <div class="text-caption text-grey ml-8 mb-2">
+            If checked, a manager must approve the completion before any skill is awarded
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="assignDialog = false">Cancel</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="assignCourse"
+            :loading="assigning"
+          >
+            <v-icon start>mdi-send</v-icon>
+            Assign Course
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -242,9 +347,19 @@ const skillsLibrary = ref<{ id: string; name: string; category: string; display_
 
 const createCourseDialog = ref(false)
 const deleteDialog = ref(false)
+const assignDialog = ref(false)
 const editingCourse = ref<TrainingCourse | null>(null)
 const courseToDelete = ref<TrainingCourse | null>(null)
+const courseToAssign = ref<CourseWithSkill | null>(null)
 const saving = ref(false)
+const assigning = ref(false)
+
+// Assignment options
+const assignmentType = ref<'everyone' | 'department' | 'smart'>('everyone')
+const selectedDepartment = ref('')
+const dueDays = ref(30)
+const requiresSignoff = ref(false)
+const departments = ref<string[]>([])
 
 // Course category options
 const courseCategories = [
@@ -459,8 +574,84 @@ async function createCourse() {
   await saveCourse()
 }
 
+// Assignment functions
+function openAssignDialog(course: CourseWithSkill) {
+  courseToAssign.value = course
+  assignmentType.value = 'everyone'
+  selectedDepartment.value = ''
+  dueDays.value = 30
+  requiresSignoff.value = course.skill_id ? true : false
+  assignDialog.value = true
+}
+
+async function assignCourse() {
+  if (!courseToAssign.value) return
+  
+  assigning.value = true
+  try {
+    const academyStore = useAcademyStore()
+    let assignedCount = 0
+    
+    if (assignmentType.value === 'everyone') {
+      assignedCount = await academyStore.assignCourseToAll(
+        courseToAssign.value.id,
+        dueDays.value,
+        requiresSignoff.value
+      )
+    } else if (assignmentType.value === 'department') {
+      if (!selectedDepartment.value) {
+        uiStore.showError('Please select a department')
+        return
+      }
+      assignedCount = await academyStore.assignCourseToDepartment(
+        courseToAssign.value.id,
+        selectedDepartment.value,
+        dueDays.value,
+        requiresSignoff.value
+      )
+    } else if (assignmentType.value === 'smart') {
+      assignedCount = await academyStore.smartAssignCourse(
+        courseToAssign.value.id,
+        3, // skill threshold
+        dueDays.value,
+        requiresSignoff.value
+      )
+    }
+    
+    if (assignedCount > 0) {
+      uiStore.showSuccess(`Course assigned to ${assignedCount} employee${assignedCount > 1 ? 's' : ''}`)
+    } else {
+      uiStore.showSuccess('No new assignments (employees may already be enrolled)')
+    }
+    
+    assignDialog.value = false
+  } catch (err) {
+    console.error('Assignment error:', err)
+    uiStore.showError('Failed to assign course')
+  } finally {
+    assigning.value = false
+  }
+}
+
+async function fetchDepartments() {
+  const supabase = useSupabaseClient()
+  const { data } = await supabase
+    .from('employees')
+    .select('department')
+    .not('department', 'is', null)
+  
+  if (data) {
+    const deptList = data as Array<{ department: string }>
+    const unique = [...new Set(deptList.map(e => e.department).filter(Boolean))]
+    departments.value = unique
+  }
+}
+
 onMounted(async () => {
   const supabase = useSupabaseClient()
+  
+  // Fetch departments for assignment dropdown
+  await fetchDepartments()
   
   // Fetch skills library for dropdown
   const { data: skillsData } = await supabase

@@ -1030,6 +1030,137 @@ export const useAcademyStore = defineStore('academy', {
         passed: attempt.passed || false,
         certificationAwarded
       }
+    },
+
+    // =====================================================
+    // MANAGER SIGN-OFF FUNCTIONS
+    // =====================================================
+
+    async fetchPendingSignoffs() {
+      const supabase = useSupabaseClient()
+      try {
+        const { data, error } = await supabase
+          .from('pending_course_signoffs')
+          .select('*')
+        
+        if (error) throw error
+        return data || []
+      } catch (err) {
+        console.error('fetchPendingSignoffs error:', err)
+        return []
+      }
+    },
+
+    async signOffCompletion(enrollmentId: string, notes?: string): Promise<{ success: boolean; message: string; skillAwarded?: boolean }> {
+      const authStore = useAuthStore()
+      if (!authStore.profile?.id) throw new Error('Not authenticated')
+
+      const supabase = useSupabaseClient()
+      try {
+        const { data, error } = await supabase.rpc('signoff_course_completion', {
+          p_enrollment_id: enrollmentId,
+          p_signoff_by: authStore.profile.id,
+          p_notes: notes || null
+        })
+
+        if (error) throw error
+
+        return {
+          success: data?.success || false,
+          message: data?.message || 'Unknown error',
+          skillAwarded: !!data?.skill_id
+        }
+      } catch (err) {
+        console.error('signOffCompletion error:', err)
+        return { success: false, message: err instanceof Error ? err.message : 'Failed to sign off' }
+      }
+    },
+
+    // =====================================================
+    // COURSE ASSIGNMENT FUNCTIONS
+    // =====================================================
+
+    async assignCourseToEmployee(courseId: string, employeeId: string, dueDate?: string, requiresSignoff = false): Promise<string | null> {
+      const authStore = useAuthStore()
+      const supabase = useSupabaseClient()
+
+      try {
+        const { data, error } = await supabase.rpc('assign_training_course_to_employee', {
+          p_course_id: courseId,
+          p_employee_id: employeeId,
+          p_due_date: dueDate || null,
+          p_assigned_by: authStore.profile?.id || null,
+          p_requires_signoff: requiresSignoff
+        })
+
+        if (error) throw error
+        return data
+      } catch (err) {
+        console.error('assignCourseToEmployee error:', err)
+        return null
+      }
+    },
+
+    async assignCourseToAll(courseId: string, dueDays = 30, requiresSignoff = false): Promise<number> {
+      const authStore = useAuthStore()
+      const supabase = useSupabaseClient()
+
+      try {
+        const { data, error } = await supabase.rpc('assign_training_course_to_all', {
+          p_course_id: courseId,
+          p_due_days: dueDays,
+          p_assigned_by: authStore.profile?.id || null,
+          p_requires_signoff: requiresSignoff
+        })
+
+        if (error) throw error
+        return data || 0
+      } catch (err) {
+        console.error('assignCourseToAll error:', err)
+        return 0
+      }
+    },
+
+    async assignCourseToDepartment(courseId: string, department: string, dueDays = 30, requiresSignoff = false): Promise<number> {
+      const authStore = useAuthStore()
+      const supabase = useSupabaseClient()
+
+      try {
+        const { data, error } = await supabase.rpc('assign_training_course_to_department', {
+          p_course_id: courseId,
+          p_department: department,
+          p_due_days: dueDays,
+          p_assigned_by: authStore.profile?.id || null,
+          p_requires_signoff: requiresSignoff
+        })
+
+        if (error) throw error
+        return data || 0
+      } catch (err) {
+        console.error('assignCourseToDepartment error:', err)
+        return 0
+      }
+    },
+
+    async smartAssignCourse(courseId: string, skillThreshold = 3, dueDays = 30, requiresSignoff = false): Promise<number> {
+      const authStore = useAuthStore()
+      const supabase = useSupabaseClient()
+
+      try {
+        const { data, error } = await supabase.rpc('smart_assign_training_course', {
+          p_course_id: courseId,
+          p_skill_threshold: skillThreshold,
+          p_due_days: dueDays,
+          p_assigned_by: authStore.profile?.id || null,
+          p_requires_signoff: requiresSignoff
+        })
+
+        if (error) throw error
+        return data || 0
+      } catch (err) {
+        console.error('smartAssignCourse error:', err)
+        return 0
+      }
     }
   }
 })

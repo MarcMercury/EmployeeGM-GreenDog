@@ -312,6 +312,7 @@
 
         <v-tabs v-model="detailTab" bg-color="grey-lighten-4">
           <v-tab value="bio"><v-icon start size="small">mdi-account</v-icon>Bio</v-tab>
+          <v-tab value="interviews"><v-icon start size="small">mdi-account-voice</v-icon>Interviews</v-tab>
           <v-tab value="skills"><v-icon start size="small">mdi-star</v-icon>Skills</v-tab>
           <v-tab value="notes"><v-icon start size="small">mdi-note-text</v-icon>Notes</v-tab>
         </v-tabs>
@@ -342,6 +343,9 @@
               <v-divider class="my-4" />
 
               <div class="d-flex flex-wrap gap-2">
+                <v-btn color="primary" prepend-icon="mdi-account-voice" size="small" @click="openInterviewDialog">
+                  Log Interview
+                </v-btn>
                 <v-btn v-if="selectedCandidate.status === 'new'" color="secondary" prepend-icon="mdi-file-search" size="small" @click="updateStatus('screening')">
                   Start Screening
                 </v-btn>
@@ -358,6 +362,125 @@
                   Reject
                 </v-btn>
               </div>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Interviews Tab -->
+          <v-window-item value="interviews">
+            <v-card-text>
+              <div class="d-flex align-center mb-4">
+                <h3 class="text-subtitle-1 font-weight-bold">Interview History</h3>
+                <v-spacer />
+                <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="openInterviewDialog">
+                  Log New Interview
+                </v-btn>
+              </div>
+
+              <v-alert v-if="interviewsLoading" type="info" variant="tonal" density="compact" class="mb-4">
+                <v-progress-circular indeterminate size="16" class="mr-2" />
+                Loading interview history...
+              </v-alert>
+
+              <template v-else-if="candidateInterviews.length > 0">
+                <v-timeline density="compact" side="end">
+                  <v-timeline-item
+                    v-for="interview in candidateInterviews"
+                    :key="interview.id"
+                    :dot-color="getInterviewStatusColor(interview.status)"
+                    size="small"
+                  >
+                    <template #opposite>
+                      <div class="text-caption text-grey">
+                        {{ formatDate(interview.scheduled_at || interview.created_at) }}
+                      </div>
+                    </template>
+                    <v-card variant="outlined" class="mb-2">
+                      <v-card-text class="py-2 px-3">
+                        <div class="d-flex align-center mb-1">
+                          <v-chip size="x-small" :color="getInterviewTypeColor(interview.interview_type)" variant="tonal" class="mr-2">
+                            {{ formatInterviewType(interview.interview_type) }}
+                          </v-chip>
+                          <v-chip size="x-small" :color="getInterviewStatusColor(interview.status)" variant="flat">
+                            {{ interview.status }}
+                          </v-chip>
+                          <v-spacer />
+                          <v-rating
+                            v-if="interview.overall_score"
+                            :model-value="interview.overall_score"
+                            readonly
+                            density="compact"
+                            size="x-small"
+                            color="amber"
+                          />
+                        </div>
+                        <div v-if="interview.interviewer?.first_name" class="text-caption text-grey mb-1">
+                          <v-icon size="x-small" class="mr-1">mdi-account-tie</v-icon>
+                          Interviewer: {{ interview.interviewer.first_name }} {{ interview.interviewer.last_name }}
+                        </div>
+                        <div v-if="interview.recommendation" class="mt-2">
+                          <v-chip 
+                            size="x-small" 
+                            :color="getRecommendationColor(interview.recommendation)"
+                            variant="tonal"
+                          >
+                            {{ formatRecommendation(interview.recommendation) }}
+                          </v-chip>
+                        </div>
+                        <div v-if="interview.notes" class="text-body-2 mt-2">
+                          {{ interview.notes.substring(0, 150) }}{{ interview.notes.length > 150 ? '...' : '' }}
+                        </div>
+                        <v-expand-transition>
+                          <div v-if="expandedInterview === interview.id" class="mt-3">
+                            <v-divider class="mb-3" />
+                            <v-row dense>
+                              <v-col v-if="interview.strengths" cols="12" md="6">
+                                <div class="text-caption font-weight-bold text-success mb-1">
+                                  <v-icon size="x-small">mdi-plus-circle</v-icon> Strengths
+                                </div>
+                                <div class="text-body-2">{{ interview.strengths }}</div>
+                              </v-col>
+                              <v-col v-if="interview.concerns" cols="12" md="6">
+                                <div class="text-caption font-weight-bold text-error mb-1">
+                                  <v-icon size="x-small">mdi-minus-circle</v-icon> Concerns
+                                </div>
+                                <div class="text-body-2">{{ interview.concerns }}</div>
+                              </v-col>
+                            </v-row>
+                            <v-row v-if="interview.technical_score || interview.communication_score || interview.cultural_fit_score" dense class="mt-2">
+                              <v-col v-if="interview.technical_score" cols="4">
+                                <div class="text-caption">Technical</div>
+                                <v-rating :model-value="interview.technical_score" readonly size="x-small" color="blue" density="compact" />
+                              </v-col>
+                              <v-col v-if="interview.communication_score" cols="4">
+                                <div class="text-caption">Communication</div>
+                                <v-rating :model-value="interview.communication_score" readonly size="x-small" color="green" density="compact" />
+                              </v-col>
+                              <v-col v-if="interview.cultural_fit_score" cols="4">
+                                <div class="text-caption">Cultural Fit</div>
+                                <v-rating :model-value="interview.cultural_fit_score" readonly size="x-small" color="purple" density="compact" />
+                              </v-col>
+                            </v-row>
+                          </div>
+                        </v-expand-transition>
+                        <v-btn 
+                          variant="text" 
+                          size="x-small" 
+                          class="mt-1" 
+                          @click="expandedInterview = expandedInterview === interview.id ? null : interview.id"
+                        >
+                          {{ expandedInterview === interview.id ? 'Show less' : 'Show more' }}
+                          <v-icon end>{{ expandedInterview === interview.id ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                        </v-btn>
+                      </v-card-text>
+                    </v-card>
+                  </v-timeline-item>
+                </v-timeline>
+              </template>
+
+              <v-alert v-else type="info" variant="tonal" density="compact">
+                <v-icon start>mdi-information</v-icon>
+                No interviews logged yet. Click "Log New Interview" to add the first one.
+              </v-alert>
             </v-card-text>
           </v-window-item>
 
@@ -407,9 +530,23 @@
         <v-divider />
         <v-card-actions class="pa-4">
           <v-btn variant="text" @click="detailDialog = false">Close</v-btn>
+          <v-spacer />
+          <v-btn color="primary" prepend-icon="mdi-account-voice" @click="openInterviewDialog">
+            Log Interview
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Interview Dialog -->
+    <RecruitingInterviewDialog
+      v-model="interviewDialogOpen"
+      :candidate="selectedCandidate"
+      :employees="employeesList"
+      :show-forward="true"
+      @saved="onInterviewSaved"
+      @forwarded="onCandidateForwarded"
+    />
 
     <!-- Add Candidate Dialog -->
     <v-dialog v-model="addDialog" max-width="500">
@@ -511,6 +648,33 @@ interface Candidate {
   candidate_type: string | null
 }
 
+interface CandidateInterview {
+  id: string
+  candidate_id: string
+  interview_type: string
+  scheduled_at: string | null
+  interviewer_employee_id: string | null
+  interviewer?: { first_name: string; last_name: string } | null
+  duration_minutes: number | null
+  overall_score: number | null
+  technical_score: number | null
+  communication_score: number | null
+  cultural_fit_score: number | null
+  notes: string | null
+  strengths: string | null
+  concerns: string | null
+  recommendation: string | null
+  status: string
+  round_number: number
+  created_at: string
+}
+
+interface Employee {
+  id: string
+  full_name: string
+  profile_id?: string
+}
+
 interface CandidateSkill {
   id: string
   candidate_id: string
@@ -557,6 +721,13 @@ const detailDialog = ref(false)
 const addDialog = ref(false)
 const addFormValid = ref(false)
 const addForm = ref()
+
+// Interview dialog state
+const interviewDialogOpen = ref(false)
+const candidateInterviews = ref<CandidateInterview[]>([])
+const interviewsLoading = ref(false)
+const expandedInterview = ref<string | null>(null)
+const employeesList = ref<Employee[]>([])
 
 const newCandidate = reactive({
   first_name: '',
@@ -798,6 +969,63 @@ const formatCandidateType = (type: string) => {
 
 const formatStatus = (status: string) => status.charAt(0).toUpperCase() + status.slice(1)
 
+const getInterviewStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    scheduled: 'info',
+    in_progress: 'warning',
+    completed: 'success',
+    cancelled: 'grey',
+    no_show: 'error'
+  }
+  return colors[status] || 'grey'
+}
+
+const getInterviewTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    phone_screen: 'teal',
+    video_call: 'blue',
+    in_person: 'primary',
+    technical: 'orange',
+    working_interview: 'purple',
+    panel: 'indigo',
+    final: 'success'
+  }
+  return colors[type] || 'grey'
+}
+
+const formatInterviewType = (type: string) => {
+  const labels: Record<string, string> = {
+    phone_screen: 'Phone Screen',
+    video_call: 'Video Call',
+    in_person: 'In Person',
+    technical: 'Technical',
+    working_interview: 'Working Interview',
+    panel: 'Panel',
+    final: 'Final'
+  }
+  return labels[type] || type
+}
+
+const getRecommendationColor = (rec: string) => {
+  const colors: Record<string, string> = {
+    strong_yes: 'success',
+    yes: 'teal',
+    maybe: 'warning',
+    no: 'error'
+  }
+  return colors[rec] || 'grey'
+}
+
+const formatRecommendation = (rec: string) => {
+  const labels: Record<string, string> = {
+    strong_yes: 'Strong Yes',
+    yes: 'Yes',
+    maybe: 'Maybe',
+    no: 'No'
+  }
+  return labels[rec] || rec
+}
+
 const formatDate = (date: string | null) => {
   if (!date) return '—'
   return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -816,6 +1044,55 @@ const openCandidateDetail = async (candidate: Candidate) => {
     .eq('candidate_id', candidate.id)
 
   candidateSkills.value = data || []
+
+  // Load candidate interviews
+  loadCandidateInterviews(candidate.id)
+}
+
+const loadCandidateInterviews = async (candidateId: string) => {
+  interviewsLoading.value = true
+  try {
+    const { data, error } = await client
+      .from('candidate_interviews')
+      .select(`
+        *,
+        interviewer:interviewer_employee_id(first_name, last_name)
+      `)
+      .eq('candidate_id', candidateId)
+      .order('scheduled_at', { ascending: false })
+
+    if (error) throw error
+    candidateInterviews.value = data || []
+  } catch (err) {
+    console.error('Failed to load interviews:', err)
+    candidateInterviews.value = []
+  } finally {
+    interviewsLoading.value = false
+  }
+}
+
+const openInterviewDialog = () => {
+  interviewDialogOpen.value = true
+}
+
+const onInterviewSaved = async (interview: any) => {
+  // Reload interview list
+  if (selectedCandidate.value) {
+    await loadCandidateInterviews(selectedCandidate.value.id)
+    // Update candidate status if not already in interview stage
+    if (selectedCandidate.value.status === 'new' || selectedCandidate.value.status === 'screening') {
+      await updateStatus('interview')
+    }
+  }
+  toast.success('Interview logged successfully')
+}
+
+const onCandidateForwarded = async (data: { interview: any; forwardedTo: string }) => {
+  toast.success('Candidate forwarded for review')
+  // Reload interviews to show latest
+  if (selectedCandidate.value) {
+    await loadCandidateInterviews(selectedCandidate.value.id)
+  }
 }
 
 const openEditDialog = (candidate: Candidate) => {
@@ -985,6 +1262,19 @@ const fetchData = async () => {
       .order('name')
 
     availableSkills.value = skillsData || []
+
+    // Fetch employees for interview dialog
+    const { data: employeesData } = await client
+      .from('employees')
+      .select('id, profile_id, first_name, last_name')
+      .eq('employment_status', 'active')
+      .order('first_name')
+
+    employeesList.value = (employeesData || []).map(e => ({
+      id: e.id,
+      profile_id: e.profile_id,
+      full_name: `${e.first_name} ${e.last_name}`
+    }))
 
     // Check for pre-selected candidate from URL
     const preselectedId = route.query.id as string

@@ -136,6 +136,24 @@
         <v-list-item to="/marketing/partnerships" title="Referrals" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
+
+      <!-- GDU (Education) Group - Admin Only -->
+      <v-list-group v-if="isAdmin && !rail" value="gdu">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-school"
+            title="GDU"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/gdu" title="Dashboard" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu/students" title="Student Contacts" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu/visitors" title="CE Course Contacts" prepend-icon="mdi-certificate" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else-if="isAdmin" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>

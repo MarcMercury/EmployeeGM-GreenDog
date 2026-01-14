@@ -24,3 +24,4 @@ logs
 !.env.example
 .supabase/
 .env.local
+.supabase-credentials

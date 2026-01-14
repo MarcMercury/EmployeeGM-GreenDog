@@ -95,7 +95,8 @@ ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium' CHECK (priority IN ('hig
 ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'bronze' CHECK (tier IN ('platinum', 'gold', 'silver', 'bronze', 'prospect')),
 ADD COLUMN IF NOT EXISTS zone TEXT,
 ADD COLUMN IF NOT EXISTS clinic_type TEXT DEFAULT 'general' CHECK (clinic_type IN ('general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent')),
-ADD COLUMN IF NOT EXISTS size TEXT DEFAULT 'small' CHECK (size IN ('small', 'medium', 'large', 'enterprise'));
+ADD COLUMN IF NOT EXISTS size TEXT DEFAULT 'small' CHECK (size IN ('small', 'medium', 'large', 'enterprise')),
+ADD COLUMN IF NOT EXISTS hospital_name TEXT;
 
 -- Goals and objectives
 ALTER TABLE public.referral_partners 
