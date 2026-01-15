@@ -285,11 +285,16 @@
         </template>
 
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-eye" size="x-small" variant="text" title="View" @click.stop="openCandidateDetail(item)" />
-          <v-btn icon="mdi-account-voice" size="x-small" variant="text" color="primary" title="Log Interview" @click.stop="openInterviewDialogFor(item)" />
-          <v-btn v-if="item.phone" icon="mdi-phone" size="x-small" variant="text" title="Call" :href="`tel:${item.phone}`" @click.stop />
-          <v-btn v-if="item.email" icon="mdi-email" size="x-small" variant="text" title="Email" :href="`mailto:${item.email}`" @click.stop />
-          <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditDialog(item)" />
+          <div class="d-flex align-center gap-1">
+            <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" @click.stop="openCandidateDetail(item)" />
+            <v-btn size="x-small" variant="tonal" color="primary" title="Log Interview" @click.stop="openInterviewDialogFor(item)">
+              <v-icon start size="small">mdi-account-voice</v-icon>
+              Interview
+            </v-btn>
+            <v-btn v-if="item.phone" icon="mdi-phone" size="x-small" variant="text" title="Call" :href="`tel:${item.phone}`" @click.stop />
+            <v-btn v-if="item.email" icon="mdi-email" size="x-small" variant="text" title="Email" :href="`mailto:${item.email}`" @click.stop />
+            <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditDialog(item)" />
+          </div>
         </template>
       </v-data-table>
     </v-card>

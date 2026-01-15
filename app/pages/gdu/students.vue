@@ -146,6 +146,7 @@ onMounted(() => {
   fetchStudents()
   fetchLocations()
   fetchEmployees()
+  fetchJobPositions()
 })
 
 // Filtered students
@@ -335,10 +336,117 @@ async function submitInvite() {
 // View/Edit student dialog
 const showStudentDialog = ref(false)
 const selectedStudent = ref<StudentEnrollment | null>(null)
+const detailTab = ref('bio')
+const studentNotes = ref('')
+const savingNotes = ref(false)
+
+// Convert to candidate
+const showConvertDialog = ref(false)
+const converting = ref(false)
+const convertPositionId = ref<string | null>(null)
+const jobPositions = ref<{ id: string; title: string }[]>([])
 
 function viewStudent(student: StudentEnrollment) {
   selectedStudent.value = student
+  detailTab.value = 'bio'
+  studentNotes.value = '' // TODO: Load from person_program_data.program_notes
   showStudentDialog.value = true
+}
+
+async function fetchJobPositions() {
+  const { data } = await supabase
+    .from('job_positions')
+    .select('id, title')
+    .eq('is_active', true)
+    .order('title')
+  jobPositions.value = data || []
+}
+
+async function saveStudentNotes() {
+  if (!selectedStudent.value) return
+  savingNotes.value = true
+  try {
+    const { error } = await supabase
+      .from('person_program_data')
+      .update({ program_notes: studentNotes.value })
+      .eq('id', selectedStudent.value.enrollment_id)
+    
+    if (error) throw error
+    showSuccess('Notes saved')
+  } catch (error: any) {
+    console.error('Error saving notes:', error)
+    showError('Failed to save notes')
+  } finally {
+    savingNotes.value = false
+  }
+}
+
+function convertToCandidate() {
+  if (!selectedStudent.value) return
+  convertPositionId.value = null
+  showConvertDialog.value = true
+}
+
+async function confirmConvertToCandidate() {
+  if (!selectedStudent.value) return
+  converting.value = true
+  try {
+    // 1. Create recruiting candidate from unified_persons
+    const { error: candidateError } = await supabase
+      .from('recruiting_candidates')
+      .insert({
+        first_name: selectedStudent.value.first_name,
+        last_name: selectedStudent.value.last_name,
+        email: selectedStudent.value.email,
+        phone: selectedStudent.value.phone_mobile,
+        target_position_id: convertPositionId.value,
+        status: 'new',
+        source: 'internal_program',
+        referral_source: `Converted from ${formatProgramType(selectedStudent.value.program_type)} program`,
+        notes: `Previously enrolled in ${selectedStudent.value.program_name || formatProgramType(selectedStudent.value.program_type)}. School: ${selectedStudent.value.school_of_origin || 'N/A'}`
+      })
+    
+    if (candidateError) throw candidateError
+    
+    // 2. Update student enrollment to completed and mark conversion
+    const { error: updateError } = await supabase
+      .from('person_program_data')
+      .update({ 
+        enrollment_status: 'completed',
+        converted_to_employee: false, // Not employee yet, just recruiting candidate
+        status_changed_at: new Date().toISOString(),
+        program_notes: (studentNotes.value ? studentNotes.value + '\n\n' : '') + 
+          `Converted to recruiting candidate on ${new Date().toLocaleDateString()}`
+      })
+      .eq('id', selectedStudent.value.enrollment_id)
+    
+    if (updateError) throw updateError
+    
+    showSuccess(`${selectedStudent.value.display_name} has been added to the Recruiting CRM`)
+    showConvertDialog.value = false
+    showStudentDialog.value = false
+    fetchStudents()
+  } catch (error: any) {
+    console.error('Error converting to candidate:', error)
+    showError(error.message || 'Failed to convert to candidate')
+  } finally {
+    converting.value = false
+  }
+}
+
+function openEditDialog() {
+  // TODO: Implement edit dialog for student enrollment
+  showError('Edit functionality coming soon')
+}
+
+function getTimeStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    current: 'success',
+    upcoming: 'info',
+    past: 'grey',
+    other: 'grey'
+  }
+  return colors[status] || 'grey'
 }
 
 // Status update
@@ -354,7 +462,12 @@ async function updateEnrollmentStatus(enrollmentId: string, newStatus: string) {
     
     if (error) throw error
     showSuccess('Status updated')
-    fetchStudents()
+    await fetchStudents()
+    // Update selected student if viewing
+    if (selectedStudent.value && selectedStudent.value.enrollment_id === enrollmentId) {
+      const updated = students.value.find(s => s.enrollment_id === enrollmentId)
+      if (updated) selectedStudent.value = updated
+    }
   } catch (error: any) {
     console.error('Error updating status:', error)
     showError('Failed to update status')
@@ -994,128 +1107,265 @@ function formatStatus(status: string): string {
       </v-card>
     </v-dialog>
 
-    <!-- Student Detail Dialog -->
-    <v-dialog v-model="showStudentDialog" max-width="800">
+    <!-- Student Detail Dialog (Matches Candidate Profile Layout) -->
+    <v-dialog v-model="showStudentDialog" max-width="700" scrollable>
       <v-card v-if="selectedStudent">
-        <v-card-title class="d-flex align-center pa-4">
-          <v-avatar size="48" class="mr-3">
+        <v-card-title class="d-flex align-center py-4 bg-primary">
+          <v-avatar :color="getStatusColor(selectedStudent.enrollment_status)" size="40" class="mr-3">
             <v-img v-if="selectedStudent.avatar_url" :src="selectedStudent.avatar_url" />
-            <span v-else class="text-h6">
-              {{ selectedStudent.first_name[0] }}{{ selectedStudent.last_name[0] }}
-            </span>
+            <span v-else class="text-white font-weight-bold">{{ selectedStudent.first_name[0] }}{{ selectedStudent.last_name[0] }}</span>
           </v-avatar>
-          <div>
-            <div class="text-h6">{{ selectedStudent.display_name }}</div>
-            <div class="text-caption text-medium-emphasis">{{ selectedStudent.email }}</div>
+          <div class="text-white">
+            <div class="font-weight-bold">{{ selectedStudent.display_name }}</div>
+            <div class="text-caption">{{ formatProgramType(selectedStudent.program_type) }} • {{ selectedStudent.school_of_origin || 'No school' }}</div>
           </div>
           <v-spacer />
-          <v-chip :color="getProgramTypeColor(selectedStudent.program_type)" class="mr-2">
-            {{ formatProgramType(selectedStudent.program_type) }}
-          </v-chip>
-          <v-chip :color="getStatusColor(selectedStudent.enrollment_status)">
+          <v-chip :color="getStatusColor(selectedStudent.enrollment_status)" variant="elevated" size="small">
             {{ formatStatus(selectedStudent.enrollment_status) }}
           </v-chip>
         </v-card-title>
 
+        <v-tabs v-model="detailTab" bg-color="grey-lighten-4">
+          <v-tab value="bio"><v-icon start size="small">mdi-account</v-icon>Bio</v-tab>
+          <v-tab value="program"><v-icon start size="small">mdi-school</v-icon>Program</v-tab>
+          <v-tab value="progress"><v-icon start size="small">mdi-chart-line</v-icon>Progress</v-tab>
+          <v-tab value="notes"><v-icon start size="small">mdi-note-text</v-icon>Notes</v-tab>
+        </v-tabs>
+
+        <v-window v-model="detailTab">
+          <!-- Bio Tab -->
+          <v-window-item value="bio">
+            <v-card-text>
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-text-field v-model="selectedStudent.email" label="Email" prepend-inner-icon="mdi-email" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.phone_mobile || ''" label="Phone" prepend-inner-icon="mdi-phone" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.school_of_origin || ''" label="School / University" prepend-inner-icon="mdi-school" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.school_program || ''" label="Academic Program" prepend-inner-icon="mdi-book-education" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.location_name || 'Unassigned'" label="Assigned Location" prepend-inner-icon="mdi-map-marker" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.mentor_name || 'Unassigned'" label="Mentor" prepend-inner-icon="mdi-account-tie" variant="outlined" density="compact" readonly />
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <!-- Quick Actions -->
+              <div class="d-flex flex-wrap gap-2">
+                <v-btn v-if="selectedStudent.phone_mobile" color="primary" prepend-icon="mdi-phone" size="small" :href="`tel:${selectedStudent.phone_mobile}`">
+                  Call
+                </v-btn>
+                <v-btn v-if="selectedStudent.email" color="secondary" prepend-icon="mdi-email" size="small" :href="`mailto:${selectedStudent.email}`">
+                  Email
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'inquiry'" color="blue" prepend-icon="mdi-file-check" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'applied')">
+                  Mark Applied
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'applied'" color="purple" prepend-icon="mdi-account-voice" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'interview')">
+                  Schedule Interview
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'interview'" color="green" prepend-icon="mdi-check" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'accepted')">
+                  Accept
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'accepted'" color="teal" prepend-icon="mdi-school" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'enrolled')">
+                  Enroll
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'enrolled'" color="teal" prepend-icon="mdi-play" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'in_progress')">
+                  Start Program
+                </v-btn>
+                <v-btn v-if="selectedStudent.enrollment_status === 'in_progress'" color="success" prepend-icon="mdi-flag-checkered" size="small" @click="updateEnrollmentStatus(selectedStudent.enrollment_id, 'completed')">
+                  Mark Completed
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Program Tab -->
+          <v-window-item value="program">
+            <v-card-text>
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-select
+                    :model-value="selectedStudent.program_type"
+                    :items="programTypeOptions.filter(p => p.value)"
+                    label="Program Type"
+                    prepend-inner-icon="mdi-school"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.program_name || ''" label="Program Name" prepend-inner-icon="mdi-tag" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="formatDate(selectedStudent.start_date)" label="Start Date" prepend-inner-icon="mdi-calendar-start" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="formatDate(selectedStudent.end_date)" label="End Date" prepend-inner-icon="mdi-calendar-end" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.cohort_identifier || ''" label="Cohort" prepend-inner-icon="mdi-account-group" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.schedule_type ? formatStatus(selectedStudent.schedule_type) : ''" label="Schedule Type" prepend-inner-icon="mdi-clock" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="selectedStudent.is_paid ? 'Yes' : 'No'" label="Paid Program" prepend-inner-icon="mdi-currency-usd" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field v-if="selectedStudent.is_paid" :model-value="selectedStudent.stipend_amount ? `$${selectedStudent.stipend_amount}` : ''" label="Stipend" prepend-inner-icon="mdi-cash" variant="outlined" density="compact" readonly />
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Progress Tab -->
+          <v-window-item value="progress">
+            <v-card-text>
+              <v-row dense>
+                <v-col cols="12">
+                  <h4 class="text-subtitle-2 mb-3">Hours Tracking</h4>
+                  <div v-if="selectedStudent.hours_required" class="mb-4">
+                    <div class="d-flex justify-space-between mb-1">
+                      <span class="text-body-2">{{ selectedStudent.hours_completed || 0 }} / {{ selectedStudent.hours_required }} hours</span>
+                      <span class="text-body-2 font-weight-bold">{{ selectedStudent.completion_percentage || 0 }}%</span>
+                    </div>
+                    <v-progress-linear :model-value="selectedStudent.completion_percentage || 0" color="primary" height="12" rounded />
+                  </div>
+                  <v-alert v-else type="info" variant="tonal" density="compact" class="mb-4">
+                    No hours requirement set for this program.
+                  </v-alert>
+                </v-col>
+
+                <v-col cols="12" sm="6">
+                  <v-select
+                    :model-value="selectedStudent.overall_performance_rating || null"
+                    :items="[
+                      { title: 'Exceptional', value: 'exceptional' },
+                      { title: 'Exceeds Expectations', value: 'exceeds_expectations' },
+                      { title: 'Meets Expectations', value: 'meets_expectations' },
+                      { title: 'Needs Improvement', value: 'needs_improvement' },
+                      { title: 'Unsatisfactory', value: 'unsatisfactory' }
+                    ]"
+                    label="Performance Rating"
+                    prepend-inner-icon="mdi-star"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-select
+                    :model-value="selectedStudent.employment_interest_level || null"
+                    :items="[
+                      { title: 'Very Interested', value: 'very_interested' },
+                      { title: 'Interested', value: 'interested' },
+                      { title: 'Undecided', value: 'undecided' },
+                      { title: 'Not Interested', value: 'not_interested' }
+                    ]"
+                    label="Employment Interest"
+                    prepend-inner-icon="mdi-briefcase-account"
+                    variant="outlined"
+                    density="compact"
+                    readonly
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-checkbox
+                    :model-value="selectedStudent.eligible_for_employment"
+                    label="Eligible for Employment"
+                    readonly
+                    hide-details
+                  />
+                </v-col>
+              </v-row>
+
+              <v-divider class="my-4" />
+
+              <h4 class="text-subtitle-2 mb-3">Time Status</h4>
+              <v-chip :color="getTimeStatusColor(selectedStudent.time_status)" size="small">
+                {{ formatStatus(selectedStudent.time_status) }}
+              </v-chip>
+            </v-card-text>
+          </v-window-item>
+
+          <!-- Notes Tab -->
+          <v-window-item value="notes">
+            <v-card-text>
+              <v-textarea
+                v-model="studentNotes"
+                label="Program Notes"
+                variant="outlined"
+                rows="6"
+                placeholder="Add notes about this student's progress..."
+              />
+              <v-btn color="primary" size="small" class="mt-2" @click="saveStudentNotes" :loading="savingNotes">
+                <v-icon start>mdi-content-save</v-icon>
+                Save Notes
+              </v-btn>
+            </v-card-text>
+          </v-window-item>
+        </v-window>
+
         <v-divider />
-
-        <v-card-text>
-          <v-row>
-            <v-col cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Program Details</h4>
-              <v-list density="compact">
-                <v-list-item>
-                  <v-list-item-title>Program Name</v-list-item-title>
-                  <template #append>{{ selectedStudent.program_name || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Cohort</v-list-item-title>
-                  <template #append>{{ selectedStudent.cohort_identifier || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Start Date</v-list-item-title>
-                  <template #append>{{ formatDate(selectedStudent.start_date) }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>End Date</v-list-item-title>
-                  <template #append>{{ formatDate(selectedStudent.end_date) }}</template>
-                </v-list-item>
-              </v-list>
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Assignment</h4>
-              <v-list density="compact">
-                <v-list-item>
-                  <v-list-item-title>Location</v-list-item-title>
-                  <template #append>{{ selectedStudent.location_name || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Mentor</v-list-item-title>
-                  <template #append>{{ selectedStudent.mentor_name || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Coordinator</v-list-item-title>
-                  <template #append>{{ selectedStudent.coordinator_name || '—' }}</template>
-                </v-list-item>
-              </v-list>
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Academic Info</h4>
-              <v-list density="compact">
-                <v-list-item>
-                  <v-list-item-title>School</v-list-item-title>
-                  <template #append>{{ selectedStudent.school_of_origin || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Program</v-list-item-title>
-                  <template #append>{{ selectedStudent.school_program || '—' }}</template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Academic Advisor</v-list-item-title>
-                  <template #append>{{ selectedStudent.academic_advisor || '—' }}</template>
-                </v-list-item>
-              </v-list>
-            </v-col>
-
-            <v-col cols="12" md="6">
-              <h4 class="text-subtitle-2 mb-2">Progress</h4>
-              <v-list density="compact">
-                <v-list-item v-if="selectedStudent.hours_required">
-                  <v-list-item-title>Hours Completed</v-list-item-title>
-                  <template #append>
-                    {{ selectedStudent.hours_completed || 0 }} / {{ selectedStudent.hours_required }}
-                  </template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Performance Rating</v-list-item-title>
-                  <template #append>
-                    <v-chip v-if="selectedStudent.overall_performance_rating" size="small">
-                      {{ formatStatus(selectedStudent.overall_performance_rating) }}
-                    </v-chip>
-                    <span v-else>—</span>
-                  </template>
-                </v-list-item>
-                <v-list-item>
-                  <v-list-item-title>Employment Interest</v-list-item-title>
-                  <template #append>
-                    {{ selectedStudent.employment_interest_level ? formatStatus(selectedStudent.employment_interest_level) : '—' }}
-                  </template>
-                </v-list-item>
-              </v-list>
-            </v-col>
-          </v-row>
-        </v-card-text>
-
-        <v-divider />
-
         <v-card-actions class="pa-4">
           <v-btn variant="text" @click="showStudentDialog = false">Close</v-btn>
           <v-spacer />
-          <v-btn color="primary" variant="tonal">
-            <v-icon start>mdi-pencil</v-icon>
-            Edit Enrollment
+          <v-btn color="warning" variant="tonal" prepend-icon="mdi-account-arrow-right" @click="convertToCandidate">
+            Convert to Job Candidate
+          </v-btn>
+          <v-btn color="primary" variant="tonal" prepend-icon="mdi-pencil" @click="openEditDialog">
+            Edit
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Convert to Candidate Confirmation -->
+    <v-dialog v-model="showConvertDialog" max-width="500">
+      <v-card>
+        <v-card-title class="bg-warning py-4">
+          <v-icon start>mdi-account-arrow-right</v-icon>
+          Convert to Recruiting Candidate
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <v-alert type="info" variant="tonal" class="mb-4">
+            This will create a recruiting candidate profile for <strong>{{ selectedStudent?.display_name }}</strong>
+            and move them from the Student CRM to the Recruiting CRM.
+          </v-alert>
+          <p class="text-body-2 mb-4">
+            Their student enrollment will be marked as <strong>completed</strong> and they will appear in the Recruiting pipeline.
+          </p>
+          <v-select
+            v-model="convertPositionId"
+            :items="jobPositions"
+            item-title="title"
+            item-value="id"
+            label="Target Position (optional)"
+            variant="outlined"
+            density="compact"
+            clearable
+            hint="Select a position they are applying for"
+            persistent-hint
+          />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showConvertDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="warning" :loading="converting" @click="confirmConvertToCandidate">
+            <v-icon start>mdi-check</v-icon>
+            Convert to Candidate
           </v-btn>
         </v-card-actions>
       </v-card>
