@@ -91,7 +91,7 @@ function getVisitorTypeIcon(type: string): string {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-6">
       <div>
@@ -315,5 +315,5 @@ function getVisitorTypeIcon(type: string): string {
         </v-card>
       </v-col>
     </v-row>
-  </v-container>
+  </div>
 </template>

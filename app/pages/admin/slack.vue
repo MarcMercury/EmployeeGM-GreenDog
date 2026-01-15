@@ -282,7 +282,7 @@ function getConflictColor(type: string) {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-6">
       <v-btn icon variant="text" to="/admin/global-settings" class="mr-2">
@@ -829,5 +829,5 @@ function getConflictColor(type: string) {
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>

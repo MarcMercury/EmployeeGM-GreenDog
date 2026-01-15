@@ -519,7 +519,7 @@ async function postVisitorToSlack() {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
       <v-btn icon variant="text" to="/gdu" class="mr-2">
@@ -1039,5 +1039,5 @@ async function postVisitorToSlack() {
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>

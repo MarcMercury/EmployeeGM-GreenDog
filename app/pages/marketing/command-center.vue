@@ -195,7 +195,7 @@ const quickActions = [
 </script>
 
 <template>
-  <v-container fluid class="pa-4">
+  <div>
     <!-- Compact Header -->
     <div class="d-flex align-center mb-4">
       <div>
@@ -319,7 +319,7 @@ const quickActions = [
         </div>
       </v-card-text>
     </v-card>
-  </v-container>
+  </div>
 </template>
 
 <style scoped>

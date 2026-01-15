@@ -329,7 +329,7 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <div v-if="!event">
       <v-alert type="error">Event not found</v-alert>
     </div>
@@ -834,5 +834,5 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
         </v-card>
       </v-dialog>
     </template>
-  </v-container>
+  </div>
 </template>

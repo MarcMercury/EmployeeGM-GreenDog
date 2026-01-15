@@ -192,7 +192,7 @@ function formatDate(date: string | null): string {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-6">
       <v-btn icon variant="text" @click="goBack" class="mr-2">
@@ -613,5 +613,5 @@ function formatDate(date: string | null): string {
         </v-card-actions>
       </v-card>
     </template>
-  </v-container>
+  </div>
 </template>

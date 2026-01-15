@@ -188,7 +188,7 @@ function getTaskProgress(event: CEEvent): number {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
       <v-btn icon variant="text" to="/gdu" class="mr-2">
@@ -422,5 +422,5 @@ function getTaskProgress(event: CEEvent): number {
       <v-progress-circular indeterminate color="primary" size="64" />
       <div class="text-body-1 mt-4">Loading events...</div>
     </div>
-  </v-container>
+  </div>
 </template>

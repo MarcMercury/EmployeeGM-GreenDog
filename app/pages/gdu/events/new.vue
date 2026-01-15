@@ -290,7 +290,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
+  <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
       <v-btn icon variant="text" to="/gdu/events" class="mr-2">
@@ -889,5 +889,5 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
         </v-btn>
       </v-card-actions>
     </v-card>
-  </v-container>
+  </div>
 </template>
