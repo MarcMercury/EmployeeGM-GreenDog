@@ -34,27 +34,10 @@
     <!-- Loaded Content -->
     <template v-else>
       <!-- TOP: Pipeline Funnel Metrics -->
-      <v-row class="mb-6">
-        <v-col v-for="stat in pipelineStats" :key="stat.status" cols="12" sm="6" md="4" lg="2">
-          <v-card
-            :color="activeStatusFilter === stat.status ? stat.color : undefined"
-            :variant="activeStatusFilter === stat.status ? 'flat' : 'outlined'"
-            rounded="lg"
-            class="cursor-pointer pipeline-card"
-            @click="toggleStatusFilter(stat.status)"
-          >
-            <v-card-text :class="activeStatusFilter === stat.status ? 'text-white' : ''">
-              <div class="d-flex align-center justify-space-between">
-                <div>
-                  <p class="text-overline" :class="activeStatusFilter === stat.status ? 'opacity-80' : 'text-grey'">{{ stat.label }}</p>
-                  <p class="text-h4 font-weight-bold">{{ stat.count }}</p>
-                </div>
-                <v-icon size="32" :color="activeStatusFilter === stat.status ? 'white' : stat.color" class="opacity-60">{{ stat.icon }}</v-icon>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <UiStatsRow
+        :stats="pipelineStatsFormatted"
+        layout="6-col"
+      />
 
       <!-- Filters -->
       <v-card class="mb-4" variant="outlined">
@@ -328,6 +311,15 @@ const pipelineStats = computed(() => [
   { status: 'hired', label: 'Hired', count: candidates.value.filter(c => c.status === 'hired').length, color: 'primary', icon: 'mdi-account-check' },
   { status: 'rejected', label: 'Rejected', count: candidates.value.filter(c => c.status === 'rejected').length, color: 'grey', icon: 'mdi-account-remove' }
 ])
+
+// Format stats for UiStatsRow with click handlers
+const pipelineStatsFormatted = computed(() => pipelineStats.value.map(stat => ({
+  value: stat.count,
+  label: stat.label,
+  color: stat.color,
+  icon: stat.icon,
+  onClick: () => toggleStatusFilter(stat.status)
+})))
 
 const filteredCandidates = computed(() => {
   let result = candidates.value
