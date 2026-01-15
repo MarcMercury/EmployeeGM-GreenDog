@@ -286,6 +286,7 @@
 
         <template #item.actions="{ item }">
           <v-btn icon="mdi-eye" size="x-small" variant="text" title="View" @click.stop="openCandidateDetail(item)" />
+          <v-btn icon="mdi-account-voice" size="x-small" variant="text" color="primary" title="Log Interview" @click.stop="openInterviewDialogFor(item)" />
           <v-btn v-if="item.phone" icon="mdi-phone" size="x-small" variant="text" title="Call" :href="`tel:${item.phone}`" @click.stop />
           <v-btn v-if="item.email" icon="mdi-email" size="x-small" variant="text" title="Email" :href="`mailto:${item.email}`" @click.stop />
           <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditDialog(item)" />
@@ -1072,6 +1073,11 @@ const loadCandidateInterviews = async (candidateId: string) => {
 }
 
 const openInterviewDialog = () => {
+  interviewDialogOpen.value = true
+}
+
+const openInterviewDialogFor = (candidate: any) => {
+  selectedCandidate.value = candidate
   interviewDialogOpen.value = true
 }
 
