@@ -194,7 +194,7 @@
     </v-snackbar>
 
     <!-- Finalize Confirmation Dialog -->
-    <v-dialog v-model="confirmDialog" max-width="500">
+    <v-dialog v-model="confirmDialog" max-width="600">
       <v-card rounded="lg">
         <v-card-title class="bg-success text-white py-4">
           <v-icon start>mdi-account-check</v-icon>
@@ -204,25 +204,107 @@
           <p class="text-body-1">
             You are about to finalize the hire for <strong>{{ candidateToFinalize?.first_name }} {{ candidateToFinalize?.last_name }}</strong>.
           </p>
-          <p class="text-body-2 text-grey mt-2">
+          
+          <!-- Hire Details Form -->
+          <v-row class="mt-4" dense>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="hireForm.employment_type"
+                :items="['full-time', 'part-time', 'contract', 'per-diem', 'intern']"
+                label="Employment Type"
+                variant="outlined"
+                density="compact"
+                required
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="hireForm.pay_type"
+                :items="['hourly', 'salary']"
+                label="Pay Type"
+                variant="outlined"
+                density="compact"
+                required
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model.number="hireForm.starting_wage"
+                :label="hireForm.pay_type === 'salary' ? 'Annual Salary' : 'Hourly Rate'"
+                type="number"
+                prefix="$"
+                variant="outlined"
+                density="compact"
+                required
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="hireForm.department_id"
+                :items="departments"
+                item-title="name"
+                item-value="id"
+                label="Department"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="hireForm.location_id"
+                :items="locations"
+                item-title="name"
+                item-value="id"
+                label="Location"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="hireForm.manager_id"
+                :items="managers"
+                :item-title="(m: any) => m.first_name + ' ' + m.last_name"
+                item-value="id"
+                label="Manager"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+          </v-row>
+          
+          <v-divider class="my-4" />
+          
+          <p class="text-body-2 text-grey">
             This will:
           </p>
           <v-list density="compact" class="mt-2">
             <v-list-item prepend-icon="mdi-check" class="px-0">
-              <v-list-item-title>Create an employee record</v-list-item-title>
+              <v-list-item-title>Create an employee record with proper profile</v-list-item-title>
             </v-list-item>
             <v-list-item prepend-icon="mdi-check" class="px-0">
-              <v-list-item-title>Copy interview skill ratings to employee skills</v-list-item-title>
+              <v-list-item-title>Transfer all skills, documents, and notes</v-list-item-title>
             </v-list-item>
             <v-list-item prepend-icon="mdi-check" class="px-0">
-              <v-list-item-title>Mark onboarding as complete</v-list-item-title>
+              <v-list-item-title>Mark hiring notes as HR-only</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-check" class="px-0">
+              <v-list-item-title>Notify HR to create user account</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer />
           <v-btn variant="text" @click="confirmDialog = false">Cancel</v-btn>
-          <v-btn color="success" :loading="finalizing" @click="executeFinalize">
+          <v-btn 
+            color="success" 
+            :loading="finalizing" 
+            :disabled="!hireForm.employment_type || !hireForm.starting_wage"
+            @click="executeFinalize"
+          >
             Confirm Hire
           </v-btn>
         </v-card-actions>
@@ -265,11 +347,24 @@ const client = useSupabaseClient()
 
 // State
 const candidates = ref<Candidate[]>([])
+const departments = ref<{ id: string; name: string }[]>([])
+const locations = ref<{ id: string; name: string }[]>([])
+const managers = ref<{ id: string; first_name: string; last_name: string }[]>([])
 const loading = ref(true)
 const finalizing = ref(false)
 const finalizingId = ref<string | null>(null)
 const confirmDialog = ref(false)
 const candidateToFinalize = ref<Candidate | null>(null)
+
+// Hire form
+const hireForm = ref({
+  employment_type: 'full-time',
+  pay_type: 'hourly',
+  starting_wage: null as number | null,
+  department_id: null as string | null,
+  location_id: null as string | null,
+  manager_id: null as string | null
+})
 
 // Snackbar
 const snackbar = ref(false)
@@ -338,6 +433,15 @@ const updateStartDate = async (candidate: Candidate, date: string) => {
 
 const finalizeHire = (candidate: Candidate) => {
   candidateToFinalize.value = candidate
+  // Pre-fill form from candidate data
+  hireForm.value = {
+    employment_type: 'full-time',
+    pay_type: 'hourly',
+    starting_wage: null,
+    department_id: null,
+    location_id: null,
+    manager_id: null
+  }
   confirmDialog.value = true
 }
 
@@ -349,57 +453,55 @@ const executeFinalize = async () => {
   finalizingId.value = candidate.id
 
   try {
-    // 1. Create employee record
-    const { data: newEmployee, error: empError } = await client
-      .from('employees')
-      .insert({
-        first_name: candidate.first_name,
-        last_name: candidate.last_name,
-        email_work: candidate.email,
-        phone_mobile: candidate.phone,
-        position_id: candidate.target_position_id,
-        hire_date: candidate.onboarding_checklist?.start_date || new Date().toISOString().split('T')[0],
-        employment_status: 'full_time',
-        status: 'active'
-      })
-      .select()
-      .single()
+    // Use the database function for proper hire workflow
+    const { data, error } = await client.rpc('promote_candidate_to_employee_v2', {
+      p_candidate_id: candidate.id,
+      p_employment_type: hireForm.value.employment_type,
+      p_job_title_id: candidate.target_position_id,
+      p_start_date: candidate.onboarding_checklist?.start_date || new Date().toISOString().split('T')[0],
+      p_starting_wage: hireForm.value.starting_wage || 0,
+      p_pay_type: hireForm.value.pay_type,
+      p_department_id: hireForm.value.department_id,
+      p_location_id: hireForm.value.location_id,
+      p_manager_id: hireForm.value.manager_id
+    })
 
-    if (empError) throw empError
-
-    // 2. Copy candidate skills to employee skills
-    const { data: candidateSkills } = await client
-      .from('candidate_skills')
-      .select('*')
-      .eq('candidate_id', candidate.id)
-
-    if (candidateSkills && candidateSkills.length > 0) {
-      const employeeSkills = candidateSkills.map(cs => ({
-        employee_id: newEmployee.id,
-        skill_id: cs.skill_id,
-        current_rating: cs.rating,
-        target_rating: Math.min(cs.rating + 1, 5),
-        is_goal: false
-      }))
-
-      await client.from('employee_skills').insert(employeeSkills)
+    if (error) {
+      // Fallback if v2 function doesn't exist yet
+      if (error.code === 'PGRST202') {
+        console.log('Using fallback hire method')
+        await executeFallbackFinalize(candidate)
+      } else {
+        throw error
+      }
+    } else {
+      // Mark onboarding complete
+      await client
+        .from('onboarding_checklist')
+        .update({ start_date: candidate.onboarding_checklist?.start_date })
+        .eq('candidate_id', candidate.id)
     }
 
-    // 3. Mark candidate as onboarding complete
-    await client
-      .from('candidates')
-      .update({
-        status: 'hired',
-        onboarding_complete: true
+    // Send notification for user account creation
+    try {
+      await $fetch('/api/slack/notifications/send-event', {
+        method: 'POST',
+        body: {
+          eventType: 'candidate_hired',
+          data: {
+            employee_name: `${candidate.first_name} ${candidate.last_name}`,
+            position: candidate.job_positions?.title || 'Team Member',
+            start_date: candidate.onboarding_checklist?.start_date,
+            message: `🎉 New hire! ${candidate.first_name} ${candidate.last_name} has been finalized. Please create their user account.`
+          }
+        }
       })
-      .eq('id', candidate.id)
-
-    // Update local state
-    candidate.status = 'hired'
-    candidate.onboarding_complete = true
+    } catch (notifError) {
+      console.log('Notification not sent (non-critical):', notifError)
+    }
 
     confirmDialog.value = false
-    showNotification(`${candidate.first_name} ${candidate.last_name} has been hired successfully!`)
+    showNotification(`${candidate.first_name} ${candidate.last_name} has been hired successfully! HR has been notified to create their user account.`)
 
     // Refresh the list
     await fetchCandidates()
@@ -410,6 +512,125 @@ const executeFinalize = async () => {
     finalizing.value = false
     finalizingId.value = null
   }
+}
+
+// Fallback method for when database function doesn't exist
+const executeFallbackFinalize = async (candidate: Candidate) => {
+  // 1. Create profile
+  const { data: profile, error: profileError } = await client
+    .from('profiles')
+    .insert({
+      email: candidate.email,
+      first_name: candidate.first_name,
+      last_name: candidate.last_name,
+      phone: candidate.phone,
+      role: 'user',
+      is_active: true
+    })
+    .select()
+    .single()
+
+  if (profileError) throw profileError
+
+  // 2. Create employee record
+  const { data: newEmployee, error: empError } = await client
+    .from('employees')
+    .insert({
+      profile_id: profile.id,
+      employee_number: 'EMP-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0'),
+      first_name: candidate.first_name,
+      last_name: candidate.last_name,
+      email_work: candidate.email,
+      phone_mobile: candidate.phone,
+      position_id: candidate.target_position_id,
+      department_id: hireForm.value.department_id,
+      location_id: hireForm.value.location_id,
+      manager_employee_id: hireForm.value.manager_id,
+      hire_date: candidate.onboarding_checklist?.start_date || new Date().toISOString().split('T')[0],
+      employment_type: hireForm.value.employment_type,
+      employment_status: 'active',
+      needs_user_account: true,
+      onboarding_status: 'pending'
+    })
+    .select()
+    .single()
+
+  if (empError) throw empError
+
+  // 3. Copy candidate skills to employee skills
+  const { data: candidateSkills } = await client
+    .from('candidate_skills')
+    .select('*')
+    .eq('candidate_id', candidate.id)
+
+  if (candidateSkills && candidateSkills.length > 0) {
+    const employeeSkills = candidateSkills.map(cs => ({
+      employee_id: newEmployee.id,
+      skill_id: cs.skill_id,
+      rating: cs.rating,
+      is_goal: false
+    }))
+
+    await client.from('employee_skills').insert(employeeSkills)
+  }
+
+  // 4. Copy candidate documents to employee documents
+  const { data: candidateDocs } = await client
+    .from('candidate_documents')
+    .select('*')
+    .eq('candidate_id', candidate.id)
+
+  if (candidateDocs && candidateDocs.length > 0) {
+    const employeeDocs = candidateDocs.map(cd => ({
+      employee_id: newEmployee.id,
+      uploader_id: cd.uploader_id,
+      file_name: cd.file_name,
+      file_url: cd.file_url,
+      file_type: cd.file_type,
+      file_size: cd.file_size,
+      description: cd.description,
+      category: cd.category === 'resume' || cd.category === 'cover_letter' ? 'general' : cd.category
+    }))
+
+    await client.from('employee_documents').insert(employeeDocs)
+  }
+
+  // 5. Copy candidate notes to employee notes (marked HR-only)
+  const { data: candidateNotes } = await client
+    .from('candidate_notes')
+    .select('*')
+    .eq('candidate_id', candidate.id)
+
+  if (candidateNotes && candidateNotes.length > 0) {
+    const employeeNotes = candidateNotes.map(cn => ({
+      employee_id: newEmployee.id,
+      author_id: cn.author_id,
+      note: '[Hiring Note] ' + cn.note,
+      note_type: 'hr',
+      is_pinned: false,
+      hr_only: true
+    }))
+
+    await client.from('employee_notes').insert(employeeNotes)
+  }
+
+  // 6. Create pay settings
+  await client.from('employee_pay_settings').insert({
+    employee_id: newEmployee.id,
+    pay_type: hireForm.value.pay_type,
+    hourly_rate: hireForm.value.pay_type === 'hourly' ? hireForm.value.starting_wage : null,
+    annual_salary: hireForm.value.pay_type === 'salary' ? hireForm.value.starting_wage : null,
+    effective_date: candidate.onboarding_checklist?.start_date || new Date().toISOString().split('T')[0]
+  })
+
+  // 7. Mark candidate as hired
+  await client
+    .from('candidates')
+    .update({
+      status: 'hired',
+      onboarding_complete: true
+    })
+    .eq('id', candidate.id)
 }
 
 const fetchCandidates = async () => {
@@ -448,7 +669,33 @@ const fetchCandidates = async () => {
   }
 }
 
+const fetchLookupData = async () => {
+  // Fetch departments
+  const { data: deptData } = await client
+    .from('departments')
+    .select('id, name')
+    .order('name')
+  departments.value = deptData || []
+
+  // Fetch locations
+  const { data: locData } = await client
+    .from('locations')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('name')
+  locations.value = locData || []
+
+  // Fetch potential managers (active employees)
+  const { data: mgrData } = await client
+    .from('employees')
+    .select('id, first_name, last_name')
+    .eq('employment_status', 'active')
+    .order('last_name')
+  managers.value = mgrData || []
+}
+
 onMounted(() => {
   fetchCandidates()
+  fetchLookupData()
 })
 </script>

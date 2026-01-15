@@ -458,36 +458,50 @@ async function confirmConvertToCandidate() {
   if (!selectedStudent.value) return
   converting.value = true
   try {
-    // 1. Create recruiting candidate from unified_persons
-    const { error: candidateError } = await supabase
-      .from('recruiting_candidates')
-      .insert({
-        first_name: selectedStudent.value.first_name,
-        last_name: selectedStudent.value.last_name,
-        email: selectedStudent.value.email,
-        phone: selectedStudent.value.phone_mobile,
-        target_position_id: convertPositionId.value,
-        status: 'new',
-        source: 'internal_program',
-        referral_source: `Converted from ${formatProgramType(selectedStudent.value.program_type)} program`,
-        notes: `Previously enrolled in ${selectedStudent.value.program_name || formatProgramType(selectedStudent.value.program_type)}. School: ${selectedStudent.value.school_of_origin || 'N/A'}`
+    // Use the database function for comprehensive conversion
+    const { data, error } = await supabase
+      .rpc('convert_student_to_candidate', {
+        p_enrollment_id: selectedStudent.value.enrollment_id,
+        p_target_position_id: convertPositionId.value,
+        p_notes: studentNotes.value || null
       })
     
-    if (candidateError) throw candidateError
-    
-    // 2. Update student enrollment to completed and mark conversion
-    const { error: updateError } = await supabase
-      .from('person_program_data')
-      .update({ 
-        enrollment_status: 'completed',
-        converted_to_employee: false, // Not employee yet, just recruiting candidate
-        status_changed_at: new Date().toISOString(),
-        program_notes: (studentNotes.value ? studentNotes.value + '\n\n' : '') + 
-          `Converted to recruiting candidate on ${new Date().toLocaleDateString()}`
-      })
-      .eq('id', selectedStudent.value.enrollment_id)
-    
-    if (updateError) throw updateError
+    if (error) {
+      // Fallback to direct insert if function doesn't exist yet
+      if (error.code === 'PGRST202') {
+        console.log('Using fallback conversion method')
+        const { error: candidateError } = await supabase
+          .from('candidates')
+          .insert({
+            first_name: selectedStudent.value.first_name,
+            last_name: selectedStudent.value.last_name,
+            email: selectedStudent.value.email,
+            phone: selectedStudent.value.phone_mobile,
+            phone_mobile: selectedStudent.value.phone_mobile,
+            target_position_id: convertPositionId.value,
+            status: 'new',
+            source: 'internal_program',
+            referral_source: `Converted from ${formatProgramType(selectedStudent.value.program_type)} program`,
+            conversion_source: 'student_program',
+            notes: buildConversionNotes()
+          })
+        
+        if (candidateError) throw candidateError
+        
+        // Update student enrollment
+        await supabase
+          .from('person_program_data')
+          .update({ 
+            enrollment_status: 'completed',
+            actual_completion_date: new Date().toISOString().split('T')[0],
+            program_notes: (studentNotes.value ? studentNotes.value + '\n\n' : '') + 
+              `Converted to recruiting candidate on ${new Date().toLocaleDateString()}`
+          })
+          .eq('id', selectedStudent.value.enrollment_id)
+      } else {
+        throw error
+      }
+    }
     
     showSuccess(`${selectedStudent.value.display_name} has been added to the Recruiting CRM`)
     showConvertDialog.value = false
@@ -499,6 +513,24 @@ async function confirmConvertToCandidate() {
   } finally {
     converting.value = false
   }
+}
+
+function buildConversionNotes(): string {
+  if (!selectedStudent.value) return ''
+  const s = selectedStudent.value
+  let notes = `Converted from ${formatProgramType(s.program_type)} program`
+  if (s.program_name) notes += ` (${s.program_name})`
+  if (s.school_of_origin) notes += `. School: ${s.school_of_origin}`
+  if (s.hours_completed && s.hours_required) {
+    notes += `. Completed ${s.hours_completed}/${s.hours_required} hours`
+  }
+  if (s.overall_performance_rating) {
+    notes += `. Performance: ${s.overall_performance_rating.replace(/_/g, ' ')}`
+  }
+  if (studentNotes.value) {
+    notes += `\n\n--- Program Notes ---\n${studentNotes.value}`
+  }
+  return notes
 }
 
 function openEditDialog() {
