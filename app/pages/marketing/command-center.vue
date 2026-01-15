@@ -118,6 +118,65 @@ const currentMonthName = computed(() => {
   return new Date().toLocaleDateString('en-US', { month: 'short' })
 })
 
+// View mode toggle
+const viewMode = ref<'grid' | 'list'>('grid')
+
+// Hub data for list view
+const hubItems = computed(() => [
+  {
+    name: 'Partnerships',
+    icon: 'mdi-handshake',
+    color: 'primary',
+    to: '/marketing/partners',
+    stats: [
+      { label: 'Total', value: partnerStats.value?.total || 0 },
+      { label: 'Active', value: partnerStats.value?.active || 0, color: 'success' }
+    ]
+  },
+  {
+    name: 'Influencers',
+    icon: 'mdi-star-circle',
+    color: 'secondary',
+    to: '/marketing/influencers',
+    stats: [
+      { label: 'Total', value: influencerStats.value?.total || 0 },
+      { label: 'Reach', value: formatNumber(influencerStats.value?.totalReach || 0), color: 'info' }
+    ]
+  },
+  {
+    name: 'Inventory',
+    icon: 'mdi-package-variant-closed',
+    color: 'warning',
+    to: '/marketing/inventory',
+    stats: [
+      { label: 'Items', value: inventoryStats.value?.total || 0 },
+      { label: 'Low Stock', value: inventoryStats.value?.lowStock || 0, color: (inventoryStats.value?.lowStock || 0) > 0 ? 'error' : 'success' }
+    ]
+  },
+  {
+    name: 'Referrals',
+    icon: 'mdi-account-group',
+    color: 'success',
+    to: '/marketing/partnerships',
+    stats: [
+      { label: 'Total', value: referralStats.value?.total || 0 },
+      { label: 'Plat/Gold', value: `${referralStats.value?.platinum || 0}/${referralStats.value?.gold || 0}`, color: 'amber' }
+    ]
+  },
+  {
+    name: `Events (${currentMonthName.value})`,
+    icon: 'mdi-calendar-star',
+    color: 'info',
+    to: '/growth/events',
+    stats: [
+      { label: 'Events', value: eventStats.value?.totalEvents || 0 },
+      { label: 'Visitors', value: eventStats.value?.totalVisitors || 0, color: 'success' },
+      { label: 'Leads', value: eventStats.value?.totalLeads || 0, color: 'secondary' },
+      { label: 'Revenue', value: `$${formatNumber(eventStats.value?.totalRevenue || 0)}`, color: 'warning' }
+    ]
+  }
+])
+
 function formatNumber(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
@@ -157,6 +216,14 @@ const quickActions = [
         <v-icon>mdi-refresh</v-icon>
         <v-tooltip activator="parent" location="bottom">Refresh Data</v-tooltip>
       </v-btn>
+      <v-btn-toggle v-model="viewMode" mandatory density="compact" variant="outlined" class="mr-3">
+        <v-btn value="grid" size="small">
+          <v-icon>mdi-view-grid</v-icon>
+        </v-btn>
+        <v-btn value="list" size="small">
+          <v-icon>mdi-view-list</v-icon>
+        </v-btn>
+      </v-btn-toggle>
       <v-btn size="small" variant="outlined" prepend-icon="mdi-calendar" to="/marketing/calendar" class="mr-2">
         Calendar
       </v-btn>
@@ -165,149 +232,70 @@ const quickActions = [
       </v-btn>
     </div>
 
-    <!-- All Hub Cards in a 5-column grid -->
-    <v-row dense>
-      <!-- Partnership Hub -->
-      <v-col cols="12" sm="6" lg="2" xl="2">
-        <v-card to="/marketing/partners" hover class="h-100" density="compact">
-          <v-card-item class="pb-1">
-            <template #prepend>
-              <v-avatar color="primary" size="36">
-                <v-icon icon="mdi-handshake" size="20" color="white" />
+    <!-- Grid View: 6-column compact tiles -->
+    <v-row v-if="viewMode === 'grid'" dense>
+      <v-col v-for="hub in hubItems" :key="hub.name" cols="6" sm="4" md="3" lg="2">
+        <v-card :to="hub.to" hover class="hub-card-compact h-100" density="compact">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center gap-2 mb-2">
+              <v-avatar :color="hub.color" size="28">
+                <v-icon :icon="hub.icon" size="16" color="white" />
               </v-avatar>
-            </template>
-            <v-card-title class="text-subtitle-1">Partnerships</v-card-title>
-          </v-card-item>
-          <v-card-text class="pt-0">
-            <div class="d-flex justify-space-between text-center">
-              <div>
-                <div class="text-h6 font-weight-bold">{{ partnerStats?.total || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Total</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-success">{{ partnerStats?.active || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Active</div>
-              </div>
+              <span class="text-body-2 font-weight-medium text-truncate">{{ hub.name }}</span>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Influencer Hub -->
-      <v-col cols="12" sm="6" lg="2" xl="2">
-        <v-card to="/marketing/influencers" hover class="h-100" density="compact">
-          <v-card-item class="pb-1">
-            <template #prepend>
-              <v-avatar color="secondary" size="36">
-                <v-icon icon="mdi-star-circle" size="20" color="white" />
-              </v-avatar>
-            </template>
-            <v-card-title class="text-subtitle-1">Influencers</v-card-title>
-          </v-card-item>
-          <v-card-text class="pt-0">
-            <div class="d-flex justify-space-between text-center">
-              <div>
-                <div class="text-h6 font-weight-bold">{{ influencerStats?.total || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Total</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-info">{{ formatNumber(influencerStats?.totalReach || 0) }}</div>
-                <div class="text-caption text-medium-emphasis">Reach</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Inventory Hub -->
-      <v-col cols="12" sm="6" lg="2" xl="2">
-        <v-card to="/marketing/inventory" hover class="h-100" density="compact">
-          <v-card-item class="pb-1">
-            <template #prepend>
-              <v-avatar color="warning" size="36">
-                <v-icon icon="mdi-package-variant-closed" size="20" color="white" />
-              </v-avatar>
-            </template>
-            <v-card-title class="text-subtitle-1">Inventory</v-card-title>
-          </v-card-item>
-          <v-card-text class="pt-0">
-            <div class="d-flex justify-space-between text-center">
-              <div>
-                <div class="text-h6 font-weight-bold">{{ inventoryStats?.total || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Items</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold" :class="(inventoryStats?.lowStock || 0) > 0 ? 'text-error' : 'text-success'">
-                  {{ inventoryStats?.lowStock || 0 }}
-                  <v-icon v-if="(inventoryStats?.lowStock || 0) > 0" icon="mdi-alert" size="14" color="error" />
+            <div class="d-flex flex-wrap gap-2">
+              <div v-for="stat in hub.stats" :key="stat.label" class="text-center flex-grow-1">
+                <div class="text-subtitle-2 font-weight-bold" :class="stat.color ? `text-${stat.color}` : ''">
+                  {{ stat.value }}
                 </div>
-                <div class="text-caption text-medium-emphasis">Low</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Referral Partners Hub -->
-      <v-col cols="12" sm="6" lg="2" xl="2">
-        <v-card to="/marketing/partnerships" hover class="h-100" density="compact">
-          <v-card-item class="pb-1">
-            <template #prepend>
-              <v-avatar color="success" size="36">
-                <v-icon icon="mdi-account-group" size="20" color="white" />
-              </v-avatar>
-            </template>
-            <v-card-title class="text-subtitle-1">Referrals</v-card-title>
-          </v-card-item>
-          <v-card-text class="pt-0">
-            <div class="d-flex justify-space-between text-center">
-              <div>
-                <div class="text-h6 font-weight-bold">{{ referralStats?.total || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Total</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-amber">{{ referralStats?.platinum || 0 }}/{{ referralStats?.gold || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Plat/Gold</div>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Events Performance Hub -->
-      <v-col cols="12" sm="6" lg="4" xl="4">
-        <v-card to="/growth/events" hover class="h-100" density="compact">
-          <v-card-item class="pb-1">
-            <template #prepend>
-              <v-avatar color="info" size="36">
-                <v-icon icon="mdi-calendar-star" size="20" color="white" />
-              </v-avatar>
-            </template>
-            <v-card-title class="text-subtitle-1">Events ({{ currentMonthName }})</v-card-title>
-          </v-card-item>
-          <v-card-text class="pt-0">
-            <div class="d-flex justify-space-between text-center">
-              <div>
-                <div class="text-h6 font-weight-bold">{{ eventStats?.totalEvents || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Events</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-success">{{ eventStats?.totalVisitors || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Visitors</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-secondary">{{ eventStats?.totalLeads || 0 }}</div>
-                <div class="text-caption text-medium-emphasis">Leads</div>
-              </div>
-              <div>
-                <div class="text-h6 font-weight-bold text-warning">${{ formatNumber(eventStats?.totalRevenue || 0) }}</div>
-                <div class="text-caption text-medium-emphasis">Revenue</div>
+                <div class="text-caption text-medium-emphasis">{{ stat.label }}</div>
               </div>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- List View: Compact table -->
+    <v-card v-else variant="outlined">
+      <v-table density="compact" hover>
+        <thead>
+          <tr>
+            <th style="width: 40px"></th>
+            <th>Hub</th>
+            <th class="text-center">Stats</th>
+            <th style="width: 80px" class="text-center">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="hub in hubItems" :key="hub.name" class="cursor-pointer" @click="$router.push(hub.to)">
+            <td>
+              <v-avatar :color="hub.color" size="28">
+                <v-icon :icon="hub.icon" size="16" color="white" />
+              </v-avatar>
+            </td>
+            <td>
+              <span class="font-weight-medium">{{ hub.name }}</span>
+            </td>
+            <td>
+              <div class="d-flex justify-center gap-4">
+                <div v-for="stat in hub.stats" :key="stat.label" class="text-center">
+                  <span class="font-weight-bold" :class="stat.color ? `text-${stat.color}` : ''">
+                    {{ stat.value }}
+                  </span>
+                  <span class="text-caption text-medium-emphasis ml-1">{{ stat.label }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="text-center">
+              <v-btn :to="hub.to" variant="text" size="small" density="compact" color="primary">
+                <v-icon>mdi-arrow-right</v-icon>
+              </v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </v-card>
 
     <!-- Quick Actions - Compact inline buttons -->
     <v-card class="mt-3" density="compact">
@@ -333,3 +321,24 @@ const quickActions = [
     </v-card>
   </v-container>
 </template>
+
+<style scoped>
+.hub-card-compact {
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.hub-card-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-pointer:hover {
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+</style>
