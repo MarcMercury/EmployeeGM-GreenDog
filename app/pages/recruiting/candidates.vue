@@ -518,17 +518,38 @@
           <!-- Notes Tab -->
           <v-window-item value="notes">
             <v-card-text>
-              <v-textarea
-                v-model="candidateNotes"
-                label="Admin Notes"
-                variant="outlined"
-                rows="6"
-                placeholder="Add notes about this candidate..."
+              <!-- Legacy Notes Field -->
+              <v-expansion-panels v-if="candidateNotes" class="mb-4">
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <v-icon start size="small" color="grey">mdi-history</v-icon>
+                    Legacy Notes
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <v-textarea
+                      v-model="candidateNotes"
+                      label="Admin Notes (Legacy)"
+                      variant="outlined"
+                      rows="4"
+                      readonly
+                      class="mb-2"
+                    />
+                    <v-btn color="primary" size="small" @click="saveNotes">
+                      <v-icon start>mdi-content-save</v-icon>
+                      Save Legacy Notes
+                    </v-btn>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+              
+              <!-- New Unified Notes System -->
+              <UiContactNotes
+                v-if="selectedCandidate"
+                contact-type="candidate"
+                :contact-id="selectedCandidate.id"
+                :note-types="['general', 'interview', 'feedback', 'hr']"
+                show-visibility-control
               />
-              <v-btn color="primary" size="small" class="mt-2" @click="saveNotes">
-                <v-icon start>mdi-content-save</v-icon>
-                Save Notes
-              </v-btn>
             </v-card-text>
           </v-window-item>
         </v-window>

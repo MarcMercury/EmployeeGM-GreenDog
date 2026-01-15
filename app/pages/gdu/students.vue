@@ -1508,17 +1508,39 @@ function formatStatus(status: string): string {
           <!-- Notes Tab -->
           <v-window-item value="notes">
             <v-card-text>
-              <v-textarea
-                v-model="studentNotes"
-                label="Program Notes"
-                variant="outlined"
-                rows="6"
-                placeholder="Add notes about this student's progress..."
+              <!-- Legacy Program Notes (from person_program_data) -->
+              <v-expansion-panels v-if="studentNotes" class="mb-4">
+                <v-expansion-panel>
+                  <v-expansion-panel-title>
+                    <v-icon start size="small" color="grey">mdi-history</v-icon>
+                    Legacy Program Notes
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <v-textarea
+                      v-model="studentNotes"
+                      label="Program Notes (Legacy)"
+                      variant="outlined"
+                      rows="4"
+                      readonly
+                      class="mb-2"
+                    />
+                    <v-btn color="primary" size="small" @click="saveStudentNotes" :loading="savingNotes">
+                      <v-icon start>mdi-content-save</v-icon>
+                      Save Legacy Notes
+                    </v-btn>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+              
+              <!-- New Unified Notes System -->
+              <UiContactNotes
+                v-if="selectedStudent"
+                contact-type="student"
+                :contact-id="selectedStudent.person_id"
+                :enrollment-id="selectedStudent.enrollment_id"
+                :note-types="['general', 'progress', 'feedback', 'training']"
+                show-visibility-control
               />
-              <v-btn color="primary" size="small" class="mt-2" @click="saveStudentNotes" :loading="savingNotes">
-                <v-icon start>mdi-content-save</v-icon>
-                Save Notes
-              </v-btn>
             </v-card-text>
           </v-window-item>
         </v-window>
