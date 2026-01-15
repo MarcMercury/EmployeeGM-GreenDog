@@ -180,6 +180,10 @@
                 <v-icon start>mdi-account</v-icon>
                 Bio / Contact
               </v-tab>
+              <v-tab value="interviews">
+                <v-icon start>mdi-account-voice</v-icon>
+                Interviews
+              </v-tab>
               <v-tab value="skills">
                 <v-icon start>mdi-star</v-icon>
                 Skills Assessment
@@ -448,7 +452,120 @@
                 </v-card-text>
               </v-window-item>
 
-              <!-- TAB 2: Skills Assessment -->
+              <!-- TAB 2: Interviews -->
+              <v-window-item value="interviews">
+                <v-card-text>
+                  <div class="d-flex align-center mb-4">
+                    <h3 class="text-subtitle-1 font-weight-bold">Interview History</h3>
+                    <v-spacer />
+                    <v-btn color="primary" @click="showInterviewDialog = true">
+                      <v-icon start>mdi-plus</v-icon>
+                      Log Interview
+                    </v-btn>
+                  </div>
+
+                  <!-- Loading State -->
+                  <div v-if="loadingInterviews" class="text-center py-8">
+                    <v-progress-circular indeterminate color="primary" />
+                  </div>
+
+                  <!-- Interviews List -->
+                  <template v-else-if="interviews.length > 0">
+                    <v-timeline density="compact" side="end">
+                      <v-timeline-item
+                        v-for="interview in interviews"
+                        :key="interview.id"
+                        :dot-color="getInterviewStatusColor(interview.status)"
+                        size="small"
+                      >
+                        <template #opposite>
+                          <div class="text-caption text-grey">
+                            {{ formatDate(interview.scheduled_at || interview.created_at) }}
+                          </div>
+                        </template>
+                        <v-card variant="outlined" class="mb-2">
+                          <v-card-text class="py-3 px-4">
+                            <div class="d-flex align-center mb-2">
+                              <v-chip size="small" :color="getInterviewTypeColor(interview.interview_type)" variant="tonal" class="mr-2">
+                                {{ formatInterviewType(interview.interview_type) }}
+                              </v-chip>
+                              <v-chip size="small" :color="getInterviewStatusColor(interview.status)" variant="flat">
+                                {{ interview.status }}
+                              </v-chip>
+                              <v-spacer />
+                              <v-rating
+                                v-if="interview.overall_score"
+                                :model-value="interview.overall_score"
+                                readonly
+                                density="compact"
+                                size="small"
+                                color="amber"
+                              />
+                            </div>
+                            <div v-if="interview.interviewer?.first_name" class="text-body-2 mb-2">
+                              <v-icon size="small" class="mr-1">mdi-account-tie</v-icon>
+                              Interviewer: {{ interview.interviewer.first_name }} {{ interview.interviewer.last_name }}
+                            </div>
+                            <div v-if="interview.recommendation" class="mb-2">
+                              <v-chip 
+                                size="small" 
+                                :color="getRecommendationColor(interview.recommendation)"
+                                variant="tonal"
+                              >
+                                {{ formatRecommendation(interview.recommendation) }}
+                              </v-chip>
+                            </div>
+                            <div v-if="interview.notes" class="text-body-2 text-grey mb-3">
+                              {{ interview.notes }}
+                            </div>
+                            <v-row v-if="interview.strengths || interview.concerns" dense class="mt-2">
+                              <v-col v-if="interview.strengths" cols="12" md="6">
+                                <div class="text-caption font-weight-bold text-success mb-1">
+                                  <v-icon size="small">mdi-plus-circle</v-icon> Strengths
+                                </div>
+                                <div class="text-body-2">{{ interview.strengths }}</div>
+                              </v-col>
+                              <v-col v-if="interview.concerns" cols="12" md="6">
+                                <div class="text-caption font-weight-bold text-error mb-1">
+                                  <v-icon size="small">mdi-minus-circle</v-icon> Concerns
+                                </div>
+                                <div class="text-body-2">{{ interview.concerns }}</div>
+                              </v-col>
+                            </v-row>
+                            <v-row v-if="interview.technical_score || interview.communication_score || interview.cultural_fit_score" dense class="mt-2">
+                              <v-col v-if="interview.technical_score" cols="4">
+                                <div class="text-caption">Technical</div>
+                                <v-rating :model-value="interview.technical_score" readonly size="x-small" color="blue" density="compact" />
+                              </v-col>
+                              <v-col v-if="interview.communication_score" cols="4">
+                                <div class="text-caption">Communication</div>
+                                <v-rating :model-value="interview.communication_score" readonly size="x-small" color="green" density="compact" />
+                              </v-col>
+                              <v-col v-if="interview.cultural_fit_score" cols="4">
+                                <div class="text-caption">Cultural Fit</div>
+                                <v-rating :model-value="interview.cultural_fit_score" readonly size="x-small" color="purple" density="compact" />
+                              </v-col>
+                            </v-row>
+                          </v-card-text>
+                        </v-card>
+                      </v-timeline-item>
+                    </v-timeline>
+                  </template>
+
+                  <!-- Empty State -->
+                  <div v-else class="text-center py-12">
+                    <v-icon size="64" color="grey-lighten-2">mdi-account-voice</v-icon>
+                    <p class="text-body-1 text-grey mt-4">No interviews logged yet</p>
+                    <p class="text-caption text-grey mb-4">Click the button above to log the first interview</p>
+                    <v-btn color="primary" @click="showInterviewDialog = true">
+                      <v-icon start>mdi-plus</v-icon>
+                      Log First Interview
+                    </v-btn>
+                  </div>
+                </v-card-text>
+              </v-window-item>
+
+              <!-- TAB 3: Skills Assessment -->
               <v-window-item value="skills">
                 <v-card-text>
                   <div class="d-flex align-center mb-4">
@@ -859,6 +976,14 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Interview Dialog -->
+    <RecruitingInterviewDialog
+      v-model="showInterviewDialog"
+      :candidate="candidate"
+      :employees="employees"
+      @saved="onInterviewSaved"
+    />
   </div>
 </template>
 
@@ -900,6 +1025,12 @@ const uploading = ref(false)
 const isDragging = ref(false)
 const postingNote = ref(false)
 const selectedSkillCategory = ref<string | null>(null)
+
+// Interview state
+const showInterviewDialog = ref(false)
+const loadingInterviews = ref(false)
+const interviews = ref<any[]>([])
+const employees = ref<any[]>([])
 
 // Edit form
 const editForm = ref<Partial<Candidate>>({})
@@ -1075,12 +1206,114 @@ async function loadCandidate() {
     departments.value = deptsRes.data || []
     locations.value = locsRes.data || []
 
+    // Load employees for interview dialog
+    const { data: employeesData } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('is_active', true)
+      .order('first_name')
+    
+    employees.value = (employeesData || []).map(e => ({
+      id: e.id,
+      full_name: `${e.first_name} ${e.last_name}`
+    }))
+
+    // Load interviews
+    await loadInterviews()
+
   } catch (err: any) {
     error.value = err.message || 'Failed to load candidate'
     console.error('Load error:', err)
   } finally {
     isLoading.value = false
   }
+}
+
+// Load interviews
+async function loadInterviews() {
+  loadingInterviews.value = true
+  try {
+    const { data, error: err } = await supabase
+      .from('candidate_interviews')
+      .select(`
+        *,
+        interviewer:employees!candidate_interviews_interviewer_employee_id_fkey(first_name, last_name)
+      `)
+      .eq('candidate_id', candidateId.value)
+      .order('scheduled_at', { ascending: false })
+    
+    if (err) throw err
+    interviews.value = data || []
+  } catch (err: any) {
+    console.error('Error loading interviews:', err)
+  } finally {
+    loadingInterviews.value = false
+  }
+}
+
+// Interview helper functions
+function getInterviewStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    scheduled: 'blue',
+    completed: 'success',
+    cancelled: 'grey',
+    no_show: 'error',
+    rescheduled: 'warning'
+  }
+  return colors[status] || 'grey'
+}
+
+function getInterviewTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    phone_screen: 'blue-lighten-2',
+    video: 'purple',
+    in_person: 'green',
+    technical: 'orange',
+    panel: 'teal',
+    final: 'deep-purple'
+  }
+  return colors[type] || 'grey'
+}
+
+function formatInterviewType(type: string): string {
+  const labels: Record<string, string> = {
+    phone_screen: 'Phone Screen',
+    video: 'Video Interview',
+    in_person: 'In Person',
+    technical: 'Technical',
+    panel: 'Panel Interview',
+    final: 'Final Interview'
+  }
+  return labels[type] || type
+}
+
+function getRecommendationColor(rec: string): string {
+  const colors: Record<string, string> = {
+    strong_hire: 'success',
+    hire: 'light-green',
+    no_decision: 'grey',
+    no_hire: 'orange',
+    strong_no_hire: 'error'
+  }
+  return colors[rec] || 'grey'
+}
+
+function formatRecommendation(rec: string): string {
+  const labels: Record<string, string> = {
+    strong_hire: 'Strong Hire',
+    hire: 'Hire',
+    no_decision: 'No Decision',
+    no_hire: 'No Hire',
+    strong_no_hire: 'Strong No Hire'
+  }
+  return labels[rec] || rec
+}
+
+// Handle interview saved
+function onInterviewSaved() {
+  showInterviewDialog.value = false
+  loadInterviews()
+  toast.success('Interview logged successfully')
 }
 
 // Save candidate changes
