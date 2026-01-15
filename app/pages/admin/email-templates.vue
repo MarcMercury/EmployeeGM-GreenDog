@@ -48,6 +48,16 @@
               color="primary"
             />
           </v-col>
+          <v-col cols="12" md="2" class="d-flex align-center justify-end">
+            <v-btn-toggle v-model="viewMode" mandatory density="compact" variant="outlined">
+              <v-btn value="grid" size="small">
+                <v-icon>mdi-view-grid</v-icon>
+              </v-btn>
+              <v-btn value="list" size="small">
+                <v-icon>mdi-view-list</v-icon>
+              </v-btn>
+            </v-btn-toggle>
+          </v-col>
         </v-row>
       </v-card-text>
     </v-card>
@@ -58,55 +68,83 @@
       <p class="mt-4 text-grey">Loading templates...</p>
     </div>
 
-    <!-- Templates Grid -->
-    <v-row v-else-if="filteredTemplates.length > 0">
-      <v-col v-for="template in filteredTemplates" :key="template.id" cols="12" md="6" lg="4">
-        <v-card class="template-card h-100" :class="{ 'opacity-60': !template.is_active }">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <div class="d-flex align-center gap-2">
-              <v-icon :color="getCategoryColor(template.category)">{{ getCategoryIcon(template.category) }}</v-icon>
-              <span class="text-truncate" style="max-width: 200px">{{ template.name }}</span>
+    <!-- Templates Grid View -->
+    <v-row v-else-if="filteredTemplates.length > 0 && viewMode === 'grid'">
+      <v-col v-for="template in filteredTemplates" :key="template.id" cols="6" sm="4" md="3" lg="2">
+        <v-card class="template-card-compact h-100" :class="{ 'opacity-60': !template.is_active }" @click="editTemplate(template)">
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center gap-2 mb-2">
+              <v-icon size="small" :color="getCategoryColor(template.category)">{{ getCategoryIcon(template.category) }}</v-icon>
+              <span class="text-body-2 font-weight-medium text-truncate">{{ template.name }}</span>
             </div>
-            <v-chip :color="template.is_active ? 'success' : 'grey'" size="small" variant="tonal">
-              {{ template.is_active ? 'Active' : 'Inactive' }}
-            </v-chip>
-          </v-card-title>
-
-          <v-card-subtitle>
-            <v-chip size="x-small" variant="outlined" class="mr-2">{{ template.category }}</v-chip>
-            <code class="text-caption">{{ template.id }}</code>
-          </v-card-subtitle>
-
-          <v-card-text>
-            <div class="mb-2">
-              <strong class="text-caption text-grey">Subject:</strong>
-              <div class="text-body-2">{{ template.subject }}</div>
+            <div class="d-flex align-center gap-1 mb-2">
+              <v-chip size="x-small" variant="flat" :color="getCategoryColor(template.category)">{{ template.category }}</v-chip>
+              <v-chip v-if="!template.is_active" size="x-small" color="grey" variant="tonal">Off</v-chip>
             </div>
-            <div>
-              <strong class="text-caption text-grey">Preview:</strong>
-              <div class="template-preview text-body-2 text-grey-darken-1" v-html="truncateHtml(template.body, 100)" />
-            </div>
+            <div class="text-caption text-grey text-truncate">{{ template.subject }}</div>
           </v-card-text>
-
-          <v-divider />
-
-          <v-card-actions>
-            <v-btn variant="text" size="small" @click="previewTemplate(template)">
-              <v-icon start size="small">mdi-eye</v-icon>
-              Preview
+          <v-card-actions class="pa-2 pt-0">
+            <v-btn variant="text" size="x-small" density="compact" @click.stop="previewTemplate(template)">
+              <v-icon size="small">mdi-eye</v-icon>
             </v-btn>
             <v-spacer />
-            <v-btn variant="text" color="primary" size="small" @click="editTemplate(template)">
-              <v-icon start size="small">mdi-pencil</v-icon>
-              Edit
+            <v-btn variant="text" size="x-small" density="compact" color="primary" @click.stop="editTemplate(template)">
+              <v-icon size="small">mdi-pencil</v-icon>
             </v-btn>
-            <v-btn variant="text" color="error" size="small" @click="confirmDelete(template)">
+            <v-btn variant="text" size="x-small" density="compact" color="error" @click.stop="confirmDelete(template)">
               <v-icon size="small">mdi-delete</v-icon>
             </v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Templates List View -->
+    <v-card v-else-if="filteredTemplates.length > 0 && viewMode === 'list'" variant="outlined">
+      <v-table density="compact" hover>
+        <thead>
+          <tr>
+            <th style="width: 40px"></th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th style="width: 120px" class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="template in filteredTemplates" :key="template.id" :class="{ 'opacity-60': !template.is_active }">
+            <td>
+              <v-icon size="small" :color="getCategoryColor(template.category)">{{ getCategoryIcon(template.category) }}</v-icon>
+            </td>
+            <td>
+              <span class="font-weight-medium">{{ template.name }}</span>
+              <div class="text-caption text-grey">{{ template.id }}</div>
+            </td>
+            <td>
+              <v-chip size="x-small" variant="flat" :color="getCategoryColor(template.category)">{{ template.category }}</v-chip>
+            </td>
+            <td class="text-truncate" style="max-width: 300px">{{ template.subject }}</td>
+            <td>
+              <v-chip :color="template.is_active ? 'success' : 'grey'" size="x-small" variant="tonal">
+                {{ template.is_active ? 'Active' : 'Inactive' }}
+              </v-chip>
+            </td>
+            <td class="text-center">
+              <v-btn variant="text" size="x-small" density="compact" @click="previewTemplate(template)">
+                <v-icon size="small">mdi-eye</v-icon>
+              </v-btn>
+              <v-btn variant="text" size="x-small" density="compact" color="primary" @click="editTemplate(template)">
+                <v-icon size="small">mdi-pencil</v-icon>
+              </v-btn>
+              <v-btn variant="text" size="x-small" density="compact" color="error" @click="confirmDelete(template)">
+                <v-icon size="small">mdi-delete</v-icon>
+              </v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
+    </v-card>
 
     <!-- Empty State -->
     <v-card v-else class="text-center py-12">
@@ -306,6 +344,7 @@ const templates = ref<EmailTemplate[]>([])
 const search = ref('')
 const categoryFilter = ref<string | null>(null)
 const showInactive = ref(false)
+const viewMode = ref<'grid' | 'list'>('grid')
 
 // Dialogs
 const editDialog = ref(false)
@@ -571,7 +610,7 @@ onMounted(() => {
 
 <style scoped>
 .email-templates-page {
-  max-width: 1400px;
+  max-width: 1600px;
 }
 
 .template-card {
@@ -581,6 +620,17 @@ onMounted(() => {
 .template-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.template-card-compact {
+  transition: transform 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+
+.template-card-compact:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: rgb(var(--v-theme-primary));
 }
 
 .template-preview {
