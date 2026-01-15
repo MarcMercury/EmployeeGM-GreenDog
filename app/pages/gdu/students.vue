@@ -340,6 +340,32 @@ const detailTab = ref('bio')
 const studentNotes = ref('')
 const savingNotes = ref(false)
 
+// Edit student dialog
+const showEditDialog = ref(false)
+const editForm = ref({
+  program_type: '',
+  program_name: '',
+  enrollment_status: '',
+  school_of_origin: '',
+  school_program: '',
+  start_date: '',
+  end_date: '',
+  expected_graduation_date: '',
+  cohort_identifier: '',
+  assigned_location_id: null as string | null,
+  assigned_mentor_id: null as string | null,
+  schedule_type: '',
+  scheduled_hours_per_week: null as number | null,
+  is_paid: false,
+  stipend_amount: null as number | null,
+  hours_completed: null as number | null,
+  hours_required: null as number | null,
+  overall_performance_rating: null as string | null,
+  employment_interest_level: null as string | null,
+  eligible_for_employment: false
+})
+const savingEdit = ref(false)
+
 // Convert to candidate
 const showConvertDialog = ref(false)
 const converting = ref(false)
@@ -349,8 +375,25 @@ const jobPositions = ref<{ id: string; title: string }[]>([])
 function viewStudent(student: StudentEnrollment) {
   selectedStudent.value = student
   detailTab.value = 'bio'
-  studentNotes.value = '' // TODO: Load from person_program_data.program_notes
+  studentNotes.value = ''
   showStudentDialog.value = true
+  // Load notes from database
+  loadStudentNotes(student.enrollment_id)
+}
+
+async function loadStudentNotes(enrollmentId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('person_program_data')
+      .select('program_notes')
+      .eq('id', enrollmentId)
+      .single()
+    
+    if (error) throw error
+    studentNotes.value = data?.program_notes || ''
+  } catch (error: any) {
+    console.error('Error loading notes:', error)
+  }
 }
 
 async function fetchJobPositions() {
@@ -435,8 +478,81 @@ async function confirmConvertToCandidate() {
 }
 
 function openEditDialog() {
-  // TODO: Implement edit dialog for student enrollment
-  showError('Edit functionality coming soon')
+  if (!selectedStudent.value) return
+  
+  const s = selectedStudent.value
+  editForm.value = {
+    program_type: s.program_type,
+    program_name: s.program_name || '',
+    enrollment_status: s.enrollment_status,
+    school_of_origin: s.school_of_origin || '',
+    school_program: s.school_program || '',
+    start_date: s.start_date || '',
+    end_date: s.end_date || '',
+    expected_graduation_date: s.expected_graduation_date || '',
+    cohort_identifier: s.cohort_identifier || '',
+    assigned_location_id: s.assigned_location_id,
+    assigned_mentor_id: s.assigned_mentor_id,
+    schedule_type: s.schedule_type || '',
+    scheduled_hours_per_week: s.scheduled_hours_per_week,
+    is_paid: s.is_paid,
+    stipend_amount: s.stipend_amount,
+    hours_completed: s.hours_completed,
+    hours_required: s.hours_required,
+    overall_performance_rating: s.overall_performance_rating,
+    employment_interest_level: s.employment_interest_level,
+    eligible_for_employment: s.eligible_for_employment || false
+  }
+  showEditDialog.value = true
+}
+
+async function saveStudentEdit() {
+  if (!selectedStudent.value) return
+  
+  savingEdit.value = true
+  try {
+    const { error } = await supabase
+      .from('person_program_data')
+      .update({
+        program_type: editForm.value.program_type,
+        program_name: editForm.value.program_name || null,
+        enrollment_status: editForm.value.enrollment_status,
+        school_of_origin: editForm.value.school_of_origin || null,
+        school_program: editForm.value.school_program || null,
+        start_date: editForm.value.start_date || null,
+        end_date: editForm.value.end_date || null,
+        expected_graduation_date: editForm.value.expected_graduation_date || null,
+        cohort_identifier: editForm.value.cohort_identifier || null,
+        assigned_location_id: editForm.value.assigned_location_id,
+        assigned_mentor_id: editForm.value.assigned_mentor_id,
+        schedule_type: editForm.value.schedule_type || null,
+        scheduled_hours_per_week: editForm.value.scheduled_hours_per_week,
+        is_paid: editForm.value.is_paid,
+        stipend_amount: editForm.value.stipend_amount,
+        hours_completed: editForm.value.hours_completed,
+        hours_required: editForm.value.hours_required,
+        overall_performance_rating: editForm.value.overall_performance_rating,
+        employment_interest_level: editForm.value.employment_interest_level,
+        eligible_for_employment: editForm.value.eligible_for_employment,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', selectedStudent.value.enrollment_id)
+    
+    if (error) throw error
+    
+    showSuccess('Student enrollment updated')
+    showEditDialog.value = false
+    await fetchStudents()
+    
+    // Update selected student view
+    const updated = students.value.find(s => s.enrollment_id === selectedStudent.value?.enrollment_id)
+    if (updated) selectedStudent.value = updated
+  } catch (error: any) {
+    console.error('Error saving student edit:', error)
+    showError('Failed to save changes')
+  } finally {
+    savingEdit.value = false
+  }
 }
 
 function getTimeStatusColor(status: string): string {
@@ -699,7 +815,7 @@ function formatStatus(status: string): string {
       >
         <!-- Student Name -->
         <template #item.display_name="{ item }">
-          <div class="d-flex align-center py-2">
+          <div class="d-flex align-center py-2 cursor-pointer" @click="viewStudent(item)">
             <v-avatar size="36" class="mr-3">
               <v-img v-if="item.avatar_url" :src="item.avatar_url" />
               <span v-else class="text-body-2">
@@ -707,7 +823,7 @@ function formatStatus(status: string): string {
               </span>
             </v-avatar>
             <div>
-              <div class="font-weight-medium">{{ item.display_name }}</div>
+              <div class="font-weight-medium text-primary" style="text-decoration: underline; cursor: pointer;">{{ item.display_name }}</div>
               <div class="text-caption text-medium-emphasis">{{ item.email }}</div>
             </div>
           </div>
@@ -780,10 +896,20 @@ function formatStatus(status: string): string {
         <!-- Actions -->
         <template #item.actions="{ item }">
           <v-btn
-            icon="mdi-eye"
+            v-if="item.phone_mobile"
+            icon="mdi-phone"
             variant="text"
             size="small"
-            @click="viewStudent(item)"
+            :href="`tel:${item.phone_mobile}`"
+            title="Call"
+          />
+          <v-btn
+            v-if="item.email"
+            icon="mdi-email"
+            variant="text"
+            size="small"
+            :href="`mailto:${item.email}`"
+            title="Email"
           />
           <v-menu>
             <template #activator="{ props }">
@@ -797,9 +923,9 @@ function formatStatus(status: string): string {
             <v-list density="compact">
               <v-list-item @click="viewStudent(item)">
                 <template #prepend>
-                  <v-icon>mdi-eye</v-icon>
+                  <v-icon>mdi-account</v-icon>
                 </template>
-                <v-list-item-title>View Details</v-list-item-title>
+                <v-list-item-title>View Profile</v-list-item-title>
               </v-list-item>
               <v-divider />
               <v-list-subheader>Update Status</v-list-subheader>
@@ -1366,6 +1492,229 @@ function formatStatus(status: string): string {
           <v-btn color="warning" :loading="converting" @click="confirmConvertToCandidate">
             <v-icon start>mdi-check</v-icon>
             Convert to Candidate
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Edit Student Dialog -->
+    <v-dialog v-model="showEditDialog" max-width="700" scrollable>
+      <v-card>
+        <v-card-title class="bg-primary py-4 text-white">
+          <v-icon start>mdi-pencil</v-icon>
+          Edit Student Enrollment
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <v-row dense>
+            <!-- Program Information -->
+            <v-col cols="12">
+              <h4 class="text-subtitle-2 mb-2">Program Information</h4>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editForm.program_type"
+                :items="programTypeOptions.filter(p => p.value)"
+                item-title="title"
+                item-value="value"
+                label="Program Type"
+                prepend-inner-icon="mdi-school"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editForm.enrollment_status"
+                :items="statusOptions.filter(s => s.value)"
+                item-title="title"
+                item-value="value"
+                label="Status"
+                prepend-inner-icon="mdi-flag"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.program_name" label="Program Name" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.cohort_identifier" label="Cohort" variant="outlined" density="compact" />
+            </v-col>
+
+            <!-- School Information -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">School Information</h4>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.school_of_origin" label="School / University" prepend-inner-icon="mdi-school" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.school_program" label="Academic Program" prepend-inner-icon="mdi-book-education" variant="outlined" density="compact" />
+            </v-col>
+
+            <!-- Dates -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">Dates</h4>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field v-model="editForm.start_date" label="Start Date" type="date" prepend-inner-icon="mdi-calendar-start" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field v-model="editForm.end_date" label="End Date" type="date" prepend-inner-icon="mdi-calendar-end" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field v-model="editForm.expected_graduation_date" label="Expected Graduation" type="date" prepend-inner-icon="mdi-school" variant="outlined" density="compact" />
+            </v-col>
+
+            <!-- Assignment -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">Assignment</h4>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editForm.assigned_location_id"
+                :items="locations"
+                item-title="name"
+                item-value="id"
+                label="Location"
+                prepend-inner-icon="mdi-map-marker"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editForm.assigned_mentor_id"
+                :items="mentors"
+                :item-title="(m: Employee) => `${m.first_name} ${m.last_name}`"
+                item-value="id"
+                label="Mentor"
+                prepend-inner-icon="mdi-account-tie"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+
+            <!-- Schedule -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">Schedule & Compensation</h4>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="editForm.schedule_type"
+                :items="[
+                  { title: 'Full-time', value: 'full_time' },
+                  { title: 'Part-time', value: 'part_time' },
+                  { title: 'Flexible', value: 'flexible' }
+                ]"
+                label="Schedule Type"
+                prepend-inner-icon="mdi-clock"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field 
+                v-model.number="editForm.scheduled_hours_per_week" 
+                label="Hours/Week" 
+                type="number" 
+                prepend-inner-icon="mdi-clock-time-four"
+                variant="outlined" 
+                density="compact" 
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-checkbox v-model="editForm.is_paid" label="Paid Program" hide-details />
+            </v-col>
+            <v-col cols="12" sm="4" v-if="editForm.is_paid">
+              <v-text-field 
+                v-model.number="editForm.stipend_amount" 
+                label="Stipend Amount" 
+                type="number" 
+                prefix="$"
+                prepend-inner-icon="mdi-currency-usd"
+                variant="outlined" 
+                density="compact" 
+              />
+            </v-col>
+
+            <!-- Progress -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">Progress & Evaluation</h4>
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field 
+                v-model.number="editForm.hours_completed" 
+                label="Hours Completed" 
+                type="number" 
+                prepend-inner-icon="mdi-check-circle"
+                variant="outlined" 
+                density="compact" 
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field 
+                v-model.number="editForm.hours_required" 
+                label="Hours Required" 
+                type="number" 
+                prepend-inner-icon="mdi-target"
+                variant="outlined" 
+                density="compact" 
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="editForm.overall_performance_rating"
+                :items="[
+                  { title: 'Exceptional', value: 'exceptional' },
+                  { title: 'Exceeds Expectations', value: 'exceeds_expectations' },
+                  { title: 'Meets Expectations', value: 'meets_expectations' },
+                  { title: 'Needs Improvement', value: 'needs_improvement' },
+                  { title: 'Unsatisfactory', value: 'unsatisfactory' }
+                ]"
+                label="Performance Rating"
+                prepend-inner-icon="mdi-star"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+
+            <!-- Employment Outcomes -->
+            <v-col cols="12" class="mt-2">
+              <h4 class="text-subtitle-2 mb-2">Employment Outcomes</h4>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editForm.employment_interest_level"
+                :items="[
+                  { title: 'Very Interested', value: 'very_interested' },
+                  { title: 'Interested', value: 'interested' },
+                  { title: 'Undecided', value: 'undecided' },
+                  { title: 'Not Interested', value: 'not_interested' }
+                ]"
+                label="Employment Interest"
+                prepend-inner-icon="mdi-briefcase-account"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-checkbox v-model="editForm.eligible_for_employment" label="Eligible for Employment" hide-details />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showEditDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="primary" :loading="savingEdit" @click="saveStudentEdit">
+            <v-icon start>mdi-content-save</v-icon>
+            Save Changes
           </v-btn>
         </v-card-actions>
       </v-card>
