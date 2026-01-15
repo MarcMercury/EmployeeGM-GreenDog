@@ -241,8 +241,8 @@ export const useAppData = () => {
         
         if (profile) {
           currentUserProfile.value = profile as AppUserProfile
-          // Check explicitly for 'admin' role
-          isAdmin.value = (profile as any).role === 'admin'
+          // Check for admin roles (admin or super_admin)
+          isAdmin.value = ['admin', 'super_admin'].includes((profile as any).role)
           console.log('[useAppData] isAdmin set to:', isAdmin.value)
         }
       } else {
