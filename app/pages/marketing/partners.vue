@@ -1127,34 +1127,33 @@ function getPriorityColor(priority: string | null | undefined): string {
 </script>
 
 <template>
-  <v-container fluid class="pa-6">
-    <!-- Header -->
-    <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" to="/marketing/command-center" class="mr-2">
-        <v-icon>mdi-arrow-left</v-icon>
-      </v-btn>
+  <div>
+    <!-- Page Header -->
+    <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
       <div>
-        <h1 class="text-h4 font-weight-bold">Partnership CRM Hub</h1>
-        <p class="text-subtitle-1 text-medium-emphasis">
+        <h1 class="text-h4 font-weight-bold mb-1">Partnership CRM Hub</h1>
+        <p class="text-body-2 text-grey-darken-1">
           Manage chambers, vendors, rescues, influencers, and business partners
         </p>
       </div>
-      <v-spacer />
-      <v-btn
-        color="secondary"
-        prepend-icon="mdi-star-circle"
-        class="mr-2"
-        @click="openAddInfluencerDialog"
-      >
-        Add Influencer
-      </v-btn>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="openAddDialog"
-      >
-        Add Partner
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-star-circle"
+          size="small"
+          @click="openAddInfluencerDialog"
+        >
+          Add Influencer
+        </v-btn>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          size="small"
+          @click="openAddDialog"
+        >
+          Add Partner
+        </v-btn>
+      </div>
     </div>
 
     <!-- Stats Row -->
@@ -1170,28 +1169,30 @@ function getPriorityColor(priority: string | null | undefined): string {
       layout="6-col"
     />
 
-    <!-- Type Pills -->
-    <div class="d-flex flex-wrap gap-2 mb-4">
-      <v-chip
-        v-for="(count, type) in statsByType"
-        :key="type"
-        :color="selectedType === type ? getTypeColor(type as string) : undefined"
-        :variant="selectedType === type ? 'elevated' : 'outlined'"
-        @click="selectedType = selectedType === type ? null : (type as string)"
-      >
-        {{ formatTypeName(type as string) }}
-        <template #append>
-          <v-avatar size="20" class="ml-1" :color="getTypeColor(type as string)">
-            {{ count }}
-          </v-avatar>
-        </template>
-      </v-chip>
-    </div>
-
     <!-- Filters -->
     <v-card class="mb-4" variant="outlined">
       <v-card-text class="py-3">
-        <v-row dense>
+        <!-- Row 1: Type Filter Pills -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <v-chip
+            v-for="(count, type) in statsByType"
+            :key="type"
+            :color="selectedType === type ? getTypeColor(type as string) : undefined"
+            :variant="selectedType === type ? 'elevated' : 'outlined'"
+            size="small"
+            @click="selectedType = selectedType === type ? null : (type as string)"
+          >
+            {{ formatTypeName(type as string) }}
+            <template #append>
+              <v-avatar size="18" class="ml-1" :color="getTypeColor(type as string)">
+                <span class="text-caption">{{ count }}</span>
+              </v-avatar>
+            </template>
+          </v-chip>
+        </div>
+
+        <!-- Row 2: Primary Filters -->
+        <v-row dense align="center">
           <v-col cols="12" md="6">
             <v-text-field
               v-model="searchQuery"
@@ -2415,5 +2416,5 @@ function getPriorityColor(priority: string | null | undefined): string {
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-container>
+  </div>
 </template>
