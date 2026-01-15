@@ -542,44 +542,17 @@ async function postVisitorToSlack() {
     </div>
 
     <!-- Stats Row -->
-    <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="primary">
-          <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
-          <div class="text-caption">Total Visitors</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="success">
-          <div class="text-h5 font-weight-bold">{{ stats.active }}</div>
-          <div class="text-caption">Active</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="info">
-          <div class="text-h5 font-weight-bold">{{ stats.upcoming }}</div>
-          <div class="text-caption">Upcoming</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="teal">
-          <div class="text-h5 font-weight-bold">{{ stats.current }}</div>
-          <div class="text-caption">Currently Here</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="secondary">
-          <div class="text-h5 font-weight-bold">{{ stats.byType.find(s => s.type === 'Intern')?.count || 0 }}</div>
-          <div class="text-caption">Interns</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="warning">
-          <div class="text-h5 font-weight-bold">{{ stats.byType.find(s => s.type === 'Extern')?.count || 0 }}</div>
-          <div class="text-caption">Externs</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: stats.total, label: 'Total Visitors', color: 'primary' },
+        { value: stats.active, label: 'Active', color: 'success' },
+        { value: stats.upcoming, label: 'Upcoming', color: 'info' },
+        { value: stats.current, label: 'Currently Here', color: 'teal' },
+        { value: stats.byType.find(s => s.type === 'Intern')?.count || 0, label: 'Interns', color: 'secondary' },
+        { value: stats.byType.find(s => s.type === 'Extern')?.count || 0, label: 'Externs', color: 'warning' }
+      ]"
+      layout="6-col"
+    />
 
     <!-- Filters -->
     <v-card class="mb-4" variant="outlined">

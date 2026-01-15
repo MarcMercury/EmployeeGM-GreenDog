@@ -19,44 +19,17 @@
     </div>
 
     <!-- Stats Row -->
-    <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="primary">
-          <div class="text-h5 font-weight-bold">{{ candidates.length }}</div>
-          <div class="text-caption">Total Candidates</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="success">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.new }}</div>
-          <div class="text-caption">New</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="secondary">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.screening }}</div>
-          <div class="text-caption">Screening</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="warning">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.interview }}</div>
-          <div class="text-caption">Interview</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="teal">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.offer }}</div>
-          <div class="text-caption">Offer</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="info">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.hired }}</div>
-          <div class="text-caption">Hired</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: candidates.length, label: 'Total Candidates', color: 'primary' },
+        { value: statusCounts.new, label: 'New', color: 'success' },
+        { value: statusCounts.screening, label: 'Screening', color: 'secondary' },
+        { value: statusCounts.interview, label: 'Interview', color: 'warning' },
+        { value: statusCounts.offer, label: 'Offer', color: 'teal' },
+        { value: statusCounts.hired, label: 'Hired', color: 'info' }
+      ]"
+      layout="6-col"
+    />
 
     <!-- Filters -->
     <v-card class="mb-4" variant="outlined">

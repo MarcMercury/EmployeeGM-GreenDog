@@ -19,32 +19,15 @@
     </div>
 
     <!-- Stats Row -->
-    <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="3">
-        <v-card class="text-center pa-3" variant="tonal" color="primary">
-          <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
-          <div class="text-caption">Total Team</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="3">
-        <v-card class="text-center pa-3" variant="tonal" color="success">
-          <div class="text-h5 font-weight-bold">{{ stats.active }}</div>
-          <div class="text-caption">Active</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="3">
-        <v-card class="text-center pa-3" variant="tonal" color="warning">
-          <div class="text-h5 font-weight-bold">{{ stats.onLeave }}</div>
-          <div class="text-caption">On Leave</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="3">
-        <v-card class="text-center pa-3" variant="tonal" color="secondary">
-          <div class="text-h5 font-weight-bold">{{ stats.inactive }}</div>
-          <div class="text-caption">Inactive</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: stats.total, label: 'Total Team', color: 'primary' },
+        { value: stats.active, label: 'Active', color: 'success' },
+        { value: stats.onLeave, label: 'On Leave', color: 'warning' },
+        { value: stats.inactive, label: 'Inactive', color: 'secondary' }
+      ]"
+      layout="4-col"
+    />
 
     <!-- Filters Card -->
     <v-card class="mb-4" variant="outlined">

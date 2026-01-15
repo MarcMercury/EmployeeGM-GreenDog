@@ -77,32 +77,15 @@
       <!-- Course Grid -->
       <v-col cols="12" md="9">
         <!-- Header Stats -->
-        <v-row class="mb-4">
-          <v-col cols="6" sm="3">
-            <v-card color="primary" variant="tonal" class="text-center pa-3">
-              <div class="text-h4">{{ totalCourses }}</div>
-              <div class="text-caption">Total Courses</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="3">
-            <v-card color="info" variant="tonal" class="text-center pa-3">
-              <div class="text-h4">{{ enrolledCount }}</div>
-              <div class="text-caption">In Progress</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="3">
-            <v-card color="success" variant="tonal" class="text-center pa-3">
-              <div class="text-h4">{{ completedCount }}</div>
-              <div class="text-caption">Completed</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="3">
-            <v-card color="warning" variant="tonal" class="text-center pa-3">
-              <div class="text-h4">{{ dueCount }}</div>
-              <div class="text-caption">Due Soon</div>
-            </v-card>
-          </v-col>
-        </v-row>
+        <UiStatsRow
+          :stats="[
+            { value: totalCourses, label: 'Total Courses', color: 'primary' },
+            { value: enrolledCount, label: 'In Progress', color: 'info' },
+            { value: completedCount, label: 'Completed', color: 'success' },
+            { value: dueCount, label: 'Due Soon', color: 'warning' }
+          ]"
+          layout="4-col"
+        />
 
         <!-- Loading State -->
         <div v-if="loading" class="d-flex justify-center pa-8">

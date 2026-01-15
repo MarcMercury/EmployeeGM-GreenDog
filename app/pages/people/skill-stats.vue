@@ -30,44 +30,16 @@
     <!-- Content -->
     <template v-else>
       <!-- Top-Level Health Metrics -->
-      <v-row class="mb-6">
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg">
-            <v-card-text class="text-center">
-              <v-icon size="28" color="primary" class="mb-2">mdi-account-group</v-icon>
-              <div class="text-h4 font-weight-bold">{{ totalEmployees }}</div>
-              <div class="text-body-2 text-grey">Total Employees</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg">
-            <v-card-text class="text-center">
-              <v-icon size="28" color="info" class="mb-2">mdi-lightbulb</v-icon>
-              <div class="text-h4 font-weight-bold">{{ totalSkills }}</div>
-              <div class="text-body-2 text-grey">Skills in Library</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg">
-            <v-card-text class="text-center">
-              <v-icon size="28" color="success" class="mb-2">mdi-chart-line</v-icon>
-              <div class="text-h4 font-weight-bold">{{ averageSkillLevel.toFixed(1) }}</div>
-              <div class="text-body-2 text-grey">Avg. Skill Level</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg">
-            <v-card-text class="text-center">
-              <v-icon size="28" :color="coverageColor" class="mb-2">mdi-percent</v-icon>
-              <div class="text-h4 font-weight-bold">{{ skillCoverage }}%</div>
-              <div class="text-body-2 text-grey">Skill Coverage</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <UiStatsRow
+        :stats="[
+          { value: totalEmployees, label: 'Total Employees', color: 'primary', icon: 'mdi-account-group' },
+          { value: totalSkills, label: 'Skills in Library', color: 'info', icon: 'mdi-lightbulb' },
+          { value: averageSkillLevel.toFixed(1), label: 'Avg. Skill Level', color: 'success', icon: 'mdi-chart-line', format: 'none' },
+          { value: skillCoverage + '%', label: 'Skill Coverage', color: coverageColor, icon: 'mdi-percent', format: 'none' }
+        ]"
+        layout="4-col"
+        tile-size="tall"
+      />
 
       <v-row>
         <!-- Skill Distribution by Level -->

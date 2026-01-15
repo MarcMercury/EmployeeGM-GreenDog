@@ -49,44 +49,17 @@
       <!-- PARTNERS LIST TAB -->
       <v-window-item value="list">
         <!-- Stats Row -->
-        <v-row class="mb-4">
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="primary">
-              <div class="text-h5 font-weight-bold">{{ partners.length }}</div>
-              <div class="text-caption">Total Partners</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="success">
-              <div class="text-h5 font-weight-bold">{{ activeCount }}</div>
-              <div class="text-caption">Active</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="secondary">
-              <div class="text-h5 font-weight-bold">{{ totalReferrals.toLocaleString() }}</div>
-              <div class="text-caption">Total Referrals</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="teal">
-              <div class="text-h5 font-weight-bold">${{ formatCurrency(totalRevenue) }}</div>
-              <div class="text-caption">Total Revenue</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="warning">
-              <div class="text-h5 font-weight-bold">{{ needsFollowupCount }}</div>
-              <div class="text-caption">Need Follow-up</div>
-            </v-card>
-          </v-col>
-          <v-col cols="6" sm="4" md="2">
-            <v-card class="text-center pa-3" variant="tonal" color="info">
-              <div class="text-h5 font-weight-bold">{{ overdueCount }}</div>
-              <div class="text-caption">Overdue Visits</div>
-            </v-card>
-          </v-col>
-        </v-row>
+        <UiStatsRow
+          :stats="[
+            { value: partners.length, label: 'Total Partners', color: 'primary' },
+            { value: activeCount, label: 'Active', color: 'success' },
+            { value: totalReferrals.toLocaleString(), label: 'Total Referrals', color: 'secondary', format: 'none' },
+            { value: '$' + formatCurrency(totalRevenue), label: 'Total Revenue', color: 'teal', format: 'none' },
+            { value: needsFollowupCount, label: 'Need Follow-up', color: 'warning' },
+            { value: overdueCount, label: 'Overdue Visits', color: 'info' }
+          ]"
+          layout="6-col"
+        />
 
         <!-- Filters -->
         <v-card class="mb-4" variant="outlined">

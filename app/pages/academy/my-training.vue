@@ -11,60 +11,16 @@
     </div>
 
     <!-- Progress Stats -->
-    <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
-        <v-card rounded="lg" class="h-100">
-          <v-card-text class="d-flex align-center gap-4">
-            <v-avatar color="info" size="48">
-              <v-icon color="white">mdi-progress-clock</v-icon>
-            </v-avatar>
-            <div>
-              <p class="text-h5 font-weight-bold mb-0">{{ inProgressCourses.length }}</p>
-              <p class="text-caption text-grey">In Progress</p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card rounded="lg" class="h-100">
-          <v-card-text class="d-flex align-center gap-4">
-            <v-avatar color="success" size="48">
-              <v-icon color="white">mdi-check-circle</v-icon>
-            </v-avatar>
-            <div>
-              <p class="text-h5 font-weight-bold mb-0">{{ completedCourses.length }}</p>
-              <p class="text-caption text-grey">Completed</p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card rounded="lg" class="h-100">
-          <v-card-text class="d-flex align-center gap-4">
-            <v-avatar color="warning" size="48">
-              <v-icon color="white">mdi-alert-circle</v-icon>
-            </v-avatar>
-            <div>
-              <p class="text-h5 font-weight-bold mb-0">{{ requiredCourses.length }}</p>
-              <p class="text-caption text-grey">Required</p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card rounded="lg" class="h-100">
-          <v-card-text class="d-flex align-center gap-4">
-            <v-avatar color="purple" size="48">
-              <v-icon color="white">mdi-certificate</v-icon>
-            </v-avatar>
-            <div>
-              <p class="text-h5 font-weight-bold mb-0">{{ certificates.length }}</p>
-              <p class="text-caption text-grey">Certificates</p>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: inProgressCourses.length, label: 'In Progress', color: 'info', icon: 'mdi-progress-clock' },
+        { value: completedCourses.length, label: 'Completed', color: 'success', icon: 'mdi-check-circle' },
+        { value: requiredCourses.length, label: 'Required', color: 'warning', icon: 'mdi-alert-circle' },
+        { value: certificates.length, label: 'Certificates', color: 'purple', icon: 'mdi-certificate' }
+      ]"
+      layout="4-col"
+      tile-size="tall"
+    />
 
     <!-- Required Courses Alert -->
     <v-alert 

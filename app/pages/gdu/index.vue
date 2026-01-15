@@ -121,57 +121,16 @@ function getVisitorTypeIcon(type: string): string {
     </div>
 
     <!-- Stats Cards -->
-    <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="tonal" color="primary">
-          <v-card-text class="text-center">
-            <v-icon size="32" class="mb-2">mdi-account-group</v-icon>
-            <div class="text-h4 font-weight-bold">{{ stats?.totalVisitors || 0 }}</div>
-            <div class="text-caption">Total Visitors</div>
-            <div class="text-caption text-success" v-if="stats?.activeVisitors">
-              {{ stats.activeVisitors }} active
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="tonal" color="success">
-          <v-card-text class="text-center">
-            <v-icon size="32" class="mb-2">mdi-calendar-check</v-icon>
-            <div class="text-h4 font-weight-bold">{{ stats?.upcomingEvents || 0 }}</div>
-            <div class="text-caption">Upcoming CE Events</div>
-            <div class="text-caption" v-if="stats?.totalEvents">
-              {{ stats.totalEvents }} total events
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="tonal" color="warning">
-          <v-card-text class="text-center">
-            <v-icon size="32" class="mb-2">mdi-clipboard-list</v-icon>
-            <div class="text-h4 font-weight-bold">{{ stats?.pendingTasks || 0 }}</div>
-            <div class="text-caption">Pending Tasks</div>
-            <div class="text-caption">across all events</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      
-      <v-col cols="12" sm="6" md="3">
-        <v-card variant="tonal" color="info">
-          <v-card-text class="text-center">
-            <v-icon size="32" class="mb-2">mdi-file-document-check</v-icon>
-            <div class="text-h4 font-weight-bold">{{ stats?.approvedEvents || 0 }}</div>
-            <div class="text-caption">Approved Events</div>
-            <div class="text-caption text-warning" v-if="stats?.draftEvents">
-              {{ stats.draftEvents }} drafts
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: stats?.totalVisitors || 0, label: 'Total Visitors', color: 'primary', icon: 'mdi-account-group', subtitle: stats?.activeVisitors ? `${stats.activeVisitors} active` : undefined, subtitleColor: 'success' },
+        { value: stats?.upcomingEvents || 0, label: 'Upcoming CE Events', color: 'success', icon: 'mdi-calendar-check', subtitle: stats?.totalEvents ? `${stats.totalEvents} total events` : undefined },
+        { value: stats?.pendingTasks || 0, label: 'Pending Tasks', color: 'warning', icon: 'mdi-clipboard-list', subtitle: 'across all events' },
+        { value: stats?.approvedEvents || 0, label: 'Approved Events', color: 'info', icon: 'mdi-file-document-check', subtitle: stats?.draftEvents ? `${stats.draftEvents} drafts` : undefined, subtitleColor: 'warning' }
+      ]"
+      layout="4-col"
+      tile-size="tall"
+    />
 
     <!-- Quick Actions & Navigation -->
     <v-row class="mb-6">

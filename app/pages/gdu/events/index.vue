@@ -212,45 +212,25 @@ function getTaskProgress(event: CEEvent): number {
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="primary">
-          <v-card-text class="text-center pa-3">
-            <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
-            <div class="text-caption">Total Events</div>
-          </v-card-text>
-        </v-card>
+      <v-col cols="6" sm="6" md="2">
+        <UiStatTile :value="stats.total" label="Total Events" color="primary" />
       </v-col>
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="success">
-          <v-card-text class="text-center pa-3">
-            <div class="text-h5 font-weight-bold">{{ stats.upcoming }}</div>
-            <div class="text-caption">Upcoming</div>
-          </v-card-text>
-        </v-card>
+      <v-col cols="6" sm="6" md="2">
+        <UiStatTile :value="stats.upcoming" label="Upcoming" color="success" />
       </v-col>
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="warning">
-          <v-card-text class="text-center pa-3">
-            <div class="text-h5 font-weight-bold">{{ stats.draft }}</div>
-            <div class="text-caption">Drafts</div>
-          </v-card-text>
-        </v-card>
+      <v-col cols="6" sm="6" md="2">
+        <UiStatTile :value="stats.draft" label="Drafts" color="warning" />
       </v-col>
-      <v-col cols="6" sm="3" md="2">
-        <v-card variant="tonal" color="info">
-          <v-card-text class="text-center pa-3">
-            <div class="text-h5 font-weight-bold">{{ stats.approved }}</div>
-            <div class="text-caption">Approved</div>
-          </v-card-text>
-        </v-card>
+      <v-col cols="6" sm="6" md="2">
+        <UiStatTile :value="stats.approved" label="Approved" color="info" />
       </v-col>
       <v-col cols="12" sm="12" md="4">
-        <v-card variant="outlined">
-          <v-card-text class="text-center pa-3">
-            <div class="text-h5 font-weight-bold text-primary">{{ stats.totalCEHours }}</div>
-            <div class="text-caption">Total CE Hours Offered</div>
-          </v-card-text>
-        </v-card>
+        <UiStatTile 
+          :value="stats.totalCEHours" 
+          label="Total CE Hours Offered" 
+          color="primary" 
+          variant="outlined"
+        />
       </v-col>
     </v-row>
 

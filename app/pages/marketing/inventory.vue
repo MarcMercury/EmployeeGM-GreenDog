@@ -283,32 +283,26 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 
     <!-- Stats Row -->
     <v-row class="mb-4">
-      <v-col cols="6" sm="3">
-        <v-card variant="tonal" color="primary">
-          <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">{{ stats.total }}</div>
-            <div class="text-caption">Total Items</div>
-          </v-card-text>
-        </v-card>
+      <v-col cols="6" sm="6" md="3">
+        <UiStatTile
+          :value="stats.total"
+          label="Total Items"
+          color="primary"
+          icon="mdi-package-variant"
+        />
       </v-col>
-      <v-col cols="6" sm="3">
-        <v-card
-          :variant="stats.lowStock > 0 ? 'flat' : 'tonal'"
+      <v-col cols="6" sm="6" md="3">
+        <UiStatTile
+          :value="stats.lowStock"
+          label="Low Stock Items"
           :color="stats.lowStock > 0 ? 'error' : 'success'"
-          :class="{ 'pulse-alert': stats.lowStock > 0 }"
-        >
-          <v-card-text class="text-center">
-            <div class="text-h4 font-weight-bold">
-              {{ stats.lowStock }}
-              <v-icon v-if="stats.lowStock > 0" size="small">mdi-alert</v-icon>
-            </div>
-            <div class="text-caption">Low Stock Items</div>
-          </v-card-text>
-        </v-card>
+          :icon="stats.lowStock > 0 ? 'mdi-alert' : 'mdi-check-circle'"
+          :variant="stats.lowStock > 0 ? 'elevated' : 'tonal'"
+        />
       </v-col>
-      <v-col cols="12" sm="6">
-        <v-card variant="outlined">
-          <v-card-text>
+      <v-col cols="12" sm="12" md="6">
+        <v-card variant="outlined" class="h-100">
+          <v-card-text class="d-flex flex-column justify-center">
             <div class="text-subtitle-2 mb-2">Items by Category</div>
             <div class="d-flex flex-wrap gap-1">
               <v-chip

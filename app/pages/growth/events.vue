@@ -14,40 +14,15 @@
     </div>
 
     <!-- Stats -->
-    <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="primary" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Events</p>
-            <p class="text-h4 font-weight-bold">{{ events.length }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="warning" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Upcoming</p>
-            <p class="text-h4 font-weight-bold">{{ upcomingCount }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="success" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Confirmed</p>
-            <p class="text-h4 font-weight-bold">{{ confirmedCount }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="secondary" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Leads</p>
-            <p class="text-h4 font-weight-bold">{{ totalLeads }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: events.length, label: 'Total Events', color: 'primary' },
+        { value: upcomingCount, label: 'Upcoming', color: 'warning' },
+        { value: confirmedCount, label: 'Confirmed', color: 'success' },
+        { value: totalLeads, label: 'Total Leads', color: 'secondary' }
+      ]"
+      layout="4-col"
+    />
 
     <!-- Event List -->
     <v-card rounded="lg">

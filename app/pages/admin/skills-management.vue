@@ -92,44 +92,16 @@
     </v-card>
 
     <!-- Stats Row -->
-    <v-row class="mb-6">
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="primary" class="mb-2">mdi-lightbulb</v-icon>
-            <div class="text-h4 font-weight-bold">{{ skills.length }}</div>
-            <div class="text-body-2 text-grey">Total Skills</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="info" class="mb-2">mdi-view-grid</v-icon>
-            <div class="text-h4 font-weight-bold">{{ categoryCount }}</div>
-            <div class="text-body-2 text-grey">Categories</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="success" class="mb-2">mdi-star</v-icon>
-            <div class="text-h4 font-weight-bold">{{ coreSkillsCount }}</div>
-            <div class="text-body-2 text-grey">Core Skills</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="3">
-        <v-card rounded="lg">
-          <v-card-text class="text-center">
-            <v-icon size="28" color="warning" class="mb-2">mdi-account-group</v-icon>
-            <div class="text-h4 font-weight-bold">{{ totalAssignments }}</div>
-            <div class="text-body-2 text-grey">Total Assignments</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: skills.length, label: 'Total Skills', color: 'primary', icon: 'mdi-lightbulb' },
+        { value: categoryCount, label: 'Categories', color: 'info', icon: 'mdi-view-grid' },
+        { value: coreSkillsCount, label: 'Core Skills', color: 'success', icon: 'mdi-star' },
+        { value: totalAssignments, label: 'Total Assignments', color: 'warning', icon: 'mdi-account-group' }
+      ]"
+      layout="4-col"
+      tile-size="tall"
+    />
 
     <!-- Loading State -->
     <template v-if="loading">

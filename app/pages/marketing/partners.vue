@@ -1157,44 +1157,17 @@ function getPriorityColor(priority: string | null | undefined): string {
     </div>
 
     <!-- Stats Row -->
-    <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="primary">
-          <div class="text-h5 font-weight-bold">{{ summaryStats.total }}</div>
-          <div class="text-caption">Total Partners</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="success">
-          <div class="text-h5 font-weight-bold">{{ summaryStats.active }}</div>
-          <div class="text-caption">Active</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="info">
-          <div class="text-h5 font-weight-bold">{{ summaryStats.prospects }}</div>
-          <div class="text-caption">Prospects</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="warning">
-          <div class="text-h5 font-weight-bold">{{ summaryStats.needsFollowup }}</div>
-          <div class="text-caption">Needs Follow-up</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="secondary">
-          <div class="text-h5 font-weight-bold">{{ summaryStats.inactive }}</div>
-          <div class="text-caption">Inactive</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="teal">
-          <div class="text-h5 font-weight-bold">{{ statsByType['influencer'] || 0 }}</div>
-          <div class="text-caption">Influencers</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: summaryStats.total, label: 'Total Partners', color: 'primary' },
+        { value: summaryStats.active, label: 'Active', color: 'success' },
+        { value: summaryStats.prospects, label: 'Prospects', color: 'info' },
+        { value: summaryStats.needsFollowup, label: 'Needs Follow-up', color: 'warning' },
+        { value: summaryStats.inactive, label: 'Inactive', color: 'secondary' },
+        { value: statsByType['influencer'] || 0, label: 'Influencers', color: 'teal' }
+      ]"
+      layout="6-col"
+    />
 
     <!-- Type Pills -->
     <div class="d-flex flex-wrap gap-2 mb-4">

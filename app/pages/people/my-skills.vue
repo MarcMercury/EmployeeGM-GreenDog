@@ -44,44 +44,16 @@
     <!-- Content -->
     <template v-else>
       <!-- Skills Summary Cards -->
-      <v-row class="mb-6">
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg" color="primary" variant="flat">
-            <v-card-text class="text-center text-white">
-              <v-icon size="32" class="mb-2 opacity-80">mdi-lightbulb</v-icon>
-              <div class="text-h4 font-weight-bold">{{ totalSkillsAvailable }}</div>
-              <div class="text-body-2 opacity-80">Total Skills</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg" color="success" variant="flat">
-            <v-card-text class="text-center text-white">
-              <v-icon size="32" class="mb-2 opacity-80">mdi-medal</v-icon>
-              <div class="text-h4 font-weight-bold">{{ masteredSkills }}</div>
-              <div class="text-body-2 opacity-80">Mastered (5★)</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg" color="warning" variant="flat">
-            <v-card-text class="text-center text-white">
-              <v-icon size="32" class="mb-2 opacity-80">mdi-trending-up</v-icon>
-              <div class="text-h4 font-weight-bold">{{ developingSkills }}</div>
-              <div class="text-body-2 opacity-80">Developing</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card rounded="lg" color="grey-darken-1" variant="flat">
-            <v-card-text class="text-center text-white">
-              <v-icon size="32" class="mb-2 opacity-80">mdi-book-open-blank-variant</v-icon>
-              <div class="text-h4 font-weight-bold">{{ unratedSkills }}</div>
-              <div class="text-body-2 opacity-80">Not Rated</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+      <UiStatsRow
+        :stats="[
+          { value: totalSkillsAvailable, label: 'Total Skills', color: 'primary', icon: 'mdi-lightbulb' },
+          { value: masteredSkills, label: 'Mastered (5★)', color: 'success', icon: 'mdi-medal' },
+          { value: developingSkills, label: 'Developing', color: 'warning', icon: 'mdi-trending-up' },
+          { value: unratedSkills, label: 'Not Rated', color: 'grey-darken-1', icon: 'mdi-book-open-blank-variant' }
+        ]"
+        layout="4-col"
+        tile-size="tall"
+      />
 
       <!-- Skills by Category - Collapsible Sections -->
       <v-expansion-panels v-if="hasSkillsByCategory" variant="accordion" multiple v-model="openPanels" class="mb-6">

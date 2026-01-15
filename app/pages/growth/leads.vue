@@ -24,44 +24,17 @@
     </div>
 
     <!-- Stats Row -->
-    <v-row class="mb-4">
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="primary">
-          <div class="text-h5 font-weight-bold">{{ leads.length }}</div>
-          <div class="text-caption">Total Leads</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="success">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.new }}</div>
-          <div class="text-caption">New</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="warning">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.contacted }}</div>
-          <div class="text-caption">Contacted</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="teal">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.converted }}</div>
-          <div class="text-caption">Converted</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="info">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.qualified || 0 }}</div>
-          <div class="text-caption">Qualified</div>
-        </v-card>
-      </v-col>
-      <v-col cols="6" sm="4" md="2">
-        <v-card class="text-center pa-3" variant="tonal" color="secondary">
-          <div class="text-h5 font-weight-bold">{{ statusCounts.lost || 0 }}</div>
-          <div class="text-caption">Lost</div>
-        </v-card>
-      </v-col>
-    </v-row>
+    <UiStatsRow
+      :stats="[
+        { value: leads.length, label: 'Total Leads', color: 'primary' },
+        { value: statusCounts.new, label: 'New', color: 'success' },
+        { value: statusCounts.contacted, label: 'Contacted', color: 'warning' },
+        { value: statusCounts.converted, label: 'Converted', color: 'teal' },
+        { value: statusCounts.qualified || 0, label: 'Qualified', color: 'info' },
+        { value: statusCounts.lost || 0, label: 'Lost', color: 'secondary' }
+      ]"
+      layout="6-col"
+    />
 
     <!-- Filters -->
     <v-card class="mb-4" rounded="lg" variant="outlined">
