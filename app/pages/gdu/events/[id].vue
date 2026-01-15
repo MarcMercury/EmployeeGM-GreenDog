@@ -28,7 +28,7 @@ const { data: tasks, refresh: refreshTasks } = await useAsyncData(`ce-tasks-${ev
   const { data, error } = await supabase
     .from('ce_event_tasks')
     .select('*')
-    .eq('event_id', eventId)
+    .eq('ce_event_id', eventId)
     .order('category')
     .order('sort_order')
   
@@ -41,7 +41,7 @@ const { data: attendees, refresh: refreshAttendees } = await useAsyncData(`ce-at
   const { data, error } = await supabase
     .from('ce_event_attendees')
     .select('*, education_visitors(*)')
-    .eq('event_id', eventId)
+    .eq('ce_event_id', eventId)
   
   if (error) throw error
   return data || []
@@ -230,19 +230,18 @@ const { data: visitors } = await useAsyncData('ce-visitors', async () => {
 
 async function addAttendee() {
   const payload: any = {
-    event_id: eventId,
-    registration_date: new Date().toISOString(),
-    attendance_confirmed: false,
+    ce_event_id: eventId,
+    checked_in: false,
     certificate_issued: false
   }
   
   if (newAttendee.value.visitor_id) {
     payload.visitor_id = newAttendee.value.visitor_id
   } else {
-    payload.name = newAttendee.value.name
+    payload.first_name = newAttendee.value.name?.split(' ')[0] || ''
+    payload.last_name = newAttendee.value.name?.split(' ').slice(1).join(' ') || ''
     payload.email = newAttendee.value.email
     payload.license_number = newAttendee.value.license_number || null
-    payload.state = newAttendee.value.state || null
   }
   
   const { error } = await supabase
@@ -257,9 +256,13 @@ async function addAttendee() {
 }
 
 async function toggleAttendance(attendee: any) {
+  const newCheckedIn = !attendee.checked_in
   const { error } = await supabase
     .from('ce_event_attendees')
-    .update({ attendance_confirmed: !attendee.attendance_confirmed })
+    .update({ 
+      checked_in: newCheckedIn,
+      check_in_time: newCheckedIn ? new Date().toISOString() : null
+    })
     .eq('id', attendee.id)
   
   if (!error) await refreshAttendees()
@@ -733,13 +736,13 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
               <tbody>
                 <tr v-for="att in attendees" :key="att.id">
                   <td>
-                    {{ att.education_visitors ? `${att.education_visitors.first_name} ${att.education_visitors.last_name}` : att.name }}
+                    {{ att.education_visitors ? `${att.education_visitors.first_name} ${att.education_visitors.last_name}` : `${att.first_name || ''} ${att.last_name || ''}`.trim() }}
                   </td>
                   <td>{{ att.education_visitors?.email || att.email }}</td>
                   <td>{{ att.license_number || '-' }}</td>
                   <td>
                     <v-checkbox
-                      :model-value="att.attendance_confirmed"
+                      :model-value="att.checked_in"
                       hide-details
                       color="success"
                       @update:model-value="toggleAttendance(att)"
@@ -750,7 +753,7 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
                       :model-value="att.certificate_issued"
                       hide-details
                       color="success"
-                      :disabled="!att.attendance_confirmed"
+                      :disabled="!att.checked_in"
                       @update:model-value="toggleCertificate(att)"
                     />
                   </td>

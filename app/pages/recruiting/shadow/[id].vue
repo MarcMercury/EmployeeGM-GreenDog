@@ -502,7 +502,7 @@ const hireCandidate = async () => {
     showHireDialog.value = false
     
     // Navigate to new employee profile
-    navigateTo(`/employees/${newEmployeeId}`)
+    navigateTo(`/roster/${newEmployeeId}`)
   } catch (error) {
     console.error('Error converting candidate:', error)
     toast.error('Failed to convert candidate to employee')

@@ -265,13 +265,17 @@ function scrollToRequired() {
 }
 
 function openCourse(enrollment: any) {
-  // Navigate to course viewer
-  navigateTo(`/academy/course/${enrollment.course?.id}`)
+  // Navigate to training course viewer
+  navigateTo(`/training/${enrollment.course?.id}`)
 }
 
 function viewCertificate(enrollment: any) {
-  // Open certificate modal/page
-  console.log('View certificate for:', enrollment)
+  // Open certificate in new tab or show dialog
+  if (enrollment.certificate_url) {
+    window.open(enrollment.certificate_url, '_blank')
+  } else {
+    alert(`Certificate for "${enrollment.course?.title}" - Completed on ${new Date(enrollment.completed_at).toLocaleDateString()}`)
+  }
 }
 
 onMounted(() => {

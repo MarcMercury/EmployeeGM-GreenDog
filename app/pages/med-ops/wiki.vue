@@ -201,11 +201,11 @@
         <v-divider />
         
         <v-card-actions>
-          <v-btn variant="text" prepend-icon="mdi-bookmark-outline">Save</v-btn>
-          <v-btn variant="text" prepend-icon="mdi-share-variant">Share</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-bookmark-outline" @click="saveArticle">Save</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-share-variant" @click="shareArticle">Share</v-btn>
           <v-spacer />
-          <v-btn variant="text" prepend-icon="mdi-thumb-up-outline">Helpful</v-btn>
-          <v-btn variant="text" prepend-icon="mdi-printer">Print</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-thumb-up-outline" @click="markHelpful">Helpful</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-printer" @click="printArticle">Print</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -450,6 +450,45 @@ function selectCategory(category: any) {
 function openArticle(article: any) {
   selectedArticle.value = article
   articleDialog.value = true
+}
+
+function saveArticle() {
+  // Add to saved articles (localStorage for now)
+  const saved = JSON.parse(localStorage.getItem('saved_wiki_articles') || '[]')
+  if (!saved.find((a: any) => a.id === selectedArticle.value?.id)) {
+    saved.push({
+      id: selectedArticle.value?.id,
+      title: selectedArticle.value?.title,
+      savedAt: new Date().toISOString()
+    })
+    localStorage.setItem('saved_wiki_articles', JSON.stringify(saved))
+    alert('Article saved!')
+  } else {
+    alert('Article already saved')
+  }
+}
+
+function shareArticle() {
+  const url = window.location.href + '?article=' + selectedArticle.value?.id
+  if (navigator.share) {
+    navigator.share({
+      title: selectedArticle.value?.title,
+      text: 'Check out this medical wiki article',
+      url
+    })
+  } else {
+    navigator.clipboard.writeText(url)
+    alert('Link copied to clipboard!')
+  }
+}
+
+function markHelpful() {
+  // In a real app, this would send feedback to the backend
+  alert('Thanks for your feedback!')
+}
+
+function printArticle() {
+  window.print()
 }
 </script>
 

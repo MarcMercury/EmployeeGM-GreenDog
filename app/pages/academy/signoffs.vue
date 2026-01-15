@@ -302,8 +302,8 @@ function openSignOffDialog(item: SignoffItem) {
 }
 
 function viewDetails(item: SignoffItem) {
-  // Navigate to employee training details
-  navigateTo(`/people/${item.employee_id}?tab=training`)
+  // Navigate to employee training details - use roster page
+  navigateTo(`/roster/${item.employee_id}?tab=training`)
 }
 
 async function fetchData() {

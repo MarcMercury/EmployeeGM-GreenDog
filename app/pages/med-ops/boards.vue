@@ -177,7 +177,7 @@
         </v-card-text>
         
         <v-card-actions>
-          <v-btn variant="text" color="error">Cancel Appointment</v-btn>
+          <v-btn variant="text" color="error" @click="cancelAppointment">Cancel Appointment</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="patientDialog = false">Close</v-btn>
           <v-btn color="primary" @click="updatePatient">Save Changes</v-btn>
@@ -391,6 +391,18 @@ function updatePatient() {
   snackbar.message = 'Patient updated successfully'
   snackbar.color = 'success'
   snackbar.show = true
+}
+
+function cancelAppointment() {
+  if (!selectedPatient.value) return
+  
+  if (confirm(`Are you sure you want to cancel the appointment for ${selectedPatient.value.name}?`)) {
+    patients.value = patients.value.filter(p => p.id !== selectedPatient.value!.id)
+    patientDialog.value = false
+    snackbar.message = 'Appointment cancelled'
+    snackbar.color = 'info'
+    snackbar.show = true
+  }
 }
 
 async function addPatient() {

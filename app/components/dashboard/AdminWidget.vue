@@ -244,7 +244,7 @@ onMounted(fetchData)
     </v-card-text>
     
     <v-card-actions>
-      <v-btn variant="text" size="small" to="/admin/integrations" prepend-icon="mdi-connection">
+      <v-btn variant="text" size="small" to="/admin/slack" prepend-icon="mdi-connection">
         Integrations
       </v-btn>
       <v-spacer />

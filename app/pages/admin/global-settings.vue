@@ -89,7 +89,8 @@
                   <v-img v-else :src="company.logo" />
                 </v-avatar>
                 <div>
-                  <v-btn variant="outlined" size="small">Upload Logo</v-btn>
+                  <v-btn variant="outlined" size="small" @click="uploadLogo">Upload Logo</v-btn>
+                  <input ref="logoInput" type="file" accept="image/*" hidden @change="handleLogoUpload" />
                 </div>
               </v-card-text>
             </v-card>
@@ -222,6 +223,7 @@
                   :color="integration.connected ? 'error' : 'primary'" 
                   variant="text" 
                   block
+                  @click="toggleIntegration(integration)"
                 >
                   {{ integration.connected ? 'Disconnect' : 'Connect' }}
                 </v-btn>
@@ -288,7 +290,7 @@
     <!-- Add Department Dialog -->
     <v-dialog v-model="showAddDepartment" max-width="400">
       <v-card>
-        <v-card-title>Add Department</v-card-title>
+        <v-card-title>{{ editingDepartment ? 'Edit Department' : 'Add Department' }}</v-card-title>
         <v-card-text>
           <v-text-field
             v-model="newDepartment.name"
@@ -305,7 +307,74 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showAddDepartment = false">Cancel</v-btn>
-          <v-btn color="primary" @click="addDepartment">Add</v-btn>
+          <v-btn color="primary" @click="saveDepartment">{{ editingDepartment ? 'Save' : 'Add' }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add/Edit Position Dialog -->
+    <v-dialog v-model="showAddPosition" max-width="400">
+      <v-card>
+        <v-card-title>{{ editingPosition ? 'Edit Position' : 'Add Position' }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newPosition.title"
+            label="Position Title"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-select
+            v-model="newPosition.department_id"
+            :items="departments"
+            item-title="name"
+            item-value="id"
+            label="Department"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-select
+            v-model="newPosition.level"
+            :items="['Entry', 'Mid', 'Senior', 'Lead', 'Manager']"
+            label="Level"
+            variant="outlined"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddPosition = false">Cancel</v-btn>
+          <v-btn color="primary" @click="savePosition">{{ editingPosition ? 'Save' : 'Add' }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add/Edit Location Dialog -->
+    <v-dialog v-model="showAddLocation" max-width="400">
+      <v-card>
+        <v-card-title>{{ editingLocation ? 'Edit Location' : 'Add Location' }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newLocation.name"
+            label="Location Name"
+            variant="outlined"
+            class="mb-3"
+          />
+          <v-textarea
+            v-model="newLocation.address"
+            label="Address"
+            variant="outlined"
+            rows="2"
+            class="mb-3"
+          />
+          <v-switch
+            v-model="newLocation.is_active"
+            label="Active"
+            color="success"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddLocation = false">Cancel</v-btn>
+          <v-btn color="primary" @click="saveLocation">{{ editingLocation ? 'Save' : 'Add' }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -337,6 +406,10 @@ const showAddLocation = ref(false)
 const loadingDepartments = ref(false)
 const loadingPositions = ref(false)
 const loadingLocations = ref(false)
+const editingDepartment = ref<any>(null)
+const editingPosition = ref<any>(null)
+const editingLocation = ref<any>(null)
+const logoInput = ref<HTMLInputElement | null>(null)
 
 const snackbar = reactive({
   show: false,
@@ -413,6 +486,18 @@ const newDepartment = reactive({
   description: ''
 })
 
+const newPosition = reactive({
+  title: '',
+  department_id: '',
+  level: 'Mid'
+})
+
+const newLocation = reactive({
+  name: '',
+  address: '',
+  is_active: true
+})
+
 const migration = reactive({
   name: '',
   sql: ''
@@ -424,46 +509,426 @@ const recentMigrations = [
   { name: '025_partner_crm_fields.sql', date: 'Dec 5, 2024', applied: true }
 ]
 
+// Load data from database
+onMounted(async () => {
+  await Promise.all([
+    loadDepartments(),
+    loadPositions(),
+    loadLocations(),
+    loadCompanySettings()
+  ])
+})
+
+async function loadCompanySettings() {
+  const { data } = await supabase
+    .from('company_settings')
+    .select('*')
+    .eq('id', 'default')
+    .maybeSingle()
+  
+  if (data) {
+    company.name = data.company_name || company.name
+    company.website = data.website || company.website
+    company.email = data.contact_email || company.email
+    company.phone = data.phone || company.phone
+    company.address = data.address || company.address
+    company.logo = data.logo_url || ''
+  }
+}
+
+async function loadDepartments() {
+  loadingDepartments.value = true
+  try {
+    const { data, error } = await supabase
+      .from('departments')
+      .select('id, name, description')
+      .order('name')
+    
+    if (error) throw error
+    
+    departments.value = (data || []).map(d => ({
+      ...d,
+      employee_count: 0 // Could be calculated with a join
+    }))
+  } catch (err) {
+    console.error('Error loading departments:', err)
+  } finally {
+    loadingDepartments.value = false
+  }
+}
+
+async function loadPositions() {
+  loadingPositions.value = true
+  try {
+    const { data, error } = await supabase
+      .from('job_positions')
+      .select('id, title, level, department_id, departments(name)')
+      .order('title')
+    
+    if (error) throw error
+    
+    positions.value = (data || []).map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      department_name: p.departments?.name || '',
+      level: p.level || 'Mid'
+    }))
+  } catch (err) {
+    console.error('Error loading positions:', err)
+  } finally {
+    loadingPositions.value = false
+  }
+}
+
+async function loadLocations() {
+  loadingLocations.value = true
+  try {
+    const { data, error } = await supabase
+      .from('locations')
+      .select('id, name, address, is_active')
+      .order('name')
+    
+    if (error) throw error
+    
+    locations.value = data || []
+  } catch (err) {
+    console.error('Error loading locations:', err)
+  } finally {
+    loadingLocations.value = false
+  }
+}
+
 // Methods
-function saveCompany() {
-  snackbar.message = 'Company settings saved'
+async function saveCompany() {
+  try {
+    const { error } = await supabase
+      .from('company_settings')
+      .upsert({
+        id: 'default',
+        company_name: company.name,
+        website: company.website,
+        contact_email: company.email,
+        phone: company.phone,
+        address: company.address,
+        logo_url: company.logo
+      })
+    
+    if (error) throw error
+    snackbar.message = 'Company settings saved'
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error saving company:', err)
+    snackbar.message = 'Failed to save company settings'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
+
+function uploadLogo() {
+  logoInput.value?.click()
+}
+
+async function handleLogoUpload(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  
+  try {
+    const fileName = `company-logo-${Date.now()}.${file.name.split('.').pop()}`
+    const { error: uploadError } = await supabase.storage
+      .from('company-assets')
+      .upload(fileName, file, { upsert: true })
+    
+    if (uploadError) throw uploadError
+    
+    const { data: urlData } = supabase.storage
+      .from('company-assets')
+      .getPublicUrl(fileName)
+    
+    company.logo = urlData.publicUrl
+    snackbar.message = 'Logo uploaded successfully'
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error uploading logo:', err)
+    snackbar.message = 'Failed to upload logo'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
+
+function toggleIntegration(integration: any) {
+  if (integration.id === 'slack') {
+    navigateTo('/admin/slack')
+    return
+  }
+  
+  integration.connected = !integration.connected
+  snackbar.message = integration.connected 
+    ? `${integration.name} connected` 
+    : `${integration.name} disconnected`
   snackbar.color = 'success'
   snackbar.show = true
 }
 
-async function addDepartment() {
+async function saveDepartment() {
   if (!newDepartment.name) return
   
-  departments.value.push({
-    id: Date.now().toString(),
-    ...newDepartment,
-    employee_count: 0
-  })
-  
-  showAddDepartment.value = false
-  newDepartment.name = ''
-  newDepartment.description = ''
-  
-  snackbar.message = 'Department added'
-  snackbar.color = 'success'
-  snackbar.show = true
+  try {
+    if (editingDepartment.value) {
+      const { error } = await supabase
+        .from('departments')
+        .update({ name: newDepartment.name, description: newDepartment.description })
+        .eq('id', editingDepartment.value.id)
+      
+      if (error) throw error
+      
+      const idx = departments.value.findIndex(d => d.id === editingDepartment.value.id)
+      if (idx !== -1) {
+        departments.value[idx].name = newDepartment.name
+        departments.value[idx].description = newDepartment.description
+      }
+      snackbar.message = 'Department updated'
+    } else {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert({ name: newDepartment.name, description: newDepartment.description })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      departments.value.push({
+        id: data.id,
+        name: data.name,
+        description: data.description,
+        employee_count: 0
+      })
+      snackbar.message = 'Department added'
+    }
+    
+    showAddDepartment.value = false
+    editingDepartment.value = null
+    newDepartment.name = ''
+    newDepartment.description = ''
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error saving department:', err)
+    snackbar.message = 'Failed to save department'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
 }
 
 function editDepartment(item: any) {
-  // Implementation
+  editingDepartment.value = item
+  newDepartment.name = item.name
+  newDepartment.description = item.description || ''
+  showAddDepartment.value = true
 }
 
-function deleteDepartment(item: any) {
-  departments.value = departments.value.filter(d => d.id !== item.id)
-  snackbar.message = 'Department deleted'
-  snackbar.color = 'info'
-  snackbar.show = true
+async function deleteDepartment(item: any) {
+  try {
+    const { error } = await supabase
+      .from('departments')
+      .delete()
+      .eq('id', item.id)
+    
+    if (error) throw error
+    
+    departments.value = departments.value.filter(d => d.id !== item.id)
+    snackbar.message = 'Department deleted'
+    snackbar.color = 'info'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error deleting department:', err)
+    snackbar.message = 'Failed to delete department'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
 }
 
-function editPosition(item: any) {}
-function deletePosition(item: any) {}
-function editLocation(item: any) {}
-function deleteLocation(item: any) {}
+async function savePosition() {
+  if (!newPosition.title) return
+  
+  try {
+    const dept = departments.value.find(d => d.id === newPosition.department_id)
+    
+    if (editingPosition.value) {
+      const { error } = await supabase
+        .from('job_positions')
+        .update({ 
+          title: newPosition.title, 
+          department_id: newPosition.department_id,
+          level: newPosition.level 
+        })
+        .eq('id', editingPosition.value.id)
+      
+      if (error) throw error
+      
+      const idx = positions.value.findIndex(p => p.id === editingPosition.value.id)
+      if (idx !== -1) {
+        positions.value[idx].title = newPosition.title
+        positions.value[idx].department_name = dept?.name || ''
+        positions.value[idx].level = newPosition.level
+      }
+      snackbar.message = 'Position updated'
+    } else {
+      const { data, error } = await supabase
+        .from('job_positions')
+        .insert({ 
+          title: newPosition.title, 
+          department_id: newPosition.department_id || null,
+          level: newPosition.level,
+          is_active: true
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      positions.value.push({
+        id: data.id,
+        title: data.title,
+        department_name: dept?.name || '',
+        level: data.level
+      })
+      snackbar.message = 'Position added'
+    }
+    
+    showAddPosition.value = false
+    editingPosition.value = null
+    newPosition.title = ''
+    newPosition.department_id = ''
+    newPosition.level = 'Mid'
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error saving position:', err)
+    snackbar.message = 'Failed to save position'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
+
+function editPosition(item: any) {
+  editingPosition.value = item
+  newPosition.title = item.title
+  newPosition.department_id = departments.value.find(d => d.name === item.department_name)?.id || ''
+  newPosition.level = item.level
+  showAddPosition.value = true
+}
+
+async function deletePosition(item: any) {
+  try {
+    const { error } = await supabase
+      .from('job_positions')
+      .delete()
+      .eq('id', item.id)
+    
+    if (error) throw error
+    
+    positions.value = positions.value.filter(p => p.id !== item.id)
+    snackbar.message = 'Position deleted'
+    snackbar.color = 'info'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error deleting position:', err)
+    snackbar.message = 'Failed to delete position'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
+
+async function saveLocation() {
+  if (!newLocation.name) return
+  
+  try {
+    if (editingLocation.value) {
+      const { error } = await supabase
+        .from('locations')
+        .update({ 
+          name: newLocation.name, 
+          address: newLocation.address,
+          is_active: newLocation.is_active 
+        })
+        .eq('id', editingLocation.value.id)
+      
+      if (error) throw error
+      
+      const idx = locations.value.findIndex(l => l.id === editingLocation.value.id)
+      if (idx !== -1) {
+        locations.value[idx].name = newLocation.name
+        locations.value[idx].address = newLocation.address
+        locations.value[idx].is_active = newLocation.is_active
+      }
+      snackbar.message = 'Location updated'
+    } else {
+      const { data, error } = await supabase
+        .from('locations')
+        .insert({ 
+          name: newLocation.name, 
+          address: newLocation.address,
+          is_active: newLocation.is_active
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      locations.value.push({
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        is_active: data.is_active
+      })
+      snackbar.message = 'Location added'
+    }
+    
+    showAddLocation.value = false
+    editingLocation.value = null
+    newLocation.name = ''
+    newLocation.address = ''
+    newLocation.is_active = true
+    snackbar.color = 'success'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error saving location:', err)
+    snackbar.message = 'Failed to save location'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
+
+function editLocation(item: any) {
+  editingLocation.value = item
+  newLocation.name = item.name
+  newLocation.address = item.address || ''
+  newLocation.is_active = item.is_active
+  showAddLocation.value = true
+}
+
+async function deleteLocation(item: any) {
+  try {
+    const { error } = await supabase
+      .from('locations')
+      .delete()
+      .eq('id', item.id)
+    
+    if (error) throw error
+    
+    locations.value = locations.value.filter(l => l.id !== item.id)
+    snackbar.message = 'Location deleted'
+    snackbar.color = 'info'
+    snackbar.show = true
+  } catch (err: any) {
+    console.error('Error deleting location:', err)
+    snackbar.message = 'Failed to delete location'
+    snackbar.color = 'error'
+    snackbar.show = true
+  }
+}
 
 function copyMigration() {
   navigator.clipboard.writeText(migration.sql)

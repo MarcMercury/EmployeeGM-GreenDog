@@ -4,7 +4,7 @@
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
         <div class="d-flex align-center gap-2 mb-1">
-          <v-btn icon="mdi-arrow-left" variant="text" size="small" @click="navigateTo('/academy')" />
+          <v-btn icon="mdi-arrow-left" variant="text" size="small" @click="navigateTo('/academy/course-manager')" />
           <h1 class="text-h4 font-weight-bold">Course Creator</h1>
         </div>
         <p class="text-body-1 text-grey-darken-1 ml-10">

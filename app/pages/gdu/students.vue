@@ -1586,7 +1586,7 @@ function formatStatus(status: string): string {
             <v-col cols="12" sm="6">
               <v-select
                 v-model="editForm.assigned_mentor_id"
-                :items="mentors"
+                :items="employees"
                 :item-title="(m: Employee) => `${m.first_name} ${m.last_name}`"
                 item-value="id"
                 label="Mentor"
