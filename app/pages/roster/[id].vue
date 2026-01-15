@@ -1789,22 +1789,22 @@ const reviewTopicSuggestions = [
   'Professional Development'
 ]
 const minReviewDate = computed(() => new Date().toISOString().split('T')[0])
+// Skill category options for review - matches veterinary taxonomy from migration 126
 const skillCategoryOptionsForReview = [
-  'Clinical Skills',
-  'Diagnostics & Imaging',
-  'Surgical & Procedural',
-  'Emergency & Critical Care',
-  'Pharmacy & Treatment',
-  'Specialty Skills',
-  'Client Service',
-  'Operations & Admin',
-  'HR / People Ops',
-  'Practice Management',
-  'Training & Education',
-  'Leadership Skills',
-  'Financial Skills',
-  'Technology Skills',
-  'Soft Skills'
+  'Clinical',
+  'Surgical',
+  'Anesthesia',
+  'Dentistry',
+  'Pharmacy',
+  'Emergency',
+  'Imaging',
+  'Animal Care',
+  'Nutrition',
+  'Client Services',
+  'Administrative',
+  'Safety & Compliance',
+  'Specialized',
+  'Species Expertise'
 ]
 
 // ==========================================

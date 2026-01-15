@@ -3,9 +3,17 @@
 -- Purpose: Replace existing skills with comprehensive veterinary industry skills
 -- =====================================================
 
--- First, clear existing non-veterinary skills
-DELETE FROM public.skill_library 
-WHERE category NOT IN ('Clinical', 'Surgical', 'Medical', 'Veterinary', 'Animal Care');
+-- First, mark existing non-veterinary skills as archived (if column exists)
+-- This preserves foreign key references while phasing out old skills
+-- We use UPDATE instead of DELETE to avoid FK violations
+UPDATE public.skill_library 
+SET category = 'Legacy - ' || category
+WHERE category NOT IN (
+  'Clinical', 'Surgical', 'Anesthesia', 'Dentistry', 'Pharmacy', 
+  'Emergency', 'Imaging', 'Animal Care', 'Nutrition', 'Client Services',
+  'Administrative', 'Safety & Compliance', 'Specialized', 'Species Expertise'
+)
+AND NOT category LIKE 'Legacy -%';
 
 -- Insert comprehensive veterinary skills organized by category
 
@@ -199,25 +207,6 @@ INSERT INTO public.skill_library (name, category, description) VALUES
 ('Wildlife Medicine', 'Species Expertise', 'Wildlife rehabilitation and care')
 
 ON CONFLICT (name, category) DO UPDATE SET
-  description = EXCLUDED.description,
-  updated_at = NOW();
-
--- =====================================================
--- Update employee_skills to use new skill library
--- Note: This preserves ratings but updates skill references
--- =====================================================
-
--- Archive old skill associations that don't match new taxonomy
-UPDATE public.employee_skills es
-SET is_archived = true
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.skill_library sl
-  WHERE sl.id = es.skill_id
-);
+  description = EXCLUDED.description;
 
 COMMENT ON TABLE public.skill_library IS 'Comprehensive veterinary industry skill taxonomy';
-
--- Mark migration as complete
-INSERT INTO supabase_migrations.schema_migrations (version, name, statements_applied)
-VALUES ('126', 'veterinary_skills_taxonomy', 1)
-ON CONFLICT (version) DO NOTHING;

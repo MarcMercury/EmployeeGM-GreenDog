@@ -64,8 +64,3 @@ INSERT INTO public.email_templates (id, name, category, subject, body) VALUES
  '<p>Hi {{first_name}},</p><p>Click the link below to reset your password:</p><p><a href="{{link}}">Reset Password</a></p><p>This link will expire in 24 hours.</p>')
 
 ON CONFLICT (id) DO NOTHING;
-
--- Mark migration as complete
-INSERT INTO supabase_migrations.schema_migrations (version, name, statements_applied)
-VALUES ('125', 'email_templates', 1)
-ON CONFLICT (version) DO NOTHING;

@@ -359,13 +359,13 @@ const editForm = ref({
 })
 
 const headers = [
-  { title: 'Employee', key: 'employee', sortable: true },
-  { title: 'Date', key: 'date', sortable: true },
+  { title: 'Employee', key: 'employee', sortable: true, value: (item: any) => item.employee?.profile?.last_name || item.employee?.profile?.first_name || '' },
+  { title: 'Date', key: 'date', sortable: true, value: (item: any) => item.clock_in_at || '' },
   { title: 'Scheduled', key: 'scheduled', sortable: false },
   { title: 'Actual', key: 'actual', sortable: true },
   { title: 'Punches', key: 'punches', sortable: false },
   { title: 'Flags', key: 'flags', sortable: false },
-  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Status', key: 'status', sortable: true, value: (item: any) => item.is_approved ? 'approved' : 'pending' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
 ]
 

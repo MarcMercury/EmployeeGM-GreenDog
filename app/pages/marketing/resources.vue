@@ -318,6 +318,8 @@
           <v-select
             v-model="uploadFolder"
             :items="allFolderPaths"
+            item-title="title"
+            item-value="value"
             label="Destination Folder"
             variant="outlined"
             density="compact"
@@ -361,6 +363,8 @@
           <v-select
             v-model="newFolderParent"
             :items="allFolderPaths"
+            item-title="title"
+            item-value="value"
             label="Parent Folder"
             variant="outlined"
             density="compact"

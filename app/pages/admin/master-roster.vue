@@ -901,15 +901,15 @@ const disablingLogin = ref(false)
 const headers = [
   { title: 'Emp #', key: 'employee_number', sortable: true, width: '80px' },
   { title: 'Name', key: 'full_name', sortable: true },
-  { title: 'Email', key: 'email', sortable: true },
+  { title: 'Email', key: 'email', sortable: true, value: (item: any) => item.email_work || item.email_personal || '' },
   { title: 'Phone', key: 'phone', sortable: false },
-  { title: 'Dept', key: 'department', sortable: true },
-  { title: 'Position', key: 'position', sortable: true },
+  { title: 'Dept', key: 'department', sortable: true, value: (item: any) => item.department?.name || '' },
+  { title: 'Position', key: 'position', sortable: true, value: (item: any) => item.position?.title || '' },
   { title: 'Status', key: 'employment_status', sortable: true, width: '100px' },
   { title: 'Pay', key: 'pay', sortable: true, width: '100px' },
   { title: 'DOB', key: 'date_of_birth', sortable: true, width: '100px' },
   { title: 'Hired', key: 'hire_date', sortable: true, width: '100px' },
-  { title: 'Location', key: 'location', sortable: true },
+  { title: 'Location', key: 'location', sortable: true, value: (item: any) => item.work_location || '' },
   { title: '', key: 'actions', sortable: false, width: '50px', align: 'end' as const }
 ]
 

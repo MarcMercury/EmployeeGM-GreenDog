@@ -590,11 +590,11 @@ const newEmployee = reactive({
 
 // Table headers
 const tableHeaders = [
-  { title: 'Employee', key: 'name', sortable: true },
-  { title: 'Position', key: 'position', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
+  { title: 'Employee', key: 'name', sortable: true, value: (item: any) => item.full_name || '' },
+  { title: 'Position', key: 'position', sortable: true, value: (item: any) => item.position?.title || '' },
+  { title: 'Status', key: 'status', sortable: true, value: (item: any) => item.employment_status || '' },
   { title: 'Skills', key: 'skills', sortable: false },
-  { title: 'Location', key: 'location', sortable: true },
+  { title: 'Location', key: 'location', sortable: true, value: (item: any) => item.location?.name || '' },
   { title: '', key: 'actions', sortable: false, align: 'end' as const }
 ]
 
