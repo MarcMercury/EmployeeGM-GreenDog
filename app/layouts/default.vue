@@ -481,6 +481,10 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
                   Global Settings
                 </NuxtLink>
+                <NuxtLink to="/admin/email-templates" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📧</div>
+                  Email Templates
+                </NuxtLink>
                 <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📚</div>
                   Skills Management
