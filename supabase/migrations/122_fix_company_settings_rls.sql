@@ -89,6 +89,10 @@ DROP POLICY IF EXISTS "Allow authenticated uploads to company-assets" ON storage
 DROP POLICY IF EXISTS "Allow public read access to company-assets" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated updates to company-assets" ON storage.objects;
 DROP POLICY IF EXISTS "Allow authenticated deletes from company-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Admin uploads to company-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Public read company-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Admin update company-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Admin delete company-assets" ON storage.objects;
 
 -- Admin-only uploads
 CREATE POLICY "Admin uploads to company-assets"
