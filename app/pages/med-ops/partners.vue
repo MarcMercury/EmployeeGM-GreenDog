@@ -24,7 +24,7 @@
     </div>
 
     <!-- Search and Filters -->
-    <v-card rounded="lg" class="mb-6">
+    <v-card rounded="lg" class="mb-4" variant="outlined">
       <v-card-text>
         <v-row>
           <v-col cols="12" md="6">

@@ -734,65 +734,21 @@ function formatStatus(status: string): string {
       </v-btn>
     </div>
 
-    <!-- Stats Cards -->
-    <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="primary" class="mr-4">
-              <v-icon>mdi-account-group</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.total }}</div>
-              <div class="text-caption text-medium-emphasis">Total Students</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="success" class="mr-4">
-              <v-icon>mdi-account-check</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.current }}</div>
-              <div class="text-caption text-medium-emphasis">Currently Active</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="info" class="mr-4">
-              <v-icon>mdi-calendar-clock</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.upcoming }}</div>
-              <div class="text-caption text-medium-emphasis">Upcoming</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card>
-          <v-card-text class="d-flex align-center">
-            <v-avatar color="blue" class="mr-4">
-              <v-icon>mdi-briefcase-account</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ stats.byProgram.internship }}</div>
-              <div class="text-caption text-medium-emphasis">Interns</div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Stats Row -->
+    <UiStatsRow
+      :stats="[
+        { value: stats.total, label: 'Total Students', color: 'primary', icon: 'mdi-account-group' },
+        { value: stats.current, label: 'Currently Active', color: 'success', icon: 'mdi-account-check' },
+        { value: stats.upcoming, label: 'Upcoming', color: 'info', icon: 'mdi-calendar-clock' },
+        { value: stats.byProgram.internship, label: 'Interns', color: 'indigo', icon: 'mdi-briefcase-account' }
+      ]"
+      layout="4-col"
+      tile-size="tall"
+    />
 
     <!-- Filters -->
-    <v-card class="mb-6">
-      <v-card-text>
+    <v-card class="mb-4" variant="outlined">
+      <v-card-text class="py-3">
         <v-row dense>
           <v-col cols="12" md="4">
             <v-text-field

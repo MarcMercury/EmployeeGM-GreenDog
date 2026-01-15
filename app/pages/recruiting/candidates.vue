@@ -102,7 +102,7 @@
               clearable
             />
           </v-col>
-          <v-col cols="6" md="3">
+          <v-col cols="6" md="3" class="d-flex align-center gap-2">
             <v-select
               v-model="departmentFilter"
               :items="departmentOptions"
@@ -111,7 +111,16 @@
               density="compact"
               hide-details
               clearable
+              class="flex-grow-1"
             />
+            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
+              <v-btn value="table" size="small">
+                <v-icon size="18">mdi-table</v-icon>
+              </v-btn>
+              <v-btn value="cards" size="small">
+                <v-icon size="18">mdi-view-grid</v-icon>
+              </v-btn>
+            </v-btn-toggle>
           </v-col>
         </v-row>
 
@@ -203,8 +212,8 @@
       </v-card-text>
     </v-card>
 
-    <!-- Candidates Table -->
-    <v-card variant="outlined">
+    <!-- Candidates Table View -->
+    <v-card v-if="viewMode === 'table'" variant="outlined">
       <v-data-table
         :headers="tableHeaders"
         :items="filteredCandidates"
@@ -271,6 +280,68 @@
         </template>
       </v-data-table>
     </v-card>
+
+    <!-- Candidates Card Grid View -->
+    <v-row v-else>
+      <v-col
+        v-for="candidate in filteredCandidates"
+        :key="candidate.id"
+        cols="12"
+        sm="6"
+        md="4"
+        lg="3"
+      >
+        <v-card 
+          rounded="lg" 
+          elevation="2" 
+          class="h-100 cursor-pointer"
+          hover
+          @click="openCandidateDetail(candidate)"
+        >
+          <v-card-text class="text-center pb-2">
+            <v-avatar :color="getStatusColor(candidate.status)" size="64" class="mb-3">
+              <span class="text-h6 text-white font-weight-bold">{{ candidate.first_name[0] }}{{ candidate.last_name[0] }}</span>
+            </v-avatar>
+            <h3 class="text-subtitle-1 font-weight-bold mb-1">{{ candidate.first_name }} {{ candidate.last_name }}</h3>
+            <p class="text-caption text-grey mb-2">{{ candidate.job_positions?.title || 'No position' }}</p>
+            <v-chip 
+              :color="getStatusColor(candidate.status)" 
+              size="x-small" 
+              variant="flat"
+            >
+              {{ formatStatus(candidate.status) }}
+            </v-chip>
+          </v-card-text>
+          <v-divider />
+          <v-card-text class="py-2">
+            <div class="d-flex flex-column gap-1 text-caption">
+              <div v-if="candidate.email" class="d-flex align-center gap-1">
+                <v-icon size="14" color="grey">mdi-email</v-icon>
+                <span class="text-truncate">{{ candidate.email }}</span>
+              </div>
+              <div v-if="candidate.phone" class="d-flex align-center gap-1">
+                <v-icon size="14" color="grey">mdi-phone</v-icon>
+                <span>{{ candidate.phone }}</span>
+              </div>
+              <div v-if="candidate.applied_at" class="d-flex align-center gap-1">
+                <v-icon size="14" color="grey">mdi-calendar</v-icon>
+                <span>Applied {{ formatDate(candidate.applied_at) }}</span>
+              </div>
+            </div>
+          </v-card-text>
+          <v-card-actions class="px-4 pb-3">
+            <v-btn size="x-small" variant="tonal" color="primary" @click.stop="openInterviewDialogFor(candidate)">
+              <v-icon start size="14">mdi-account-voice</v-icon>
+              Interview
+            </v-btn>
+            <v-spacer />
+            <v-btn icon size="x-small" variant="text" @click.stop="openEditDialog(candidate)">
+              <v-icon size="16">mdi-pencil</v-icon>
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Candidate Detail Dialog -->
     <v-dialog v-model="detailDialog" max-width="700" scrollable>
@@ -716,6 +787,7 @@ const appliedDateFrom = ref<string | null>(null)
 const appliedDateTo = ref<string | null>(null)
 const quickFilter = ref('all')
 const showAdvancedFilters = ref(false)
+const viewMode = ref<'table' | 'cards'>('table')
 const detailTab = ref('bio')
 const detailDialog = ref(false)
 const addDialog = ref(false)

@@ -115,6 +115,7 @@ const searchQuery = ref('')
 const selectedType = ref<string | null>(null)
 const selectedStatus = ref<string | null>(null)
 const selectedService = ref<string | null>(null)
+const viewMode = ref<'list' | 'cards'>('list')
 
 // Service options for pet businesses
 const serviceOptions = [
@@ -1188,8 +1189,8 @@ function getPriorityColor(priority: string | null | undefined): string {
     </div>
 
     <!-- Filters -->
-    <v-card class="mb-4">
-      <v-card-text>
+    <v-card class="mb-4" variant="outlined">
+      <v-card-text class="py-3">
         <v-row dense>
           <v-col cols="12" md="6">
             <v-text-field
@@ -1212,7 +1213,7 @@ function getPriorityColor(priority: string | null | undefined): string {
               hide-details
             />
           </v-col>
-          <v-col cols="6" md="3">
+          <v-col cols="6" md="3" class="d-flex align-center gap-2">
             <v-select
               v-model="selectedStatus"
               :items="statusOptions"
@@ -1220,7 +1221,16 @@ function getPriorityColor(priority: string | null | undefined): string {
               variant="outlined"
               density="compact"
               hide-details
+              class="flex-grow-1"
             />
+            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
+              <v-btn value="list" size="small">
+                <v-icon size="18">mdi-format-list-bulleted</v-icon>
+              </v-btn>
+              <v-btn value="cards" size="small">
+                <v-icon size="18">mdi-view-grid</v-icon>
+              </v-btn>
+            </v-btn-toggle>
           </v-col>
         </v-row>
         <v-row v-if="selectedType === 'pet_business' || selectedType === 'rescue'" dense class="mt-2">
@@ -1244,8 +1254,8 @@ function getPriorityColor(priority: string | null | undefined): string {
       </v-card-text>
     </v-card>
 
-    <!-- Partners List -->
-    <v-card>
+    <!-- Partners List View -->
+    <v-card v-if="viewMode === 'list'" variant="outlined">
       <v-progress-linear v-if="pending || influencersPending" indeterminate color="primary" />
       
       <v-list v-if="filteredPartners.length > 0" lines="two">
@@ -1348,6 +1358,97 @@ function getPriorityColor(priority: string | null | undefined): string {
         </v-btn>
       </v-card-text>
     </v-card>
+
+    <!-- Partners Card Grid View -->
+    <div v-else>
+      <v-progress-linear v-if="pending || influencersPending" indeterminate color="primary" class="mb-4" />
+      
+      <v-row v-if="filteredPartners.length > 0">
+        <v-col
+          v-for="partner in filteredPartners"
+          :key="partner.id"
+          cols="12"
+          sm="6"
+          md="4"
+          lg="3"
+        >
+          <v-card 
+            rounded="lg" 
+            elevation="2" 
+            class="h-100 cursor-pointer"
+            hover
+            @click="handleItemClick(partner)"
+          >
+            <v-card-text class="text-center pb-2">
+              <v-avatar :color="getTypeColor(partner.partner_type)" size="64" class="mb-3">
+                <v-icon color="white" size="28">
+                  {{
+                    partner.partner_type === 'pet_business' ? 'mdi-dog' :
+                    partner.partner_type === 'exotic_shop' ? 'mdi-snake' :
+                    partner.partner_type === 'rescue' ? 'mdi-paw' :
+                    partner.partner_type === 'influencer' ? 'mdi-star-circle' :
+                    partner.partner_type === 'entertainment' ? 'mdi-party-popper' :
+                    partner.partner_type === 'print_vendor' ? 'mdi-printer' :
+                    partner.partner_type === 'chamber' ? 'mdi-office-building' :
+                    partner.partner_type === 'food_vendor' ? 'mdi-food' :
+                    partner.partner_type === 'association' ? 'mdi-account-group' :
+                    partner.partner_type === 'spay_neuter' ? 'mdi-medical-bag' :
+                    'mdi-handshake'
+                  }}
+                </v-icon>
+              </v-avatar>
+              <h3 class="text-subtitle-1 font-weight-bold mb-1 text-truncate">{{ partner.name }}</h3>
+              <p class="text-caption text-grey mb-2">{{ formatTypeName(partner.partner_type) }}</p>
+              <v-chip :color="getStatusColor(partner.status)" size="x-small" variant="flat">
+                {{ partner.status }}
+              </v-chip>
+            </v-card-text>
+            <v-divider />
+            <v-card-text class="py-2">
+              <div class="d-flex flex-column gap-1 text-caption">
+                <div v-if="partner.contact_email" class="d-flex align-center gap-1">
+                  <v-icon size="14" color="grey">mdi-email</v-icon>
+                  <span class="text-truncate">{{ partner.contact_email }}</span>
+                </div>
+                <div v-if="partner.contact_phone" class="d-flex align-center gap-1">
+                  <v-icon size="14" color="grey">mdi-phone</v-icon>
+                  <span>{{ partner.contact_phone }}</span>
+                </div>
+                <div v-if="partner.services_provided" class="d-flex align-center gap-1">
+                  <v-icon size="14" color="grey">mdi-tag</v-icon>
+                  <span>{{ partner.services_provided }}</span>
+                </div>
+              </div>
+            </v-card-text>
+            <v-card-actions class="px-4 pb-3">
+              <v-chip v-if="partner._isInfluencer && getInfluencerFollowerCount(partner)" size="x-small" color="secondary" variant="tonal">
+                {{ formatFollowers(getInfluencerFollowerCount(partner)) }}
+              </v-chip>
+              <v-spacer />
+              <v-btn icon size="x-small" variant="text" color="error" @click.stop="handleDelete(partner)">
+                <v-icon size="16">mdi-delete</v-icon>
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <v-card v-else class="text-center py-12" variant="outlined">
+        <v-icon size="64" color="grey-lighten-1">mdi-handshake-outline</v-icon>
+        <div class="text-h6 mt-4">No contacts found</div>
+        <div class="text-body-2 text-medium-emphasis">
+          {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner or influencer to get started' }}
+        </div>
+        <v-btn
+          v-if="!searchQuery && !selectedType && !selectedStatus"
+          color="primary"
+          class="mt-4"
+          @click="openAddDialog"
+        >
+          Add Partner
+        </v-btn>
+      </v-card>
+    </div>
 
     <!-- Add/Edit Dialog -->
     <v-dialog v-model="dialogOpen" max-width="700" scrollable>

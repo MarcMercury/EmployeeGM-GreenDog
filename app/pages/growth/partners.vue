@@ -13,41 +13,16 @@
       </v-btn>
     </div>
 
-    <!-- Stats -->
-    <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="primary" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Partners</p>
-            <p class="text-h4 font-weight-bold">{{ partners.length }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="success" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Referrals</p>
-            <p class="text-h4 font-weight-bold">{{ totalReferrals.toLocaleString() }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="amber-darken-2" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Total Revenue</p>
-            <p class="text-h4 font-weight-bold">{{ formatCurrency(totalRevenue) }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card color="secondary" variant="flat" rounded="lg">
-          <v-card-text class="text-white">
-            <p class="text-overline opacity-80">Active Partners</p>
-            <p class="text-h4 font-weight-bold">{{ activeCount }}</p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
+    <!-- Stats Row -->
+    <UiStatsRow
+      :stats="[
+        { value: partners.length, label: 'Total Partners', color: 'primary' },
+        { value: totalReferrals, label: 'Total Referrals', color: 'success', format: 'number' },
+        { value: totalRevenue, label: 'Total Revenue', color: 'warning', format: 'currency' },
+        { value: activeCount, label: 'Active Partners', color: 'secondary' }
+      ]"
+      layout="4-col"
+    />
 
     <!-- Partner Cards Grid -->
     <v-row v-if="!loading && partners.length > 0">

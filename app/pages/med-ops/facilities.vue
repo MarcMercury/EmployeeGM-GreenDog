@@ -24,7 +24,7 @@
     </UiPageHeader>
 
     <!-- Search and Filters -->
-    <v-card rounded="lg" class="mb-6">
+    <v-card rounded="lg" class="mb-4" variant="outlined">
       <v-card-text class="pb-3">
         <v-row dense>
           <v-col cols="12" sm="6" md="4">

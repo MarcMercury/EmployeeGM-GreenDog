@@ -235,7 +235,7 @@ function getTaskProgress(event: CEEvent): number {
     </v-row>
 
     <!-- Filters -->
-    <v-card class="mb-4">
+    <v-card class="mb-4" variant="outlined">
       <v-card-text>
         <v-row dense align="center">
           <v-col cols="12" md="5">

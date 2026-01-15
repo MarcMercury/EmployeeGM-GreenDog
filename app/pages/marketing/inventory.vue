@@ -321,8 +321,8 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
     </v-row>
 
     <!-- Filters -->
-    <v-card class="mb-4">
-      <v-card-text>
+    <v-card class="mb-4" variant="outlined">
+      <v-card-text class="py-3">
         <v-row dense align="center">
           <v-col cols="12" md="5">
             <v-text-field
