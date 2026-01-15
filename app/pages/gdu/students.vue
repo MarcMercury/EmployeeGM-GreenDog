@@ -73,8 +73,8 @@ const selectedTimeStatus = ref<string | null>(null)
 
 const programTypeOptions = [
   { title: 'All Programs', value: null },
-  { title: 'Internship (12 months)', value: 'internship' },
-  { title: 'Externship (2-8 weeks)', value: 'externship' },
+  { title: 'Internship', value: 'internship' },
+  { title: 'Externship', value: 'externship' },
   { title: 'Paid Cohort', value: 'paid_cohort' },
   { title: 'Intensive', value: 'intensive' },
   { title: 'Shadow', value: 'shadow' }
@@ -214,8 +214,18 @@ const inviteForm = ref({
   end_date: '',
   assigned_location_id: null as string | null,
   assigned_mentor_id: null as string | null,
-  send_invite_email: true
+  invite_method: 'google_form' as 'google_form' | 'email' | 'none'
 })
+
+// Google Form URLs per program type (can be configured in global settings)
+const programFormUrls: Record<string, string> = {
+  internship: 'https://forms.gle/YOUR_INTERNSHIP_FORM',
+  externship: 'https://forms.gle/YOUR_EXTERNSHIP_FORM',
+  shadow: 'https://forms.gle/YOUR_SHADOW_FORM',
+  paid_cohort: 'https://forms.gle/YOUR_COHORT_FORM',
+  intensive: 'https://forms.gle/YOUR_INTENSIVE_FORM'
+}
+
 const identityCheckResult = ref<{
   found: boolean
   person_id?: string
@@ -238,7 +248,7 @@ function openInviteWizard() {
     end_date: '',
     assigned_location_id: null,
     assigned_mentor_id: null,
-    send_invite_email: true
+    invite_method: 'google_form'
   }
   identityCheckResult.value = null
   showInviteWizard.value = true
@@ -297,7 +307,7 @@ async function submitInvite() {
   
   saving.value = true
   try {
-    // Use the invite_student function
+    // Create the student enrollment record
     const { data, error } = await supabase.rpc('invite_student', {
       p_email: inviteForm.value.email.trim(),
       p_first_name: inviteForm.value.first_name.trim(),
@@ -310,17 +320,31 @@ async function submitInvite() {
       p_phone: inviteForm.value.phone || null,
       p_assigned_location_id: inviteForm.value.assigned_location_id,
       p_assigned_mentor_id: inviteForm.value.assigned_mentor_id,
-      p_send_email: inviteForm.value.send_invite_email,
+      p_send_email: inviteForm.value.invite_method === 'email',
       p_expires_in_days: 30
     })
     
     if (error) throw error
     
     const result = data?.[0]
-    if (result?.is_new_person) {
-      showSuccess(`Created new student record and ${inviteForm.value.send_invite_email ? 'sent invitation' : 'generated invite link'}`)
+    
+    // Handle different invite methods
+    if (inviteForm.value.invite_method === 'google_form') {
+      const formUrl = programFormUrls[inviteForm.value.program_type] || programFormUrls.externship
+      // Pre-fill form with student info (add query params)
+      const prefilledUrl = `${formUrl}?entry.email=${encodeURIComponent(inviteForm.value.email)}&entry.name=${encodeURIComponent(inviteForm.value.first_name + ' ' + inviteForm.value.last_name)}`
+      
+      showSuccess(`Student record created. Opening application form...`)
+      // Open the Google Form in a new tab
+      window.open(prefilledUrl, '_blank')
+    } else if (inviteForm.value.invite_method === 'email') {
+      showSuccess(result?.is_new_person 
+        ? 'Created new student record and sent invitation email' 
+        : 'Added program enrollment and sent invitation email')
     } else {
-      showSuccess(`Added program enrollment to existing profile and ${inviteForm.value.send_invite_email ? 'sent invitation' : 'generated invite link'}`)
+      showSuccess(result?.is_new_person 
+        ? 'Created new student record (no invitation sent)' 
+        : 'Added program enrollment (no invitation sent)')
     }
     
     showInviteWizard.value = false
@@ -1208,12 +1232,33 @@ function formatStatus(status: string): string {
 
                 <v-divider class="my-4" />
 
-                <v-checkbox
-                  v-model="inviteForm.send_invite_email"
-                  label="Send invitation email to student"
-                  hint="Student will receive a magic link to complete their profile"
-                  persistent-hint
-                />
+                <h4 class="text-subtitle-2 mb-3">How would you like to invite this student?</h4>
+                <v-radio-group v-model="inviteForm.invite_method">
+                  <v-radio value="google_form" color="primary">
+                    <template #label>
+                      <div>
+                        <span class="font-weight-medium">Send to Google Form Application</span>
+                        <div class="text-caption text-medium-emphasis">Opens the program application form pre-filled with student info</div>
+                      </div>
+                    </template>
+                  </v-radio>
+                  <v-radio value="email" color="primary">
+                    <template #label>
+                      <div>
+                        <span class="font-weight-medium">Send Email Invitation</span>
+                        <div class="text-caption text-medium-emphasis">Student receives a magic link to complete their profile</div>
+                      </div>
+                    </template>
+                  </v-radio>
+                  <v-radio value="none" color="primary">
+                    <template #label>
+                      <div>
+                        <span class="font-weight-medium">Just create record (no invitation)</span>
+                        <div class="text-caption text-medium-emphasis">Create enrollment only, invite later manually</div>
+                      </div>
+                    </template>
+                  </v-radio>
+                </v-radio-group>
               </v-card-text>
               <v-card-actions class="pa-4 pt-0">
                 <v-btn variant="text" @click="inviteStep = 3">Back</v-btn>
@@ -1223,8 +1268,8 @@ function formatStatus(status: string): string {
                   :loading="saving"
                   @click="submitInvite"
                 >
-                  <v-icon start>mdi-send</v-icon>
-                  {{ inviteForm.send_invite_email ? 'Send Invitation' : 'Create Enrollment' }}
+                  <v-icon start>{{ inviteForm.invite_method === 'google_form' ? 'mdi-open-in-new' : inviteForm.invite_method === 'email' ? 'mdi-email-send' : 'mdi-check' }}</v-icon>
+                  {{ inviteForm.invite_method === 'google_form' ? 'Create & Open Form' : inviteForm.invite_method === 'email' ? 'Send Invitation' : 'Create Enrollment' }}
                 </v-btn>
               </v-card-actions>
             </v-stepper-window-item>
@@ -1274,6 +1319,9 @@ function formatStatus(status: string): string {
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field :model-value="selectedStudent.school_program || ''" label="Academic Program" prepend-inner-icon="mdi-book-education" variant="outlined" density="compact" readonly />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field :model-value="formatDate(selectedStudent.expected_graduation_date)" label="Expected Graduation" prepend-inner-icon="mdi-school-outline" variant="outlined" density="compact" readonly />
                 </v-col>
                 <v-col cols="12" sm="6">
                   <v-text-field :model-value="selectedStudent.location_name || 'Unassigned'" label="Assigned Location" prepend-inner-icon="mdi-map-marker" variant="outlined" density="compact" readonly />

@@ -327,7 +327,7 @@ async function confirmPublish() {
 
 // Get count of shifts by status
 const draftShiftCount = computed(() => shifts.value.filter(s => s.status === 'draft').length)
-const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'scheduled').length)
+const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'published').length)
 
 // Load shift templates from DB or use defaults
 async function loadShiftTemplates() {

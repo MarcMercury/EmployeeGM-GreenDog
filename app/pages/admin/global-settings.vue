@@ -21,6 +21,7 @@
       <v-tab value="positions">Positions</v-tab>
       <v-tab value="locations">Locations</v-tab>
       <v-tab value="roles">Roles</v-tab>
+      <v-tab value="emails">Email Templates</v-tab>
       <v-tab value="integrations">Integrations</v-tab>
       <v-tab value="database">Database</v-tab>
     </v-tabs>
@@ -196,6 +197,114 @@
             </v-list>
           </v-card-text>
         </v-card>
+      </v-window-item>
+
+      <!-- Email Templates -->
+      <v-window-item value="emails">
+        <v-row>
+          <v-col cols="12" md="4">
+            <v-card rounded="lg" class="fill-height">
+              <v-card-title>
+                <v-icon start>mdi-email-outline</v-icon>
+                Email Templates
+              </v-card-title>
+              <v-card-text>
+                <p class="text-body-2 text-medium-emphasis mb-4">
+                  Configure email templates for automated communications sent from the system.
+                </p>
+                <v-list density="compact" nav>
+                  <v-list-item 
+                    v-for="template in emailTemplates" 
+                    :key="template.id"
+                    :active="selectedEmailTemplate?.id === template.id"
+                    @click="selectEmailTemplate(template)"
+                    rounded
+                  >
+                    <template #prepend>
+                      <v-icon :color="template.is_active ? 'success' : 'grey'">{{ template.icon }}</v-icon>
+                    </template>
+                    <v-list-item-title>{{ template.name }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ template.category }}</v-list-item-subtitle>
+                    <template #append>
+                      <v-chip v-if="template.is_active" size="x-small" color="success" variant="tonal">Active</v-chip>
+                    </template>
+                  </v-list-item>
+                </v-list>
+              </v-card-text>
+            </v-card>
+          </v-col>
+          
+          <v-col cols="12" md="8">
+            <v-card v-if="selectedEmailTemplate" rounded="lg">
+              <v-card-title class="d-flex align-center">
+                <v-icon start>{{ selectedEmailTemplate.icon }}</v-icon>
+                {{ selectedEmailTemplate.name }}
+                <v-spacer />
+                <v-switch 
+                  v-model="selectedEmailTemplate.is_active" 
+                  label="Active" 
+                  color="success"
+                  hide-details
+                  density="compact"
+                />
+              </v-card-title>
+              <v-divider />
+              <v-card-text>
+                <v-text-field
+                  v-model="selectedEmailTemplate.subject"
+                  label="Email Subject"
+                  variant="outlined"
+                  density="compact"
+                  class="mb-4"
+                  hint="Use {{name}}, {{email}}, {{program}}, etc. for dynamic content"
+                  persistent-hint
+                />
+                
+                <v-textarea
+                  v-model="selectedEmailTemplate.body"
+                  label="Email Body"
+                  variant="outlined"
+                  rows="12"
+                  hint="HTML supported. Available variables: {{name}}, {{first_name}}, {{email}}, {{date}}, {{program}}, {{location}}, {{link}}"
+                  persistent-hint
+                />
+                
+                <v-expansion-panels class="mt-4">
+                  <v-expansion-panel>
+                    <v-expansion-panel-title>
+                      <v-icon start>mdi-eye</v-icon>
+                      Preview
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div class="email-preview pa-4 bg-grey-lighten-4 rounded">
+                        <div class="text-subtitle-2 font-weight-bold mb-2">Subject: {{ previewEmailSubject }}</div>
+                        <v-divider class="mb-3" />
+                        <div v-html="previewEmailBody" class="email-body"></div>
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </v-card-text>
+              <v-divider />
+              <v-card-actions class="pa-4">
+                <v-btn variant="text" @click="resetEmailTemplate">Reset to Default</v-btn>
+                <v-spacer />
+                <v-btn variant="outlined" @click="testEmailTemplate">Send Test Email</v-btn>
+                <v-btn color="primary" @click="saveEmailTemplate" :loading="savingEmail">Save Template</v-btn>
+              </v-card-actions>
+            </v-card>
+            
+            <v-card v-else rounded="lg">
+              <v-card-text class="text-center py-12">
+                <v-icon size="64" color="grey-lighten-1">mdi-email-edit-outline</v-icon>
+                <h3 class="text-h6 mt-4">Select a Template</h3>
+                <p class="text-body-2 text-medium-emphasis">
+                  Choose an email template from the list to edit its content
+                </p>
+              </v-card-text>
+            </v-card>
+          </v-col>
+        </v-row>
       </v-window-item>
 
       <!-- Integrations -->
@@ -508,6 +617,203 @@ const recentMigrations = [
   { name: '026_public_lead_capture.sql', date: 'Dec 8, 2024', applied: true },
   { name: '025_partner_crm_fields.sql', date: 'Dec 5, 2024', applied: true }
 ]
+
+// Email templates
+interface EmailTemplate {
+  id: string
+  name: string
+  category: string
+  icon: string
+  subject: string
+  body: string
+  is_active: boolean
+}
+
+const emailTemplates = ref<EmailTemplate[]>([
+  { 
+    id: 'student_invite', 
+    name: 'Student Invitation', 
+    category: 'GDU Academy',
+    icon: 'mdi-school',
+    subject: 'Welcome to {{program}} at Green Dog Dental',
+    body: `<p>Hello {{first_name}},</p>
+<p>We're excited to welcome you to the {{program}} program at Green Dog Dental!</p>
+<p>Please click the link below to complete your enrollment:</p>
+<p><a href="{{link}}">Complete Your Enrollment</a></p>
+<p>Your program starts on {{date}}.</p>
+<p>Best regards,<br>Green Dog Dental Academy Team</p>`,
+    is_active: true
+  },
+  { 
+    id: 'candidate_application', 
+    name: 'Application Received', 
+    category: 'Recruiting',
+    icon: 'mdi-account-plus',
+    subject: 'Application Received - {{position}}',
+    body: `<p>Dear {{first_name}},</p>
+<p>Thank you for applying for the {{position}} position at Green Dog Dental.</p>
+<p>We have received your application and will review it shortly. You can expect to hear from us within 5-7 business days.</p>
+<p>Best regards,<br>Green Dog Dental HR Team</p>`,
+    is_active: true
+  },
+  { 
+    id: 'interview_scheduled', 
+    name: 'Interview Scheduled', 
+    category: 'Recruiting',
+    icon: 'mdi-calendar-check',
+    subject: 'Interview Scheduled - {{position}}',
+    body: `<p>Dear {{first_name}},</p>
+<p>Great news! We'd like to schedule an interview for the {{position}} position.</p>
+<p><strong>Date:</strong> {{date}}<br>
+<strong>Time:</strong> {{time}}<br>
+<strong>Location:</strong> {{location}}</p>
+<p>Please confirm your availability by replying to this email.</p>
+<p>Best regards,<br>Green Dog Dental HR Team</p>`,
+    is_active: true
+  },
+  { 
+    id: 'offer_letter', 
+    name: 'Job Offer', 
+    category: 'Recruiting',
+    icon: 'mdi-file-document-check',
+    subject: 'Job Offer - {{position}} at Green Dog Dental',
+    body: `<p>Dear {{first_name}},</p>
+<p>Congratulations! We are pleased to offer you the position of {{position}} at Green Dog Dental.</p>
+<p>Please review the attached offer letter and respond within 5 business days.</p>
+<p>We look forward to welcoming you to our team!</p>
+<p>Best regards,<br>Green Dog Dental HR Team</p>`,
+    is_active: true
+  },
+  { 
+    id: 'time_off_approved', 
+    name: 'Time Off Approved', 
+    category: 'HR',
+    icon: 'mdi-calendar-check',
+    subject: 'Your Time Off Request Has Been Approved',
+    body: `<p>Hi {{first_name}},</p>
+<p>Your time off request has been approved!</p>
+<p><strong>Dates:</strong> {{start_date}} - {{end_date}}<br>
+<strong>Type:</strong> {{type}}</p>
+<p>Enjoy your time off!</p>`,
+    is_active: true
+  },
+  { 
+    id: 'time_off_denied', 
+    name: 'Time Off Denied', 
+    category: 'HR',
+    icon: 'mdi-calendar-remove',
+    subject: 'Your Time Off Request Status',
+    body: `<p>Hi {{first_name}},</p>
+<p>Unfortunately, your time off request for {{start_date}} - {{end_date}} could not be approved at this time.</p>
+<p>Please speak with your manager for more information.</p>`,
+    is_active: true
+  },
+  { 
+    id: 'schedule_published', 
+    name: 'Schedule Published', 
+    category: 'Scheduling',
+    icon: 'mdi-calendar-month',
+    subject: 'Your Schedule for {{week}}',
+    body: `<p>Hi {{first_name}},</p>
+<p>Your schedule for the week of {{week}} has been published.</p>
+<p>Please log in to TeamOS to view your shifts.</p>`,
+    is_active: true
+  },
+  { 
+    id: 'password_reset', 
+    name: 'Password Reset', 
+    category: 'System',
+    icon: 'mdi-lock-reset',
+    subject: 'Reset Your Password',
+    body: `<p>Hi {{first_name}},</p>
+<p>Click the link below to reset your password:</p>
+<p><a href="{{link}}">Reset Password</a></p>
+<p>This link will expire in 24 hours.</p>`,
+    is_active: true
+  }
+])
+
+const selectedEmailTemplate = ref<EmailTemplate | null>(null)
+const savingEmail = ref(false)
+
+const previewEmailSubject = computed(() => {
+  if (!selectedEmailTemplate.value) return ''
+  return selectedEmailTemplate.value.subject
+    .replace(/\{\{first_name\}\}/g, 'John')
+    .replace(/\{\{name\}\}/g, 'John Doe')
+    .replace(/\{\{program\}\}/g, 'Externship Program')
+    .replace(/\{\{position\}\}/g, 'Veterinary Technician')
+    .replace(/\{\{week\}\}/g, 'January 20-26')
+})
+
+const previewEmailBody = computed(() => {
+  if (!selectedEmailTemplate.value) return ''
+  return selectedEmailTemplate.value.body
+    .replace(/\{\{first_name\}\}/g, 'John')
+    .replace(/\{\{name\}\}/g, 'John Doe')
+    .replace(/\{\{email\}\}/g, 'john.doe@example.com')
+    .replace(/\{\{program\}\}/g, 'Externship Program')
+    .replace(/\{\{position\}\}/g, 'Veterinary Technician')
+    .replace(/\{\{date\}\}/g, 'January 20, 2026')
+    .replace(/\{\{time\}\}/g, '2:00 PM')
+    .replace(/\{\{location\}\}/g, 'Venice Clinic')
+    .replace(/\{\{start_date\}\}/g, 'January 20, 2026')
+    .replace(/\{\{end_date\}\}/g, 'January 24, 2026')
+    .replace(/\{\{type\}\}/g, 'Vacation')
+    .replace(/\{\{week\}\}/g, 'January 20-26')
+    .replace(/\{\{link\}\}/g, '#')
+})
+
+function selectEmailTemplate(template: EmailTemplate) {
+  selectedEmailTemplate.value = { ...template }
+}
+
+async function saveEmailTemplate() {
+  if (!selectedEmailTemplate.value) return
+  savingEmail.value = true
+  
+  try {
+    // Update in local list
+    const index = emailTemplates.value.findIndex(t => t.id === selectedEmailTemplate.value!.id)
+    if (index >= 0) {
+      emailTemplates.value[index] = { ...selectedEmailTemplate.value }
+    }
+    
+    // Save to database (email_templates table)
+    const { error } = await supabase
+      .from('email_templates')
+      .upsert({
+        id: selectedEmailTemplate.value.id,
+        name: selectedEmailTemplate.value.name,
+        category: selectedEmailTemplate.value.category,
+        subject: selectedEmailTemplate.value.subject,
+        body: selectedEmailTemplate.value.body,
+        is_active: selectedEmailTemplate.value.is_active,
+        updated_at: new Date().toISOString()
+      })
+    
+    if (error) throw error
+    
+    showSnackbar('Email template saved successfully', 'success')
+  } catch (err: any) {
+    console.error('Error saving email template:', err)
+    showSnackbar('Failed to save email template', 'error')
+  } finally {
+    savingEmail.value = false
+  }
+}
+
+function resetEmailTemplate() {
+  if (!selectedEmailTemplate.value) return
+  const original = emailTemplates.value.find(t => t.id === selectedEmailTemplate.value!.id)
+  if (original) {
+    selectedEmailTemplate.value = { ...original }
+  }
+}
+
+async function testEmailTemplate() {
+  showSnackbar('Test email functionality will be implemented with email service integration', 'info')
+}
 
 // Load data from database
 onMounted(async () => {

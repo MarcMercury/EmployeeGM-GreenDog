@@ -385,7 +385,7 @@ const forwardNotes = ref('')
 const savedInterviewId = ref<string | null>(null)
 
 const interviewForm = reactive<InterviewForm>({
-  interview_type: 'in_person',
+  interview_type: 'initial',
   scheduled_at: new Date().toISOString().slice(0, 16),
   interviewer_employee_id: null,
   duration_minutes: 30,
@@ -398,18 +398,18 @@ const interviewForm = reactive<InterviewForm>({
   notes: '',
   strengths: '',
   concerns: '',
-  recommendation: 'maybe',
+  recommendation: 'neutral',
   status: 'completed'
 })
 
 const interviewTypeOptions = [
   { title: 'Phone Screen', value: 'phone_screen' },
-  { title: 'Video Call', value: 'video_call' },
-  { title: 'In Person', value: 'in_person' },
+  { title: 'Initial Interview', value: 'initial' },
   { title: 'Technical Assessment', value: 'technical' },
   { title: 'Working Interview', value: 'working_interview' },
   { title: 'Panel Interview', value: 'panel' },
-  { title: 'Final Interview', value: 'final' }
+  { title: 'Final Interview', value: 'final' },
+  { title: 'Other', value: 'other' }
 ]
 
 const statusOptions = [
@@ -447,7 +447,7 @@ function formatStatus(status: string | undefined) {
 
 function resetForm() {
   Object.assign(interviewForm, {
-    interview_type: 'in_person',
+    interview_type: 'initial',
     scheduled_at: new Date().toISOString().slice(0, 16),
     interviewer_employee_id: userStore.employee?.id || null,
     duration_minutes: 30,
@@ -460,7 +460,7 @@ function resetForm() {
     notes: '',
     strengths: '',
     concerns: '',
-    recommendation: 'maybe',
+    recommendation: 'neutral',
     status: 'completed'
   })
   forwardTo.value = null

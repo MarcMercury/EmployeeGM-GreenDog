@@ -401,6 +401,7 @@ const leadFormData = reactive({
 const statusOptions = [
   { title: 'New', value: 'new' },
   { title: 'Contacted', value: 'contacted' },
+  { title: 'Qualified', value: 'qualified' },
   { title: 'Converted', value: 'converted' },
   { title: 'Lost', value: 'lost' }
 ]
