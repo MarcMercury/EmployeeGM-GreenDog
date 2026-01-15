@@ -209,7 +209,7 @@
               <v-expansion-panel-text>
                 <v-chip-group>
                   <v-chip v-for="v in commonVariables" :key="v" size="small" variant="outlined" @click="insertVariable(v)">
-                    {{ '{{' + v + '}}' }}
+                    <span v-text="`{{${v}}}`" />
                   </v-chip>
                 </v-chip-group>
                 <p class="text-caption text-grey mt-2">Click a variable to copy it. Variables are replaced with actual values when the email is sent.</p>
