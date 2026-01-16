@@ -17,6 +17,7 @@
     "@pinia/nuxt": "^0.5.5",
     "@vee-validate/nuxt": "^4.15.1",
     "@vee-validate/zod": "^4.15.1",
+    "apexcharts": "^5.3.6",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
     "marked": "^17.0.1",
@@ -31,6 +32,7 @@
     "vite-plugin-vuetify": "^2.1.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3",
+    "vue3-apexcharts": "^1.10.0",
     "vuedraggable": "^4.1.0",
     "vuetify": "^3.11.3",
     "zod": "^3.24.0"
