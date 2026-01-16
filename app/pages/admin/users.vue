@@ -141,7 +141,6 @@
             :headers="userHeaders"
             :items="filteredActiveUsers"
             :loading="loading"
-            :search="search"
             :items-per-page="25"
             class="elevation-0"
             hover
@@ -928,6 +927,17 @@ const activeUsers = computed(() => users.value.filter(u => u.is_active))
 const filteredActiveUsers = computed(() => {
   let result = activeUsers.value
   
+  // Filter by search term
+  if (search.value) {
+    const searchLower = search.value.toLowerCase()
+    result = result.filter(u => {
+      const fullName = `${u.first_name || ''} ${u.last_name || ''}`.toLowerCase()
+      const email = (u.email || '').toLowerCase()
+      return fullName.includes(searchLower) || email.includes(searchLower)
+    })
+  }
+  
+  // Filter by role
   if (filterRole.value) {
     result = result.filter(u => u.role === filterRole.value)
   }
