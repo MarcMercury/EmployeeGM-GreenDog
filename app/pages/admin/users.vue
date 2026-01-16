@@ -241,6 +241,38 @@
 
         <!-- Pending Accounts Tab -->
         <v-window-item value="pending">
+          <!-- Audit Banner -->
+          <v-alert
+            v-if="auditResults && auditResults.summary.issues > 0"
+            type="warning"
+            variant="tonal"
+            class="ma-4"
+            closable
+          >
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <strong>{{ auditResults.summary.issues }} data issue(s) found</strong>
+                <span class="text-body-2 ml-2">Some pending accounts have conflicting data</span>
+              </div>
+              <v-btn size="small" variant="text" @click="showAuditDialog = true">
+                View Details
+              </v-btn>
+            </div>
+          </v-alert>
+
+          <v-card-text class="pb-0">
+            <v-btn 
+              color="info" 
+              variant="tonal" 
+              prepend-icon="mdi-magnify-scan"
+              @click="runAudit"
+              :loading="auditLoading"
+              size="small"
+            >
+              Audit Pending Accounts
+            </v-btn>
+          </v-card-text>
+
           <v-card-text v-if="pendingLoading" class="text-center py-12">
             <v-progress-circular indeterminate color="primary" size="48" />
             <p class="text-grey mt-4">Loading pending accounts...</p>
@@ -765,6 +797,78 @@
       </v-card>
     </v-dialog>
 
+    <!-- Audit Results Dialog -->
+    <v-dialog v-model="showAuditDialog" max-width="800">
+      <v-card>
+        <v-card-title class="d-flex align-center bg-info">
+          <v-icon start color="white">mdi-magnify-scan</v-icon>
+          <span class="text-white">Pending Accounts Audit</span>
+        </v-card-title>
+        <v-card-text v-if="auditResults" class="pa-4">
+          <!-- Summary -->
+          <v-row class="mb-4">
+            <v-col cols="4">
+              <v-card color="success" variant="tonal">
+                <v-card-text class="text-center">
+                  <div class="text-h4">{{ auditResults.summary.clean }}</div>
+                  <div class="text-body-2">Clean</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="4">
+              <v-card color="warning" variant="tonal">
+                <v-card-text class="text-center">
+                  <div class="text-h4">{{ auditResults.summary.orphan }}</div>
+                  <div class="text-body-2">Orphaned Auth</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="4">
+              <v-card color="error" variant="tonal">
+                <v-card-text class="text-center">
+                  <div class="text-h4">{{ auditResults.summary.issues }}</div>
+                  <div class="text-body-2">Issues</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Results List -->
+          <v-list density="compact">
+            <v-list-item
+              v-for="result in auditResults.results"
+              :key="result.employee_id"
+              :class="{
+                'bg-success-lighten-5': result.status === 'clean',
+                'bg-warning-lighten-5': result.status === 'orphan',
+                'bg-error-lighten-5': result.status === 'issue'
+              }"
+            >
+              <template #prepend>
+                <v-icon 
+                  :color="result.status === 'clean' ? 'success' : result.status === 'orphan' ? 'warning' : 'error'"
+                >
+                  {{ result.status === 'clean' ? 'mdi-check-circle' : result.status === 'orphan' ? 'mdi-link' : 'mdi-alert-circle' }}
+                </v-icon>
+              </template>
+              <v-list-item-title>{{ result.name }}</v-list-item-title>
+              <v-list-item-subtitle>
+                <span v-if="result.status === 'clean'">Ready to create account</span>
+                <span v-else>{{ result.issue }}</span>
+              </v-list-item-subtitle>
+              <v-list-item-subtitle v-if="result.fix" class="text-info">
+                Fix: {{ result.fix }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn @click="showAuditDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" location="top">
       {{ snackbar.message }}
@@ -833,6 +937,21 @@ const saving = ref(false)
 const creating = ref(false)
 const resettingPassword = ref(false)
 const togglingActive = ref(false)
+const auditLoading = ref(false)
+const showAuditDialog = ref(false)
+const auditResults = ref<{
+  summary: { total: number; clean: number; orphan: number; issues: number }
+  results: Array<{
+    name: string
+    employee_id: string
+    profile_id: string
+    email_work: string | null
+    email_personal: string | null
+    status: 'clean' | 'orphan' | 'issue'
+    issue?: string
+    fix?: string
+  }>
+} | null>(null)
 
 const users = ref<UserAccount[]>([])
 const pendingEmployees = ref<PendingEmployee[]>([])
@@ -1199,6 +1318,36 @@ async function fetchUsers(): Promise<void> {
     showNotification(error.data?.message || 'Failed to load users', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+async function runAudit(): Promise<void> {
+  auditLoading.value = true
+  try {
+    const session = await supabase.auth.getSession()
+    if (!session.data.session?.access_token) {
+      throw new Error('Not authenticated')
+    }
+
+    const response = await $fetch('/api/admin/pending-audit', {
+      headers: {
+        Authorization: `Bearer ${session.data.session.access_token}`
+      }
+    })
+
+    if (response.success) {
+      auditResults.value = response as any
+      if (response.summary?.issues > 0) {
+        showAuditDialog.value = true
+      } else {
+        showNotification(`Audit complete: ${response.summary?.clean || 0} pending accounts ready, no issues found`, 'success')
+      }
+    }
+  } catch (error: any) {
+    console.error('Audit error:', error)
+    showNotification(error.data?.message || 'Failed to run audit', 'error')
+  } finally {
+    auditLoading.value = false
   }
 }
 
