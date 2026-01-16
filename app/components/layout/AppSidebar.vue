@@ -127,8 +127,8 @@
         <!-- Events and Leads -->
         <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- EzyVet CRM & Analytics -->
-        <v-list-item to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- EzyVet Ecosystem -->
+        <v-list-item to="/marketing/ezyvet-crm" title="EzyVet Import" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Marketing Hubs -->
         <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
