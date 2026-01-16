@@ -4,6 +4,8 @@
  * PUBLIC ENDPOINT - Submits a job application directly to the recruiting CRM.
  * Creates a candidate record in the database.
  * No authentication required.
+ * 
+ * Rate limited: 5 applications per email per hour, 10 per IP per hour
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -20,7 +22,52 @@ interface ApplicationBody {
   target_position_id?: string | null
 }
 
+// Simple in-memory rate limiting
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+
+function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now()
+  const record = rateLimitMap.get(key)
+  
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs })
+    return true
+  }
+  
+  if (record.count >= limit) {
+    return false
+  }
+  
+  record.count++
+  return true
+}
+
+// Clean up old entries every 10 minutes
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, value] of rateLimitMap.entries()) {
+    if (now > value.resetAt) {
+      rateLimitMap.delete(key)
+    }
+  }
+}, 10 * 60 * 1000)
+
 export default defineEventHandler(async (event) => {
+  // Get client identifiers for rate limiting
+  const clientIP = getHeader(event, 'x-forwarded-for')?.split(',')[0]?.trim() || 
+                   getHeader(event, 'x-real-ip') ||
+                   event.node.req.socket?.remoteAddress || 
+                   'unknown'
+  
+  // Rate limit by IP: 10 requests per hour
+  const ipKey = `apply:ip:${clientIP}`
+  if (!checkRateLimit(ipKey, 10, 60 * 60 * 1000)) {
+    throw createError({
+      statusCode: 429,
+      message: 'Too many applications from this location. Please try again later.'
+    })
+  }
+  
   const body = await readBody<ApplicationBody>(event)
 
   // Validate required fields
@@ -39,12 +86,16 @@ export default defineEventHandler(async (event) => {
       message: 'Invalid email format'
     })
   }
+  
+  // Rate limit by email: 5 requests per hour
+  const emailKey = `apply:email:${body.email.toLowerCase()}`
+  if (!checkRateLimit(emailKey, 5, 60 * 60 * 1000)) {
+    throw createError({
+      statusCode: 429,
+      message: 'Too many applications with this email. Please try again later.'
+    })
+  }
 
-  // Get request metadata
-  const clientIP = getHeader(event, 'x-forwarded-for')?.split(',')[0] || 
-                   getHeader(event, 'x-real-ip') ||
-                   event.node.req.socket?.remoteAddress || 
-                   null
   const userAgent = getHeader(event, 'user-agent') || null
 
   // Create service role client for database operations

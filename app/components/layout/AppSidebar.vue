@@ -70,7 +70,7 @@
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/profile" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
 
@@ -86,14 +86,14 @@
           />
         </template>
         <v-list-item to="/schedule" title="Schedule" prepend-icon="mdi-calendar" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/schedule/builder" title="Schedule Builder" prepend-icon="mdi-view-dashboard-edit" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasScheduleManageAccess" to="/schedule/builder" title="Schedule Builder" prepend-icon="mdi-view-dashboard-edit" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/time-off" title="Time Off" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/training" title="Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/schedule" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Recruiting Group - Admin Only -->
-      <v-list-group v-if="isAdmin && !rail" value="recruiting">
+      <!-- Recruiting Group - HR/Manager Access -->
+      <v-list-group v-if="hasRecruitingAccess && !rail" value="recruiting">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -107,10 +107,10 @@
         <v-list-item to="/recruiting/candidates" title="Candidates" prepend-icon="mdi-account-multiple-plus" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/recruiting/onboarding" title="Onboarding" prepend-icon="mdi-clipboard-check-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="isAdmin" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasRecruitingAccess" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Marketing Group - Visible to all, some items admin-only -->
-      <v-list-group v-if="!rail" value="marketing">
+      <!-- Marketing Group - Marketing Access -->
+      <v-list-group v-if="hasMarketingAccess && !rail" value="marketing">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -122,23 +122,23 @@
         </template>
         <!-- Command Center - Marketing Hub -->
         <v-list-item to="/marketing/command-center" title="Command Center" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Calendar - visible to all -->
+        <!-- Calendar - visible to marketing roles -->
         <v-list-item to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Admin only items -->
-        <v-list-item v-if="isAdmin" to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="isAdmin" to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Events and Leads -->
+        <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Marketing Hubs -->
         <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Visible to all -->
+        <!-- Visible to all marketing roles -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/partnerships" title="Referrals" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasMarketingAccess" to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
 
-      <!-- GDU (Education) Group - Admin Only -->
-      <v-list-group v-if="isAdmin && !rail" value="gdu">
+      <!-- GDU (Education) Group - Education Access -->
+      <v-list-group v-if="hasEducationAccess && !rail" value="gdu">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -153,14 +153,14 @@
         <v-list-item to="/gdu/visitors" title="CE Course Contacts" prepend-icon="mdi-certificate" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="isAdmin" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasEducationAccess" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>
       <v-divider class="border-opacity-10" />
       
-      <!-- Admin Settings -->
-      <v-list v-if="isAdmin" nav density="compact" class="px-2">
+      <!-- Admin Settings - Only for admin roles -->
+      <v-list v-if="hasAdminAccess" nav density="compact" class="px-2">
         <v-list-item
           to="/admin/skills-management"
           prepend-icon="mdi-bookshelf"
@@ -195,6 +195,9 @@
             <v-list-item-title class="text-white text-body-2">{{ fullName }}</v-list-item-title>
             <v-list-item-subtitle class="text-grey text-caption">
               <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat" class="mr-1">Admin</v-chip>
+              <v-chip v-else-if="isManager" size="x-small" color="purple" variant="flat" class="mr-1">Manager</v-chip>
+              <v-chip v-else-if="hasHrAccess" size="x-small" color="info" variant="flat" class="mr-1">HR</v-chip>
+              <v-chip v-else-if="hasMarketingAccess" size="x-small" color="success" variant="flat" class="mr-1">Marketing</v-chip>
               <span v-else>User</span>
             </v-list-item-subtitle>
           </template>
@@ -230,6 +233,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
 
 interface Props {
   modelValue: boolean
@@ -258,9 +263,19 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const profile = computed(() => authStore.profile)
-const isAdmin = computed(() => authStore.isAdmin)
+const userRole = computed<UserRole>(() => authStore.userRole || 'user')
 const fullName = computed(() => authStore.fullName)
 const initials = computed(() => authStore.initials)
+
+// Role-based access helpers using the centralized SECTION_ACCESS matrix
+const isAdmin = computed(() => authStore.isAdmin)
+const isManager = computed(() => userRole.value === 'manager')
+const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value))
+const hasRecruitingAccess = computed(() => SECTION_ACCESS.recruiting.includes(userRole.value))
+const hasMarketingAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value))
+const hasEducationAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value))
+const hasScheduleManageAccess = computed(() => SECTION_ACCESS.schedules_manage.includes(userRole.value))
+const hasAdminAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value))
 
 async function handleSignOut() {
   await authStore.signOut()

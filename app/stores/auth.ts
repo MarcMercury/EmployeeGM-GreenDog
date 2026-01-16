@@ -1,20 +1,12 @@
 import { defineStore } from 'pinia'
-import type { Profile, ProfileUpdate, UserRole, ROLE_HIERARCHY } from '~/types'
+import type { Profile, ProfileUpdate, UserRole } from '~/types'
+import { ROLE_HIERARCHY, ROLE_DISPLAY_NAMES, SECTION_ACCESS } from '~/types'
 
 interface AuthState {
   profile: Profile | null
   isLoading: boolean
   error: string | null
   initialized: boolean
-}
-
-// Role hierarchy for access level comparisons
-const roleHierarchy: Record<string, number> = {
-  super_admin: 200,
-  admin: 100,
-  office_admin: 50,
-  marketing_admin: 40,
-  user: 10
 }
 
 // Helper to get supabase client safely in Pinia
@@ -39,29 +31,33 @@ export const useAuthStore = defineStore('auth', {
     userRole: (state): UserRole => (state.profile?.role as UserRole) || 'user',
     isSuperAdmin: (state) => state.profile?.role === 'super_admin',
     isAdmin: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
+    isManager: (state) => state.profile?.role === 'manager',
+    isHrAdmin: (state) => state.profile?.role === 'hr_admin',
     isOfficeAdmin: (state) => state.profile?.role === 'office_admin',
     isMarketingAdmin: (state) => state.profile?.role === 'marketing_admin',
     isUser: (state) => state.profile?.role === 'user',
     
-    // Access level checks (for section visibility)
-    hasManagementAccess: (state) => ['super_admin', 'admin', 'office_admin'].includes(state.profile?.role || ''),
-    hasMarketingEditAccess: (state) => ['super_admin', 'admin', 'marketing_admin'].includes(state.profile?.role || ''),
-    hasGduAccess: (state) => ['super_admin', 'admin', 'marketing_admin'].includes(state.profile?.role || ''),
-    hasAdminOpsAccess: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
+    // Section access checks using the new RBAC matrix
+    hasHrAccess: (state) => SECTION_ACCESS.hr.includes(state.profile?.role as UserRole || 'user'),
+    hasRecruitingAccess: (state) => SECTION_ACCESS.recruiting.includes(state.profile?.role as UserRole || 'user'),
+    hasMarketingAccess: (state) => SECTION_ACCESS.marketing.includes(state.profile?.role as UserRole || 'user'),
+    hasEducationAccess: (state) => SECTION_ACCESS.education.includes(state.profile?.role as UserRole || 'user'),
+    hasScheduleManageAccess: (state) => SECTION_ACCESS.schedules_manage.includes(state.profile?.role as UserRole || 'user'),
+    hasScheduleViewAccess: (state) => SECTION_ACCESS.schedules_view.includes(state.profile?.role as UserRole || 'user'),
+    hasAdminAccess: (state) => SECTION_ACCESS.admin.includes(state.profile?.role as UserRole || 'user'),
+    
+    // Legacy getters for backward compatibility
+    hasManagementAccess: (state) => SECTION_ACCESS.hr.includes(state.profile?.role as UserRole || 'user'),
+    hasMarketingEditAccess: (state) => SECTION_ACCESS.marketing.includes(state.profile?.role as UserRole || 'user'),
+    hasGduAccess: (state) => SECTION_ACCESS.education.includes(state.profile?.role as UserRole || 'user'),
+    hasAdminOpsAccess: (state) => SECTION_ACCESS.admin.includes(state.profile?.role as UserRole || 'user'),
     
     // Role tier for comparison
-    roleTier: (state): number => roleHierarchy[state.profile?.role || 'user'] || 10,
+    roleTier: (state): number => ROLE_HIERARCHY[state.profile?.role as UserRole || 'user'] || 10,
     
     // Display helpers
     roleDisplayName: (state): string => {
-      const names: Record<string, string> = {
-        super_admin: '👑 Master Admin',
-        admin: '⭐ System Admin',
-        office_admin: '🏢 Office Admin',
-        marketing_admin: '📣 Marketing Admin',
-        user: 'Team Member'
-      }
-      return names[state.profile?.role || 'user'] || 'Team Member'
+      return ROLE_DISPLAY_NAMES[state.profile?.role as UserRole || 'user'] || 'Team Member'
     },
     
     fullName: (state) => {

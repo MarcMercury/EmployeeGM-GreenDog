@@ -477,13 +477,15 @@ interface Props {
 
 const props = defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   edit: [employee: RosterCardProps]
   message: [employee: RosterCardProps]
   endorse: [employee: RosterCardProps, skillId: string]
 }>()
 
+const supabase = useSupabaseClient()
+const toast = useToast()
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
@@ -634,9 +636,55 @@ function getShiftStatusColor(status: string): string {
 
 function endorseSkill(skill: { id: string; skill_id: string }) {
   if (props.employee) {
-    // Emit event for parent to handle
-    // Parent will call API to increment skill level
-    console.log('Endorse skill:', skill.skill_id, 'for employee:', props.employee.id)
+    // Emit event for parent to handle the endorsement
+    emit('endorse', props.employee as RosterCardProps, skill.skill_id)
+    
+    // Also directly update the endorsement in the database
+    endorseSkillAsync(skill)
+  }
+}
+
+// Async function to handle the endorsement
+async function endorseSkillAsync(skill: { id: string; skill_id: string }) {
+  if (!props.employee || !authStore.profile?.id) return
+  
+  try {
+    // Check if already endorsed by this user
+    const { data: existingEndorsement } = await supabase
+      .from('skill_endorsements')
+      .select('id')
+      .eq('employee_skill_id', skill.id)
+      .eq('endorsed_by', authStore.profile.id)
+      .single()
+    
+    if (existingEndorsement) {
+      toast.info('You have already endorsed this skill')
+      return
+    }
+    
+    // Add endorsement
+    const { error } = await supabase
+      .from('skill_endorsements')
+      .insert({
+        employee_skill_id: skill.id,
+        endorsed_by: authStore.profile.id,
+        endorsed_at: new Date().toISOString()
+      })
+    
+    if (error) {
+      // If table doesn't exist, log and show gentle message
+      if (error.code === '42P01') {
+        console.log('Skill endorsements table not yet created')
+        toast.info('Skill endorsement feature coming soon!')
+        return
+      }
+      throw error
+    }
+    
+    toast.success('Skill endorsed!')
+  } catch (err) {
+    console.error('Error endorsing skill:', err)
+    // Don't show error toast - fail silently for non-critical feature
   }
 }
 
