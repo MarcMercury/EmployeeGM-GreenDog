@@ -418,6 +418,14 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
                   List Hygiene
                 </NuxtLink>
+                <NuxtLink to="/marketing/ezyvet-crm" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📥</div>
+                  EzyVet Import
+                </NuxtLink>
+                <NuxtLink to="/marketing/ezyvet-analytics" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
+                  EzyVet Analytics
+                </NuxtLink>
               </template>
               
               <!-- Partners - admin/marketing_admin only -->
