@@ -391,7 +391,7 @@ const closeMobileMenu = () => {
                 Calendar
               </NuxtLink>
               
-              <!-- Events, Leads - admin/marketing_admin only -->
+              <!-- Events, Leads, List Hygiene - admin/marketing_admin only -->
               <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
@@ -400,6 +400,10 @@ const closeMobileMenu = () => {
                 <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
                   Leads
+                </NuxtLink>
+                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
+                  List Hygiene
                 </NuxtLink>
               </template>
               
