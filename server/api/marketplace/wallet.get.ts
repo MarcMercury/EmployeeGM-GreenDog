@@ -47,13 +47,13 @@ export default defineEventHandler(async (event) => {
 
   if (!wallet) {
     // Create wallet if doesn't exist
-    const { data: newWallet, error: createError } = await client
+    const { data: newWallet, error: insertError } = await client
       .from('employee_wallets')
       .insert({ employee_id: employee.id })
       .select()
       .single()
 
-    if (createError) {
+    if (insertError) {
       throw createError({ statusCode: 500, message: 'Failed to create wallet' })
     }
     wallet = newWallet
