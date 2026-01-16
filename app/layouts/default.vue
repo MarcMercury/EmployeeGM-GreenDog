@@ -502,10 +502,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-red-500/20">👥</div>
                   User Management
                 </NuxtLink>
-                <NuxtLink to="/admin/pending-users" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔑</div>
-                  Pending User Accounts
-                </NuxtLink>
                 <NuxtLink to="/admin/email-templates" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📧</div>
                   Email Templates

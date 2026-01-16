@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">User Management</h1>
         <p class="text-body-1 text-grey-darken-1">
-          Manage all user accounts, access levels, and permissions
+          Manage user accounts, create new users, and control access
         </p>
       </div>
       <v-chip color="error" variant="flat">
@@ -43,14 +43,14 @@
         </v-card>
       </v-col>
       <v-col cols="12" sm="6" md="3">
-        <v-card rounded="lg" class="fill-height">
+        <v-card rounded="lg" class="fill-height" :class="{ 'border-warning': stats.pending > 0 }">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="error" size="48" class="mr-4">
-              <v-icon color="white">mdi-account-off</v-icon>
+            <v-avatar color="warning" size="48" class="mr-4">
+              <v-icon color="white">mdi-account-clock</v-icon>
             </v-avatar>
             <div>
-              <div class="text-h5 font-weight-bold">{{ stats.disabled }}</div>
-              <div class="text-body-2 text-grey">Disabled</div>
+              <div class="text-h5 font-weight-bold">{{ stats.pending }}</div>
+              <div class="text-body-2 text-grey">Pending</div>
             </div>
           </v-card-text>
         </v-card>
@@ -58,7 +58,7 @@
       <v-col cols="12" sm="6" md="3">
         <v-card rounded="lg" class="fill-height">
           <v-card-text class="d-flex align-center">
-            <v-avatar color="warning" size="48" class="mr-4">
+            <v-avatar color="info" size="48" class="mr-4">
               <v-icon color="white">mdi-shield-account</v-icon>
             </v-avatar>
             <div>
@@ -70,184 +70,507 @@
       </v-col>
     </v-row>
 
-    <!-- Filters & Search -->
-    <v-card rounded="lg" class="mb-4">
-      <v-card-text>
-        <v-row dense>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="search"
-              prepend-inner-icon="mdi-magnify"
-              label="Search users..."
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="filterRole"
-              :items="roleOptions"
-              item-title="title"
-              item-value="value"
-              label="Filter by Role"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="filterStatus"
-              :items="statusOptions"
-              item-title="title"
-              item-value="value"
-              label="Filter by Status"
-              variant="outlined"
-              density="compact"
-              hide-details
-              clearable
-            />
-          </v-col>
-          <v-col cols="12" md="2" class="d-flex align-center">
-            <v-btn 
-              color="primary" 
-              variant="text" 
-              prepend-icon="mdi-refresh"
-              @click="fetchUsers"
-              :loading="loading"
-            >
-              Refresh
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
-    <!-- Users Table -->
+    <!-- View Tabs -->
     <v-card rounded="lg">
-      <v-data-table
-        :headers="headers"
-        :items="filteredUsers"
-        :loading="loading"
-        :search="search"
-        :items-per-page="25"
-        class="elevation-0"
-        hover
-      >
-        <!-- User Column -->
-        <template #item.user="{ item }">
-          <div class="d-flex align-center py-2">
-            <v-avatar :color="item.is_active ? 'primary' : 'grey'" size="40" class="mr-3">
-              <v-img v-if="item.avatar_url" :src="item.avatar_url" />
-              <span v-else class="text-white font-weight-bold text-body-2">
-                {{ getInitials(item) }}
+      <v-tabs v-model="currentTab" bg-color="primary" slider-color="white">
+        <v-tab value="active">
+          <v-icon start>mdi-account-check</v-icon>
+          Active Users
+          <v-chip class="ml-2" size="x-small" color="white" variant="flat">{{ activeUsers.length }}</v-chip>
+        </v-tab>
+        <v-tab value="pending">
+          <v-icon start>mdi-account-clock</v-icon>
+          Pending Accounts
+          <v-chip v-if="pendingEmployees.length > 0" class="ml-2" size="x-small" color="warning" variant="flat">{{ pendingEmployees.length }}</v-chip>
+        </v-tab>
+        <v-tab value="disabled">
+          <v-icon start>mdi-account-off</v-icon>
+          Disabled
+          <v-chip class="ml-2" size="x-small" color="grey" variant="flat">{{ disabledUsers.length }}</v-chip>
+        </v-tab>
+      </v-tabs>
+
+      <v-divider />
+
+      <!-- Active Users Tab -->
+      <v-window v-model="currentTab">
+        <v-window-item value="active">
+          <!-- Filters -->
+          <v-card-text class="pb-0">
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="search"
+                  prepend-inner-icon="mdi-magnify"
+                  label="Search users..."
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="filterRole"
+                  :items="roleOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Filter by Role"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                />
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-btn 
+                  color="primary" 
+                  variant="text" 
+                  prepend-icon="mdi-refresh"
+                  @click="fetchAllData"
+                  :loading="loading"
+                >
+                  Refresh
+                </v-btn>
+              </v-col>
+            </v-row>
+          </v-card-text>
+
+          <!-- Users Table -->
+          <v-data-table
+            :headers="userHeaders"
+            :items="filteredActiveUsers"
+            :loading="loading"
+            :search="search"
+            :items-per-page="25"
+            class="elevation-0"
+            hover
+          >
+            <template #item.user="{ item }">
+              <div class="d-flex align-center py-2">
+                <v-avatar color="primary" size="40" class="mr-3">
+                  <v-img v-if="item.avatar_url" :src="item.avatar_url" />
+                  <span v-else class="text-white font-weight-bold text-body-2">
+                    {{ getInitials(item) }}
+                  </span>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium">{{ getFullName(item) }}</div>
+                  <div class="text-caption text-grey">{{ item.email }}</div>
+                </div>
+              </div>
+            </template>
+
+            <template #item.role="{ item }">
+              <v-chip 
+                :color="getRoleColor(item.role)" 
+                size="small" 
+                variant="tonal"
+                @click="openEditDialog(item)"
+                class="cursor-pointer"
+              >
+                <v-icon start size="14">{{ getRoleIcon(item.role) }}</v-icon>
+                {{ formatRole(item.role) }}
+              </v-chip>
+            </template>
+
+            <template #item.last_sign_in_at="{ item }">
+              <span v-if="item.last_sign_in_at" class="text-body-2">
+                {{ formatRelativeDate(item.last_sign_in_at) }}
               </span>
-            </v-avatar>
-            <div>
-              <div class="font-weight-medium">{{ getFullName(item) }}</div>
-              <div class="text-caption text-grey">{{ item.email }}</div>
-            </div>
-          </div>
-        </template>
+              <span v-else class="text-caption text-grey">Never</span>
+            </template>
 
-        <!-- Role Column -->
-        <template #item.role="{ item }">
-          <v-chip 
-            :color="getRoleColor(item.role)" 
-            size="small" 
-            variant="tonal"
-            @click="openEditDialog(item, 'role')"
-            class="cursor-pointer"
-          >
-            <v-icon start size="14">{{ getRoleIcon(item.role) }}</v-icon>
-            {{ formatRole(item.role) }}
-          </v-chip>
-        </template>
+            <template #item.created_at="{ item }">
+              <span class="text-body-2">{{ formatDate(item.created_at) }}</span>
+            </template>
 
-        <!-- Status Column -->
-        <template #item.is_active="{ item }">
-          <v-chip 
-            :color="item.is_active ? 'success' : 'error'" 
-            size="small" 
-            variant="flat"
-          >
-            <v-icon start size="14">{{ item.is_active ? 'mdi-check-circle' : 'mdi-close-circle' }}</v-icon>
-            {{ item.is_active ? 'Active' : 'Disabled' }}
-          </v-chip>
-        </template>
+            <template #item.actions="{ item }">
+              <div class="d-flex align-center gap-1">
+                <v-tooltip text="Edit User" location="top">
+                  <template #activator="{ props }">
+                    <v-btn 
+                      v-bind="props"
+                      icon="mdi-pencil" 
+                      size="small" 
+                      variant="text" 
+                      @click="openEditDialog(item)"
+                    />
+                  </template>
+                </v-tooltip>
+                
+                <v-tooltip text="Reset Password" location="top">
+                  <template #activator="{ props }">
+                    <v-btn 
+                      v-bind="props"
+                      icon="mdi-lock-reset" 
+                      size="small" 
+                      variant="text" 
+                      color="warning"
+                      @click="openPasswordDialog(item)"
+                    />
+                  </template>
+                </v-tooltip>
+                
+                <v-tooltip text="Disable Login" location="top">
+                  <template #activator="{ props }">
+                    <v-btn 
+                      v-bind="props"
+                      icon="mdi-account-off" 
+                      size="small" 
+                      variant="text" 
+                      color="error"
+                      @click="confirmToggleActive(item)"
+                      :disabled="isCurrentUser(item)"
+                    />
+                  </template>
+                </v-tooltip>
+              </div>
+            </template>
 
-        <!-- Last Login Column -->
-        <template #item.last_sign_in_at="{ item }">
-          <span v-if="item.last_sign_in_at" class="text-body-2">
-            {{ formatDate(item.last_sign_in_at) }}
-          </span>
-          <span v-else class="text-caption text-grey">Never</span>
-        </template>
+            <template #no-data>
+              <div class="text-center py-8">
+                <v-icon size="64" color="grey-lighten-1">mdi-account-search</v-icon>
+                <h3 class="text-h6 mt-4">No Users Found</h3>
+                <p class="text-body-2 text-grey">
+                  {{ search || filterRole ? 'Try adjusting your filters' : 'No active users' }}
+                </p>
+              </div>
+            </template>
+          </v-data-table>
+        </v-window-item>
 
-        <!-- Created Column -->
-        <template #item.created_at="{ item }">
-          <span class="text-body-2">{{ formatDate(item.created_at) }}</span>
-        </template>
+        <!-- Pending Accounts Tab -->
+        <v-window-item value="pending">
+          <v-card-text v-if="pendingLoading" class="text-center py-12">
+            <v-progress-circular indeterminate color="primary" size="48" />
+            <p class="text-grey mt-4">Loading pending accounts...</p>
+          </v-card-text>
 
-        <!-- Actions Column -->
-        <template #item.actions="{ item }">
-          <div class="d-flex align-center gap-1">
-            <v-tooltip text="Edit User" location="top">
-              <template #activator="{ props }">
-                <v-btn 
-                  v-bind="props"
-                  icon="mdi-pencil" 
-                  size="small" 
-                  variant="text" 
-                  @click="openEditDialog(item)"
-                />
-              </template>
-            </v-tooltip>
-            
-            <v-tooltip text="Reset Password" location="top">
-              <template #activator="{ props }">
-                <v-btn 
-                  v-bind="props"
-                  icon="mdi-lock-reset" 
-                  size="small" 
-                  variant="text" 
-                  color="warning"
-                  @click="openPasswordDialog(item)"
-                />
-              </template>
-            </v-tooltip>
-            
-            <v-tooltip :text="item.is_active ? 'Disable Login' : 'Enable Login'" location="top">
-              <template #activator="{ props }">
-                <v-btn 
-                  v-bind="props"
-                  :icon="item.is_active ? 'mdi-account-off' : 'mdi-account-check'" 
-                  size="small" 
-                  variant="text" 
-                  :color="item.is_active ? 'error' : 'success'"
-                  @click="confirmToggleActive(item)"
-                  :disabled="isCurrentUser(item)"
-                />
-              </template>
-            </v-tooltip>
-          </div>
-        </template>
-
-        <!-- Empty State -->
-        <template #no-data>
-          <div class="text-center py-8">
-            <v-icon size="64" color="grey-lighten-1">mdi-account-search</v-icon>
-            <h3 class="text-h6 mt-4">No Users Found</h3>
-            <p class="text-body-2 text-grey">
-              {{ search || filterRole || filterStatus ? 'Try adjusting your filters' : 'No user accounts exist yet' }}
+          <div v-else-if="pendingEmployees.length === 0" class="text-center py-12">
+            <v-icon size="64" color="grey-lighten-1">mdi-account-check</v-icon>
+            <h3 class="text-h6 mt-4">All Caught Up!</h3>
+            <p class="text-body-2 text-grey mb-4">
+              No employees are waiting for user account creation
             </p>
           </div>
-        </template>
-      </v-data-table>
+
+          <v-data-table
+            v-else
+            :headers="pendingHeaders"
+            :items="pendingEmployees"
+            :loading="pendingLoading"
+            class="elevation-0"
+          >
+            <template #item.display_name="{ item }">
+              <div class="d-flex align-center py-2">
+                <v-avatar color="warning" size="40" class="mr-3">
+                  <span class="text-white font-weight-bold text-body-2">
+                    {{ item.first_name[0] }}{{ item.last_name[0] }}
+                  </span>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium">{{ item.display_name }}</div>
+                  <div class="text-caption text-grey">{{ item.employee_number }}</div>
+                </div>
+              </div>
+            </template>
+
+            <template #item.position_title="{ item }">
+              <div>
+                <div>{{ item.position_title || 'Not assigned' }}</div>
+                <div class="text-caption text-grey">{{ item.department_name || '' }}</div>
+              </div>
+            </template>
+
+            <template #item.email_work="{ item }">
+              <div class="text-body-2">{{ item.email_work }}</div>
+            </template>
+
+            <template #item.hire_date="{ item }">
+              <v-chip size="small" :color="isStartingSoon(item.hire_date) ? 'warning' : 'default'">
+                {{ formatDate(item.hire_date) }}
+              </v-chip>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn
+                color="primary"
+                size="small"
+                prepend-icon="mdi-account-plus"
+                @click="openCreateDialog(item)"
+              >
+                Create User
+              </v-btn>
+            </template>
+          </v-data-table>
+        </v-window-item>
+
+        <!-- Disabled Users Tab -->
+        <v-window-item value="disabled">
+          <v-data-table
+            :headers="userHeaders"
+            :items="disabledUsers"
+            :loading="loading"
+            :items-per-page="25"
+            class="elevation-0"
+            hover
+          >
+            <template #item.user="{ item }">
+              <div class="d-flex align-center py-2">
+                <v-avatar color="grey" size="40" class="mr-3">
+                  <v-img v-if="item.avatar_url" :src="item.avatar_url" />
+                  <span v-else class="text-white font-weight-bold text-body-2">
+                    {{ getInitials(item) }}
+                  </span>
+                </v-avatar>
+                <div>
+                  <div class="font-weight-medium text-grey">{{ getFullName(item) }}</div>
+                  <div class="text-caption text-grey">{{ item.email }}</div>
+                </div>
+              </div>
+            </template>
+
+            <template #item.role="{ item }">
+              <v-chip size="small" variant="outlined" color="grey">
+                {{ formatRole(item.role) }}
+              </v-chip>
+            </template>
+
+            <template #item.last_sign_in_at="{ item }">
+              <span v-if="item.last_sign_in_at" class="text-body-2 text-grey">
+                {{ formatRelativeDate(item.last_sign_in_at) }}
+              </span>
+              <span v-else class="text-caption text-grey">Never</span>
+            </template>
+
+            <template #item.created_at="{ item }">
+              <span class="text-body-2 text-grey">{{ formatDate(item.created_at) }}</span>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn
+                color="success"
+                size="small"
+                variant="tonal"
+                prepend-icon="mdi-account-check"
+                @click="confirmToggleActive(item)"
+              >
+                Re-enable
+              </v-btn>
+            </template>
+
+            <template #no-data>
+              <div class="text-center py-8">
+                <v-icon size="64" color="success">mdi-account-check</v-icon>
+                <h3 class="text-h6 mt-4">No Disabled Users</h3>
+                <p class="text-body-2 text-grey">All user accounts are active</p>
+              </div>
+            </template>
+          </v-data-table>
+        </v-window-item>
+      </v-window>
     </v-card>
+
+    <!-- Create User Dialog -->
+    <v-dialog v-model="showCreateDialog" max-width="600" persistent>
+      <v-card rounded="lg">
+        <v-card-title class="bg-primary text-white py-4">
+          <v-icon start>mdi-account-plus</v-icon>
+          Create User Account
+        </v-card-title>
+        
+        <v-card-text class="pt-6" v-if="selectedEmployee">
+          <!-- Employee Info -->
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <div class="d-flex align-center">
+              <v-avatar color="primary" size="48" class="mr-4">
+                <span class="text-white font-weight-bold">
+                  {{ selectedEmployee.first_name[0] }}{{ selectedEmployee.last_name[0] }}
+                </span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-bold">{{ selectedEmployee.display_name }}</div>
+                <div class="text-body-2">{{ selectedEmployee.position_title }} • {{ selectedEmployee.location_name }}</div>
+                <div class="text-caption">{{ selectedEmployee.email_work }}</div>
+              </div>
+            </div>
+          </v-alert>
+
+          <!-- Step 1: Verify Information -->
+          <div v-if="createStep === 1">
+            <h4 class="text-subtitle-1 font-weight-bold mb-3">Step 1: Verify Information</h4>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="createForm.email"
+                  label="Login Email"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Email required', v => /.+@.+/.test(v) || 'Valid email required']"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="createForm.phone"
+                  label="Mobile Phone"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="createForm.role"
+                  :items="roleOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="User Role"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="createForm.location_id"
+                  :items="locations"
+                  item-title="name"
+                  item-value="id"
+                  label="Primary Location"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                />
+              </v-col>
+            </v-row>
+          </div>
+
+          <!-- Step 2: Set Password -->
+          <div v-if="createStep === 2">
+            <h4 class="text-subtitle-1 font-weight-bold mb-3">Step 2: Set Initial Password</h4>
+            <v-row dense>
+              <v-col cols="12">
+                <v-text-field
+                  v-model="createForm.password"
+                  :type="showCreatePassword ? 'text' : 'password'"
+                  label="Initial Password"
+                  variant="outlined"
+                  density="compact"
+                  :append-inner-icon="showCreatePassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showCreatePassword = !showCreatePassword"
+                  hint="Minimum 8 characters"
+                  persistent-hint
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-btn 
+                  variant="outlined" 
+                  size="small" 
+                  @click="generateCreatePassword"
+                  prepend-icon="mdi-refresh"
+                >
+                  Generate Strong Password
+                </v-btn>
+              </v-col>
+            </v-row>
+          </div>
+
+          <!-- Step 3: Confirm -->
+          <div v-if="createStep === 3">
+            <h4 class="text-subtitle-1 font-weight-bold mb-3">Step 3: Confirm & Create</h4>
+            
+            <v-list lines="two" class="bg-grey-lighten-4 rounded">
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="primary">mdi-email</v-icon>
+                </template>
+                <v-list-item-title>Login Email</v-list-item-title>
+                <v-list-item-subtitle>{{ createForm.email }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="primary">mdi-shield-account</v-icon>
+                </template>
+                <v-list-item-title>Role</v-list-item-title>
+                <v-list-item-subtitle>{{ roleOptions.find(r => r.value === createForm.role)?.title }}</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item>
+                <template #prepend>
+                  <v-icon color="primary">mdi-key</v-icon>
+                </template>
+                <v-list-item-title>Initial Password</v-list-item-title>
+                <v-list-item-subtitle>{{ createForm.password }}</v-list-item-subtitle>
+                <template #append>
+                  <v-btn icon size="small" @click="copyCreatePassword">
+                    <v-icon>mdi-content-copy</v-icon>
+                  </v-btn>
+                </template>
+              </v-list-item>
+            </v-list>
+
+            <v-alert type="warning" variant="tonal" class="mt-4" density="compact">
+              <strong>Important:</strong> Save the password before creating the account.
+            </v-alert>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="closeCreateDialog">Cancel</v-btn>
+          <v-spacer />
+          <v-btn 
+            v-if="createStep > 1" 
+            variant="outlined" 
+            @click="createStep--"
+          >
+            Back
+          </v-btn>
+          <v-btn 
+            v-if="createStep < 3" 
+            color="primary" 
+            @click="createStep++"
+            :disabled="!canProceedCreate"
+          >
+            Next
+          </v-btn>
+          <v-btn 
+            v-if="createStep === 3" 
+            color="success" 
+            :loading="creating"
+            @click="createUserAccount"
+          >
+            <v-icon start>mdi-account-check</v-icon>
+            Create Account
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Success Dialog -->
+    <v-dialog v-model="showSuccessDialog" max-width="500">
+      <v-card rounded="lg" class="text-center pa-6">
+        <v-icon size="80" color="success">mdi-check-circle</v-icon>
+        <h2 class="text-h5 mt-4">Account Created!</h2>
+        <p class="text-body-1 text-grey mt-2">
+          User account for {{ createdEmployee?.display_name }} has been created.
+        </p>
+        
+        <v-alert type="info" variant="tonal" class="mt-4 text-left">
+          <div class="text-body-2">
+            <strong>Login Email:</strong> {{ createdCredentials?.email }}<br>
+            <strong>Password:</strong> {{ createdCredentials?.password }}
+          </div>
+        </v-alert>
+
+        <v-btn 
+          color="primary" 
+          class="mt-4" 
+          @click="showSuccessDialog = false"
+        >
+          Done
+        </v-btn>
+      </v-card>
+    </v-dialog>
 
     <!-- Edit User Dialog -->
     <v-dialog v-model="showEditDialog" max-width="500" persistent>
@@ -258,7 +581,6 @@
         </v-card-title>
         
         <v-card-text class="pt-6" v-if="editingUser">
-          <!-- User Info Header -->
           <div class="d-flex align-center mb-6 pb-4 border-b">
             <v-avatar :color="editingUser.is_active ? 'primary' : 'grey'" size="56" class="mr-4">
               <v-img v-if="editingUser.avatar_url" :src="editingUser.avatar_url" />
@@ -276,7 +598,7 @@
             <v-row dense>
               <v-col cols="12" sm="6">
                 <v-text-field
-                  v-model="editForm.first_name"
+                  v-model="editFormData.first_name"
                   label="First Name"
                   variant="outlined"
                   density="compact"
@@ -284,7 +606,7 @@
               </v-col>
               <v-col cols="12" sm="6">
                 <v-text-field
-                  v-model="editForm.last_name"
+                  v-model="editFormData.last_name"
                   label="Last Name"
                   variant="outlined"
                   density="compact"
@@ -292,7 +614,7 @@
               </v-col>
               <v-col cols="12">
                 <v-text-field
-                  v-model="editForm.phone"
+                  v-model="editFormData.phone"
                   label="Phone"
                   variant="outlined"
                   density="compact"
@@ -300,7 +622,7 @@
               </v-col>
               <v-col cols="12">
                 <v-select
-                  v-model="editForm.role"
+                  v-model="editFormData.role"
                   :items="roleOptions"
                   item-title="title"
                   item-value="value"
@@ -371,7 +693,7 @@
             size="small" 
             class="mt-3"
             prepend-icon="mdi-refresh"
-            @click="generatePassword"
+            @click="generateResetPassword"
           >
             Generate Strong Password
           </v-btn>
@@ -381,7 +703,7 @@
               variant="text" 
               size="small" 
               prepend-icon="mdi-content-copy"
-              @click="copyPassword"
+              @click="copyResetPassword"
             >
               Copy Password
             </v-btn>
@@ -420,11 +742,11 @@
           </p>
           
           <v-alert v-if="confirmUser.is_active" type="warning" variant="tonal" class="mt-4" density="compact">
-            This user will no longer be able to log in. Their password will be changed.
+            This user will no longer be able to log in.
           </v-alert>
           
           <v-alert v-else type="info" variant="tonal" class="mt-4" density="compact">
-            This user will be able to log in again. You may need to reset their password.
+            This user will be able to log in again.
           </v-alert>
         </v-card-text>
 
@@ -483,20 +805,64 @@ interface UserAccount {
   is_banned?: boolean
 }
 
+interface PendingEmployee {
+  employee_id: string
+  employee_number: string
+  first_name: string
+  last_name: string
+  display_name: string
+  email_work: string
+  email_personal: string | null
+  phone_mobile: string | null
+  hire_date: string
+  employment_status: string
+  onboarding_status: string
+  needs_user_account: boolean
+  profile_id: string
+  auth_user_id: string | null
+  profile_role: string
+  position_title: string | null
+  department_name: string | null
+  location_name: string | null
+}
+
 // State
+const currentTab = ref('active')
 const loading = ref(true)
+const pendingLoading = ref(true)
 const saving = ref(false)
+const creating = ref(false)
 const resettingPassword = ref(false)
 const togglingActive = ref(false)
+
 const users = ref<UserAccount[]>([])
+const pendingEmployees = ref<PendingEmployee[]>([])
+const locations = ref<{ id: string; name: string }[]>([])
+
 const search = ref('')
 const filterRole = ref<string | null>(null)
-const filterStatus = ref<string | null>(null)
+
+// Create User Dialog
+const showCreateDialog = ref(false)
+const selectedEmployee = ref<PendingEmployee | null>(null)
+const createdEmployee = ref<PendingEmployee | null>(null)
+const createdCredentials = ref<{ email: string; password: string } | null>(null)
+const createStep = ref(1)
+const showCreatePassword = ref(false)
+const showSuccessDialog = ref(false)
+
+const createForm = ref({
+  email: '',
+  phone: '',
+  role: 'user',
+  location_id: null as string | null,
+  password: ''
+})
 
 // Edit Dialog
 const showEditDialog = ref(false)
 const editingUser = ref<UserAccount | null>(null)
-const editForm = ref({
+const editFormData = ref({
   first_name: '',
   last_name: '',
   phone: '',
@@ -521,13 +887,20 @@ const snackbar = reactive({
 })
 
 // Table Headers
-const headers = [
+const userHeaders = [
   { title: 'User', key: 'user', sortable: true },
   { title: 'Access Level', key: 'role', sortable: true },
-  { title: 'Status', key: 'is_active', sortable: true },
   { title: 'Last Login', key: 'last_sign_in_at', sortable: true },
   { title: 'Created', key: 'created_at', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
+]
+
+const pendingHeaders = [
+  { title: 'Employee', key: 'display_name', sortable: true },
+  { title: 'Position', key: 'position_title', sortable: true },
+  { title: 'Email', key: 'email_work', sortable: true },
+  { title: 'Start Date', key: 'hire_date', sortable: true },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const }
 ]
 
 // Options
@@ -541,39 +914,40 @@ const roleOptions = [
   { title: 'User', value: 'user' }
 ]
 
-const statusOptions = [
-  { title: 'Active', value: 'active' },
-  { title: 'Disabled', value: 'disabled' }
-]
-
 // Computed
 const stats = computed(() => {
   const total = users.value.length
   const active = users.value.filter(u => u.is_active).length
-  const disabled = total - active
+  const pending = pendingEmployees.value.length
   const admins = users.value.filter(u => ['super_admin', 'admin'].includes(u.role)).length
-  return { total, active, disabled, admins }
+  return { total, active, pending, admins }
 })
 
-const filteredUsers = computed(() => {
-  let result = [...users.value]
+const activeUsers = computed(() => users.value.filter(u => u.is_active))
+
+const filteredActiveUsers = computed(() => {
+  let result = activeUsers.value
   
   if (filterRole.value) {
     result = result.filter(u => u.role === filterRole.value)
   }
   
-  if (filterStatus.value) {
-    if (filterStatus.value === 'active') {
-      result = result.filter(u => u.is_active)
-    } else {
-      result = result.filter(u => !u.is_active)
-    }
-  }
-  
   return result
 })
 
-// Methods
+const disabledUsers = computed(() => users.value.filter(u => !u.is_active))
+
+const canProceedCreate = computed(() => {
+  if (createStep.value === 1) {
+    return createForm.value.email && createForm.value.role
+  }
+  if (createStep.value === 2) {
+    return createForm.value.password && createForm.value.password.length >= 8
+  }
+  return true
+})
+
+// Helper Methods
 function showNotification(message: string, color = 'success') {
   snackbar.message = message
   snackbar.color = color
@@ -624,28 +998,36 @@ function getRoleIcon(role: string): string {
 }
 
 function formatDate(dateStr: string | null): string {
+  if (!dateStr) return 'N/A'
+  return new Date(dateStr).toLocaleDateString()
+}
+
+function formatRelativeDate(dateStr: string | null): string {
   if (!dateStr) return 'Never'
   const date = new Date(dateStr)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   
-  if (diffDays === 0) {
-    return 'Today'
-  } else if (diffDays === 1) {
-    return 'Yesterday'
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`
-  } else {
-    return date.toLocaleDateString()
-  }
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  return date.toLocaleDateString()
+}
+
+function isStartingSoon(dateStr: string | null): boolean {
+  if (!dateStr) return false
+  const startDate = new Date(dateStr)
+  const today = new Date()
+  const daysUntilStart = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  return daysUntilStart <= 7 && daysUntilStart >= 0
 }
 
 function isCurrentUser(user: UserAccount): boolean {
   return user.auth_user_id === authStore.profile?.auth_user_id
 }
 
-function generatePassword(): void {
+function generatePassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
   const special = '!@#$%&*'
   let password = 'GD'
@@ -653,18 +1035,104 @@ function generatePassword(): void {
     password += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   password += special.charAt(Math.floor(Math.random() * special.length))
-  newPassword.value = password
+  return password
 }
 
-function copyPassword(): void {
+function generateCreatePassword(): void {
+  createForm.value.password = generatePassword()
+}
+
+function generateResetPassword(): void {
+  newPassword.value = generatePassword()
+}
+
+function copyCreatePassword(): void {
+  navigator.clipboard.writeText(createForm.value.password)
+  showNotification('Password copied to clipboard')
+}
+
+function copyResetPassword(): void {
   navigator.clipboard.writeText(newPassword.value)
   showNotification('Password copied to clipboard')
 }
 
-// Dialog Methods
-function openEditDialog(user: UserAccount, focusField?: string): void {
+// Create User Dialog Methods
+function openCreateDialog(employee: PendingEmployee): void {
+  selectedEmployee.value = employee
+  createStep.value = 1
+  createForm.value = {
+    email: employee.email_work,
+    phone: employee.phone_mobile || '',
+    role: 'user',
+    location_id: null,
+    password: ''
+  }
+  generateCreatePassword()
+  showCreateDialog.value = true
+}
+
+function closeCreateDialog(): void {
+  showCreateDialog.value = false
+  selectedEmployee.value = null
+  createStep.value = 1
+}
+
+async function createUserAccount(): Promise<void> {
+  if (!selectedEmployee.value) return
+  
+  creating.value = true
+  
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('Not authenticated')
+    }
+
+    const response = await $fetch('/api/admin/users', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: {
+        email: createForm.value.email,
+        password: createForm.value.password,
+        role: createForm.value.role,
+        phone: createForm.value.phone || null,
+        first_name: selectedEmployee.value.first_name,
+        last_name: selectedEmployee.value.last_name,
+        profile_id: selectedEmployee.value.profile_id,
+        employee_id: selectedEmployee.value.employee_id,
+        location_id: createForm.value.location_id || null
+      }
+    })
+
+    if (!response.success) {
+      throw new Error('Failed to create user account')
+    }
+    
+    createdEmployee.value = selectedEmployee.value
+    createdCredentials.value = {
+      email: createForm.value.email,
+      password: createForm.value.password
+    }
+    
+    showCreateDialog.value = false
+    showSuccessDialog.value = true
+    
+    await fetchAllData()
+    
+  } catch (error: any) {
+    console.error('Error creating user account:', error)
+    showNotification(error.data?.message || error.message || 'Failed to create user account', 'error')
+  } finally {
+    creating.value = false
+  }
+}
+
+// Edit Dialog Methods
+function openEditDialog(user: UserAccount): void {
   editingUser.value = user
-  editForm.value = {
+  editFormData.value = {
     first_name: user.first_name || '',
     last_name: user.last_name || '',
     phone: user.phone || '',
@@ -678,11 +1146,12 @@ function closeEditDialog(): void {
   editingUser.value = null
 }
 
+// Password Dialog Methods
 function openPasswordDialog(user: UserAccount): void {
   passwordUser.value = user
   newPassword.value = ''
   showPassword.value = false
-  generatePassword()
+  generateResetPassword()
   showPasswordDialog.value = true
 }
 
@@ -723,6 +1192,92 @@ async function fetchUsers(): Promise<void> {
   }
 }
 
+async function fetchPendingEmployees(): Promise<void> {
+  pendingLoading.value = true
+  try {
+    let { data, error } = await supabase
+      .from('pending_user_accounts')
+      .select('*')
+      .order('hire_date', { ascending: false })
+    
+    if (error) {
+      console.log('View not available, using fallback query')
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('employees')
+        .select(`
+          id,
+          employee_number,
+          first_name,
+          last_name,
+          email_work,
+          email_personal,
+          phone_mobile,
+          hire_date,
+          employment_status,
+          onboarding_status,
+          needs_user_account,
+          profile_id,
+          profiles:profile_id(id, auth_user_id, role),
+          job_positions:position_id(title),
+          departments:department_id(name),
+          locations:location_id(name)
+        `)
+        .eq('needs_user_account', true)
+        .eq('employment_status', 'active')
+        .order('hire_date', { ascending: false })
+      
+      if (fallbackError) throw fallbackError
+      
+      data = (fallbackData || [])
+        .filter((e: any) => !e.profiles?.auth_user_id)
+        .map((e: any) => ({
+          employee_id: e.id,
+          employee_number: e.employee_number,
+          first_name: e.first_name,
+          last_name: e.last_name,
+          display_name: `${e.first_name} ${e.last_name}`,
+          email_work: e.email_work,
+          email_personal: e.email_personal,
+          phone_mobile: e.phone_mobile,
+          hire_date: e.hire_date,
+          employment_status: e.employment_status,
+          onboarding_status: e.onboarding_status || 'pending',
+          needs_user_account: e.needs_user_account,
+          profile_id: e.profile_id,
+          auth_user_id: e.profiles?.auth_user_id,
+          profile_role: e.profiles?.role,
+          position_title: e.job_positions?.title,
+          department_name: e.departments?.name,
+          location_name: e.locations?.name
+        }))
+    }
+    
+    pendingEmployees.value = data || []
+  } catch (error) {
+    console.error('Error fetching pending employees:', error)
+    showNotification('Failed to load pending accounts', 'error')
+  } finally {
+    pendingLoading.value = false
+  }
+}
+
+async function fetchLocations(): Promise<void> {
+  const { data } = await supabase
+    .from('locations')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('name')
+  locations.value = data || []
+}
+
+async function fetchAllData(): Promise<void> {
+  await Promise.all([
+    fetchUsers(),
+    fetchPendingEmployees(),
+    fetchLocations()
+  ])
+}
+
 async function saveUser(): Promise<void> {
   if (!editingUser.value) return
   
@@ -738,7 +1293,7 @@ async function saveUser(): Promise<void> {
       headers: {
         Authorization: `Bearer ${session.session.access_token}`
       },
-      body: editForm.value
+      body: editFormData.value
     })
 
     if (response.success) {
@@ -820,7 +1375,7 @@ async function toggleActive(): Promise<void> {
 
 // Lifecycle
 onMounted(() => {
-  fetchUsers()
+  fetchAllData()
 })
 </script>
 
@@ -835,5 +1390,9 @@ onMounted(() => {
 
 .border-b {
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.border-warning {
+  border: 2px solid rgb(var(--v-theme-warning)) !important;
 }
 </style>
