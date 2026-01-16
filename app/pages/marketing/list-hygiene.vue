@@ -65,7 +65,8 @@ const processedData = ref<Record<string, any>[]>([])
 const processingStats = ref({
   totalRows: 0,
   duplicatesRemoved: 0,
-  finalCount: 0
+  finalCount: 0,
+  multiEmailSplit: 0  // Count of extra rows created from multi-email cells
 })
 
 // Import State
@@ -383,32 +384,67 @@ function removeFile(fileId: string, zone: 'target' | 'suppression') {
 // ============================================
 
 /**
- * Normalize row to standard schema using mapped headers
+ * Extract all valid emails from a potentially multi-email string
+ * Handles space-separated, comma-separated, and semicolon-separated emails
  */
-function normalizeRow(row: Record<string, any>, mappedHeaders: Record<string, string>): Record<string, any> {
-  const normalized: Record<string, any> = {}
+function extractEmails(emailString: string): string[] {
+  if (!emailString || typeof emailString !== 'string') return []
+  
+  // Split by common delimiters: space, comma, semicolon
+  const parts = emailString.split(/[\s,;]+/).filter(s => s.trim())
+  
+  // Basic email validation regex
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  
+  return parts
+    .map(p => p.trim().toLowerCase())
+    .filter(p => emailRegex.test(p))
+}
+
+/**
+ * Normalize row to standard schema using mapped headers
+ * Returns an ARRAY of rows (in case email cell contains multiple emails)
+ */
+function normalizeRow(row: Record<string, any>, mappedHeaders: Record<string, string>): Record<string, any>[] {
+  const baseNormalized: Record<string, any> = {}
+  let rawEmailValue = ''
   
   for (const [original, mapped] of Object.entries(mappedHeaders)) {
     const value = row[original]
     if (value && typeof value === 'string' && value.trim()) {
-      // If we already have this field, check if new value is better
-      if (normalized[mapped]) {
-        // Keep longer/more complete value
-        if (value.trim().length > normalized[mapped].length) {
-          normalized[mapped] = value.trim()
-        }
+      if (mapped === 'email') {
+        // Store raw email for multi-email extraction
+        rawEmailValue = value.trim()
       } else {
-        normalized[mapped] = value.trim()
+        // If we already have this field, check if new value is better
+        if (baseNormalized[mapped]) {
+          // Keep longer/more complete value
+          if (value.trim().length > baseNormalized[mapped].length) {
+            baseNormalized[mapped] = value.trim()
+          }
+        } else {
+          baseNormalized[mapped] = value.trim()
+        }
       }
     }
   }
 
-  // Normalize email to lowercase
-  if (normalized.email) {
-    normalized.email = normalized.email.toLowerCase().trim()
+  // Extract all emails from the email field
+  const emails = extractEmails(rawEmailValue)
+  
+  if (emails.length === 0) {
+    // No valid emails - return empty array
+    return []
   }
-
-  return normalized
+  
+  if (emails.length === 1) {
+    // Single email - normal case
+    return [{ ...baseNormalized, email: emails[0] }]
+  }
+  
+  // Multiple emails - create a separate row for each email
+  // Each row inherits all other fields from the original
+  return emails.map(email => ({ ...baseNormalized, email }))
 }
 
 /**
@@ -436,21 +472,33 @@ function countPopulatedFields(row: Record<string, any>): number {
 async function processLists() {
   isProcessing.value = true
   processedData.value = []
-  processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0 }
+  processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0, multiEmailSplit: 0 }
 
   try {
     // Gather all normalized data from target files
+    // Note: normalizeRow returns an array (handles multi-email cells)
     const allTargetRows: Record<string, any>[] = []
+    let multiEmailCount = 0
+    
     for (const file of targetFiles.value) {
       for (const row of file.data) {
-        const normalized = normalizeRow(row, file.mappedHeaders)
-        if (getEmail(normalized)) {
-          allTargetRows.push(normalized)
+        const normalizedRows = normalizeRow(row, file.mappedHeaders)
+        
+        // Track when we split multi-email cells
+        if (normalizedRows.length > 1) {
+          multiEmailCount += normalizedRows.length - 1
+        }
+        
+        for (const normalized of normalizedRows) {
+          if (getEmail(normalized)) {
+            allTargetRows.push(normalized)
+          }
         }
       }
     }
 
     processingStats.value.totalRows = allTargetRows.length
+    processingStats.value.multiEmailSplit = multiEmailCount
 
     let result: Record<string, any>[] = []
 
@@ -488,15 +536,17 @@ async function processLists() {
  * Return emails in target that are NOT in suppression list
  */
 async function processFindNew(targetRows: Record<string, any>[]): Promise<Record<string, any>[]> {
-  // Build suppression set
+  // Build suppression set (also handles multi-email cells in suppression files)
   const suppressionEmails = new Set<string>()
   
   for (const file of suppressionFiles.value) {
     for (const row of file.data) {
-      const normalized = normalizeRow(row, file.mappedHeaders)
-      const email = getEmail(normalized)
-      if (email) {
-        suppressionEmails.add(email)
+      const normalizedRows = normalizeRow(row, file.mappedHeaders)
+      for (const normalized of normalizedRows) {
+        const email = getEmail(normalized)
+        if (email) {
+          suppressionEmails.add(email)
+        }
       }
     }
   }
@@ -553,28 +603,32 @@ async function processMasterMerge(targetRows: Record<string, any>[]): Promise<Re
 async function processCommonGround(): Promise<Record<string, any>[]> {
   if (targetFiles.value.length === 0) return []
   if (targetFiles.value.length === 1) {
-    // Single file - just dedupe
+    // Single file - just dedupe (also handles multi-email cells)
     const file = targetFiles.value[0]
     const emailMap = new Map<string, Record<string, any>>()
     
     for (const row of file.data) {
-      const normalized = normalizeRow(row, file.mappedHeaders)
-      const email = getEmail(normalized)
-      if (email && !emailMap.has(email)) {
-        emailMap.set(email, normalized)
+      const normalizedRows = normalizeRow(row, file.mappedHeaders)
+      for (const normalized of normalizedRows) {
+        const email = getEmail(normalized)
+        if (email && !emailMap.has(email)) {
+          emailMap.set(email, normalized)
+        }
       }
     }
     
     return Array.from(emailMap.values())
   }
 
-  // Build email sets for each file
+  // Build email sets for each file (handles multi-email cells)
   const fileSets: Set<string>[] = targetFiles.value.map(file => {
     const emailSet = new Set<string>()
     for (const row of file.data) {
-      const normalized = normalizeRow(row, file.mappedHeaders)
-      const email = getEmail(normalized)
-      if (email) emailSet.add(email)
+      const normalizedRows = normalizeRow(row, file.mappedHeaders)
+      for (const normalized of normalizedRows) {
+        const email = getEmail(normalized)
+        if (email) emailSet.add(email)
+      }
     }
     return emailSet
   })
@@ -590,11 +644,13 @@ async function processCommonGround(): Promise<Record<string, any>[]> {
 
   for (const file of targetFiles.value) {
     for (const row of file.data) {
-      const normalized = normalizeRow(row, file.mappedHeaders)
-      const email = getEmail(normalized)
-      if (email && intersectionEmails.has(email) && !added.has(email)) {
-        result.push(normalized)
-        added.add(email)
+      const normalizedRows = normalizeRow(row, file.mappedHeaders)
+      for (const normalized of normalizedRows) {
+        const email = getEmail(normalized)
+        if (email && intersectionEmails.has(email) && !added.has(email)) {
+          result.push(normalized)
+          added.add(email)
+        }
       }
     }
   }
@@ -1016,10 +1072,14 @@ const previewHeaders = computed(() => {
             <v-icon class="mr-2" color="success">mdi-check-circle</v-icon>
             Processing Complete
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <v-chip color="primary" variant="tonal" size="small">
               <v-icon start size="14">mdi-file-document</v-icon>
               {{ processingStats.totalRows }} input rows
+            </v-chip>
+            <v-chip v-if="processingStats.multiEmailSplit > 0" color="info" variant="tonal" size="small">
+              <v-icon start size="14">mdi-email-multiple</v-icon>
+              {{ processingStats.multiEmailSplit }} multi-email splits
             </v-chip>
             <v-chip color="warning" variant="tonal" size="small">
               <v-icon start size="14">mdi-content-duplicate</v-icon>
