@@ -101,6 +101,31 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
+    // Check if profile already has an auth_user_id linked
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('auth_user_id')
+      .eq('id', body.profile_id)
+      .single()
+
+    if (existingProfile?.auth_user_id) {
+      throw createError({
+        statusCode: 400,
+        message: 'This profile already has a user account linked. Please edit the existing user instead.'
+      })
+    }
+
+    // Check if email already exists in auth
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const emailExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === body.email.toLowerCase())
+    
+    if (emailExists) {
+      throw createError({
+        statusCode: 400,
+        message: 'A user with this email already exists.'
+      })
+    }
+
     // 1. Create auth user via Supabase Admin API
     const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
       email: body.email,
