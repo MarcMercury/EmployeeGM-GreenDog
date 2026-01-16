@@ -472,51 +472,34 @@ async function createUserAccount(): Promise<void> {
   creating.value = true
   
   try {
-    // 1. Create auth user via Supabase Admin API
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-      email: createForm.value.email,
-      password: createForm.value.password,
-      email_confirm: true,
-      user_metadata: {
+    // Get auth token for API call
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('Not authenticated')
+    }
+
+    // Call server API to create user (uses service role key)
+    const response = await $fetch('/api/admin/users', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: {
+        email: createForm.value.email,
+        password: createForm.value.password,
+        role: createForm.value.role,
+        phone: createForm.value.phone || null,
         first_name: selectedEmployee.value.first_name,
-        last_name: selectedEmployee.value.last_name
+        last_name: selectedEmployee.value.last_name,
+        profile_id: selectedEmployee.value.profile_id,
+        employee_id: selectedEmployee.value.employee_id,
+        location_id: createForm.value.location_id || null
       }
     })
-    
-    if (authError) throw authError
-    
-    // 2. Update profile with auth_user_id and role
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        auth_user_id: authData.user.id,
-        role: createForm.value.role,
-        phone: createForm.value.phone || null
-      })
-      .eq('id', selectedEmployee.value.profile_id)
-    
-    if (profileError) throw profileError
-    
-    // 3. Update employee record
-    const { error: empError } = await supabase
-      .from('employees')
-      .update({
-        needs_user_account: false,
-        user_created_at: new Date().toISOString(),
-        onboarding_status: 'completed',
-        location_id: createForm.value.location_id || undefined
-      })
-      .eq('id', selectedEmployee.value.employee_id)
-    
-    if (empError) throw empError
-    
-    // 4. Add system note
-    await supabase.from('employee_notes').insert({
-      employee_id: selectedEmployee.value.employee_id,
-      note: `User account created with role: ${createForm.value.role}. Email: ${createForm.value.email}`,
-      note_type: 'system',
-      hr_only: true
-    })
+
+    if (!response.success) {
+      throw new Error('Failed to create user account')
+    }
     
     // Store for success dialog
     createdEmployee.value = selectedEmployee.value
@@ -534,7 +517,7 @@ async function createUserAccount(): Promise<void> {
     
   } catch (error: any) {
     console.error('Error creating user account:', error)
-    showNotification(error.message || 'Failed to create user account', 'error')
+    showNotification(error.data?.message || error.message || 'Failed to create user account', 'error')
   } finally {
     creating.value = false
   }
