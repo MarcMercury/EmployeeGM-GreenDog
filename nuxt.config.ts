@@ -50,6 +50,7 @@ export default defineNuxtConfig({
   // Runtime config
   runtimeConfig: {
     // Server-only (not exposed to client)
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     slackBotToken: process.env.SLACK_BOT_TOKEN,
     slackSigningSecret: process.env.SLACK_SIGNING_SECRET,
     openaiApiKey: process.env.OPENAI_API_KEY,

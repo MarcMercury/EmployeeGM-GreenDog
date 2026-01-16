@@ -22,9 +22,14 @@ export default defineEventHandler(async (event) => {
   // Get Supabase configuration
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('[Admin Users API] Missing credentials:', { 
+      hasUrl: !!supabaseUrl, 
+      hasServiceKey: !!supabaseServiceKey,
+      envKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE')).join(', ')
+    })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'

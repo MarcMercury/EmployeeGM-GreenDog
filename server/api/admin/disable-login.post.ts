@@ -37,9 +37,10 @@ export default defineEventHandler(async (event) => {
   // Create Supabase client with service role for admin operations
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('[Admin Disable Login] Missing credentials:', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
