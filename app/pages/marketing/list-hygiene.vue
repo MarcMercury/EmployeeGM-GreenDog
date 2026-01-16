@@ -755,15 +755,35 @@ const canProcess = computed(() => {
 
 const hasProcessedData = computed(() => processedData.value.length > 0)
 
-// Preview table headers
+// Required fields that must always appear in output
+const REQUIRED_OUTPUT_FIELDS = ['email', 'first_name', 'last_name'] as const
+
+// Count of records missing required name fields
+const recordsMissingNames = computed(() => {
+  return processedData.value.filter(row => !row.first_name || !row.last_name).length
+})
+
+// Preview table headers - always show required fields first, then populated optional fields
 const previewHeaders = computed(() => {
-  const fields = STANDARD_FIELDS.filter(f => 
+  // Always include required fields
+  const requiredHeaders = REQUIRED_OUTPUT_FIELDS.map(f => ({
+    key: f,
+    title: f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+    required: true
+  }))
+  
+  // Add optional fields that have data
+  const optionalFields = STANDARD_FIELDS.filter(f => 
+    !REQUIRED_OUTPUT_FIELDS.includes(f as any) && 
     processedData.value.some(row => row[f])
   )
-  return fields.map(f => ({
+  const optionalHeaders = optionalFields.map(f => ({
     key: f,
-    title: f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    title: f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+    required: false
   }))
+  
+  return [...requiredHeaders, ...optionalHeaders]
 })
 </script>
 
@@ -1014,21 +1034,48 @@ const previewHeaders = computed(() => {
 
         <v-divider />
 
+        <!-- Warning for missing names -->
+        <v-alert
+          v-if="recordsMissingNames > 0"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mx-4 mt-4"
+          icon="mdi-alert"
+        >
+          <strong>{{ recordsMissingNames }}</strong> of {{ processedData.length }} records are missing first name or last name.
+          Consider mapping name columns in your source files.
+        </v-alert>
+
         <!-- Preview Table -->
         <v-card-text>
           <div class="text-subtitle-2 mb-2">Preview (first 10 rows)</div>
           <v-table density="compact" hover>
             <thead>
               <tr>
-                <th v-for="header in previewHeaders" :key="header.key">
+                <th 
+                  v-for="header in previewHeaders" 
+                  :key="header.key"
+                  :class="{ 'text-primary font-weight-bold': header.required }"
+                >
                   {{ header.title }}
+                  <span v-if="header.required" class="text-error">*</span>
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, idx) in processedData.slice(0, 10)" :key="idx">
-                <td v-for="header in previewHeaders" :key="header.key">
-                  {{ row[header.key] || '—' }}
+                <td 
+                  v-for="header in previewHeaders" 
+                  :key="header.key"
+                  :class="{ 'text-error': header.required && !row[header.key] }"
+                >
+                  <template v-if="row[header.key]">
+                    {{ row[header.key] }}
+                  </template>
+                  <span v-else class="text-grey-lighten-1">
+                    {{ header.required ? '(missing)' : '—' }}
+                  </span>
                 </td>
               </tr>
             </tbody>
