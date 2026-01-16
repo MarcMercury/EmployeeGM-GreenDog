@@ -17,6 +17,13 @@ export default defineEventHandler(async (event) => {
   const endDate = query.endDate as string | undefined
 
   try {
+    // First, get total count to know how many records exist
+    const { count: totalCount, error: countError } = await supabase
+      .from('ezyvet_crm_contacts')
+      .select('*', { count: 'exact', head: true })
+    
+    console.log('[ezyvet-analytics] Total count in DB:', totalCount)
+
     // Fetch ALL contacts using pagination to bypass 1000 row limit
     let allContacts: any[] = []
     let page = 0
@@ -24,31 +31,39 @@ export default defineEventHandler(async (event) => {
     let hasMore = true
 
     while (hasMore) {
-      let query = supabase
+      const from = page * pageSize
+      const to = from + pageSize - 1
+      
+      console.log(`[ezyvet-analytics] Fetching page ${page + 1}, range ${from}-${to}`)
+      
+      let pageQuery = supabase
         .from('ezyvet_crm_contacts')
         .select('*')
-        .range(page * pageSize, (page + 1) * pageSize - 1)
+        .range(from, to)
       
       if (division) {
-        query = query.eq('division', division)
+        pageQuery = pageQuery.eq('division', division)
       }
       
       if (startDate) {
-        query = query.gte('last_visit', startDate)
+        pageQuery = pageQuery.gte('last_visit', startDate)
       }
       
       if (endDate) {
-        query = query.lte('last_visit', endDate)
+        pageQuery = pageQuery.lte('last_visit', endDate)
       }
 
-      const { data: pageData, error } = await query
+      const { data: pageData, error } = await pageQuery
 
       if (error) {
+        console.error('[ezyvet-analytics] Page error:', error)
         throw createError({
           statusCode: 500,
           message: `Database error: ${error.message}`
         })
       }
+
+      console.log(`[ezyvet-analytics] Page ${page + 1} returned ${pageData?.length || 0} rows`)
 
       if (pageData && pageData.length > 0) {
         allContacts = allContacts.concat(pageData)
@@ -58,6 +73,8 @@ export default defineEventHandler(async (event) => {
         hasMore = false
       }
     }
+
+    console.log(`[ezyvet-analytics] Total fetched: ${allContacts.length} contacts`)
 
     // Define "Active" as having activity within the last 3 years
     const threeYearsAgo = new Date()
