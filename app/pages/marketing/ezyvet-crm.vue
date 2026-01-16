@@ -713,18 +713,22 @@ async function startImport() {
 
       const batch = batches[i]
       
-      // Use upsert with on conflict
-      const { data, error } = await $fetch('/api/marketing/ezyvet-upsert', {
-        method: 'POST',
-        body: { contacts: batch }
-      })
+      try {
+        // $fetch returns the response directly, throws on error
+        const result = await $fetch('/api/marketing/ezyvet-upsert', {
+          method: 'POST',
+          body: { contacts: batch }
+        })
 
-      if (error) {
+        if (result) {
+          uploadState.value.inserted += result.inserted || 0
+          uploadState.value.updated += result.updated || 0
+          uploadState.value.errors += result.errors || 0
+        }
+      } catch (fetchErr: any) {
+        console.error('[EzyVet Import] Batch error:', fetchErr)
         uploadState.value.errors += batch.length
-      } else if (data) {
-        uploadState.value.inserted += data.inserted || 0
-        uploadState.value.updated += data.updated || 0
-        uploadState.value.errors += data.errors || 0
+        // Continue with next batch even if one fails
       }
 
       uploadState.value.processedRows += batch.length

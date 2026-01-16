@@ -10,10 +10,23 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseServiceRole(event)
   
-  const body = await readBody(event)
-  const { contacts } = body
+  let body: any
+  try {
+    body = await readBody(event)
+  } catch (parseErr) {
+    console.error('[ezyvet-upsert] Failed to parse request body:', parseErr)
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid request body'
+    })
+  }
+  
+  const { contacts } = body || {}
+
+  console.log('[ezyvet-upsert] Received request with', contacts?.length || 0, 'contacts')
 
   if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
+    console.error('[ezyvet-upsert] No contacts in request. Body:', JSON.stringify(body).slice(0, 200))
     throw createError({
       statusCode: 400,
       message: 'No contacts provided'

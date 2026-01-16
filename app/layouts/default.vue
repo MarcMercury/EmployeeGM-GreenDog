@@ -420,7 +420,7 @@ const closeMobileMenu = () => {
                 </NuxtLink>
                 <NuxtLink to="/marketing/ezyvet-crm" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📥</div>
-                  EzyVet Import
+                  EzyVet CRM
                 </NuxtLink>
                 <NuxtLink to="/marketing/ezyvet-analytics" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
