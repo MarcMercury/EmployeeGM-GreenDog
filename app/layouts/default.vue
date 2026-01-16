@@ -214,6 +214,14 @@ const closeMobileMenu = () => {
             <span v-if="!sidebarCollapsed">Activity Hub</span>
           </NuxtLink>
 
+          <!-- Green Dog Marketplace (Super Admin only for now) -->
+          <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
+            <div class="nav-icon-wrap group-hover:bg-amber-500/20">
+              🦴
+            </div>
+            <span v-if="!sidebarCollapsed">Marketplace</span>
+          </NuxtLink>
+
           <!-- Collapsed mode: just show icons -->
           <template v-if="sidebarCollapsed">
             <NuxtLink to="/activity" class="nav-link group justify-center" title="Activity Hub">
@@ -223,6 +231,9 @@ const closeMobileMenu = () => {
                   {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
                 </span>
               </div>
+            </NuxtLink>
+            <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group justify-center" title="Marketplace">
+              <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
             </NuxtLink>
             <NuxtLink to="/roster" class="nav-link group justify-center" title="Contact List">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
