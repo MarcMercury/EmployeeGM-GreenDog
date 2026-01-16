@@ -104,7 +104,7 @@ export default defineEventHandler(async (event) => {
     // Check if profile already has an auth_user_id linked
     const { data: existingProfile } = await supabaseAdmin
       .from('profiles')
-      .select('auth_user_id')
+      .select('auth_user_id, first_name, last_name, email')
       .eq('id', body.profile_id)
       .single()
 
@@ -117,13 +117,78 @@ export default defineEventHandler(async (event) => {
 
     // Check if email already exists in auth
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const emailExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === body.email.toLowerCase())
+    const existingAuthUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === body.email.toLowerCase())
     
-    if (emailExists) {
-      throw createError({
-        statusCode: 400,
-        message: 'A user with this email already exists.'
-      })
+    if (existingAuthUser) {
+      // Check if this auth user is linked to another profile
+      const { data: linkedProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('auth_user_id', existingAuthUser.id)
+        .single()
+      
+      if (linkedProfile) {
+        const linkedName = `${linkedProfile.first_name || ''} ${linkedProfile.last_name || ''}`.trim() || linkedProfile.email
+        throw createError({
+          statusCode: 400,
+          message: `The email "${body.email}" is already used by another account (${linkedName}). Please use a different email address.`
+        })
+      } else {
+        // Auth user exists but not linked to any profile - we can link it!
+        console.log(`[Admin Create User API] Found orphaned auth user for ${body.email}, linking to profile`)
+        
+        // Link existing auth user to this profile
+        const { error: profileUpdateError } = await supabaseAdmin
+          .from('profiles')
+          .update({
+            auth_user_id: existingAuthUser.id,
+            role: body.role,
+            phone: body.phone || null
+          })
+          .eq('id', body.profile_id)
+
+        if (profileUpdateError) {
+          console.error('[Admin Create User API] Profile update error:', profileUpdateError)
+          throw createError({
+            statusCode: 500,
+            message: `Failed to link existing auth user: ${profileUpdateError.message}`
+          })
+        }
+
+        // Update employee record
+        const employeeUpdate: Record<string, unknown> = {
+          needs_user_account: false,
+          user_created_at: new Date().toISOString(),
+          onboarding_status: 'completed'
+        }
+        
+        if (body.location_id) {
+          employeeUpdate.location_id = body.location_id
+        }
+
+        await supabaseAdmin
+          .from('employees')
+          .update(employeeUpdate)
+          .eq('id', body.employee_id)
+
+        // Add system note
+        await supabaseAdmin.from('employee_notes').insert({
+          employee_id: body.employee_id,
+          note: `Linked existing user account (${body.email}) with role: ${body.role}`,
+          note_type: 'system',
+          hr_only: true
+        })
+
+        return {
+          success: true,
+          linked: true,
+          user: {
+            id: existingAuthUser.id,
+            email: existingAuthUser.email
+          },
+          message: 'Linked existing auth user to profile'
+        }
+      }
     }
 
     // 1. Create auth user via Supabase Admin API
