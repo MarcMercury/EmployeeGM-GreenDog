@@ -6,7 +6,40 @@ export * from './database.types'
 // =====================================================
 
 // User roles in order of access level (highest to lowest)
-export type UserRole = 'super_admin' | 'admin' | 'office_admin' | 'marketing_admin' | 'user'
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'office_admin' | 'marketing_admin' | 'user'
+
+// Role hierarchy for access checks
+export const ROLE_HIERARCHY: Record<UserRole, number> = {
+  super_admin: 200,
+  admin: 100,
+  manager: 80,
+  hr_admin: 60,
+  office_admin: 50,
+  marketing_admin: 40,
+  user: 10
+}
+
+// Display names for roles
+export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  manager: 'Manager',
+  hr_admin: 'HR Admin',
+  office_admin: 'Office Admin',
+  marketing_admin: 'Marketing Admin',
+  user: 'User'
+}
+
+// Section access matrix - defines which roles can access each section
+export const SECTION_ACCESS: Record<string, UserRole[]> = {
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],
+  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  schedules_manage: ['super_admin', 'admin', 'manager', 'office_admin'],
+  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'],
+  admin: ['super_admin', 'admin']
+}
 
 // Permission structure for each section
 export interface SectionPermissions {
@@ -49,15 +82,6 @@ export interface RoleDefinition {
   permissions: RolePermissions
   icon: string
   color: string
-}
-
-// Role hierarchy for access checks
-export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  super_admin: 200,
-  admin: 100,
-  office_admin: 50,
-  marketing_admin: 40,
-  user: 10
 }
 
 // Helper to check if role is admin-level (super_admin or admin)
