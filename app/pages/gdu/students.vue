@@ -7,6 +7,27 @@ definePageMeta({
 const supabase = useSupabaseClient()
 const { showSuccess, showError } = useToast()
 
+// Export dialog
+const showExportDialog = ref(false)
+const exportColumns = [
+  { key: 'first_name', title: 'First Name' },
+  { key: 'last_name', title: 'Last Name' },
+  { key: 'email', title: 'Email' },
+  { key: 'phone_mobile', title: 'Phone' },
+  { key: 'program_type', title: 'Program Type', format: (v: string) => v?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || '' },
+  { key: 'enrollment_status', title: 'Status', format: (v: string) => v?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || '' },
+  { key: 'program_name', title: 'Program Name' },
+  { key: 'cohort_identifier', title: 'Cohort' },
+  { key: 'start_date', title: 'Start Date' },
+  { key: 'end_date', title: 'End Date' },
+  { key: 'school_of_origin', title: 'School' },
+  { key: 'location_name', title: 'Location' },
+  { key: 'mentor_name', title: 'Mentor' },
+  { key: 'hours_completed', title: 'Hours Completed' },
+  { key: 'hours_required', title: 'Hours Required' },
+  { key: 'eligible_for_employment', title: 'Eligible for Employment', format: (v: boolean) => v ? 'Yes' : 'No' }
+]
+
 // Loading states
 const loading = ref(true)
 const saving = ref(false)
@@ -725,13 +746,22 @@ function formatStatus(status: string): string {
           Manage interns, externs, cohort students, and intensive participants
         </p>
       </div>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-account-plus"
-        @click="openInviteWizard"
-      >
-        Invite Student
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-file-export-outline"
+          @click="showExportDialog = true"
+        >
+          Export
+        </v-btn>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-account-plus"
+          @click="openInviteWizard"
+        >
+          Invite Student
+        </v-btn>
+      </div>
     </div>
 
     <!-- Stats Row -->
@@ -1777,5 +1807,14 @@ function formatStatus(status: string): string {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Export Dialog -->
+    <UiExportDialog
+      v-model="showExportDialog"
+      :data="filteredStudents"
+      :columns="exportColumns"
+      default-file-name="students-export"
+      title="Student Contacts Export"
+    />
   </div>
 </template>

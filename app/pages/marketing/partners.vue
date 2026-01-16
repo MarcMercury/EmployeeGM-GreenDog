@@ -9,6 +9,24 @@ const route = useRoute()
 const user = useSupabaseUser()
 const { showSuccess, showError } = useToast()
 
+// Export dialog
+const showExportDialog = ref(false)
+const exportColumns = [
+  { key: 'name', title: 'Name' },
+  { key: 'partner_type', title: 'Type', format: (v: string) => v?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || '' },
+  { key: 'status', title: 'Status' },
+  { key: 'contact_name', title: 'Contact Name' },
+  { key: 'contact_phone', title: 'Phone' },
+  { key: 'contact_email', title: 'Email' },
+  { key: 'services_provided', title: 'Services' },
+  { key: 'address', title: 'Address' },
+  { key: 'instagram_handle', title: 'Instagram' },
+  { key: 'membership_level', title: 'Membership Level' },
+  { key: 'membership_fee', title: 'Annual Fee', format: (v: number) => v ? `$${v}` : '' },
+  { key: 'notes', title: 'Notes' },
+  { key: 'created_at', title: 'Created' }
+]
+
 // Type definitions
 interface Partner {
   id: string
@@ -1137,6 +1155,14 @@ function getPriorityColor(priority: string | null | undefined): string {
         </p>
       </div>
       <div class="d-flex gap-2">
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-file-export-outline"
+          size="small"
+          @click="showExportDialog = true"
+        >
+          Export
+        </v-btn>
         <v-btn
           variant="outlined"
           prepend-icon="mdi-star-circle"
@@ -2416,5 +2442,14 @@ function getPriorityColor(priority: string | null | undefined): string {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Export Dialog -->
+    <UiExportDialog
+      v-model="showExportDialog"
+      :data="filteredPartners"
+      :columns="exportColumns"
+      default-file-name="partners-export"
+      title="Partners Export"
+    />
   </div>
 </template>

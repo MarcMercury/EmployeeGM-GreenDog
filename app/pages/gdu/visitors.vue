@@ -8,6 +8,27 @@ const supabase = useSupabaseClient()
 const route = useRoute()
 const { showSuccess, showError } = useToast()
 
+// Export dialog
+const showExportDialog = ref(false)
+const exportColumns = [
+  { key: 'first_name', title: 'First Name' },
+  { key: 'last_name', title: 'Last Name' },
+  { key: 'email', title: 'Email' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'visitor_type', title: 'Visitor Type' },
+  { key: 'organization_name', title: 'Organization' },
+  { key: 'school_of_origin', title: 'School' },
+  { key: 'program_name', title: 'Program' },
+  { key: 'visit_start_date', title: 'Visit Start' },
+  { key: 'visit_end_date', title: 'Visit End' },
+  { key: 'location', title: 'Location' },
+  { key: 'visit_status', title: 'Status' },
+  { key: 'coordinator', title: 'Coordinator' },
+  { key: 'mentor', title: 'Mentor' },
+  { key: 'lead_source', title: 'Lead Source' },
+  { key: 'notes', title: 'Notes' }
+]
+
 // Loading states
 const saving = ref(false)
 const deleting = ref<string | null>(null)
@@ -533,6 +554,14 @@ async function postVisitorToSlack() {
       </div>
       <v-spacer />
       <v-btn
+        variant="outlined"
+        prepend-icon="mdi-file-export-outline"
+        class="mr-2"
+        @click="showExportDialog = true"
+      >
+        Export
+      </v-btn>
+      <v-btn
         color="primary"
         prepend-icon="mdi-account-plus"
         @click="openAddDialog"
@@ -1039,5 +1068,14 @@ async function postVisitorToSlack() {
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Export Dialog -->
+    <UiExportDialog
+      v-model="showExportDialog"
+      :data="filteredVisitors"
+      :columns="exportColumns"
+      default-file-name="ce-visitors-export"
+      title="CE Course Contacts Export"
+    />
   </div>
 </template>

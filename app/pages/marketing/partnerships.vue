@@ -15,7 +15,7 @@
         <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
           Upload EzyVet Report
         </v-btn>
-        <v-btn variant="outlined" prepend-icon="mdi-download" size="small" @click="exportPartners">
+        <v-btn variant="outlined" prepend-icon="mdi-file-export-outline" size="small" @click="showExportDialog = true">
           Export
         </v-btn>
         <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddPartner">
@@ -1435,6 +1435,15 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
     </v-snackbar>
+
+    <!-- Export Dialog -->
+    <UiExportDialog
+      v-model="showExportDialog"
+      :data="filteredPartners"
+      :columns="exportColumns"
+      default-file-name="medical-partnerships-export"
+      title="Medical Partnerships Export"
+    />
   </div>
 </template>
 
@@ -1449,6 +1458,25 @@ useHead({ title: 'Medical Partnerships CRM' })
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const authStore = useAuthStore()
+
+// Export dialog
+const showExportDialog = ref(false)
+const exportColumns = [
+  { key: 'name', title: 'Clinic Name' },
+  { key: 'tier', title: 'Tier' },
+  { key: 'priority', title: 'Priority' },
+  { key: 'zone', title: 'Zone' },
+  { key: 'status', title: 'Status' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'email', title: 'Email' },
+  { key: 'address', title: 'Address' },
+  { key: 'clinic_type', title: 'Clinic Type' },
+  { key: 'referral_count', title: 'Total Referrals' },
+  { key: 'revenue', title: 'Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
+  { key: 'last_visit_date', title: 'Last Visit' },
+  { key: 'next_followup_date', title: 'Next Follow-up' },
+  { key: 'notes', title: 'Notes' }
+]
 
 // State
 const loading = ref(false)
