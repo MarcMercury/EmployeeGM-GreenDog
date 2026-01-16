@@ -418,10 +418,17 @@ const filters = ref({
   revenueRange: null as string | null
 })
 
-// Stats
+// Stats - Active = activity within last 3 years
 const stats = computed(() => {
   const total = contacts.value.length
-  const active = contacts.value.filter(c => c.is_active).length
+  const threeYearsAgo = new Date()
+  threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3)
+  
+  const active = contacts.value.filter(c => {
+    if (!c.last_visit) return false
+    return new Date(c.last_visit) >= threeYearsAgo
+  }).length
+  
   const revenue = contacts.value.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
   return {
     totalContacts: total,
@@ -543,17 +550,38 @@ const CSV_HEADER_MAP: Record<string, string> = {
   'Contact Is Active': 'is_active'
 }
 
-// Load data
+// Load data - paginated to get all contacts (bypassing 1000 row limit)
 async function loadContacts() {
   loading.value = true
   try {
-    const { data, error } = await supabase
-      .from('ezyvet_crm_contacts')
-      .select('*')
-      .order('revenue_ytd', { ascending: false })
+    let allContacts: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
 
-    if (error) throw error
-    contacts.value = data || []
+    while (hasMore) {
+      const from = page * pageSize
+      const to = from + pageSize - 1
+      
+      const { data, error } = await supabase
+        .from('ezyvet_crm_contacts')
+        .select('*')
+        .order('revenue_ytd', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+      
+      if (data && data.length > 0) {
+        allContacts = allContacts.concat(data)
+        hasMore = data.length === pageSize
+        page++
+      } else {
+        hasMore = false
+      }
+    }
+
+    contacts.value = allContacts
+    console.log(`[EzyVet CRM] Loaded ${allContacts.length} contacts`)
   } catch (err: any) {
     console.error('Error loading contacts:', err)
   } finally {
