@@ -17,32 +17,58 @@ export default defineEventHandler(async (event) => {
   const endDate = query.endDate as string | undefined
 
   try {
-    // Build base query conditions
-    let baseQuery = supabase.from('ezyvet_crm_contacts').select('*')
-    
-    if (division) {
-      baseQuery = baseQuery.eq('division', division)
-    }
-    
-    if (startDate) {
-      baseQuery = baseQuery.gte('last_visit', startDate)
-    }
-    
-    if (endDate) {
-      baseQuery = baseQuery.lte('last_visit', endDate)
+    // Fetch ALL contacts using pagination to bypass 1000 row limit
+    let allContacts: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+
+    while (hasMore) {
+      let query = supabase
+        .from('ezyvet_crm_contacts')
+        .select('*')
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+      
+      if (division) {
+        query = query.eq('division', division)
+      }
+      
+      if (startDate) {
+        query = query.gte('last_visit', startDate)
+      }
+      
+      if (endDate) {
+        query = query.lte('last_visit', endDate)
+      }
+
+      const { data: pageData, error } = await query
+
+      if (error) {
+        throw createError({
+          statusCode: 500,
+          message: `Database error: ${error.message}`
+        })
+      }
+
+      if (pageData && pageData.length > 0) {
+        allContacts = allContacts.concat(pageData)
+        hasMore = pageData.length === pageSize
+        page++
+      } else {
+        hasMore = false
+      }
     }
 
-    const { data: contacts, error } = await baseQuery
-
-    if (error) {
-      throw createError({
-        statusCode: 500,
-        message: `Database error: ${error.message}`
-      })
-    }
-
-    const allContacts = contacts || []
-    const activeContacts = allContacts.filter(c => c.is_active)
+    // Define "Active" as having activity within the last 3 years
+    const threeYearsAgo = new Date()
+    threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3)
+    
+    const activeContacts = allContacts.filter(c => {
+      // Must have a last_visit date within 3 years
+      if (!c.last_visit) return false
+      const lastVisit = new Date(c.last_visit)
+      return lastVisit >= threeYearsAgo
+    })
 
     // ========================================
     // KPI METRICS
@@ -189,7 +215,10 @@ export default defineEventHandler(async (event) => {
       const existing = divisionMap.get(div) || { count: 0, revenue: 0, active: 0 }
       existing.count++
       existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      if (contact.is_active) existing.active++
+      // Active = has activity within 3 years
+      if (contact.last_visit && new Date(contact.last_visit) >= threeYearsAgo) {
+        existing.active++
+      }
       divisionMap.set(div, existing)
     }
 
