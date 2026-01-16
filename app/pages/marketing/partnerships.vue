@@ -425,7 +425,6 @@
           <v-tab value="contacts">Contacts</v-tab>
           <v-tab value="notes">Notes</v-tab>
           <v-tab value="visits">Visit Log</v-tab>
-          <v-tab value="events">Events</v-tab>
           <v-tab value="goals">Goals</v-tab>
         </v-tabs>
 
@@ -756,23 +755,39 @@
                   <v-icon start>mdi-plus</v-icon> Add Contact
                 </v-btn>
               </div>
-              <v-list density="compact">
-                <v-list-item v-for="contact in partnerContacts" :key="contact.id">
-                  <template #prepend>
-                    <v-avatar color="primary" size="36">
-                      <span class="text-white">{{ contact.name?.charAt(0) || '?' }}</span>
-                    </v-avatar>
-                  </template>
-                  <v-list-item-title>{{ contact.name }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ contact.title }} • {{ contact.email }}</v-list-item-subtitle>
-                  <template #append>
-                    <v-chip v-if="contact.is_primary" size="x-small" color="success">Primary</v-chip>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="!partnerContacts.length">
-                  <v-list-item-title class="text-grey">No contacts added</v-list-item-title>
-                </v-list-item>
-              </v-list>
+              <v-table density="compact" v-if="partnerContacts.length">
+                <thead>
+                  <tr>
+                    <th class="text-left">Name</th>
+                    <th class="text-left">Role</th>
+                    <th class="text-left">Email</th>
+                    <th class="text-left">Phone</th>
+                    <th class="text-center">Primary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="contact in partnerContacts" :key="contact.id">
+                    <td>{{ contact.name }}</td>
+                    <td>{{ contact.title || '—' }}</td>
+                    <td>
+                      <a v-if="contact.email" :href="'mailto:' + contact.email" class="text-primary text-decoration-none">
+                        {{ contact.email }}
+                      </a>
+                      <span v-else class="text-grey">—</span>
+                    </td>
+                    <td>
+                      <a v-if="contact.phone" :href="'tel:' + contact.phone" class="text-primary text-decoration-none">
+                        {{ contact.phone }}
+                      </a>
+                      <span v-else class="text-grey">—</span>
+                    </td>
+                    <td class="text-center">
+                      <v-chip v-if="contact.is_primary" size="x-small" color="success">Primary</v-chip>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+              <div v-else class="text-grey pa-4 text-center">No contacts added</div>
             </v-window-item>
 
             <!-- Notes -->
@@ -846,36 +861,6 @@
               </v-timeline>
             </v-window-item>
 
-            <!-- Events -->
-            <v-window-item value="events">
-              <div class="d-flex justify-end mb-2">
-                <v-btn size="small" color="primary" variant="tonal" @click="openAddEvent">
-                  <v-icon start>mdi-plus</v-icon> Add Event
-                </v-btn>
-              </div>
-              <v-list density="compact">
-                <v-list-item v-for="event in partnerEvents" :key="event.id" class="mb-2">
-                  <template #prepend>
-                    <v-icon color="primary">mdi-calendar-star</v-icon>
-                  </template>
-                  <v-list-item-title>
-                    {{ event.marketing_events?.name || event.event_name || 'Unknown Event' }}
-                  </v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ formatDate(event.marketing_events?.event_date || event.event_date) }}
-                    • {{ event.participation_role?.replace('_', ' ') }}
-                  </v-list-item-subtitle>
-                  <template #append>
-                    <v-chip size="x-small" :color="event.is_confirmed ? 'success' : 'warning'" variant="tonal">
-                      {{ event.is_confirmed ? 'Confirmed' : 'Pending' }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="!partnerEvents.length">
-                  <v-list-item-title class="text-grey">No events recorded</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-window-item>
 
             <!-- Goals -->
             <v-window-item value="goals">
@@ -2446,6 +2431,15 @@ async function saveQuickVisit() {
     return
   }
   
+  // Ensure we have a valid auth user
+  const userId = user.value?.id
+  if (!userId) {
+    snackbar.message = 'Session expired. Please refresh the page and try again.'
+    snackbar.color = 'error'
+    snackbar.show = true
+    return
+  }
+  
   quickVisitSaving.value = true
   
   try {
@@ -2453,7 +2447,7 @@ async function saveQuickVisit() {
     const profileId = authStore.profile?.id || null
     
     const { error } = await supabase.from('clinic_visits').insert({
-      user_id: user.value?.id,
+      user_id: userId,
       profile_id: profileId,
       partner_id: quickVisitForm.partner_id,
       clinic_name: quickVisitForm.clinic_name || 

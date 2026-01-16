@@ -75,20 +75,37 @@ export const useToast = () => {
     },
 
     // Aliases for compatibility with existing code patterns
+    // These use uiStore directly to avoid 'this' binding issues when destructured
     showSuccess(message: string, options?: { timeout?: number }) {
-      this.success(message, options)
+      uiStore.showNotification({
+        message,
+        type: 'success',
+        timeout: options?.timeout ?? 3000
+      })
     },
 
     showError(message: string, options?: { timeout?: number }) {
-      this.error(message, options)
+      uiStore.showNotification({
+        message,
+        type: 'error',
+        timeout: options?.timeout ?? 6000
+      })
     },
 
     showInfo(message: string, options?: { timeout?: number }) {
-      this.info(message, options)
+      uiStore.showNotification({
+        message,
+        type: 'info',
+        timeout: options?.timeout ?? 4000
+      })
     },
 
     showWarning(message: string, options?: { timeout?: number }) {
-      this.warning(message, options)
+      uiStore.showNotification({
+        message,
+        type: 'warning',
+        timeout: options?.timeout ?? 5000
+      })
     }
   }
 }

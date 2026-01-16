@@ -65,6 +65,12 @@ const PERMISSION_ROLES: Record<string, UserRole[]> = {
   'bulk:delete': ['super_admin', 'admin'],
   'bulk:edit': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],
   
+  // User Management - Super Admin Only
+  'view:users': ['super_admin'],
+  'manage:users': ['super_admin'],
+  'reset:passwords': ['super_admin'],
+  'disable:users': ['super_admin'],
+  
   // Medical Ops - Everyone has access
   'view:med-ops': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'],
   'manage:med-ops': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],

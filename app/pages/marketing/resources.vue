@@ -472,21 +472,41 @@ async function loadFolders() {
 async function loadFiles() {
   loadingFiles.value = true
   try {
+    // Start with a simpler query that doesn't rely on is_archived column
+    // in case the column doesn't exist in the database
     let query = supabase
       .from('marketing_resources')
       .select('*')
       .order('name')
     
+    // Only filter by is_archived if not showing archived
+    // This filter may fail if column doesn't exist, so we'll catch that
     if (!showArchived.value) {
       query = query.eq('is_archived', false)
     }
     
     const { data, error } = await query
     
-    if (error) throw error
+    if (error) {
+      // If error is about column not existing, try without the filter
+      if (error.message?.includes('is_archived') || error.code === '42703') {
+        console.warn('is_archived column may not exist, fetching all resources')
+        const { data: allData, error: allError } = await supabase
+          .from('marketing_resources')
+          .select('*')
+          .order('name')
+        
+        if (allError) throw allError
+        dbFiles.value = allData || []
+        return
+      }
+      throw error
+    }
     dbFiles.value = data || []
   } catch (err: any) {
     console.error('Error loading files:', err)
+    // Show empty state rather than crashing
+    dbFiles.value = []
   } finally {
     loadingFiles.value = false
   }
