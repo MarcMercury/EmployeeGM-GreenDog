@@ -183,11 +183,11 @@
         <!-- Role Badge -->
         <template #item.role="{ item }">
           <v-chip 
-            :color="item.role === 'admin' ? 'purple' : 'blue'" 
+            :color="item.role === 'super_admin' ? 'amber' : (item.role === 'admin' ? 'purple' : 'blue')" 
             size="x-small" 
             variant="flat"
           >
-            {{ item.role }}
+            {{ item.role === 'super_admin' ? 'Super Admin' : item.role }}
           </v-chip>
         </template>
 

@@ -68,7 +68,16 @@
               {{ statusText }}
             </v-chip>
             <v-chip 
-              v-if="employee.role === 'admin'" 
+              v-if="employee.role === 'super_admin'" 
+              color="amber" 
+              size="small"
+              variant="elevated"
+            >
+              <v-icon size="14" start>mdi-shield-crown</v-icon>
+              Super Admin
+            </v-chip>
+            <v-chip 
+              v-else-if="employee.role === 'admin'" 
               color="purple" 
               size="small"
               variant="elevated"

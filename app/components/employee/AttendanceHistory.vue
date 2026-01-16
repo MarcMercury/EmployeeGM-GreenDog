@@ -238,16 +238,16 @@ const saving = ref(false)
 const lookbackDays = computed(() => props.lookbackDays || 90)
 
 const canManageAttendance = computed(() => {
-  // Check if user has admin, manager, or hr_admin role
+  // Check if user has super_admin, admin, manager, or hr_admin role
   const profile = authStore.profile
   if (!profile) return false
   
-  if (profile.role === 'admin') return true
+  if (['super_admin', 'admin'].includes(profile.role)) return true
   
   // Check for additional roles
   const userRoles = userStore.roles || []
   return userRoles.some((r: any) => 
-    ['admin', 'manager', 'hr_admin'].includes(r.key || r.name)
+    ['super_admin', 'admin', 'manager', 'hr_admin'].includes(r.key || r.name)
   )
 })
 

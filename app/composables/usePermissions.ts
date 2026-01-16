@@ -104,6 +104,11 @@ export function usePermissions() {
   
   // Check if user has a specific permission
   function can(permission: string): boolean {
+    // Super admin always has full access to everything
+    if (userRole.value === 'super_admin') {
+      return true
+    }
+    
     const allowedRoles = PERMISSION_ROLES[permission]
     if (!allowedRoles) {
       console.warn(`[Permissions] Unknown permission: ${permission}`)

@@ -42,15 +42,16 @@ const profile = computed(() => currentUserProfile.value || authStore.profile)
 
 // Role-based access computed properties
 const userRole = computed(() => profile.value?.role || 'user')
-const isAdmin = computed(() => appDataIsAdmin.value || userRole.value === 'admin')
-const isOfficeAdmin = computed(() => userRole.value === 'office_admin')
-const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin')
+const isAdmin = computed(() => appDataIsAdmin.value || ['super_admin', 'admin'].includes(userRole.value))
+const isSuperAdmin = computed(() => userRole.value === 'super_admin')
+const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSuperAdmin.value)
+const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
 // Section access checks
-const hasManagementAccess = computed(() => ['admin', 'office_admin'].includes(userRole.value))
-const hasMarketingEditAccess = computed(() => ['admin', 'marketing_admin'].includes(userRole.value))
-const hasGduAccess = computed(() => ['admin', 'marketing_admin'].includes(userRole.value))
-const hasAdminOpsAccess = computed(() => userRole.value === 'admin')
+const hasManagementAccess = computed(() => ['super_admin', 'admin', 'office_admin'].includes(userRole.value))
+const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'marketing_admin'].includes(userRole.value))
+const hasGduAccess = computed(() => ['super_admin', 'admin', 'marketing_admin'].includes(userRole.value))
+const hasAdminOpsAccess = computed(() => ['super_admin', 'admin'].includes(userRole.value))
 
 // Display helpers
 const firstName = computed(() => profile.value?.first_name || 'User')
@@ -62,6 +63,7 @@ const initials = computed(() => {
 
 const roleDisplay = computed(() => {
   const displays: Record<string, { label: string, class: string }> = {
+    super_admin: { label: '👑 Super Admin', class: 'text-amber-500 font-bold' },
     admin: { label: '⭐ Admin', class: 'text-amber-400 font-semibold' },
     office_admin: { label: '🏢 Office Admin', class: 'text-blue-400 font-semibold' },
     marketing_admin: { label: '📣 Marketing', class: 'text-purple-400 font-semibold' },

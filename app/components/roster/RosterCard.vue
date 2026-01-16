@@ -102,10 +102,10 @@
           {{ employee.department?.name || 'Unassigned' }}
         </span>
         <v-icon 
-          v-if="employee.role === 'admin'" 
+          v-if="['super_admin', 'admin'].includes(employee.role)" 
           size="16" 
-          color="purple"
-          title="Admin"
+          :color="employee.role === 'super_admin' ? 'amber' : 'purple'"
+          :title="employee.role === 'super_admin' ? 'Super Admin' : 'Admin'"
         >
           mdi-shield-crown
         </v-icon>

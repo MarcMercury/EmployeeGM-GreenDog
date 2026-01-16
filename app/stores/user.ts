@@ -10,7 +10,7 @@ export interface UserProfile {
   preferred_name: string | null
   phone: string | null
   avatar_url: string | null
-  role: 'admin' | 'user'
+  role: 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'office_admin' | 'marketing_admin' | 'user'
   is_active: boolean
   bio: string | null
   created_at: string
@@ -63,7 +63,7 @@ export const useUserStore = defineStore('user', {
 
   getters: {
     isAuthenticated: (state) => !!state.profile,
-    isAdmin: (state) => state.profile?.role === 'admin',
+    isAdmin: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
     
     fullName: (state) => {
       if (state.employee?.preferred_name) return state.employee.preferred_name

@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', callerUser.id)
     .single()
 
-  if (profileError || callerProfile?.role !== 'admin') {
+  if (profileError || !['super_admin', 'admin'].includes(callerProfile?.role)) {
     throw createError({
       statusCode: 403,
       message: 'Forbidden - Admin access required'
