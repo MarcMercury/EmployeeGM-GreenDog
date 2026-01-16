@@ -91,5 +91,8 @@ export default defineNuxtConfig({
     externals: {
       inline: ['pdf-parse']
     }
-  }
+  },
+
+  // Route rules - explicitly defined to prevent hydration errors
+  routeRules: {}
 })
