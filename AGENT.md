@@ -3,6 +3,13 @@
 > **🤖 AI CONTEXT FILE:** This is the primary reference document for AI assistants.
 > Read this file first before making any changes.
 
+## 🚨 CRITICAL: CREDENTIALS FILE
+
+**⚠️ ALWAYS CHECK [`SUPABASE_CREDENTIALS.md`](SUPABASE_CREDENTIALS.md) FOR DATABASE CREDENTIALS!**
+**⚠️ NEVER DELETE OR MODIFY THE CREDENTIALS FILE!**
+
+All Supabase API keys, service role keys, and access tokens are stored there.
+
 ## 🚨 IMPORTANT DIRECTIVES
 
 ### Auto-Push Supabase Migrations
@@ -25,6 +32,7 @@ All documentation is centralized in the `/docs` folder:
 
 | Document | Purpose |
 | -------- | ------- |
+| [`SUPABASE_CREDENTIALS.md`](SUPABASE_CREDENTIALS.md) | **🔑 ALL SUPABASE API KEYS & TOKENS** |
 | [`docs/SUPABASE_OPERATIONS.md`](docs/SUPABASE_OPERATIONS.md) | **Migration procedures & API access** |
 | [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Live integrations (Supabase, Vercel, Slack) |
 | [`docs/UNIFIED_USER_LIFECYCLE.md`](docs/UNIFIED_USER_LIFECYCLE.md) | Person lifecycle & "hats" architecture |
