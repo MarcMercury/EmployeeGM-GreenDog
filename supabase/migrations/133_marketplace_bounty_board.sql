@@ -186,6 +186,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE SET search_path = public;
 
 GRANT EXECUTE ON FUNCTION public.is_hr_admin() TO authenticated;
 
+-- Drop existing policies if they exist (for re-running migration)
+DROP POLICY IF EXISTS "wallets_select_own" ON public.employee_wallets;
+DROP POLICY IF EXISTS "wallets_insert_admin" ON public.employee_wallets;
+DROP POLICY IF EXISTS "wallets_update_admin" ON public.employee_wallets;
+DROP POLICY IF EXISTS "gigs_select_all" ON public.marketplace_gigs;
+DROP POLICY IF EXISTS "gigs_insert_admin" ON public.marketplace_gigs;
+DROP POLICY IF EXISTS "gigs_update_admin" ON public.marketplace_gigs;
+DROP POLICY IF EXISTS "gigs_delete_admin" ON public.marketplace_gigs;
+DROP POLICY IF EXISTS "rewards_select_all" ON public.marketplace_rewards;
+DROP POLICY IF EXISTS "rewards_insert_admin" ON public.marketplace_rewards;
+DROP POLICY IF EXISTS "rewards_update_admin" ON public.marketplace_rewards;
+DROP POLICY IF EXISTS "rewards_delete_admin" ON public.marketplace_rewards;
+DROP POLICY IF EXISTS "transactions_select" ON public.marketplace_transactions;
+DROP POLICY IF EXISTS "transactions_insert_admin" ON public.marketplace_transactions;
+DROP POLICY IF EXISTS "redemptions_select" ON public.marketplace_redemptions;
+DROP POLICY IF EXISTS "redemptions_insert" ON public.marketplace_redemptions;
+DROP POLICY IF EXISTS "redemptions_update_admin" ON public.marketplace_redemptions;
+
 -- Employee Wallets: Users can view their own, admins can view all
 CREATE POLICY "wallets_select_own" ON public.employee_wallets
   FOR SELECT TO authenticated
