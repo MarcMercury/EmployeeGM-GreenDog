@@ -166,7 +166,7 @@
       <!-- Charts Row 1 -->
       <v-row class="mb-6">
         <!-- Revenue Distribution Histogram -->
-        <v-col cols="12" md="6">
+        <v-col cols="12">
           <v-card elevation="2">
             <v-card-title>
               <v-icon class="mr-2">mdi-chart-histogram</v-icon>
@@ -179,26 +179,6 @@
                   height="350"
                   :options="revenueDistributionOptions"
                   :series="revenueDistributionSeries"
-                />
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
-        <!-- Breed Revenue -->
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title>
-              <v-icon class="mr-2">mdi-paw</v-icon>
-              Top 10 Breeds by Revenue
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  type="bar"
-                  height="350"
-                  :options="breedOptions"
-                  :series="breedSeries"
                 />
               </ClientOnly>
             </v-card-text>
