@@ -8,26 +8,20 @@
  * Body: { limit?: number } // Max notifications to process (default 50)
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const body = await readBody(event)
 
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
-  const SUPABASE_URL = config.public.supabaseUrl || process.env.SUPABASE_URL
-  const SUPABASE_SERVICE_ROLE_KEY = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
   }
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('[Slack Notifications] Missing config. URL:', !!SUPABASE_URL, 'Key:', !!SUPABASE_SERVICE_ROLE_KEY)
-    return { ok: false, error: 'Supabase configuration missing' }
-  }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  // Use Nuxt Supabase module's service role client
+  const supabase = await serverSupabaseServiceRole(event)
   const limit = body?.limit || 50
   const now = new Date().toISOString()
 
