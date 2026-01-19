@@ -1,5 +1,11 @@
 name: Slack Sync Scheduler
 
+# ============================================================
+# REQUIRED GITHUB SECRETS:
+# - APP_URL: Your Vercel deployment URL (e.g., https://employee-gm-green-dog.vercel.app)
+# - CRON_SECRET: A secret string to authenticate cron requests (any random string)
+# ============================================================
+
 on:
   schedule:
     # Run every 6 hours
@@ -15,7 +21,7 @@ jobs:
         run: |
           if [ -z "${{ secrets.APP_URL }}" ]; then
             echo "❌ ERROR: APP_URL secret is not configured"
-            echo "Please add APP_URL to your repository secrets (e.g., https://your-app.vercel.app)"
+            echo "Please add APP_URL to your repository secrets (e.g., https://employee-gm-green-dog.vercel.app)"
             exit 1
           fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then

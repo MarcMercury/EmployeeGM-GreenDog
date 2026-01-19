@@ -23,10 +23,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
-  const SUPABASE_URL = process.env.SUPABASE_URL
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const SUPABASE_URL = config.public.supabaseUrl || process.env.SUPABASE_URL
+  const SUPABASE_SERVICE_ROLE_KEY = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!SLACK_BOT_TOKEN || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('[Slack Scheduled] Missing config. Token:', !!SLACK_BOT_TOKEN, 'URL:', !!SUPABASE_URL, 'Key:', !!SUPABASE_SERVICE_ROLE_KEY)
     return { ok: false, error: 'Missing configuration' }
   }
 
