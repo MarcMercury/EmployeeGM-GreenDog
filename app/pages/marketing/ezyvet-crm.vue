@@ -29,7 +29,7 @@
 
     <!-- Stats Cards -->
     <v-row class="mb-6">
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card class="pa-4" elevation="2">
           <div class="d-flex align-center">
             <v-avatar color="primary" size="48" class="mr-3">
@@ -37,12 +37,12 @@
             </v-avatar>
             <div>
               <div class="text-h5 font-weight-bold">{{ formatNumber(stats.totalContacts) }}</div>
-              <div class="text-caption text-grey">Total Contacts</div>
+              <div class="text-caption text-grey">Total Clients</div>
             </div>
           </div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card class="pa-4" elevation="2">
           <div class="d-flex align-center">
             <v-avatar color="success" size="48" class="mr-3">
@@ -50,32 +50,19 @@
             </v-avatar>
             <div>
               <div class="text-h5 font-weight-bold">{{ formatNumber(stats.activeContacts) }}</div>
-              <div class="text-caption text-grey">Active Clients</div>
+              <div class="text-caption text-grey">Active Clients (12 Months)</div>
             </div>
           </div>
         </v-card>
       </v-col>
-      <v-col cols="12" sm="6" md="3">
-        <v-card class="pa-4" elevation="2">
-          <div class="d-flex align-center">
-            <v-avatar color="info" size="48" class="mr-3">
-              <v-icon color="white">mdi-currency-usd</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h5 font-weight-bold">{{ formatCurrency(stats.totalRevenue) }}</div>
-              <div class="text-caption text-grey">Total Revenue YTD</div>
-            </div>
-          </div>
-        </v-card>
-      </v-col>
-      <v-col cols="12" sm="6" md="3">
+      <v-col cols="12" sm="6" md="4">
         <v-card class="pa-4" elevation="2">
           <div class="d-flex align-center">
             <v-avatar color="warning" size="48" class="mr-3">
-              <v-icon color="white">mdi-sync</v-icon>
+              <v-icon color="white">mdi-calendar-sync</v-icon>
             </v-avatar>
             <div>
-              <div class="text-h5 font-weight-bold">{{ lastSyncDisplay }}</div>
+              <div class="text-h5 font-weight-bold">{{ lastSyncDateDisplay }}</div>
               <div class="text-caption text-grey">Last Sync</div>
             </div>
           </div>
@@ -418,31 +405,33 @@ const filters = ref({
   revenueRange: null as string | null
 })
 
-// Stats - Active = activity within last 3 years
+// Stats - Active = activity within last 12 months
 const stats = computed(() => {
   const total = contacts.value.length
-  const threeYearsAgo = new Date()
-  threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3)
+  const oneYearAgo = new Date()
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
   
   const active = contacts.value.filter(c => {
     if (!c.last_visit) return false
-    return new Date(c.last_visit) >= threeYearsAgo
+    return new Date(c.last_visit) >= oneYearAgo
   }).length
   
-  const revenue = contacts.value.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
   return {
     totalContacts: total,
-    activeContacts: active,
-    totalRevenue: revenue,
-    arpu: active > 0 ? revenue / active : 0
+    activeContacts: active
   }
 })
 
-const lastSyncDisplay = computed(() => {
+const lastSyncDateDisplay = computed(() => {
   if (syncHistory.value.length === 0) return 'Never'
   const last = syncHistory.value[0]
   if (!last.completed_at) return 'In Progress'
-  return formatRelativeTime(last.completed_at)
+  // Show the actual date
+  return new Date(last.completed_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
 })
 
 // Filter options
@@ -547,7 +536,11 @@ const CSV_HEADER_MAP: Record<string, string> = {
   'Last Invoiced': 'last_visit',
   'Contact Division': 'division',
   'Contact Hear About Option': 'referral_source',
-  'Contact Is Active': 'is_active'
+  'Contact Is Active': 'is_active',
+  'Breed': 'breed',
+  'Pet Breed': 'breed',
+  'Department': 'department',
+  'Service Department': 'department'
 }
 
 // Load data - paginated to get all contacts (bypassing 1000 row limit)

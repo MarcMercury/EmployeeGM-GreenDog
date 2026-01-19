@@ -71,6 +71,8 @@ export default defineEventHandler(async (event) => {
       address_zip: contact.address_zip || null,
       division: contact.division || null,
       referral_source: contact.referral_source || null,
+      breed: contact.breed || null,
+      department: contact.department || null,
       revenue_ytd: parseFloat(contact.revenue_ytd) || 0,
       is_active: contact.is_active ?? true
     }))

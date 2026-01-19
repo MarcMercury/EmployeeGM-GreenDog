@@ -126,7 +126,7 @@
                 <div class="text-h4 font-weight-bold text-success">
                   {{ formatNumber(analytics.kpis.activeContacts) }}
                 </div>
-                <div class="text-body-2 text-grey">Active Clients</div>
+                <div class="text-body-2 text-grey">Active Clients (12 Months)</div>
               </div>
             </div>
           </v-card>
@@ -141,7 +141,7 @@
                 <div class="text-h4 font-weight-bold text-info">
                   {{ formatCurrency(analytics.kpis.arpu) }}
                 </div>
-                <div class="text-body-2 text-grey">ARPU</div>
+                <div class="text-body-2 text-grey">ARPU ($25+ Clients)</div>
               </div>
             </div>
           </v-card>
@@ -156,7 +156,7 @@
                 <div class="text-h4 font-weight-bold text-warning">
                   {{ formatNumber(analytics.kpis.totalContacts) }}
                 </div>
-                <div class="text-body-2 text-grey">Total Contacts</div>
+                <div class="text-body-2 text-grey">Total Clients</div>
               </div>
             </div>
           </v-card>
@@ -170,7 +170,7 @@
           <v-card elevation="2">
             <v-card-title>
               <v-icon class="mr-2">mdi-chart-histogram</v-icon>
-              Revenue Distribution
+              Revenue Distribution ($25+)
             </v-card-title>
             <v-card-text>
               <ClientOnly>
@@ -185,20 +185,20 @@
           </v-card>
         </v-col>
 
-        <!-- Geographic Hotspots -->
+        <!-- Breed Revenue -->
         <v-col cols="12" md="6">
           <v-card elevation="2">
             <v-card-title>
-              <v-icon class="mr-2">mdi-map-marker</v-icon>
-              Top 10 Cities by Revenue
+              <v-icon class="mr-2">mdi-paw</v-icon>
+              Top 10 Breeds by Revenue
             </v-card-title>
             <v-card-text>
               <ClientOnly>
                 <apexchart
                   type="bar"
                   height="350"
-                  :options="geographicOptions"
-                  :series="geographicSeries"
+                  :options="breedOptions"
+                  :series="breedSeries"
                 />
               </ClientOnly>
             </v-card-text>
@@ -208,32 +208,16 @@
 
       <!-- Charts Row 2 -->
       <v-row class="mb-6">
-        <!-- Marketing Efficacy Donut -->
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title>
-              <v-icon class="mr-2">mdi-bullhorn</v-icon>
-              Marketing Efficacy (Referral Sources)
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  type="donut"
-                  height="350"
-                  :options="marketingOptions"
-                  :series="marketingSeries"
-                />
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-
         <!-- Recency Analysis -->
-        <v-col cols="12" md="6">
+        <v-col cols="12">
           <v-card elevation="2">
             <v-card-title>
               <v-icon class="mr-2">mdi-clock-outline</v-icon>
               Recency Analysis (Last Visit)
+              <v-spacer />
+              <span class="text-body-2 text-grey">
+                Total: {{ formatNumber(recencyTotal) }} clients
+              </span>
             </v-card-title>
             <v-card-text>
               <ClientOnly>
@@ -249,7 +233,7 @@
         </v-col>
       </v-row>
 
-      <!-- Division Breakdown Table -->
+      <!-- Division Performance Table -->
       <v-card elevation="2" class="mb-6">
         <v-card-title>
           <v-icon class="mr-2">mdi-domain</v-icon>
@@ -259,6 +243,39 @@
           <v-data-table
             :headers="divisionHeaders"
             :items="analytics.divisionBreakdown"
+            density="comfortable"
+            :items-per-page="10"
+          >
+            <template #item.totalRevenue="{ item }">
+              <span class="font-weight-bold text-primary">
+                {{ formatCurrency(item.totalRevenue) }}
+              </span>
+            </template>
+            <template #item.avgRevenue="{ item }">
+              {{ formatCurrency(item.avgRevenue) }}
+            </template>
+            <template #item.activeRate="{ item }">
+              <v-chip
+                :color="getActiveRateColor(item.activeClients, item.totalClients)"
+                size="small"
+              >
+                {{ Math.round((item.activeClients / item.totalClients) * 100) }}%
+              </v-chip>
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+
+      <!-- Department Performance Table -->
+      <v-card elevation="2" class="mb-6">
+        <v-card-title>
+          <v-icon class="mr-2">mdi-office-building</v-icon>
+          Department Performance
+        </v-card-title>
+        <v-card-text>
+          <v-data-table
+            :headers="departmentHeaders"
+            :items="analytics.departmentBreakdown"
             density="comfortable"
             :items-per-page="10"
           >
@@ -423,8 +440,8 @@ const revenueDistributionSeries = computed(() => [{
   data: analytics.value?.revenueDistribution?.map((d: any) => d.count) || []
 }])
 
-// Geographic Chart
-const geographicOptions = computed(() => ({
+// Breed Revenue Chart
+const breedOptions = computed(() => ({
   chart: {
     type: 'bar',
     toolbar: { show: true }
@@ -442,7 +459,7 @@ const geographicOptions = computed(() => ({
     style: { fontSize: '11px', colors: ['#fff'] }
   },
   xaxis: {
-    categories: analytics.value?.geographicData?.map((d: any) => d.city) || [],
+    categories: analytics.value?.breedData?.map((d: any) => d.breed) || [],
     labels: { formatter: (val: number) => formatCurrencyShort(val) }
   },
   yaxis: {
@@ -454,49 +471,16 @@ const geographicOptions = computed(() => ({
   }
 }))
 
-const geographicSeries = computed(() => [{
+const breedSeries = computed(() => [{
   name: 'Revenue',
-  data: analytics.value?.geographicData?.map((d: any) => d.totalRevenue) || []
+  data: analytics.value?.breedData?.map((d: any) => d.totalRevenue) || []
 }])
 
-// Marketing Efficacy Donut
-const marketingOptions = computed(() => ({
-  chart: {
-    type: 'donut'
-  },
-  labels: analytics.value?.marketingEfficacy?.slice(0, 8).map((d: any) => d.source) || [],
-  legend: {
-    position: 'bottom',
-    fontSize: '12px'
-  },
-  plotOptions: {
-    pie: {
-      donut: {
-        size: '55%',
-        labels: {
-          show: true,
-          total: {
-            show: true,
-            label: 'Total Clients',
-            formatter: () => formatNumber(analytics.value?.kpis?.activeContacts || 0)
-          }
-        }
-      }
-    }
-  },
-  dataLabels: {
-    enabled: true,
-    formatter: (val: number) => `${Math.round(val)}%`
-  },
-  colors: ['#1976D2', '#388E3C', '#F57C00', '#7B1FA2', '#0097A7', '#C2185B', '#FBC02D', '#455A64'],
-  tooltip: {
-    y: { formatter: (val: number) => `${val} clients` }
-  }
-}))
-
-const marketingSeries = computed(() => 
-  analytics.value?.marketingEfficacy?.slice(0, 8).map((d: any) => d.clientCount) || []
-)
+// Recency total for display
+const recencyTotal = computed(() => {
+  if (!analytics.value?.recencyChart) return 0
+  return analytics.value.recencyChart.reduce((sum: number, d: any) => sum + (d.count || 0), 0)
+})
 
 // Recency Analysis Chart
 const recencyOptions = computed(() => ({
@@ -539,6 +523,16 @@ const recencySeries = computed(() => [{
 // Division table headers
 const divisionHeaders = [
   { title: 'Division', key: 'division', sortable: true },
+  { title: 'Total Clients', key: 'totalClients', sortable: true },
+  { title: 'Active Clients', key: 'activeClients', sortable: true },
+  { title: 'Active Rate', key: 'activeRate', sortable: false },
+  { title: 'Total Revenue', key: 'totalRevenue', sortable: true },
+  { title: 'Avg Revenue', key: 'avgRevenue', sortable: true }
+]
+
+// Department table headers
+const departmentHeaders = [
+  { title: 'Department', key: 'department', sortable: true },
   { title: 'Total Clients', key: 'totalClients', sortable: true },
   { title: 'Active Clients', key: 'activeClients', sortable: true },
   { title: 'Active Rate', key: 'activeRate', sortable: false },

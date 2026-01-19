@@ -41,16 +41,9 @@ export default defineEventHandler(async (event) => {
         .select('*')
         .range(from, to)
       
+      // Division filter always applies
       if (division) {
         pageQuery = pageQuery.eq('division', division)
-      }
-      
-      if (startDate) {
-        pageQuery = pageQuery.gte('last_visit', startDate)
-      }
-      
-      if (endDate) {
-        pageQuery = pageQuery.lte('last_visit', endDate)
       }
 
       const { data: pageData, error } = await pageQuery
@@ -76,41 +69,58 @@ export default defineEventHandler(async (event) => {
 
     console.log(`[ezyvet-analytics] Total fetched: ${allContacts.length} contacts`)
 
-    // Define "Active" as having activity within the last 3 years
-    const threeYearsAgo = new Date()
-    threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3)
+    // Apply date range filter on last_visit AFTER fetching all data
+    let filteredContacts = allContacts
+    if (startDate || endDate) {
+      filteredContacts = allContacts.filter(c => {
+        if (!c.last_visit) return false
+        const visitDate = new Date(c.last_visit)
+        if (startDate && visitDate < new Date(startDate)) return false
+        if (endDate && visitDate > new Date(endDate)) return false
+        return true
+      })
+      console.log(`[ezyvet-analytics] After date filter: ${filteredContacts.length} contacts`)
+    }
+
+    // Define "Active" as having activity within the last 12 months
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
     
-    const activeContacts = allContacts.filter(c => {
-      // Must have a last_visit date within 3 years
+    const activeContacts = filteredContacts.filter(c => {
       if (!c.last_visit) return false
       const lastVisit = new Date(c.last_visit)
-      return lastVisit >= threeYearsAgo
+      return lastVisit >= oneYearAgo
+    })
+
+    // For ARPU calculation, only include contacts with revenue >= $25
+    const qualifyingForArpu = filteredContacts.filter(c => {
+      const rev = parseFloat(c.revenue_ytd) || 0
+      return rev >= 25
     })
 
     // ========================================
     // KPI METRICS
     // ========================================
-    const totalRevenue = allContacts.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
-    const activeRevenue = activeContacts.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
-    const arpu = activeContacts.length > 0 ? activeRevenue / activeContacts.length : 0
+    const totalRevenue = filteredContacts.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
+    const qualifyingRevenue = qualifyingForArpu.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
+    const arpu = qualifyingForArpu.length > 0 ? qualifyingRevenue / qualifyingForArpu.length : 0
 
     const kpis = {
-      totalContacts: allContacts.length,
+      totalContacts: filteredContacts.length,
       activeContacts: activeContacts.length,
-      inactiveContacts: allContacts.length - activeContacts.length,
+      inactiveContacts: filteredContacts.length - activeContacts.length,
       totalRevenue,
-      activeRevenue,
       arpu,
-      avgRevenue: allContacts.length > 0 ? totalRevenue / allContacts.length : 0
+      avgRevenue: qualifyingForArpu.length > 0 ? qualifyingRevenue / qualifyingForArpu.length : 0
     }
 
     // ========================================
-    // REVENUE DISTRIBUTION (Histogram)
+    // REVENUE DISTRIBUTION (Histogram) - Starting at $25+
     // ========================================
     const revenueBuckets = [
-      { label: '$0', min: 0, max: 1 },
-      { label: '$1-$100', min: 1, max: 100 },
-      { label: '$100-$500', min: 100, max: 500 },
+      { label: '$25-$100', min: 25, max: 100 },
+      { label: '$100-$250', min: 100, max: 250 },
+      { label: '$250-$500', min: 250, max: 500 },
       { label: '$500-$1K', min: 500, max: 1000 },
       { label: '$1K-$2.5K', min: 1000, max: 2500 },
       { label: '$2.5K-$5K', min: 2500, max: 5000 },
@@ -118,34 +128,37 @@ export default defineEventHandler(async (event) => {
       { label: '$10K+', min: 10000, max: Infinity }
     ]
 
+    // Only include contacts with revenue >= $25
+    const revenueQualifiedContacts = filteredContacts.filter(c => (parseFloat(c.revenue_ytd) || 0) >= 25)
+
     const revenueDistribution = revenueBuckets.map(bucket => {
-      const count = activeContacts.filter(c => {
+      const count = revenueQualifiedContacts.filter(c => {
         const rev = parseFloat(c.revenue_ytd) || 0
         return rev >= bucket.min && rev < bucket.max
       }).length
       return {
         label: bucket.label,
         count,
-        percentage: activeContacts.length > 0 ? Math.round((count / activeContacts.length) * 100) : 0
+        percentage: revenueQualifiedContacts.length > 0 ? Math.round((count / revenueQualifiedContacts.length) * 100) : 0
       }
     })
 
     // ========================================
-    // GEOGRAPHIC HOTSPOTS (Top 10 Cities)
+    // BREED REVENUE (Top 10 Breeds)
     // ========================================
-    const cityMap = new Map<string, { count: number; revenue: number }>()
+    const breedMap = new Map<string, { count: number; revenue: number }>()
     
-    for (const contact of activeContacts) {
-      const city = contact.address_city || 'Unknown'
-      const existing = cityMap.get(city) || { count: 0, revenue: 0 }
+    for (const contact of filteredContacts) {
+      const breed = contact.breed || 'Unknown'
+      const existing = breedMap.get(breed) || { count: 0, revenue: 0 }
       existing.count++
       existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      cityMap.set(city, existing)
+      breedMap.set(breed, existing)
     }
 
-    const geographicData = Array.from(cityMap.entries())
-      .map(([city, data]) => ({
-        city,
+    const breedData = Array.from(breedMap.entries())
+      .map(([breed, data]) => ({
+        breed,
         clientCount: data.count,
         totalRevenue: data.revenue,
         avgRevenue: data.count > 0 ? data.revenue / data.count : 0
@@ -154,39 +167,21 @@ export default defineEventHandler(async (event) => {
       .slice(0, 10)
 
     // ========================================
-    // MARKETING EFFICACY (Referral Sources)
-    // ========================================
-    const referralMap = new Map<string, { count: number; revenue: number }>()
-    
-    for (const contact of activeContacts) {
-      const source = contact.referral_source || 'Unknown'
-      const existing = referralMap.get(source) || { count: 0, revenue: 0 }
-      existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      referralMap.set(source, existing)
-    }
-
-    const marketingEfficacy = Array.from(referralMap.entries())
-      .map(([source, data]) => ({
-        source,
-        clientCount: data.count,
-        totalRevenue: data.revenue,
-        percentage: activeContacts.length > 0 ? Math.round((data.count / activeContacts.length) * 100) : 0
-      }))
-      .sort((a, b) => b.clientCount - a.clientCount)
-
-    // ========================================
-    // RECENCY ANALYSIS
+    // RECENCY ANALYSIS - New buckets: 0-3mo, 3-6mo, 6-12mo, 1-2yr, 2yr+
     // ========================================
     const now = new Date()
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
-    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-    const oneEightyDaysAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000)
-    const oneYearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000)
+    const threeMonthsAgo = new Date(now)
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    const sixMonthsAgo = new Date(now)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    const twelveMonthsAgo = new Date(now)
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1)
+    const twoYearsAgo = new Date(now)
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
 
-    function countByRecency(minDate: Date, maxDate: Date | null = null) {
-      return activeContacts.filter(c => {
+    // Use ALL contacts (not just filtered) for recency to match CRM total
+    function countByRecency(contacts: any[], minDate: Date, maxDate: Date | null = null) {
+      return contacts.filter(c => {
         if (!c.last_visit) return false
         const visitDate = new Date(c.last_visit)
         if (maxDate) {
@@ -196,29 +191,35 @@ export default defineEventHandler(async (event) => {
       }).length
     }
 
-    const neverVisited = activeContacts.filter(c => !c.last_visit).length
+    // Count contacts with no last_visit date
+    const neverVisited = allContacts.filter(c => !c.last_visit).length
+    
+    // Count by recency buckets (use allContacts so total matches CRM)
+    const zeroToThreeMonths = countByRecency(allContacts, threeMonthsAgo, null)
+    const threeToSixMonths = countByRecency(allContacts, sixMonthsAgo, threeMonthsAgo)
+    const sixToTwelveMonths = countByRecency(allContacts, twelveMonthsAgo, sixMonthsAgo)
+    const oneToTwoYears = countByRecency(allContacts, twoYearsAgo, twelveMonthsAgo)
+    const overTwoYears = allContacts.filter(c => {
+      if (!c.last_visit) return false
+      return new Date(c.last_visit) < twoYearsAgo
+    }).length
 
     const recencyAnalysis = {
-      last30Days: countByRecency(thirtyDaysAgo),
-      days31to60: countByRecency(sixtyDaysAgo, thirtyDaysAgo),
-      days61to90: countByRecency(ninetyDaysAgo, sixtyDaysAgo),
-      days91to180: countByRecency(oneEightyDaysAgo, ninetyDaysAgo),
-      days181to365: countByRecency(oneYearAgo, oneEightyDaysAgo),
-      overOneYear: activeContacts.filter(c => {
-        if (!c.last_visit) return false
-        return new Date(c.last_visit) < oneYearAgo
-      }).length,
+      zeroToThreeMonths,
+      threeToSixMonths,
+      sixToTwelveMonths,
+      oneToTwoYears,
+      overTwoYears,
       neverVisited
     }
 
     // Chart-ready format
     const recencyChart = [
-      { label: 'Last 30 Days', count: recencyAnalysis.last30Days, color: '#4CAF50' },
-      { label: '31-60 Days', count: recencyAnalysis.days31to60, color: '#8BC34A' },
-      { label: '61-90 Days', count: recencyAnalysis.days61to90, color: '#FFC107' },
-      { label: '91-180 Days', count: recencyAnalysis.days91to180, color: '#FF9800' },
-      { label: '181-365 Days', count: recencyAnalysis.days181to365, color: '#FF5722' },
-      { label: 'Over 1 Year', count: recencyAnalysis.overOneYear, color: '#F44336' },
+      { label: '0-3 Months', count: recencyAnalysis.zeroToThreeMonths, color: '#4CAF50' },
+      { label: '3-6 Months', count: recencyAnalysis.threeToSixMonths, color: '#8BC34A' },
+      { label: '6-12 Months', count: recencyAnalysis.sixToTwelveMonths, color: '#FFC107' },
+      { label: '1-2 Years', count: recencyAnalysis.oneToTwoYears, color: '#FF9800' },
+      { label: '2+ Years', count: recencyAnalysis.overTwoYears, color: '#F44336' },
       { label: 'Never Visited', count: recencyAnalysis.neverVisited, color: '#9E9E9E' }
     ]
 
@@ -227,13 +228,12 @@ export default defineEventHandler(async (event) => {
     // ========================================
     const divisionMap = new Map<string, { count: number; revenue: number; active: number }>()
     
-    for (const contact of allContacts) {
+    for (const contact of filteredContacts) {
       const div = contact.division || 'Unknown'
       const existing = divisionMap.get(div) || { count: 0, revenue: 0, active: 0 }
       existing.count++
       existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      // Active = has activity within 3 years
-      if (contact.last_visit && new Date(contact.last_visit) >= threeYearsAgo) {
+      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
         existing.active++
       }
       divisionMap.set(div, existing)
@@ -249,6 +249,32 @@ export default defineEventHandler(async (event) => {
       }))
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
 
+    // ========================================
+    // DEPARTMENT BREAKDOWN
+    // ========================================
+    const departmentMap = new Map<string, { count: number; revenue: number; active: number }>()
+    
+    for (const contact of filteredContacts) {
+      const dept = contact.department || 'Unknown'
+      const existing = departmentMap.get(dept) || { count: 0, revenue: 0, active: 0 }
+      existing.count++
+      existing.revenue += parseFloat(contact.revenue_ytd) || 0
+      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
+        existing.active++
+      }
+      departmentMap.set(dept, existing)
+    }
+
+    const departmentBreakdown = Array.from(departmentMap.entries())
+      .map(([department, data]) => ({
+        department,
+        totalClients: data.count,
+        activeClients: data.active,
+        totalRevenue: data.revenue,
+        avgRevenue: data.count > 0 ? data.revenue / data.count : 0
+      }))
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+
     // Get list of divisions for filter dropdown
     const divisions = Array.from(divisionMap.keys()).filter(d => d !== 'Unknown').sort()
 
@@ -256,12 +282,13 @@ export default defineEventHandler(async (event) => {
       success: true,
       kpis,
       revenueDistribution,
-      geographicData,
-      marketingEfficacy,
+      breedData,
       recencyAnalysis,
       recencyChart,
       divisionBreakdown,
+      departmentBreakdown,
       divisions,
+      totalContactsInDb: allContacts.length,
       filters: {
         division: division || null,
         startDate: startDate || null,
