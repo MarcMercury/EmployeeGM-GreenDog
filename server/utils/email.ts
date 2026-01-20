@@ -5,8 +5,19 @@
 
 import { Resend } from 'resend'
 
-// Initialize Resend with API key from environment
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-initialize Resend to avoid startup errors when API key is missing
+let resend: Resend | null = null
+
+function getResendClient(): Resend {
+  if (!resend) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set')
+    }
+    resend = new Resend(apiKey)
+  }
+  return resend
+}
 
 // Default sender configuration
 const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'Green Dog Veterinary <noreply@greendog.vet>'
@@ -223,7 +234,7 @@ export async function sendIntakeLinkEmail(options: IntakeEmailOptions): Promise<
   }
 
   try {
-    const result = await resend.emails.send({
+    const result = await getResendClient().emails.send({
       from: DEFAULT_FROM,
       to: options.to,
       subject: getSubjectLine(options.linkType, options.firstName),
@@ -287,7 +298,7 @@ export async function sendNotificationEmail(
   }
 
   try {
-    const result = await resend.emails.send({
+    const result = await getResendClient().emails.send({
       from: DEFAULT_FROM,
       to,
       subject,

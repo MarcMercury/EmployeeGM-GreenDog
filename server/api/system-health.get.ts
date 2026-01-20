@@ -1,11 +1,12 @@
 /**
- * Health Check API Endpoint
+ * System Health Check API Endpoint
  * 
  * Returns system health status for monitoring.
- * GET /api/health
+ * GET /api/system-health
  */
 
 import { serverSupabaseClient } from '#supabase/server'
+import type { H3Event } from 'h3'
 
 interface HealthCheck {
   name: string
@@ -24,44 +25,8 @@ interface HealthResponse {
 
 const startTime = Date.now()
 
-export default defineEventHandler(async (event): Promise<HealthResponse> => {
-  const checks: HealthCheck[] = []
-  
-  // 1. Database connectivity check
-  const dbCheck = await checkDatabase(event)
-  checks.push(dbCheck)
-  
-  // 2. Supabase Auth check
-  const authCheck = await checkAuth(event)
-  checks.push(authCheck)
-  
-  // 3. Environment variables check
-  const envCheck = checkEnvironment()
-  checks.push(envCheck)
-  
-  // Determine overall status
-  const hasError = checks.some(c => c.status === 'error')
-  const hasDegraded = checks.some(c => c.status === 'degraded')
-  
-  const status = hasError ? 'error' : hasDegraded ? 'degraded' : 'healthy'
-  
-  // Set appropriate HTTP status
-  if (status === 'error') {
-    setResponseStatus(event, 503)
-  } else if (status === 'degraded') {
-    setResponseStatus(event, 200) // Still operational
-  }
-  
-  return {
-    status,
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    uptime: Math.floor((Date.now() - startTime) / 1000),
-    checks
-  }
-})
-
-async function checkDatabase(event: any): Promise<HealthCheck> {
+// Helper functions defined BEFORE export to avoid circular reference
+async function checkDatabase(event: H3Event): Promise<HealthCheck> {
   const start = Date.now()
   
   try {
@@ -109,7 +74,7 @@ async function checkDatabase(event: any): Promise<HealthCheck> {
   }
 }
 
-async function checkAuth(event: any): Promise<HealthCheck> {
+async function checkAuth(event: H3Event): Promise<HealthCheck> {
   const start = Date.now()
   
   try {
@@ -179,3 +144,41 @@ function checkEnvironment(): HealthCheck {
     status: 'ok'
   }
 }
+
+// Main handler
+export default defineEventHandler(async (event): Promise<HealthResponse> => {
+  const checks: HealthCheck[] = []
+  
+  // 1. Database connectivity check
+  const dbCheck = await checkDatabase(event)
+  checks.push(dbCheck)
+  
+  // 2. Supabase Auth check
+  const authCheck = await checkAuth(event)
+  checks.push(authCheck)
+  
+  // 3. Environment variables check
+  const envCheck = checkEnvironment()
+  checks.push(envCheck)
+  
+  // Determine overall status
+  const hasError = checks.some(c => c.status === 'error')
+  const hasDegraded = checks.some(c => c.status === 'degraded')
+  
+  const status = hasError ? 'error' : hasDegraded ? 'degraded' : 'healthy'
+  
+  // Set appropriate HTTP status
+  if (status === 'error') {
+    setResponseStatus(event, 503)
+  } else if (status === 'degraded') {
+    setResponseStatus(event, 200) // Still operational
+  }
+  
+  return {
+    status,
+    timestamp: new Date().toISOString(),
+    version: process.env.npm_package_version || '1.0.0',
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    checks
+  }
+})
