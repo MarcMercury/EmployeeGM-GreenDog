@@ -12,7 +12,8 @@ const sections = ref({
   myWorkspace: false,    // All users: My Schedule, My Skills, My Growth, My Time Off, My Training
   management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
   medOps: false,         // All users (view), admin/office_admin (edit)
-  marketing: false,      // All users (view), admin/marketing_admin (edit)
+  marketing: false,      // Marketing content & partnerships
+  crmAnalytics: false,   // CRM systems & analytics
   gdu: false,            // admin, marketing_admin: GDU University
   adminOps: false        // admin only: Settings, Course Manager, Payroll, Skill Library
 })
@@ -394,7 +395,7 @@ const closeMobileMenu = () => {
               <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/marketing/command-center" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎯</div>
-                  Marketing Dash
+                  Command Center
                 </NuxtLink>
               </template>
               
@@ -404,20 +405,48 @@ const closeMobileMenu = () => {
                 Calendar
               </NuxtLink>
               
-              <!-- Events, Leads, List Hygiene - admin/marketing_admin only -->
+              <!-- Events - admin/marketing_admin only -->
               <template v-if="hasMarketingEditAccess">
                 <NuxtLink to="/growth/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
                   Events
                 </NuxtLink>
-                <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
-                  Leads
+                <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
+                  Partners
                 </NuxtLink>
-                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
-                  List Hygiene
+                <NuxtLink to="/marketing/influencers" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">⭐</div>
+                  Influencers
                 </NuxtLink>
+                <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
+                  Inventory
+                </NuxtLink>
+              </template>
+              
+              <!-- Visible to all: Resources -->
+              <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-lime-500/20">📁</div>
+                Resources
+              </NuxtLink>
+            </div>
+          </div>
+
+          <!-- Section: CRM & Analytics (Collapsible) - admin/marketing_admin only -->
+          <template v-if="hasMarketingEditAccess">
+            <div class="pt-2">
+              <button 
+                @click="toggleSection('crmAnalytics')"
+                class="section-header group"
+              >
+                <span>📊 CRM & Analytics</span>
+                <svg 
+                  class="w-4 h-4 transition-transform duration-200" 
+                  :class="{ 'rotate-180': sections.crmAnalytics }"
+                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="section-content" :class="{ 'section-open': sections.crmAnalytics }">
                 <NuxtLink to="/marketing/ezyvet-crm" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📥</div>
                   EzyVet CRM
@@ -426,27 +455,21 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
                   EzyVet Analytics
                 </NuxtLink>
-              </template>
-              
-              <!-- Partners - admin/marketing_admin only -->
-              <template v-if="hasMarketingEditAccess">
-                <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
-                  Partners
+                <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
+                  Event Leads
                 </NuxtLink>
-              </template>
-              
-              <!-- Visible to all: Resources, Partnerships -->
-              <NuxtLink to="/marketing/resources" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-lime-500/20">📁</div>
-                Resources
-              </NuxtLink>
-              <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
-                Referrals
-              </NuxtLink>
+                <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
+                  Referral CRM
+                </NuxtLink>
+                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
+                  List Hygiene
+                </NuxtLink>
+              </div>
             </div>
-          </div>
+          </template>
 
           <!-- ==========================================
                SECTION: GDU - Green Dog University
