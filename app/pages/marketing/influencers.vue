@@ -530,6 +530,22 @@ function formatRelativeDate(date: string): string {
   return d.toLocaleDateString()
 }
 
+function getNicheLabel(niche: string | null): string {
+  const option = nicheOptions.find(o => o.value === niche)
+  return option?.title || niche || 'Unknown'
+}
+
+function getCollaborationLabel(type: string | null): string {
+  const option = collaborationTypeOptions.find(o => o.value === type)
+  return option?.title || type || 'Unknown'
+}
+
+function getCompensationLabel(type: string | null): string {
+  const option = compensationTypeOptions.find(o => o.value === type)
+  return option?.title || type || 'Unknown'
+}
+}
+
 // =====================================================
 // CRUD OPERATIONS
 // =====================================================
@@ -1274,9 +1290,14 @@ async function updateInfluencerField(field: string, value: any) {
               <v-textarea v-model="formData.agreement_details" label="Agreement Details" variant="outlined" rows="3" placeholder="e.g., Collaboration Reel with promo code, 2 IG Stories..." />
             </v-col>
 
+            <!-- Bio -->
+            <v-col cols="12">
+              <v-textarea v-model="formData.bio" label="Bio / About" variant="outlined" rows="2" placeholder="Brief bio or about the influencer..." />
+            </v-col>
+
             <!-- Notes -->
             <v-col cols="12">
-              <v-textarea v-model="formData.notes" label="Notes" variant="outlined" rows="2" />
+              <v-textarea v-model="formData.notes" label="Internal Notes" variant="outlined" rows="2" />
             </v-col>
           </v-row>
         </v-card-text>
@@ -1359,6 +1380,16 @@ async function updateInfluencerField(field: string, value: any) {
                       <template #prepend><v-icon size="small">mdi-map-marker</v-icon></template>
                       <v-list-item-title>{{ selectedInfluencer.location }}</v-list-item-title>
                     </v-list-item>
+                    <v-list-item v-if="selectedInfluencer.content_niche">
+                      <template #prepend><v-icon size="small">mdi-tag</v-icon></template>
+                      <v-list-item-title>{{ getNicheLabel(selectedInfluencer.content_niche) }}</v-list-item-title>
+                      <v-list-item-subtitle>Content Niche</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item v-if="selectedInfluencer.source">
+                      <template #prepend><v-icon size="small">mdi-account-search</v-icon></template>
+                      <v-list-item-title>{{ selectedInfluencer.source }}</v-list-item-title>
+                      <v-list-item-subtitle>Source/How Found</v-list-item-subtitle>
+                    </v-list-item>
                   </v-list>
                 </v-col>
                 <v-col cols="12" md="6">
@@ -1368,7 +1399,7 @@ async function updateInfluencerField(field: string, value: any) {
                       <template #prepend><v-icon size="small">mdi-paw</v-icon></template>
                       <v-list-item-title>{{ selectedInfluencer.pet_name }}</v-list-item-title>
                       <v-list-item-subtitle>
-                        {{ [selectedInfluencer.pet_breed, selectedInfluencer.pet_age].filter(Boolean).join(' • ') }}
+                        {{ [selectedInfluencer.pet_type, selectedInfluencer.pet_breed, selectedInfluencer.pet_age].filter(Boolean).join(' • ') }}
                       </v-list-item-subtitle>
                     </v-list-item>
                     <v-list-item v-if="selectedInfluencer.pet_instagram">
@@ -1378,15 +1409,42 @@ async function updateInfluencerField(field: string, value: any) {
                     </v-list-item>
                   </v-list>
                 </v-col>
+
+                <!-- Collaboration Details -->
+                <v-col cols="12" v-if="selectedInfluencer.collaboration_type || selectedInfluencer.compensation_type || selectedInfluencer.compensation_rate">
+                  <v-divider class="mb-3" />
+                  <div class="text-subtitle-2 mb-2">Collaboration Details</div>
+                  <div class="d-flex flex-wrap gap-2">
+                    <v-chip v-if="selectedInfluencer.collaboration_type" size="small" variant="tonal" color="primary">
+                      <v-icon start size="14">mdi-handshake</v-icon>
+                      {{ getCollaborationLabel(selectedInfluencer.collaboration_type) }}
+                    </v-chip>
+                    <v-chip v-if="selectedInfluencer.compensation_type" size="small" variant="tonal" color="success">
+                      <v-icon start size="14">mdi-currency-usd</v-icon>
+                      {{ getCompensationLabel(selectedInfluencer.compensation_type) }}
+                    </v-chip>
+                    <v-chip v-if="selectedInfluencer.compensation_rate" size="small" variant="tonal" color="warning">
+                      ${{ selectedInfluencer.compensation_rate }}
+                    </v-chip>
+                  </div>
+                </v-col>
+
                 <v-col v-if="selectedInfluencer.promo_code" cols="12">
                   <v-alert type="success" variant="tonal" density="compact">
                     <strong>Promo Code:</strong> {{ selectedInfluencer.promo_code }}
                   </v-alert>
                 </v-col>
+
+                <v-col v-if="selectedInfluencer.bio" cols="12">
+                  <div class="text-subtitle-2 mb-1">Bio</div>
+                  <p class="text-body-2">{{ selectedInfluencer.bio }}</p>
+                </v-col>
+
                 <v-col v-if="selectedInfluencer.agreement_details" cols="12">
                   <div class="text-subtitle-2 mb-1">Agreement Details</div>
                   <p class="text-body-2">{{ selectedInfluencer.agreement_details }}</p>
                 </v-col>
+
                 <v-col v-if="selectedInfluencer.notes" cols="12">
                   <div class="text-subtitle-2 mb-1">Notes</div>
                   <p class="text-body-2">{{ selectedInfluencer.notes }}</p>
