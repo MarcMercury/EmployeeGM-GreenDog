@@ -824,6 +824,7 @@ interface Location {
 
 const supabase = useSupabaseClient()
 const authStore = useAuthStore()
+const { invalidateCache: invalidateAppDataCache } = useAppData()
 
 // State
 const loading = ref(true)
@@ -1408,7 +1409,10 @@ const saveChanges = async () => {
 
     showNotification(`Employee updated successfully${allChanges.length > 0 ? ` (${allChanges.length} changes logged)` : ''}`)
     editDialog.value = false
+    
+    // Refresh local data and invalidate shared app data cache for cross-page sync
     await fetchAllData()
+    invalidateAppDataCache('employees')
   } catch (err: any) {
     console.error('Error saving:', err)
     showNotification(err.message || 'Failed to save changes', 'error')

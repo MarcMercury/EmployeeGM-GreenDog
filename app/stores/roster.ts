@@ -211,6 +211,7 @@ export const useRosterStore = defineStore('roster', {
 
       try {
         // Get full employee data
+        // Note: Manager is fetched separately to avoid PostgREST self-join issues
         const { data: emp, error } = await supabase
           .from('employees')
           .select(`
@@ -219,12 +220,6 @@ export const useRosterStore = defineStore('roster', {
             department:departments (*),
             position:job_positions (*),
             location:locations (*),
-            manager:employees!employees_manager_employee_id_fkey (
-              id,
-              first_name,
-              last_name,
-              position:job_positions (title)
-            ),
             employee_skills!employee_id (
               id,
               skill_id,
@@ -242,6 +237,18 @@ export const useRosterStore = defineStore('roster', {
           .single()
 
         if (error) throw error
+        
+        // Fetch manager separately if manager_employee_id exists (avoids self-join issues)
+        let managerData = null
+        if (emp.manager_employee_id) {
+          const { data: manager } = await supabase
+            .from('employees')
+            .select('id, first_name, last_name, position:job_positions(title)')
+            .eq('id', emp.manager_employee_id)
+            .single()
+          managerData = manager
+        }
+        ;(emp as any).manager = managerData
 
         // Fetch certifications
         const certifications = await this.fetchEmployeeCertifications(employeeId)

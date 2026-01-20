@@ -1739,6 +1739,7 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 const supabase = useSupabaseClient()
 const toast = useToast()
+const { invalidateCache: invalidateAppDataCache } = useAppData()
 
 // Route params
 const employeeId = computed(() => route.params.id as string)
@@ -2278,6 +2279,7 @@ async function loadEmployeeData() {
 
   try {
     // Load employee with related data
+    // Note: Manager is fetched separately to avoid PostgREST self-join issues
     const { data: emp, error: empError } = await supabase
       .from('employees')
       .select(`
@@ -2285,14 +2287,26 @@ async function loadEmployeeData() {
         profile:profiles!employees_profile_id_fkey(id, email, avatar_url, bio),
         department:departments(id, name),
         position:job_positions(id, title),
-        location:locations(id, name),
-        manager:employees!employees_manager_employee_id_fkey(id, first_name, last_name, preferred_name)
+        location:locations(id, name)
       `)
       .eq('id', employeeId.value)
       .single()
 
     if (empError) throw empError
     if (!emp) throw new Error('Employee not found')
+    
+    // Fetch manager separately if manager_employee_id exists (avoids self-join issues)
+    if (emp.manager_employee_id) {
+      const { data: managerData } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name, preferred_name')
+        .eq('id', emp.manager_employee_id)
+        .single()
+      
+      if (managerData) {
+        ;(emp as any).manager = managerData
+      }
+    }
 
     employee.value = emp
     profileEmail.value = emp.profile?.email || ''
@@ -2641,6 +2655,8 @@ async function archiveEmployee() {
 
     if (err) throw err
     
+    // Invalidate shared cache for cross-page sync
+    invalidateAppDataCache('employees')
     toast.success('Employee archived successfully')
     await router.push('/roster')
   } catch (err) {
