@@ -907,13 +907,17 @@ const editModule = (module: any) => {
 }
 
 const handlePdfUpload = async () => {
-  if (!pdfFile.value) return
+  // Handle v-file-input which returns an array in Vuetify 3
+  const fileInput = pdfFile.value
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+  
+  if (!file) return
   
   try {
-    const fileName = `pdfs/${Date.now()}-${pdfFile.value.name}`
+    const fileName = `pdfs/${Date.now()}-${file.name}`
     const { error } = await supabase.storage
       .from('course-assets')
-      .upload(fileName, pdfFile.value)
+      .upload(fileName, file)
     
     if (error) throw error
     

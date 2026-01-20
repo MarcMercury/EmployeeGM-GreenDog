@@ -2796,14 +2796,17 @@ async function returnAsset(assetId: string) {
 }
 
 async function uploadDocument() {
-  if (!documentForm.value.file) {
+  // Handle v-file-input which returns an array in Vuetify 3
+  const fileInput = documentForm.value.file
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+  
+  if (!file) {
     toast.error('Please select a file')
     return
   }
   
   savingDocument.value = true
   try {
-    const file = documentForm.value.file
     const fileExt = file.name.split('.').pop()
     const fileName = `${employeeId.value}/${Date.now()}_${documentForm.value.category}.${fileExt}`
     
@@ -2812,26 +2815,37 @@ async function uploadDocument() {
       .from('employee-docs')
       .upload(fileName, file)
     
-    if (uploadError) throw uploadError
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError)
+      throw uploadError
+    }
     
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('employee-docs')
       .getPublicUrl(fileName)
     
+    // Get auth user ID for uploader_id (column references auth.users, not employees)
+    const { data: { user } } = await supabase.auth.getUser()
+    
     // Insert document record
     const { error: insertError } = await supabase
       .from('employee_documents')
       .insert({
         employee_id: employeeId.value,
-        document_type: documentForm.value.category,
+        category: documentForm.value.category,
         file_name: file.name,
         file_url: urlData.publicUrl,
+        file_type: file.type,
+        file_size: file.size,
         description: documentForm.value.description || null,
-        uploaded_by: userStore.employee?.id
+        uploader_id: user?.id || null
       })
     
-    if (insertError) throw insertError
+    if (insertError) {
+      console.error('Database insert error:', insertError)
+      throw insertError
+    }
     
     await loadDocuments()
     showDocumentDialog.value = false
@@ -2839,7 +2853,7 @@ async function uploadDocument() {
     toast.success('Document uploaded successfully')
   } catch (err: any) {
     console.error('Failed to upload document:', err)
-    toast.error('Failed to upload document')
+    toast.error(err.message || 'Failed to upload document')
   } finally {
     savingDocument.value = false
   }

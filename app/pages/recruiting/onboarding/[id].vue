@@ -803,11 +803,16 @@ const openDocumentUpload = (task: Task) => {
 }
 
 const uploadDocument = async () => {
-  if (!selectedTask.value || !documentFile.value || !candidate.value) return
+  if (!selectedTask.value || !candidate.value) return
+  
+  // Handle v-file-input which returns an array in Vuetify 3
+  const fileInput = documentFile.value
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+  
+  if (!file) return
 
   uploadingDocument.value = true
   try {
-    const file = documentFile.value
     const fileExt = file.name.split('.').pop()
     const fileName = `${candidate.value.id}/${Date.now()}.${fileExt}`
 

@@ -1449,17 +1449,21 @@ async function deleteNote(note: CandidateNote) {
 
 // Documents
 async function uploadDocument() {
-  if (!uploadFile.value) return
+  // Handle v-file-input which returns an array in Vuetify 3
+  const fileInput = uploadFile.value
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+  
+  if (!file) return
   uploading.value = true
   
   try {
     // Upload to storage
-    const fileExt = uploadFile.value.name.split('.').pop()
+    const fileExt = file.name.split('.').pop()
     const fileName = `${candidateId.value}/${Date.now()}.${fileExt}`
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('candidate-documents')
-      .upload(fileName, uploadFile.value)
+      .upload(fileName, file)
 
     if (uploadError) throw uploadError
 
@@ -1472,10 +1476,10 @@ async function uploadDocument() {
       .from('candidate_documents')
       .insert({
         candidate_id: candidateId.value,
-        file_name: uploadFile.value.name,
+        file_name: file.name,
         file_url: publicUrl,
-        file_type: uploadFile.value.type,
-        file_size: uploadFile.value.size,
+        file_type: file.type,
+        file_size: file.size,
         category: uploadCategory.value,
         description: uploadDescription.value || null
       } as any)

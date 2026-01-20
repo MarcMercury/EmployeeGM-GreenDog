@@ -666,7 +666,10 @@ function transformRow(csvRow: Record<string, any>): Record<string, any> {
   return dbRow
 }
 
-async function handleFileSelect(file: File | null) {
+async function handleFileSelect(fileInput: File | File[] | null) {
+  // Handle v-file-input which returns an array in Vuetify 3
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+  
   if (!file) {
     previewData.value = []
     previewHeaders.value = []
