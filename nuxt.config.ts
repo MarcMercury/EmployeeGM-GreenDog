@@ -68,14 +68,37 @@ export default defineNuxtConfig({
   // App configuration
   app: {
     head: {
-      title: 'Employee GM - Green Dog Dental',
+      title: 'TeamOS - Green Dog Veterinary',
+      htmlAttrs: {
+        lang: 'en'
+      },
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'Gamified Veterinary Hospital Management System' }
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
+        { name: 'description', content: 'Team Management System for Green Dog Veterinary' },
+        
+        // Mobile Web App Meta Tags
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'TeamOS' },
+        
+        // Theme colors
+        { name: 'theme-color', content: '#0f172a' }, // slate-900
+        { name: 'msapplication-TileColor', content: '#22c55e' }, // green-500
+        
+        // Prevent phone number detection
+        { name: 'format-detection', content: 'telephone=no' },
+        
+        // Open Graph
+        { property: 'og:title', content: 'TeamOS - Green Dog Veterinary' },
+        { property: 'og:description', content: 'Team Management System' },
+        { property: 'og:type', content: 'website' }
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/manifest.json' }
       ]
     }
   },
