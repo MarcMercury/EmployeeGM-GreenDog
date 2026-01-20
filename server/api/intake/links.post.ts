@@ -102,8 +102,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Generate the full URL
-  const config = useRuntimeConfig()
-  const baseUrl = config.public.appUrl || process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const baseUrl = getAppUrl()
   const intakeUrl = `${baseUrl}/intake/${link?.token || linkResult[0].token}`
 
   // If sendEmail is true and we have an email, send the invitation

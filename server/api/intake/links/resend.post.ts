@@ -71,8 +71,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Send the email
-  const config = useRuntimeConfig()
-  const baseUrl = config.public.appUrl || process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const baseUrl = getAppUrl()
   
   const emailResult = await sendIntakeLinkEmail({
     to: link.prefill_email,

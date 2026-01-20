@@ -731,12 +731,33 @@ async function createEmployee() {
   
   isSaving.value = true
   try {
+    // 1. First create a profile for the new employee
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        email: newEmployee.email_work,
+        first_name: newEmployee.first_name,
+        last_name: newEmployee.last_name,
+        phone: newEmployee.phone_mobile || newEmployee.phone_work || null,
+        role: 'user',
+        is_active: true
+      })
+      .select()
+      .single()
+    
+    if (profileError) {
+      throw new Error(`Failed to create profile: ${profileError.message}`)
+    }
+    
+    // 2. Create the employee record with profile link
     const insertData: Record<string, any> = {
+      profile_id: profileData.id,
       first_name: newEmployee.first_name,
       last_name: newEmployee.last_name,
       email_work: newEmployee.email_work,
       employment_status: newEmployee.employment_status,
-      employment_type: newEmployee.employment_type
+      employment_type: newEmployee.employment_type,
+      needs_user_account: newEmployee.send_invite // Track if account is needed
     }
     
     // Add optional fields only if provided
@@ -761,14 +782,43 @@ async function createEmployee() {
     
     if (error) throw error
     
-    closeAddDialog()
-    uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added successfully!`)
-    await refreshData()
-    
-    // TODO: If send_invite is true, trigger email invitation
-    if (newEmployee.send_invite) {
-      console.log('Email invitation would be sent to:', newEmployee.email_work)
+    // 3. Send email invitation if requested
+    if (newEmployee.send_invite && data) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          const response = await $fetch('/api/admin/users/invite', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            },
+            body: {
+              email: newEmployee.email_work,
+              firstName: newEmployee.first_name,
+              lastName: newEmployee.last_name,
+              employeeId: data.id,
+              profileId: profileData.id
+            }
+          })
+          
+          if (response.success) {
+            uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added and invitation sent!`)
+          } else {
+            uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added! (Invitation could not be sent)`)
+          }
+        } else {
+          uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added! (Login required to send invitation)`)
+        }
+      } catch (inviteError: any) {
+        console.error('Failed to send invitation:', inviteError)
+        uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added! (Invitation failed: ${inviteError.data?.message || inviteError.message || 'Unknown error'})`)
+      }
+    } else {
+      uiStore.showSuccess(`${newEmployee.first_name} ${newEmployee.last_name} added successfully!`)
     }
+    
+    closeAddDialog()
+    await refreshData()
   } catch (error: any) {
     console.error('Create employee error:', error)
     uiStore.showError(error.message || 'Failed to create employee')

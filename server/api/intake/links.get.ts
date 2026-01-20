@@ -60,8 +60,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Generate full URLs for each link
-  const config = useRuntimeConfig()
-  const baseUrl = config.public.appUrl || process.env.NUXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const baseUrl = getAppUrl()
 
   const linksWithUrls = links?.map(link => ({
     ...link,
