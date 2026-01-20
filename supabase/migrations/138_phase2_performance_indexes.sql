@@ -13,14 +13,14 @@
 -- -----------------------------------------------------
 
 -- Active employees by department (roster filtering)
+-- Note: employees table uses employment_status column, not is_active
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employees') THEN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_employees_dept_active') THEN
-      CREATE INDEX idx_employees_dept_active 
-        ON employees(department_id, is_active) 
-        WHERE is_active = true;
-      RAISE NOTICE 'Created idx_employees_dept_active';
+    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_employees_dept_status') THEN
+      CREATE INDEX idx_employees_dept_status 
+        ON employees(department_id, employment_status);
+      RAISE NOTICE 'Created idx_employees_dept_status';
     END IF;
     
     -- Employee lookup by email
@@ -45,23 +45,28 @@ END $$;
 -- 2.2 RECRUITING INDEXES
 -- -----------------------------------------------------
 
--- Candidates by pipeline stage (kanban board)
+-- Candidates by status (kanban board)
+-- Note: candidates table uses 'status' column, not 'pipeline_stage'
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'candidates') THEN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_candidates_stage_date') THEN
-      CREATE INDEX idx_candidates_stage_date 
-        ON candidates(pipeline_stage, created_at DESC);
-      RAISE NOTICE 'Created idx_candidates_stage_date';
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'candidates' AND column_name = 'status') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_candidates_status_date') THEN
+        CREATE INDEX idx_candidates_status_date 
+          ON candidates(status, created_at DESC);
+        RAISE NOTICE 'Created idx_candidates_status_date';
+      END IF;
     END IF;
   END IF;
   
   -- Also check recruiting_candidates table
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'recruiting_candidates') THEN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_recruiting_candidates_stage') THEN
-      CREATE INDEX idx_recruiting_candidates_stage 
-        ON recruiting_candidates(pipeline_stage, created_at DESC);
-      RAISE NOTICE 'Created idx_recruiting_candidates_stage';
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'recruiting_candidates' AND column_name = 'status') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_recruiting_candidates_status') THEN
+        CREATE INDEX idx_recruiting_candidates_status 
+          ON recruiting_candidates(status, created_at DESC);
+        RAISE NOTICE 'Created idx_recruiting_candidates_status';
+      END IF;
     END IF;
   END IF;
 END $$;
@@ -87,22 +92,31 @@ END $$;
 -- 2.4 TIME OFF INDEXES
 -- -----------------------------------------------------
 
--- Pending time off requests for approvers
+-- Pending time off requests for approvers (check columns exist first)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_off_requests') THEN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_time_off_pending') THEN
-      CREATE INDEX idx_time_off_pending 
-        ON time_off_requests(approver_id, requested_at) 
-        WHERE status = 'pending';
-      RAISE NOTICE 'Created idx_time_off_pending';
+    -- Check if approver_id column exists before creating index
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'time_off_requests' AND column_name = 'approver_id') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_time_off_pending') THEN
+        CREATE INDEX idx_time_off_pending 
+          ON time_off_requests(approver_id, requested_at) 
+          WHERE status = 'pending';
+        RAISE NOTICE 'Created idx_time_off_pending';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Skipping idx_time_off_pending: approver_id column does not exist';
     END IF;
     
-    -- Time off by employee
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_time_off_employee') THEN
-      CREATE INDEX idx_time_off_employee 
-        ON time_off_requests(employee_id, start_date DESC);
-      RAISE NOTICE 'Created idx_time_off_employee';
+    -- Time off by employee (check columns exist)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'time_off_requests' AND column_name = 'employee_id') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_time_off_employee') THEN
+        CREATE INDEX idx_time_off_employee 
+          ON time_off_requests(employee_id, start_date DESC);
+        RAISE NOTICE 'Created idx_time_off_employee';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Skipping idx_time_off_employee: employee_id column does not exist';
     END IF;
   END IF;
 END $$;
@@ -111,21 +125,29 @@ END $$;
 -- 2.5 SCHEDULE INDEXES
 -- -----------------------------------------------------
 
--- Shifts by schedule and date
+-- Shifts by schedule and date (check columns exist)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'shifts') THEN
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_shifts_schedule_date') THEN
-      CREATE INDEX idx_shifts_schedule_date 
-        ON shifts(schedule_week_id, shift_date);
-      RAISE NOTICE 'Created idx_shifts_schedule_date';
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shifts' AND column_name = 'schedule_week_id') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_shifts_schedule_date') THEN
+        CREATE INDEX idx_shifts_schedule_date 
+          ON shifts(schedule_week_id, shift_date);
+        RAISE NOTICE 'Created idx_shifts_schedule_date';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Skipping idx_shifts_schedule_date: schedule_week_id column does not exist';
     END IF;
     
-    -- Shifts by employee
-    IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_shifts_employee_date') THEN
-      CREATE INDEX idx_shifts_employee_date 
-        ON shifts(employee_id, shift_date DESC);
-      RAISE NOTICE 'Created idx_shifts_employee_date';
+    -- Shifts by employee (check columns exist)
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'shifts' AND column_name = 'employee_id') THEN
+      IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_shifts_employee_date') THEN
+        CREATE INDEX idx_shifts_employee_date 
+          ON shifts(employee_id, shift_date DESC);
+        RAISE NOTICE 'Created idx_shifts_employee_date';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Skipping idx_shifts_employee_date: employee_id column does not exist';
     END IF;
   END IF;
 END $$;

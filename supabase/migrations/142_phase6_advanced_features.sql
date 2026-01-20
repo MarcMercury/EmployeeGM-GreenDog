@@ -265,7 +265,7 @@ BEGIN
     FROM employee_licenses el
     JOIN employees e ON e.id = el.employee_id
     WHERE el.expiration_date BETWEEN current_date AND current_date + interval '90 days'
-    AND e.is_active = true
+    AND e.employment_status = 'active'
     AND NOT EXISTS (
       SELECT 1 FROM compliance_alerts ca 
       WHERE ca.entity_id = el.employee_id 

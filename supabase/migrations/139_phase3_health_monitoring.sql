@@ -31,8 +31,9 @@ BEGIN
   v_start_time := clock_timestamp();
   
   -- Count active employees (if table exists)
+  -- Note: employees uses employment_status column, not is_active
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employees') THEN
-    SELECT count(*) INTO v_active_employees FROM employees WHERE is_active = true;
+    SELECT count(*) INTO v_active_employees FROM employees WHERE employment_status = 'active';
   END IF;
   
   -- Count total profiles
