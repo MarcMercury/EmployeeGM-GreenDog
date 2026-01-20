@@ -3,9 +3,9 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-4 flex-wrap gap-3">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Lead CRM</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">Event Leads</h1>
         <p class="text-body-2 text-grey-darken-1">
-          Track and manage your marketing leads
+          Track and manage leads from marketing events
         </p>
       </div>
       <div class="d-flex gap-2">

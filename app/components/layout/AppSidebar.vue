@@ -124,21 +124,36 @@
         <v-list-item to="/marketing/command-center" title="Command Center" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Calendar - visible to marketing roles -->
         <v-list-item to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Events and Leads -->
+        <!-- Events -->
         <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/leads" title="Leads CRM" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- EzyVet Ecosystem -->
-        <v-list-item to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Marketing Hubs -->
         <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <!-- Visible to all marketing roles -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/partnerships" title="Referrals" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasMarketingAccess" to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
+
+      <!-- CRM & Analytics Group - Marketing Access -->
+      <v-list-group v-if="hasMarketingAccess && !rail" value="crm-analytics">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-chart-box"
+            title="CRM & Analytics"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <!-- EzyVet Ecosystem -->
+        <v-list-item to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Event Leads -->
+        <v-list-item to="/growth/leads" title="Event Leads" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <!-- Referral CRM -->
+        <v-list-item to="/marketing/partnerships" title="Referral CRM" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
 
       <!-- GDU (Education) Group - Education Access -->
       <v-list-group v-if="hasEducationAccess && !rail" value="gdu">
