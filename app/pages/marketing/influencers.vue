@@ -544,7 +544,6 @@ function getCompensationLabel(type: string | null): string {
   const option = compensationTypeOptions.find(o => o.value === type)
   return option?.title || type || 'Unknown'
 }
-}
 
 // =====================================================
 // CRUD OPERATIONS
