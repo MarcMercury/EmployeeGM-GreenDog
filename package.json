@@ -1,5 +1,7 @@
 {
-  "name": "EmployeeGM-GreenDog",
+  "name": "teamos-greendog",
+  "version": "1.0.0",
+  "description": "Enterprise Veterinary Workforce Management Platform",
   "type": "module",
   "private": true,
   "scripts": {
@@ -8,7 +10,9 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "seed:users": "npx tsx scripts/create_users.ts"
+    "seed:users": "npx tsx scripts/create_users.ts",
+    "db:migrate": "npx tsx scripts/apply-migrations.mjs",
+    "db:types": "npx supabase gen types typescript --project-id <your-project-id> > types/database.types.ts"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
