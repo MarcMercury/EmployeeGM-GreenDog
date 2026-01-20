@@ -799,8 +799,11 @@ interface Employee {
   time_off_balances: {
     id: string
     time_off_type_id: string
-    balance_hours: number
-    year: number
+    accrued_hours: number
+    used_hours: number
+    pending_hours: number
+    carryover_hours: number
+    period_year: number
   }[] | null
 }
 
@@ -1031,7 +1034,7 @@ const fetchAllData = async () => {
       supabase.from('locations').select('id, name').order('name'),
       supabase.from('time_off_types').select('id, name, code').order('name'),
       // Fetch PTO balances separately to avoid PostgREST relationship issues
-      supabase.from('employee_time_off_balances').select('id, employee_id, time_off_type_id, balance_hours, year'),
+      supabase.from('employee_time_off_balances').select('id, employee_id, time_off_type_id, accrued_hours, used_hours, pending_hours, carryover_hours, period_year'),
       // Fetch profiles separately
       supabase.from('profiles').select('id, role, is_active, email, auth_user_id')
     ])
@@ -1084,8 +1087,10 @@ const openEditDialog = async (employee: Employee) => {
   const currentYear = new Date().getFullYear()
   if (employee.time_off_balances) {
     for (const bal of employee.time_off_balances) {
-      if (bal.year === currentYear) {
-        ptoBalances[bal.time_off_type_id] = bal.balance_hours || 0
+      if (bal.period_year === currentYear) {
+        // Calculate available hours: accrued + carryover - used - pending
+        const available = (bal.accrued_hours || 0) + (bal.carryover_hours || 0) - (bal.used_hours || 0) - (bal.pending_hours || 0)
+        ptoBalances[bal.time_off_type_id] = available
       }
     }
   }
@@ -1384,9 +1389,12 @@ const saveChanges = async () => {
         .upsert({
           employee_id: editingEmployee.value.id,
           time_off_type_id: typeId,
-          balance_hours: hours,
-          year: currentYear
-        }, { onConflict: 'employee_id,time_off_type_id,year' })
+          accrued_hours: hours,
+          used_hours: 0,
+          pending_hours: 0,
+          carryover_hours: 0,
+          period_year: currentYear
+        }, { onConflict: 'employee_id,time_off_type_id,period_year' })
     }
 
     // 5. Log all changes

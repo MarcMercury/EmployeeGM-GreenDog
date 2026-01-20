@@ -38,6 +38,9 @@
               <h1 class="text-h5 font-weight-bold text-grey-darken-4 mb-1">
                 {{ employee.preferred_name || employee.first_name }} {{ employee.last_name }}
               </h1>
+              <p v-if="employee.employee_number" class="text-caption text-grey-darken-1 mb-1">
+                {{ employee.employee_number }}
+              </p>
               <p class="text-body-1 text-grey-darken-1 mb-3">
                 {{ employee.position?.title || 'Team Member' }}
               </p>
@@ -101,6 +104,15 @@
                 </v-list-item-title>
                 <v-list-item-subtitle class="text-caption">Work Email</v-list-item-subtitle>
               </v-list-item>
+
+              <!-- Personal Email (Admin/Self only) -->
+              <v-list-item v-if="canViewSensitiveData && employee.email_personal">
+                <template #prepend>
+                  <v-icon size="18" color="grey-darken-1">mdi-email</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ employee.email_personal }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">Personal Email</v-list-item-subtitle>
+              </v-list-item>
               
               <v-list-item v-if="employee.phone_mobile">
                 <template #prepend>
@@ -117,6 +129,20 @@
                 <v-list-item-title class="text-body-2">{{ employee.phone_work }}</v-list-item-title>
                 <v-list-item-subtitle class="text-caption">Work Phone</v-list-item-subtitle>
               </v-list-item>
+
+              <!-- Address (Admin/Self only) -->
+              <template v-if="canViewSensitiveData && employee.address_street">
+                <v-divider class="my-2" />
+                <v-list-item>
+                  <template #prepend>
+                    <v-icon size="18" color="grey-darken-1">mdi-map-marker</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">{{ employee.address_street }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ [employee.address_city, employee.address_state, employee.address_zip].filter(Boolean).join(', ') }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
 
               <!-- Emergency Contact (Admin/Self only) -->
               <template v-if="canViewSensitiveData && emergencyContact.name">
@@ -174,6 +200,17 @@
                 </v-list-item-subtitle>
               </v-list-item>
 
+              <!-- Termination Info (for terminated employees) -->
+              <v-list-item v-if="employee.employment_status === 'terminated' && employee.termination_date">
+                <template #prepend>
+                  <v-icon size="18" color="error">mdi-account-off</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2 text-error">Terminated</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ formatDate(employee.termination_date) }}
+                </v-list-item-subtitle>
+              </v-list-item>
+
               <!-- Department & Location -->
               <v-list-item v-if="employee.department?.name">
                 <template #prepend>
@@ -182,6 +219,19 @@
                 <v-list-item-title class="text-body-2">{{ employee.department.name }}</v-list-item-title>
                 <v-list-item-subtitle v-if="employee.location?.name" class="text-caption">
                   {{ employee.location.name }}
+                </v-list-item-subtitle>
+              </v-list-item>
+
+              <!-- Manager / Reports To -->
+              <v-list-item v-if="employee.manager">
+                <template #prepend>
+                  <v-icon size="18" color="teal">mdi-account-supervisor</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">Reports To</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  <NuxtLink :to="`/roster/${employee.manager.id}`" class="text-primary text-decoration-none">
+                    {{ employee.manager.preferred_name || employee.manager.first_name }} {{ employee.manager.last_name }}
+                  </NuxtLink>
                 </v-list-item-subtitle>
               </v-list-item>
             </v-list>
@@ -310,6 +360,15 @@
                         {{ employee.location.name }}
                       </v-chip>
                     </div>
+
+                    <!-- Personal Info (Admin/Self only) -->
+                    <template v-if="canViewSensitiveData && employee?.date_of_birth">
+                      <v-divider class="my-4" />
+                      <div class="d-flex align-center gap-2">
+                        <v-icon size="18" color="grey-darken-1">mdi-cake-variant</v-icon>
+                        <span class="text-body-2">Born {{ formatDate(employee.date_of_birth) }}</span>
+                      </div>
+                    </template>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -846,6 +905,24 @@
 
           <!-- TAB 4: HISTORY & NOTES -->
           <v-window-item v-if="canViewSensitiveData" value="history">
+            <!-- Internal Admin Notes (from employee.notes_internal) -->
+            <v-row v-if="employee.notes_internal" class="mb-4">
+              <v-col cols="12">
+                <v-card class="bg-amber-lighten-5 shadow-sm rounded-xl" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="amber-darken-2">mdi-note-alert</v-icon>
+                    Internal Admin Notes
+                    <v-chip size="x-small" variant="tonal" color="amber-darken-2" class="ml-2">
+                      Admin Only
+                    </v-chip>
+                  </v-card-title>
+                  <v-card-text>
+                    <p class="text-body-2 mb-0" style="white-space: pre-wrap;">{{ employee.notes_internal }}</p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
             <v-row>
               <!-- Notes Section -->
               <v-col cols="12" md="6">
@@ -1827,7 +1904,11 @@ const canViewSensitiveData = computed(() => {
 })
 
 const totalPTOHours = computed(() => {
-  return ptoBalances.value.reduce((sum, b) => sum + (b.balance_hours || 0), 0)
+  // Calculate available PTO: accrued + carryover - used - pending
+  return ptoBalances.value.reduce((sum, b) => {
+    const available = (b.accrued_hours || 0) + (b.carryover_hours || 0) - (b.used_hours || 0) - (b.pending_hours || 0)
+    return sum + available
+  }, 0)
 })
 
 const expiringLicensesCount = computed(() => {
@@ -2204,7 +2285,8 @@ async function loadEmployeeData() {
         profile:profiles!employees_profile_id_fkey(id, email, avatar_url, bio),
         department:departments(id, name),
         position:job_positions(id, title),
-        location:locations(id, name)
+        location:locations(id, name),
+        manager:employees!employees_manager_employee_id_fkey(id, first_name, last_name, preferred_name)
       `)
       .eq('id', employeeId.value)
       .single()
@@ -2216,6 +2298,13 @@ async function loadEmployeeData() {
     profileEmail.value = emp.profile?.email || ''
     avatarUrl.value = emp.profile?.avatar_url || ''
     bio.value = emp.profile?.bio || ''
+    
+    // Populate emergency contact from employee data
+    emergencyContact.value = {
+      name: emp.emergency_contact_name || '',
+      phone: emp.emergency_contact_phone || '',
+      relationship: emp.emergency_contact_relationship || ''
+    }
 
     // Load licenses and certifications for everyone (public info)
     await Promise.all([
@@ -2343,7 +2432,7 @@ async function loadPTOBalances() {
         time_off_type:time_off_types(name)
       `)
       .eq('employee_id', employeeId.value)
-      .eq('year', currentYear)
+      .eq('period_year', currentYear)
 
     ptoBalances.value = data || []
   } catch (err) {

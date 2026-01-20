@@ -904,7 +904,7 @@ async function fetchTimeOffBalances() {
         time_off_type:time_off_types(id, name, code)
       `)
       .eq('employee_id', employeeId)
-      .eq('year', currentYear)
+      .eq('period_year', currentYear)
 
     if (error) throw error
     
@@ -918,9 +918,11 @@ async function fetchTimeOffBalances() {
         const typeCode = b.time_off_type?.code || typeName
         const style = typeStyles[typeName] || typeStyles[typeCode] || { icon: 'mdi-calendar', color: '#9E9E9E' }
         
-        const used = b.hours_used || 0
-        const total = b.hours_allocated || 0
-        const available = Math.max(0, total - used)
+        // Calculate from accrued, used, pending, carryover
+        const used = b.used_hours || 0
+        const total = (b.accrued_hours || 0) + (b.carryover_hours || 0)
+        const pending = b.pending_hours || 0
+        const available = Math.max(0, total - used - pending)
         
         totalUsed += used
         totalAvailable += available
