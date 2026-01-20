@@ -1428,10 +1428,70 @@ async function updateInfluencerField(field: string, value: any) {
                   </div>
                 </v-col>
 
+                <!-- Contract Dates -->
+                <v-col cols="12" v-if="selectedInfluencer.contract_start_date || selectedInfluencer.contract_end_date">
+                  <div class="d-flex flex-wrap gap-3">
+                    <div v-if="selectedInfluencer.contract_start_date">
+                      <span class="text-caption text-medium-emphasis">Contract Start:</span>
+                      <span class="ml-1">{{ formatDate(selectedInfluencer.contract_start_date) }}</span>
+                    </div>
+                    <div v-if="selectedInfluencer.contract_end_date">
+                      <span class="text-caption text-medium-emphasis">Contract End:</span>
+                      <span class="ml-1">{{ formatDate(selectedInfluencer.contract_end_date) }}</span>
+                    </div>
+                  </div>
+                </v-col>
+
                 <v-col v-if="selectedInfluencer.promo_code" cols="12">
                   <v-alert type="success" variant="tonal" density="compact">
                     <strong>Promo Code:</strong> {{ selectedInfluencer.promo_code }}
                   </v-alert>
+                </v-col>
+
+                <!-- Audience Demographics -->
+                <v-col cols="12" v-if="selectedInfluencer.audience_age_range || selectedInfluencer.audience_location">
+                  <v-divider class="mb-3" />
+                  <div class="text-subtitle-2 mb-2">Audience Demographics</div>
+                  <div class="d-flex flex-wrap gap-3">
+                    <div v-if="selectedInfluencer.audience_age_range">
+                      <v-icon size="16" class="mr-1">mdi-account-group</v-icon>
+                      <span class="text-caption text-medium-emphasis">Age Range:</span>
+                      <span class="ml-1">{{ selectedInfluencer.audience_age_range }}</span>
+                    </div>
+                    <div v-if="selectedInfluencer.audience_location">
+                      <v-icon size="16" class="mr-1">mdi-map-marker-radius</v-icon>
+                      <span class="text-caption text-medium-emphasis">Location:</span>
+                      <span class="ml-1">{{ selectedInfluencer.audience_location }}</span>
+                    </div>
+                  </div>
+                </v-col>
+
+                <!-- Content Preferences -->
+                <v-col cols="12" v-if="selectedInfluencer.preferred_content_types?.length || selectedInfluencer.content_guidelines">
+                  <v-divider class="mb-3" />
+                  <div class="text-subtitle-2 mb-2">Content Preferences</div>
+                  <div v-if="selectedInfluencer.preferred_content_types?.length" class="mb-2">
+                    <span class="text-caption text-medium-emphasis mr-2">Preferred Types:</span>
+                    <v-chip v-for="type in selectedInfluencer.preferred_content_types" :key="type" size="x-small" variant="tonal" class="mr-1">{{ type }}</v-chip>
+                  </div>
+                  <div v-if="selectedInfluencer.content_guidelines">
+                    <span class="text-caption text-medium-emphasis">Guidelines:</span>
+                    <p class="text-body-2 mt-1">{{ selectedInfluencer.content_guidelines }}</p>
+                  </div>
+                </v-col>
+
+                <!-- Media Kit & Tags -->
+                <v-col cols="12" v-if="selectedInfluencer.media_kit_url || selectedInfluencer.tags?.length">
+                  <v-divider class="mb-3" />
+                  <div class="d-flex flex-wrap align-center gap-3">
+                    <v-btn v-if="selectedInfluencer.media_kit_url" variant="tonal" size="small" :href="selectedInfluencer.media_kit_url" target="_blank" prepend-icon="mdi-file-document">
+                      View Media Kit
+                    </v-btn>
+                    <div v-if="selectedInfluencer.tags?.length" class="d-flex align-center gap-1">
+                      <v-icon size="16">mdi-tag-multiple</v-icon>
+                      <v-chip v-for="tag in selectedInfluencer.tags" :key="tag" size="x-small" variant="outlined" class="mr-1">{{ tag }}</v-chip>
+                    </div>
+                  </div>
                 </v-col>
 
                 <v-col v-if="selectedInfluencer.bio" cols="12">
@@ -1473,13 +1533,34 @@ async function updateInfluencerField(field: string, value: any) {
                           <v-list-item-title>{{ formatFollowers(selectedInfluencer.tiktok_followers) }} followers</v-list-item-title>
                           <v-list-item-subtitle v-if="selectedInfluencer.tiktok_handle">@{{ selectedInfluencer.tiktok_handle }}</v-list-item-subtitle>
                         </v-list-item>
-                        <v-list-item v-if="selectedInfluencer.youtube_subscribers">
+                        <v-list-item v-if="selectedInfluencer.youtube_subscribers || selectedInfluencer.youtube_url">
                           <template #prepend>
                             <v-avatar color="red" size="32"><v-icon size="18" color="white">mdi-youtube</v-icon></v-avatar>
                           </template>
                           <v-list-item-title>{{ formatFollowers(selectedInfluencer.youtube_subscribers) }} subscribers</v-list-item-title>
+                          <template #append v-if="selectedInfluencer.youtube_url">
+                            <v-btn icon size="x-small" variant="text" :href="selectedInfluencer.youtube_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                          </template>
+                        </v-list-item>
+                        <v-list-item v-if="selectedInfluencer.facebook_url">
+                          <template #prepend>
+                            <v-avatar color="blue" size="32"><v-icon size="18" color="white">mdi-facebook</v-icon></v-avatar>
+                          </template>
+                          <v-list-item-title>Facebook</v-list-item-title>
+                          <template #append>
+                            <v-btn icon size="x-small" variant="text" :href="selectedInfluencer.facebook_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                          </template>
                         </v-list-item>
                       </v-list>
+                      <!-- Social Profile Links -->
+                      <div v-if="selectedInfluencer.instagram_url || selectedInfluencer.youtube_url || selectedInfluencer.facebook_url" class="mt-3">
+                        <div class="text-caption text-medium-emphasis mb-2">Profile Links</div>
+                        <div class="d-flex flex-wrap gap-2">
+                          <v-btn v-if="selectedInfluencer.instagram_url" size="small" variant="tonal" color="pink" :href="selectedInfluencer.instagram_url" target="_blank" prepend-icon="mdi-instagram">Instagram</v-btn>
+                          <v-btn v-if="selectedInfluencer.youtube_url" size="small" variant="tonal" color="red" :href="selectedInfluencer.youtube_url" target="_blank" prepend-icon="mdi-youtube">YouTube</v-btn>
+                          <v-btn v-if="selectedInfluencer.facebook_url" size="small" variant="tonal" color="blue" :href="selectedInfluencer.facebook_url" target="_blank" prepend-icon="mdi-facebook">Facebook</v-btn>
+                        </div>
+                      </div>
                     </v-card-text>
                   </v-card>
                 </v-col>
