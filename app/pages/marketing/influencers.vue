@@ -1367,26 +1367,29 @@ async function updateInfluencerField(field: string, value: any) {
                 <v-col cols="12" md="6">
                   <v-list density="compact">
                     <v-list-subheader>Contact Information</v-list-subheader>
-                    <v-list-item v-if="selectedInfluencer.email">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-email</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.email }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.email || 'Not set' }}</v-list-item-title>
+                      <v-list-item-subtitle>Email</v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item v-if="selectedInfluencer.phone">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-phone</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.phone }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.phone || 'Not set' }}</v-list-item-title>
+                      <v-list-item-subtitle>Phone</v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item v-if="selectedInfluencer.location">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-map-marker</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.location }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.location || 'Not set' }}</v-list-item-title>
+                      <v-list-item-subtitle>Location</v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item v-if="selectedInfluencer.content_niche">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-tag</v-icon></template>
-                      <v-list-item-title>{{ getNicheLabel(selectedInfluencer.content_niche) }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.content_niche ? getNicheLabel(selectedInfluencer.content_niche) : 'Not set' }}</v-list-item-title>
                       <v-list-item-subtitle>Content Niche</v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item v-if="selectedInfluencer.source">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-account-search</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.source }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.source || 'Not set' }}</v-list-item-title>
                       <v-list-item-subtitle>Source/How Found</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
@@ -1394,119 +1397,133 @@ async function updateInfluencerField(field: string, value: any) {
                 <v-col cols="12" md="6">
                   <v-list density="compact">
                     <v-list-subheader>Pet Information</v-list-subheader>
-                    <v-list-item v-if="selectedInfluencer.pet_name">
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-paw</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.pet_name }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.pet_name || 'Not set' }}</v-list-item-title>
                       <v-list-item-subtitle>
-                        {{ [selectedInfluencer.pet_type, selectedInfluencer.pet_breed, selectedInfluencer.pet_age].filter(Boolean).join(' • ') }}
+                        {{ [selectedInfluencer.pet_type, selectedInfluencer.pet_breed, selectedInfluencer.pet_age].filter(Boolean).join(' • ') || 'Pet details not set' }}
                       </v-list-item-subtitle>
                     </v-list-item>
-                    <v-list-item v-if="selectedInfluencer.pet_instagram">
+                    <v-list-item>
                       <template #prepend><v-icon size="small" color="pink">mdi-instagram</v-icon></template>
-                      <v-list-item-title>@{{ selectedInfluencer.pet_instagram }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.pet_instagram ? '@' + selectedInfluencer.pet_instagram : 'Not set' }}</v-list-item-title>
                       <v-list-item-subtitle>Pet's Instagram</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
                 </v-col>
 
-                <!-- Collaboration Details -->
-                <v-col cols="12" v-if="selectedInfluencer.collaboration_type || selectedInfluencer.compensation_type || selectedInfluencer.compensation_rate">
+                <!-- Collaboration Details - Always show -->
+                <v-col cols="12">
                   <v-divider class="mb-3" />
                   <div class="text-subtitle-2 mb-2">Collaboration Details</div>
                   <div class="d-flex flex-wrap gap-2">
-                    <v-chip v-if="selectedInfluencer.collaboration_type" size="small" variant="tonal" color="primary">
+                    <v-chip size="small" variant="tonal" color="primary">
                       <v-icon start size="14">mdi-handshake</v-icon>
-                      {{ getCollaborationLabel(selectedInfluencer.collaboration_type) }}
+                      {{ selectedInfluencer.collaboration_type ? getCollaborationLabel(selectedInfluencer.collaboration_type) : 'Not set' }}
                     </v-chip>
-                    <v-chip v-if="selectedInfluencer.compensation_type" size="small" variant="tonal" color="success">
+                    <v-chip size="small" variant="tonal" color="success">
                       <v-icon start size="14">mdi-currency-usd</v-icon>
-                      {{ getCompensationLabel(selectedInfluencer.compensation_type) }}
+                      {{ selectedInfluencer.compensation_type ? getCompensationLabel(selectedInfluencer.compensation_type) : 'Not set' }}
                     </v-chip>
-                    <v-chip v-if="selectedInfluencer.compensation_rate" size="small" variant="tonal" color="warning">
-                      ${{ selectedInfluencer.compensation_rate }}
+                    <v-chip size="small" variant="tonal" color="warning">
+                      {{ selectedInfluencer.compensation_rate ? '$' + selectedInfluencer.compensation_rate : 'Rate not set' }}
                     </v-chip>
                   </div>
                 </v-col>
 
-                <!-- Contract Dates -->
-                <v-col cols="12" v-if="selectedInfluencer.contract_start_date || selectedInfluencer.contract_end_date">
+                <!-- Contract Dates - Always show -->
+                <v-col cols="12">
                   <div class="d-flex flex-wrap gap-3">
-                    <div v-if="selectedInfluencer.contract_start_date">
+                    <div>
                       <span class="text-caption text-medium-emphasis">Contract Start:</span>
-                      <span class="ml-1">{{ formatDate(selectedInfluencer.contract_start_date) }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.contract_start_date ? formatDate(selectedInfluencer.contract_start_date) : 'Not set' }}</span>
                     </div>
-                    <div v-if="selectedInfluencer.contract_end_date">
+                    <div>
                       <span class="text-caption text-medium-emphasis">Contract End:</span>
-                      <span class="ml-1">{{ formatDate(selectedInfluencer.contract_end_date) }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.contract_end_date ? formatDate(selectedInfluencer.contract_end_date) : 'Not set' }}</span>
                     </div>
                   </div>
                 </v-col>
 
-                <v-col v-if="selectedInfluencer.promo_code" cols="12">
-                  <v-alert type="success" variant="tonal" density="compact">
-                    <strong>Promo Code:</strong> {{ selectedInfluencer.promo_code }}
+                <v-col cols="12">
+                  <v-alert :type="selectedInfluencer.promo_code ? 'success' : 'info'" variant="tonal" density="compact">
+                    <strong>Promo Code:</strong> {{ selectedInfluencer.promo_code || 'Not set' }}
                   </v-alert>
                 </v-col>
 
-                <!-- Audience Demographics -->
-                <v-col cols="12" v-if="selectedInfluencer.audience_age_range || selectedInfluencer.audience_location">
+                <!-- Audience Demographics - Always show -->
+                <v-col cols="12">
                   <v-divider class="mb-3" />
                   <div class="text-subtitle-2 mb-2">Audience Demographics</div>
                   <div class="d-flex flex-wrap gap-3">
-                    <div v-if="selectedInfluencer.audience_age_range">
+                    <div>
                       <v-icon size="16" class="mr-1">mdi-account-group</v-icon>
                       <span class="text-caption text-medium-emphasis">Age Range:</span>
-                      <span class="ml-1">{{ selectedInfluencer.audience_age_range }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.audience_age_range || 'Not set' }}</span>
                     </div>
-                    <div v-if="selectedInfluencer.audience_location">
+                    <div>
                       <v-icon size="16" class="mr-1">mdi-map-marker-radius</v-icon>
                       <span class="text-caption text-medium-emphasis">Location:</span>
-                      <span class="ml-1">{{ selectedInfluencer.audience_location }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.audience_location || 'Not set' }}</span>
                     </div>
                   </div>
                 </v-col>
 
-                <!-- Content Preferences -->
-                <v-col cols="12" v-if="selectedInfluencer.preferred_content_types?.length || selectedInfluencer.content_guidelines">
+                <!-- Content Preferences - Always show -->
+                <v-col cols="12">
                   <v-divider class="mb-3" />
                   <div class="text-subtitle-2 mb-2">Content Preferences</div>
-                  <div v-if="selectedInfluencer.preferred_content_types?.length" class="mb-2">
+                  <div class="mb-2">
                     <span class="text-caption text-medium-emphasis mr-2">Preferred Types:</span>
-                    <v-chip v-for="type in selectedInfluencer.preferred_content_types" :key="type" size="x-small" variant="tonal" class="mr-1">{{ type }}</v-chip>
+                    <template v-if="selectedInfluencer.preferred_content_types?.length">
+                      <v-chip v-for="type in selectedInfluencer.preferred_content_types" :key="type" size="x-small" variant="tonal" class="mr-1">{{ type }}</v-chip>
+                    </template>
+                    <span v-else class="text-body-2 text-medium-emphasis">Not set</span>
                   </div>
-                  <div v-if="selectedInfluencer.content_guidelines">
+                  <div>
                     <span class="text-caption text-medium-emphasis">Guidelines:</span>
-                    <p class="text-body-2 mt-1">{{ selectedInfluencer.content_guidelines }}</p>
+                    <p class="text-body-2 mt-1">{{ selectedInfluencer.content_guidelines || 'Not set' }}</p>
                   </div>
                 </v-col>
 
-                <!-- Media Kit & Tags -->
-                <v-col cols="12" v-if="selectedInfluencer.media_kit_url || selectedInfluencer.tags?.length">
+                <!-- Media Kit & Tags - Always show -->
+                <v-col cols="12">
                   <v-divider class="mb-3" />
                   <div class="d-flex flex-wrap align-center gap-3">
-                    <v-btn v-if="selectedInfluencer.media_kit_url" variant="tonal" size="small" :href="selectedInfluencer.media_kit_url" target="_blank" prepend-icon="mdi-file-document">
-                      View Media Kit
-                    </v-btn>
-                    <div v-if="selectedInfluencer.tags?.length" class="d-flex align-center gap-1">
+                    <div>
+                      <span class="text-caption text-medium-emphasis mr-2">Media Kit:</span>
+                      <v-btn v-if="selectedInfluencer.media_kit_url" variant="tonal" size="small" :href="selectedInfluencer.media_kit_url" target="_blank" prepend-icon="mdi-file-document">
+                        View Media Kit
+                      </v-btn>
+                      <span v-else class="text-body-2 text-medium-emphasis">Not set</span>
+                    </div>
+                    <div class="d-flex align-center gap-1">
                       <v-icon size="16">mdi-tag-multiple</v-icon>
-                      <v-chip v-for="tag in selectedInfluencer.tags" :key="tag" size="x-small" variant="outlined" class="mr-1">{{ tag }}</v-chip>
+                      <span class="text-caption text-medium-emphasis mr-1">Tags:</span>
+                      <template v-if="selectedInfluencer.tags?.length">
+                        <v-chip v-for="tag in selectedInfluencer.tags" :key="tag" size="x-small" variant="outlined" class="mr-1">{{ tag }}</v-chip>
+                      </template>
+                      <span v-else class="text-body-2 text-medium-emphasis">None</span>
                     </div>
                   </div>
                 </v-col>
 
-                <v-col v-if="selectedInfluencer.bio" cols="12">
+                <!-- Bio - Always show -->
+                <v-col cols="12">
                   <div class="text-subtitle-2 mb-1">Bio</div>
-                  <p class="text-body-2">{{ selectedInfluencer.bio }}</p>
+                  <p class="text-body-2">{{ selectedInfluencer.bio || 'Not set' }}</p>
                 </v-col>
 
-                <v-col v-if="selectedInfluencer.agreement_details" cols="12">
+                <!-- Agreement Details - Always show -->
+                <v-col cols="12">
                   <div class="text-subtitle-2 mb-1">Agreement Details</div>
-                  <p class="text-body-2">{{ selectedInfluencer.agreement_details }}</p>
+                  <p class="text-body-2">{{ selectedInfluencer.agreement_details || 'Not set' }}</p>
                 </v-col>
 
-                <v-col v-if="selectedInfluencer.notes" cols="12">
-                  <div class="text-subtitle-2 mb-1">Notes</div>
-                  <p class="text-body-2">{{ selectedInfluencer.notes }}</p>
+                <!-- Notes - Always show -->
+                <v-col cols="12">
+                  <div class="text-subtitle-2 mb-1">Internal Notes</div>
+                  <p class="text-body-2">{{ selectedInfluencer.notes || 'No notes' }}</p>
                 </v-col>
               </v-row>
             </v-tabs-window-item>
