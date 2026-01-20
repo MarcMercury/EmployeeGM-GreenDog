@@ -66,23 +66,34 @@ END $$;
 -- 3. AUDIT LOG IMMUTABILITY
 -- =====================================================
 
--- Prevent any modification to audit logs
-CREATE OR REPLACE FUNCTION public.prevent_audit_modification()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+-- Prevent any modification to audit logs (only if table exists)
+DO $$
 BEGIN
-  RAISE EXCEPTION 'Audit log records cannot be modified or deleted';
-END;
-$$;
+  -- Only create if audit_log table exists
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_log') THEN
+    -- Create the prevention function
+    CREATE OR REPLACE FUNCTION public.prevent_audit_modification()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+    AS $func$
+    BEGIN
+      RAISE EXCEPTION 'Audit log records cannot be modified or deleted';
+    END;
+    $func$;
 
--- Drop existing trigger if any and recreate
-DROP TRIGGER IF EXISTS audit_log_immutable ON audit_log;
-CREATE TRIGGER audit_log_immutable
-  BEFORE UPDATE OR DELETE ON audit_log
-  FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+    -- Drop existing trigger if any and recreate
+    DROP TRIGGER IF EXISTS audit_log_immutable ON audit_log;
+    CREATE TRIGGER audit_log_immutable
+      BEFORE UPDATE OR DELETE ON audit_log
+      FOR EACH ROW EXECUTE FUNCTION prevent_audit_modification();
+    
+    RAISE NOTICE 'Audit log immutability trigger created';
+  ELSE
+    RAISE NOTICE 'Skipping audit_log trigger - table does not exist';
+  END IF;
+END $$;
 
 -- =====================================================
 -- 4. DATABASE HEALTH CHECK FUNCTION
@@ -152,31 +163,56 @@ $$;
 GRANT EXECUTE ON FUNCTION public.check_database_health() TO authenticated;
 
 -- =====================================================
--- 5. PERFORMANCE INDEXES
+-- 5. PERFORMANCE INDEXES (with existence checks)
 -- =====================================================
 
 -- Employees by department (common filter)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_employees_dept_active 
-  ON employees(department_id, is_active) 
-  WHERE is_active = true;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'employees') THEN
+    CREATE INDEX IF NOT EXISTS idx_employees_dept_active 
+      ON employees(department_id, is_active) 
+      WHERE is_active = true;
+  END IF;
+END $$;
 
 -- Candidates by pipeline stage (recruiting flow)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_candidates_stage_date 
-  ON candidates(pipeline_stage, created_at DESC);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'candidates') THEN
+    CREATE INDEX IF NOT EXISTS idx_candidates_stage_date 
+      ON candidates(pipeline_stage, created_at DESC);
+  END IF;
+END $$;
 
 -- Notifications for quick unread count
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notifications_unread 
-  ON notifications(user_id, created_at DESC) 
-  WHERE read_at IS NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notifications') THEN
+    CREATE INDEX IF NOT EXISTS idx_notifications_unread 
+      ON notifications(user_id, created_at DESC) 
+      WHERE read_at IS NULL;
+  END IF;
+END $$;
 
 -- Time off requests pending approval
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_time_off_pending_approver 
-  ON time_off_requests(approver_id, requested_at) 
-  WHERE status = 'pending';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'time_off_requests') THEN
+    CREATE INDEX IF NOT EXISTS idx_time_off_pending_approver 
+      ON time_off_requests(approver_id, requested_at) 
+      WHERE status = 'pending';
+  END IF;
+END $$;
 
--- Audit log by entity (for viewing history)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_audit_entity_time 
-  ON audit_log(entity_type, entity_id, created_at DESC);
+-- Audit log by entity (for viewing history) - only if table exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'audit_log') THEN
+    CREATE INDEX IF NOT EXISTS idx_audit_entity_time 
+      ON audit_log(entity_type, entity_id, created_at DESC);
+  END IF;
+END $$;
 
 -- =====================================================
 -- 6. DATA VALIDATION TRIGGER
