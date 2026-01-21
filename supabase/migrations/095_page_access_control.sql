@@ -50,6 +50,12 @@ CREATE INDEX IF NOT EXISTS idx_page_access_page ON public.page_access(page_id);
 ALTER TABLE public.page_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.page_access ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotency)
+DROP POLICY IF EXISTS "page_definitions_select" ON public.page_definitions;
+DROP POLICY IF EXISTS "page_definitions_admin" ON public.page_definitions;
+DROP POLICY IF EXISTS "page_access_select" ON public.page_access;
+DROP POLICY IF EXISTS "page_access_admin" ON public.page_access;
+
 -- Everyone can view page definitions
 CREATE POLICY "page_definitions_select" ON public.page_definitions
   FOR SELECT TO authenticated USING (true);
