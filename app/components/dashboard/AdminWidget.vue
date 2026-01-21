@@ -34,57 +34,73 @@ async function fetchData() {
   error.value = null
   
   try {
-    // Fetch integration statuses
-    const { data: integrations } = await client
-      .from('integrations')
-      .select('*')
-      .limit(5)
+    // Fetch integration statuses - gracefully handle missing table
+    try {
+      const { data: integrations } = await client
+        .from('integrations')
+        .select('*')
+        .limit(5)
+      
+      systemHealth.value.integrations = (integrations || []).map(i => ({
+        name: i.name,
+        status: i.status || 'unknown',
+        lastSync: i.last_sync_at || 'Never'
+      }))
+      
+      // Check if any integration has issues
+      const hasError = systemHealth.value.integrations.some(i => i.status === 'error')
+      const hasWarning = systemHealth.value.integrations.some(i => i.status === 'warning')
+      systemHealth.value.status = hasError ? 'error' : hasWarning ? 'warning' : 'healthy'
+    } catch {
+      // integrations table may not exist yet
+      systemHealth.value.integrations = []
+      systemHealth.value.status = 'healthy'
+    }
     
-    systemHealth.value.integrations = (integrations || []).map(i => ({
-      name: i.name,
-      status: i.status || 'unknown',
-      lastSync: i.last_sync_at || 'Never'
-    }))
+    // Fetch recent audit logs - gracefully handle missing table
+    try {
+      const { data: logs } = await client
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      
+      auditLogs.value = (logs || []).map(log => ({
+        id: log.id,
+        action: log.action,
+        entity: log.table_name || log.entity_type,
+        timestamp: log.created_at,
+        icon: getActionIcon(log.action),
+        color: getActionColor(log.action)
+      }))
+    } catch {
+      // audit_logs table may not exist yet
+      auditLogs.value = []
+    }
     
-    // Check if any integration has issues
-    const hasError = systemHealth.value.integrations.some(i => i.status === 'error')
-    const hasWarning = systemHealth.value.integrations.some(i => i.status === 'warning')
-    systemHealth.value.status = hasError ? 'error' : hasWarning ? 'warning' : 'healthy'
+    // Fetch analytics - use employees table with employment_status
+    try {
+      const { count: activeUserCount } = await client
+        .from('employees')
+        .select('*', { count: 'exact', head: true })
+        .eq('employment_status', 'active')
+      
+      analytics.value.activeUsers = activeUserCount || 0
+    } catch {
+      analytics.value.activeUsers = 0
+    }
     
-    // Fetch recent audit logs
-    const { data: logs } = await client
-      .from('activity_feed')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    
-    auditLogs.value = (logs || []).map(log => ({
-      id: log.id,
-      action: log.action,
-      entity: log.entity_type,
-      timestamp: log.created_at,
-      icon: getActionIcon(log.action),
-      color: getActionColor(log.action)
-    }))
-    
-    // Fetch analytics
-    const today = new Date().toISOString().split('T')[0]
-    
-    const { count: activeUserCount } = await client
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
-    
-    const { count: actionsToday } = await client
-      .from('activity_feed')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', today)
-    
-    analytics.value = {
-      activeUsers: activeUserCount || 0,
-      actionsToday: actionsToday || 0,
-      pendingTasks: 0,
-      errorRate: 0
+    // Actions today from audit_logs
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { count: actionsToday } = await client
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today)
+      
+      analytics.value.actionsToday = actionsToday || 0
+    } catch {
+      analytics.value.actionsToday = 0
     }
     
   } catch (err: any) {

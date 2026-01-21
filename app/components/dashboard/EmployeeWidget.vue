@@ -37,58 +37,75 @@ async function fetchData() {
     const today = new Date().toISOString().split('T')[0]
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     
-    // Fetch upcoming shifts (next 7 days)
-    const { data: shifts, error: shiftError } = await client
-      .from('schedule_entries')
-      .select('*, shift_template:shift_templates(*)')
-      .eq('employee_id', userId)
-      .gte('date', today)
-      .lte('date', nextWeek)
-      .order('date', { ascending: true })
-      .limit(5)
-    
-    if (shiftError) throw shiftError
-    upcomingShifts.value = shifts || []
-    
-    // Calculate hours this week
-    let totalHours = 0
-    shifts?.forEach(shift => {
-      if (shift.shift_template?.start_time && shift.shift_template?.end_time) {
-        const start = parseTime(shift.shift_template.start_time)
-        const end = parseTime(shift.shift_template.end_time)
-        totalHours += (end - start) / 60
-      }
-    })
-    
-    stats.value.shiftsThisWeek = shifts?.length || 0
-    stats.value.hoursThisWeek = Math.round(totalHours)
+    // Fetch upcoming shifts (next 7 days) - gracefully handle if table doesn't exist
+    try {
+      const { data: shifts } = await client
+        .from('schedule_entries')
+        .select('*, shift_template:shift_templates(*)')
+        .eq('employee_id', userId)
+        .gte('date', today)
+        .lte('date', nextWeek)
+        .order('date', { ascending: true })
+        .limit(5)
+      
+      upcomingShifts.value = shifts || []
+      
+      // Calculate hours this week
+      let totalHours = 0
+      shifts?.forEach(shift => {
+        if (shift.shift_template?.start_time && shift.shift_template?.end_time) {
+          const start = parseTime(shift.shift_template.start_time)
+          const end = parseTime(shift.shift_template.end_time)
+          totalHours += (end - start) / 60
+        }
+      })
+      
+      stats.value.shiftsThisWeek = shifts?.length || 0
+      stats.value.hoursThisWeek = Math.round(totalHours)
+    } catch {
+      // schedule_entries table may not exist yet
+      upcomingShifts.value = []
+      stats.value.shiftsThisWeek = 0
+      stats.value.hoursThisWeek = 0
+    }
     
     // Fetch time-off requests
-    const { data: timeOff, error: toError } = await client
-      .from('time_off_requests')
-      .select('*')
-      .eq('employee_id', userId)
-      .gte('end_date', today)
-      .order('start_date', { ascending: true })
-      .limit(3)
+    try {
+      const { data: timeOff } = await client
+        .from('time_off_requests')
+        .select('*')
+        .eq('employee_id', userId)
+        .gte('end_date', today)
+        .order('start_date', { ascending: true })
+        .limit(3)
+      
+      timeOffRequests.value = timeOff || []
+    } catch {
+      timeOffRequests.value = []
+    }
     
-    if (toError) throw toError
-    timeOffRequests.value = timeOff || []
+    // Fetch training progress - use user_id and correct status enum values
+    try {
+      const { data: enrollments } = await client
+        .from('course_enrollments')
+        .select('*, course:courses(id, title, category, est_minutes)')
+        .eq('user_id', userId)
+        .in('status', ['assigned', 'in_progress'])
+        .order('assigned_at', { ascending: false })
+        .limit(3)
+      
+      trainingProgress.value = (enrollments || []).map(e => ({
+        ...e,
+        progress: e.progress_percent || 0
+      }))
+      stats.value.coursesInProgress = enrollments?.length || 0
+    } catch {
+      // course_enrollments table may not exist
+      trainingProgress.value = []
+      stats.value.coursesInProgress = 0
+    }
     
-    // Fetch training progress
-    const { data: enrollments, error: trainError } = await client
-      .from('course_enrollments')
-      .select('*, course:courses(id, title, category, duration_hours)')
-      .eq('employee_id', userId)
-      .in('status', ['enrolled', 'in_progress'])
-      .order('enrolled_at', { ascending: false })
-      .limit(3)
-    
-    if (trainError) throw trainError
-    trainingProgress.value = enrollments || []
-    stats.value.coursesInProgress = enrollments?.length || 0
-    
-    // Get PTO balance (mock - would come from profile or time_off table)
+    // Get PTO balance from profile if available
     stats.value.ptoBalance = authStore.profile?.pto_balance || 0
     
   } catch (err: any) {

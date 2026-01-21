@@ -32,50 +32,66 @@ async function fetchPersonalData() {
     const today = new Date().toISOString().split('T')[0]
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     
-    // Fetch upcoming shifts (next 7 days)
-    const { data: shifts } = await client
-      .from('schedule_entries')
-      .select('*, shift_template:shift_templates(*)')
-      .eq('employee_id', userId)
-      .gte('date', today)
-      .lte('date', nextWeek)
-      .order('date', { ascending: true })
-      .limit(5)
-    
-    myUpcomingShifts.value = shifts || []
+    // Fetch upcoming shifts (next 7 days) - gracefully handle if table doesn't exist
+    try {
+      const { data: shifts } = await client
+        .from('schedule_entries')
+        .select('*, shift_template:shift_templates(*)')
+        .eq('employee_id', userId)
+        .gte('date', today)
+        .lte('date', nextWeek)
+        .order('date', { ascending: true })
+        .limit(5)
+      
+      myUpcomingShifts.value = shifts || []
+    } catch {
+      myUpcomingShifts.value = []
+    }
     
     // Fetch pending time off requests
-    const { data: timeOff } = await client
-      .from('time_off_requests')
-      .select('*')
-      .eq('employee_id', userId)
-      .eq('status', 'pending')
-      .order('start_date', { ascending: true })
-      .limit(5)
+    try {
+      const { data: timeOff } = await client
+        .from('time_off_requests')
+        .select('*')
+        .eq('employee_id', userId)
+        .eq('status', 'pending')
+        .order('start_date', { ascending: true })
+        .limit(5)
+      
+      myPendingTimeOff.value = timeOff || []
+    } catch {
+      myPendingTimeOff.value = []
+    }
     
-    myPendingTimeOff.value = timeOff || []
+    // Fetch active goals - use 'completed' boolean column instead of 'status'
+    try {
+      const { data: goals } = await client
+        .from('employee_goals')
+        .select('*')
+        .eq('employee_id', userId)
+        .eq('completed', false)
+        .order('target_date', { ascending: true })
+        .limit(5)
+      
+      myActiveGoals.value = goals || []
+    } catch {
+      myActiveGoals.value = []
+    }
     
-    // Fetch active goals
-    const { data: goals } = await client
-      .from('employee_goals')
-      .select('*')
-      .eq('employee_id', userId)
-      .in('status', ['not_started', 'in_progress'])
-      .order('target_date', { ascending: true })
-      .limit(5)
-    
-    myActiveGoals.value = goals || []
-    
-    // Fetch training progress (enrolled courses)
-    const { data: training } = await client
-      .from('course_enrollments')
-      .select('*, course:courses(*)')
-      .eq('employee_id', userId)
-      .in('status', ['enrolled', 'in_progress'])
-      .order('enrolled_at', { ascending: false })
-      .limit(5)
-    
-    myTrainingProgress.value = training || []
+    // Fetch training progress - use user_id and correct status enum
+    try {
+      const { data: training } = await client
+        .from('course_enrollments')
+        .select('*, course:courses(*)')
+        .eq('user_id', userId)
+        .in('status', ['assigned', 'in_progress'])
+        .order('assigned_at', { ascending: false })
+        .limit(5)
+      
+      myTrainingProgress.value = training || []
+    } catch {
+      myTrainingProgress.value = []
+    }
     
   } catch (err) {
     console.error('[Dashboard] Error fetching personal data:', err)

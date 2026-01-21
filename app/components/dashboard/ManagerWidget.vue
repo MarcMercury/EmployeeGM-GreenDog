@@ -36,17 +36,17 @@ async function fetchData() {
     const threeMonthsAgo = new Date()
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
     
-    // Fetch team stats
+    // Fetch team stats from employees table (profiles doesn't have status/hire_date)
     const { data: employees, error: empError } = await client
-      .from('profiles')
-      .select('id, status, hire_date, department_id')
-      .eq('status', 'active')
+      .from('employees')
+      .select('id, employment_status, hire_date, department_id')
+      .eq('employment_status', 'active')
     
     if (empError) throw empError
     
     teamStats.value = {
       total: employees?.length || 0,
-      active: employees?.filter(e => e.status === 'active').length || 0,
+      active: employees?.filter(e => e.employment_status === 'active').length || 0,
       onPTO: 0, // Will be calculated from time_off_requests
       newHires: employees?.filter(e => e.hire_date && new Date(e.hire_date) > threeMonthsAgo).length || 0
     }
