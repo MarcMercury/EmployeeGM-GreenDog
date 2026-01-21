@@ -89,14 +89,13 @@ export function useAccessMatrix() {
   const pageSections = computed<PageSection[]>(() => {
     const sectionMap = new Map<string, PageDefinition[]>()
     const sectionIcons: Record<string, string> = {
-      'Dashboard & Profile': 'mdi-view-dashboard',
-      'Contact List': 'mdi-account-group',
-      'Operations': 'mdi-calendar-clock',
-      'Recruiting': 'mdi-account-search',
+      'My Workspace': 'mdi-account',
+      'Management': 'mdi-account-group',
+      'Med Ops': 'mdi-hospital-box',
       'Marketing': 'mdi-bullhorn',
       'CRM & Analytics': 'mdi-chart-box',
-      'GDU (Education)': 'mdi-school',
-      'Admin & Settings': 'mdi-cog'
+      'GDU': 'mdi-school',
+      'Admin Ops': 'mdi-cog'
     }
     
     for (const page of pages.value) {
