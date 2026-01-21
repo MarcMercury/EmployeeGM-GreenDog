@@ -181,7 +181,11 @@
         <v-card rounded="lg">
           <v-card-title>User Roles & Permissions</v-card-title>
           <v-card-text>
-            <v-list>
+            <v-progress-circular v-if="loadingRoles" indeterminate color="primary" class="d-block mx-auto my-8" />
+            <v-alert v-else-if="roles.length === 0" type="info" variant="tonal" class="my-4">
+              No roles defined. Roles are managed in the RBAC system.
+            </v-alert>
+            <v-list v-else>
               <v-list-item v-for="role in roles" :key="role.id">
                 <template #prepend>
                   <v-avatar :color="role.color" size="40">
@@ -309,7 +313,11 @@
 
       <!-- Integrations -->
       <v-window-item value="integrations">
-        <v-row>
+        <v-progress-circular v-if="loadingIntegrations" indeterminate color="primary" class="d-block mx-auto my-8" />
+        <v-row v-else>
+          <v-col v-if="integrations.length === 0" cols="12">
+            <v-alert type="info" variant="tonal">No integrations configured.</v-alert>
+          </v-col>
           <v-col v-for="integration in integrations" :key="integration.id" cols="12" md="4">
             <v-card rounded="lg">
               <v-card-text class="text-center">
@@ -558,37 +566,18 @@ const locationHeaders = [
   { title: 'Actions', key: 'actions', sortable: false }
 ]
 
-// Data
-const departments = ref([
-  { id: '1', name: 'Veterinary Services', description: 'Core medical services', employee_count: 15 },
-  { id: '2', name: 'Administration', description: 'Administrative staff', employee_count: 5 },
-  { id: '3', name: 'Surgery', description: 'Surgical department', employee_count: 8 },
-  { id: '4', name: 'Emergency', description: '24/7 emergency care', employee_count: 12 }
-])
+// Data - loaded from database
+const departments = ref<any[]>([])
 
-const positions = ref([
-  { id: '1', title: 'Veterinarian', department_name: 'Veterinary Services', level: 'Senior' },
-  { id: '2', title: 'Vet Tech', department_name: 'Veterinary Services', level: 'Mid' },
-  { id: '3', title: 'Receptionist', department_name: 'Administration', level: 'Entry' },
-  { id: '4', title: 'Surgeon', department_name: 'Surgery', level: 'Senior' }
-])
+const positions = ref<any[]>([])
 
-const locations = ref([
-  { id: '1', name: 'Main Hospital', address: '123 Pet Care Lane', is_active: true },
-  { id: '2', name: 'Downtown Clinic', address: '456 Main Street', is_active: true },
-  { id: '3', name: 'Mobile Unit', address: 'Various Locations', is_active: true }
-])
+const locations = ref<any[]>([])
 
-const roles = [
-  { id: 'admin', name: 'Administrator', description: 'Full system access', icon: 'mdi-shield-crown', color: 'warning', user_count: 3 },
-  { id: 'user', name: 'User', description: 'Standard employee access', icon: 'mdi-account', color: 'primary', user_count: 45 }
-]
+const roles = ref<any[]>([])
+const loadingRoles = ref(false)
 
-const integrations = [
-  { id: 'slack', name: 'Slack', description: 'Team communication', icon: 'mdi-slack', connected: false },
-  { id: 'calendar', name: 'Google Calendar', description: 'Calendar sync', icon: 'mdi-google', connected: true },
-  { id: 'quickbooks', name: 'QuickBooks', description: 'Accounting integration', icon: 'mdi-currency-usd', connected: false }
-]
+const integrations = ref<any[]>([])
+const loadingIntegrations = ref(false)
 
 const newDepartment = reactive({
   name: '',
@@ -821,6 +810,8 @@ onMounted(async () => {
     loadDepartments(),
     loadPositions(),
     loadLocations(),
+    loadRoles(),
+    loadIntegrations(),
     loadCompanySettings()
   ])
 })
@@ -868,7 +859,7 @@ async function loadPositions() {
   try {
     const { data, error } = await supabase
       .from('job_positions')
-      .select('id, title, level, department_id, departments(name)')
+      .select('id, title, code, description, job_family, is_manager')
       .order('title')
     
     if (error) throw error
@@ -876,8 +867,9 @@ async function loadPositions() {
     positions.value = (data || []).map((p: any) => ({
       id: p.id,
       title: p.title,
-      department_name: p.departments?.name || '',
-      level: p.level || 'Mid'
+      code: p.code,
+      department_name: p.job_family || '',
+      level: p.is_manager ? 'Manager' : 'Staff'
     }))
   } catch (err) {
     console.error('Error loading positions:', err)
@@ -891,16 +883,132 @@ async function loadLocations() {
   try {
     const { data, error } = await supabase
       .from('locations')
-      .select('id, name, address, is_active')
+      .select('id, name, code, address_line1, address_line2, city, state, postal_code, phone, is_active')
       .order('name')
     
     if (error) throw error
     
-    locations.value = data || []
+    // Format address from component parts
+    locations.value = (data || []).map((loc: any) => {
+      const addressParts = [
+        loc.address_line1,
+        loc.address_line2,
+        loc.city,
+        loc.state,
+        loc.postal_code
+      ].filter(Boolean)
+      
+      return {
+        id: loc.id,
+        name: loc.name,
+        code: loc.code,
+        address: addressParts.join(', ') || 'No address on file',
+        phone: loc.phone,
+        is_active: loc.is_active
+      }
+    })
   } catch (err) {
     console.error('Error loading locations:', err)
   } finally {
     loadingLocations.value = false
+  }
+}
+
+async function loadRoles() {
+  loadingRoles.value = true
+  try {
+    // Load roles from role_definitions table
+    const { data: roleData, error: roleError } = await supabase
+      .from('role_definitions')
+      .select('id, role_key, display_name, description, tier, icon, color')
+      .order('tier')
+    
+    if (roleError) throw roleError
+    
+    // Count users per role from user_role_assignments
+    const { data: userCounts, error: countError } = await supabase
+      .from('user_role_assignments')
+      .select('role_key')
+    
+    const roleCounts: Record<string, number> = {}
+    if (!countError && userCounts) {
+      userCounts.forEach((u: any) => {
+        roleCounts[u.role_key] = (roleCounts[u.role_key] || 0) + 1
+      })
+    }
+    
+    roles.value = (roleData || []).map((r: any) => ({
+      id: r.role_key,
+      name: r.display_name,
+      description: r.description,
+      icon: r.icon || 'mdi-account',
+      color: r.color || 'primary',
+      tier: r.tier,
+      user_count: roleCounts[r.role_key] || 0
+    }))
+  } catch (err) {
+    console.error('Error loading roles:', err)
+  } finally {
+    loadingRoles.value = false
+  }
+}
+
+async function loadIntegrations() {
+  loadingIntegrations.value = true
+  try {
+    const intList = []
+    
+    // Check Slack integration status via health endpoint
+    let slackConnected = false
+    try {
+      const slackHealth = await $fetch('/api/slack/health')
+      slackConnected = slackHealth?.status === 'healthy' || slackHealth?.connected === true
+    } catch {
+      slackConnected = false
+    }
+    
+    intList.push({
+      id: 'slack',
+      name: 'Slack',
+      description: 'Team communication and notifications',
+      icon: 'mdi-slack',
+      connected: slackConnected
+    })
+    
+    // EzyVet integration - check for ezyvet tables presence
+    const { count: ezyvetCount } = await supabase
+      .from('ezyvet_contacts')
+      .select('*', { count: 'exact', head: true })
+      .limit(1)
+    
+    intList.push({
+      id: 'ezyvet',
+      name: 'EzyVet',
+      description: 'Veterinary practice management',
+      icon: 'mdi-paw',
+      connected: ezyvetCount !== null && ezyvetCount > 0
+    })
+    
+    // Supabase integration (always connected if we got this far)
+    intList.push({
+      id: 'supabase',
+      name: 'Supabase',
+      description: 'Database and authentication',
+      icon: 'mdi-database',
+      connected: true
+    })
+    
+    integrations.value = intList
+  } catch (err) {
+    console.error('Error loading integrations:', err)
+    // Fallback to basic integrations with unknown status
+    integrations.value = [
+      { id: 'slack', name: 'Slack', description: 'Team communication', icon: 'mdi-slack', connected: false },
+      { id: 'ezyvet', name: 'EzyVet', description: 'Veterinary practice management', icon: 'mdi-paw', connected: false },
+      { id: 'supabase', name: 'Supabase', description: 'Database and authentication', icon: 'mdi-database', connected: true }
+    ]
+  } finally {
+    loadingIntegrations.value = false
   }
 }
 

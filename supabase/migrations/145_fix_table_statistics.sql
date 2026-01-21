@@ -1,8 +1,11 @@
 -- =====================================================
--- Migration: 097_fix_table_statistics.sql
+-- Migration: 145_fix_table_statistics.sql
 -- Description: Fix get_table_statistics to return proper format
 -- Returns array with table_name, row_count, total_size
 -- =====================================================
+
+-- Drop existing function first to change return type
+DROP FUNCTION IF EXISTS public.get_table_statistics();
 
 CREATE OR REPLACE FUNCTION public.get_table_statistics()
 RETURNS TABLE (
