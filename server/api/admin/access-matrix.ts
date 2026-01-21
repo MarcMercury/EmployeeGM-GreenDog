@@ -13,16 +13,21 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient(event)
   const user = await serverSupabaseUser(event)
 
+  console.log('[access-matrix] User check:', user?.id || 'no user')
+
   if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
+    console.log('[access-matrix] No user session found')
+    throw createError({ statusCode: 401, message: 'Unauthorized - no session' })
   }
 
-  // Check if user is super_admin
+  // Check if user is admin or super_admin
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('auth_user_id', user.id)
     .single()
+
+  console.log('[access-matrix] Profile check:', profile?.role, 'error:', profileError?.message)
 
   if (profileError || !profile) {
     throw createError({ statusCode: 401, message: 'Profile not found' })
