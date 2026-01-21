@@ -817,19 +817,28 @@ onMounted(async () => {
 })
 
 async function loadCompanySettings() {
-  const { data } = await supabase
-    .from('company_settings')
-    .select('*')
-    .eq('id', 'default')
-    .maybeSingle()
-  
-  if (data) {
-    company.name = data.company_name || company.name
-    company.website = data.website || company.website
-    company.email = data.contact_email || company.email
-    company.phone = data.phone || company.phone
-    company.address = data.address || company.address
-    company.logo = data.logo_url || ''
+  try {
+    const { data, error } = await supabase
+      .from('company_settings')
+      .select('*')
+      .limit(1)
+      .maybeSingle()
+    
+    if (error) {
+      console.error('Error loading company settings:', error)
+      return
+    }
+    
+    if (data) {
+      company.name = data.company_name || data.display_name || data.legal_name || company.name
+      company.website = data.website || company.website
+      company.email = data.contact_email || company.email
+      company.phone = data.phone || company.phone
+      company.address = data.address || company.address
+      company.logo = data.logo_url || ''
+    }
+  } catch (err) {
+    console.error('Error loading company settings:', err)
   }
 }
 
@@ -838,14 +847,18 @@ async function loadDepartments() {
   try {
     const { data, error } = await supabase
       .from('departments')
-      .select('id, name, description')
+      .select('id, name, code, is_active')
+      .eq('is_active', true)
       .order('name')
     
     if (error) throw error
     
     departments.value = (data || []).map(d => ({
-      ...d,
-      employee_count: 0 // Could be calculated with a join
+      id: d.id,
+      name: d.name,
+      code: d.code,
+      description: d.code ? `Code: ${d.code}` : '',
+      employee_count: 0
     }))
   } catch (err) {
     console.error('Error loading departments:', err)
@@ -923,18 +936,56 @@ async function loadRoles() {
       .select('id, role_key, display_name, description, tier, icon, color')
       .order('tier')
     
-    if (roleError) throw roleError
+    if (roleError) {
+      // If role_definitions doesn't exist, fall back to profiles role counts
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+      
+      const roleCounts: Record<string, number> = {}
+      if (profileData) {
+        profileData.forEach((p: any) => {
+          const role = p.role || 'user'
+          roleCounts[role] = (roleCounts[role] || 0) + 1
+        })
+      }
+      
+      roles.value = Object.entries(roleCounts).map(([role, count]) => ({
+        id: role,
+        name: role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' '),
+        description: `${role} role`,
+        icon: role === 'admin' ? 'mdi-shield-crown' : 'mdi-account',
+        color: role === 'admin' ? 'warning' : 'primary',
+        tier: role === 'admin' ? 1 : 10,
+        user_count: count
+      }))
+      return
+    }
     
-    // Count users per role from user_role_assignments
-    const { data: userCounts, error: countError } = await supabase
-      .from('user_role_assignments')
-      .select('role_key')
-    
-    const roleCounts: Record<string, number> = {}
-    if (!countError && userCounts) {
-      userCounts.forEach((u: any) => {
-        roleCounts[u.role_key] = (roleCounts[u.role_key] || 0) + 1
-      })
+    // Count users per role from user_role_assignments (may not exist)
+    let roleCounts: Record<string, number> = {}
+    try {
+      const { data: userCounts } = await supabase
+        .from('user_role_assignments')
+        .select('role_key')
+      
+      if (userCounts) {
+        userCounts.forEach((u: any) => {
+          roleCounts[u.role_key] = (roleCounts[u.role_key] || 0) + 1
+        })
+      }
+    } catch {
+      // Table doesn't exist, use profiles fallback
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+      
+      if (profileData) {
+        profileData.forEach((p: any) => {
+          const role = p.role || 'user'
+          roleCounts[role] = (roleCounts[role] || 0) + 1
+        })
+      }
     }
     
     roles.value = (roleData || []).map((r: any) => ({
@@ -976,17 +1027,24 @@ async function loadIntegrations() {
     })
     
     // EzyVet integration - check for ezyvet tables presence
-    const { count: ezyvetCount } = await supabase
-      .from('ezyvet_contacts')
-      .select('*', { count: 'exact', head: true })
-      .limit(1)
+    let ezyvetConnected = false
+    try {
+      const { count: ezyvetCount, error } = await supabase
+        .from('ezyvet_contacts')
+        .select('*', { count: 'exact', head: true })
+        .limit(1)
+      
+      ezyvetConnected = !error && ezyvetCount !== null && ezyvetCount > 0
+    } catch {
+      ezyvetConnected = false
+    }
     
     intList.push({
       id: 'ezyvet',
       name: 'EzyVet',
       description: 'Veterinary practice management',
       icon: 'mdi-paw',
-      connected: ezyvetCount !== null && ezyvetCount > 0
+      connected: ezyvetConnected
     })
     
     // Supabase integration (always connected if we got this far)
@@ -1015,17 +1073,38 @@ async function loadIntegrations() {
 // Methods
 async function saveCompany() {
   try {
-    const { error } = await supabase
+    // First check if any company settings exist
+    const { data: existing } = await supabase
       .from('company_settings')
-      .upsert({
-        id: 'default',
-        company_name: company.name,
-        website: company.website,
-        contact_email: company.email,
-        phone: company.phone,
-        address: company.address,
-        logo_url: company.logo
-      })
+      .select('id')
+      .limit(1)
+      .maybeSingle()
+    
+    const settingsData = {
+      company_name: company.name,
+      display_name: company.name,
+      website: company.website,
+      contact_email: company.email,
+      phone: company.phone,
+      address: company.address,
+      logo_url: company.logo
+    }
+    
+    let error
+    if (existing) {
+      // Update existing record
+      const result = await supabase
+        .from('company_settings')
+        .update(settingsData)
+        .eq('id', existing.id)
+      error = result.error
+    } else {
+      // Insert new record
+      const result = await supabase
+        .from('company_settings')
+        .insert(settingsData)
+      error = result.error
+    }
     
     if (error) throw error
     snackbar.message = 'Company settings saved'
