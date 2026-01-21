@@ -7,24 +7,41 @@
  * PUT - Create or update a role
  */
 
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
+  // Use service role for database operations (bypasses RLS)
+  const supabaseAdmin = await serverSupabaseServiceRole(event)
+  
+  // Get user session via client-side supabase
   const supabase = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  console.log('[access-matrix] User check:', user?.id || 'no user')
+  console.log('[access-matrix] User check via getUser:', user?.id || 'no user', 'error:', userError?.message)
 
   if (!user) {
-    console.log('[access-matrix] No user session found')
-    throw createError({ statusCode: 401, message: 'Unauthorized - no session' })
+    // Try to get session from cookies directly
+    const cookies = parseCookies(event)
+    const accessToken = cookies['sb-access-token'] || cookies['sb-uekumyupkhnpjpdcjfxb-auth-token']
+    console.log('[access-matrix] Cookie tokens available:', !!cookies['sb-access-token'], !!cookies['sb-uekumyupkhnpjpdcjfxb-auth-token'])
+    
+    if (!accessToken) {
+      console.log('[access-matrix] No user session found')
+      throw createError({ statusCode: 401, message: 'Unauthorized - no session' })
+    }
   }
 
-  // Check if user is admin or super_admin
-  const { data: profile, error: profileError } = await supabase
+  // Verify user is admin using auth_user_id
+  const authUserId = user?.id
+  if (!authUserId) {
+    throw createError({ statusCode: 401, message: 'Unauthorized - no auth user id' })
+  }
+
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('role')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .single()
 
   console.log('[access-matrix] Profile check:', profile?.role, 'error:', profileError?.message)
@@ -44,7 +61,7 @@ export default defineEventHandler(async (event) => {
   if (method === 'GET') {
     try {
       // Fetch role definitions
-      const { data: roles, error: rolesError } = await supabase
+      const { data: roles, error: rolesError } = await supabaseAdmin
         .from('role_definitions')
         .select('*')
         .order('tier', { ascending: false })
@@ -55,7 +72,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Fetch page definitions
-      const { data: pages, error: pagesError } = await supabase
+      const { data: pages, error: pagesError } = await supabaseAdmin
         .from('page_definitions')
         .select('*')
         .eq('is_active', true)
@@ -67,7 +84,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Fetch page access
-      const { data: access, error: accessError } = await supabase
+      const { data: access, error: accessError } = await supabaseAdmin
         .from('page_access')
         .select('*')
 
@@ -105,7 +122,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Upsert the access record
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('page_access')
         .upsert({
           page_id,
@@ -151,7 +168,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Upsert the role
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('role_definitions')
         .upsert({
           role_key,
@@ -202,7 +219,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Check if any users have this role
-      const { data: usersWithRole, error: checkError } = await supabase
+      const { data: usersWithRole, error: checkError } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('role', role_key)
@@ -217,13 +234,13 @@ export default defineEventHandler(async (event) => {
       }
 
       // Delete page access for this role
-      await supabase
+      await supabaseAdmin
         .from('page_access')
         .delete()
         .eq('role_key', role_key)
 
       // Delete the role
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('role_definitions')
         .delete()
         .eq('role_key', role_key)
