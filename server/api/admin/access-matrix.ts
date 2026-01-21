@@ -28,8 +28,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Profile not found' })
   }
 
-  if (profile.role !== 'super_admin') {
-    throw createError({ statusCode: 403, message: 'Super Admin access required' })
+  // Allow both admin and super_admin to manage access matrix
+  if (!['admin', 'super_admin'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
   const method = event.method
