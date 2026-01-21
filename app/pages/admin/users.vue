@@ -1398,8 +1398,8 @@ const pendingHeaders = [
   { title: '', key: 'actions', sortable: false, align: 'end' as const }
 ]
 
-// Options
-const roleOptions = [
+// Options - dynamically loaded from database
+const roleOptions = ref([
   { title: 'Super Admin', value: 'super_admin' },
   { title: 'Admin', value: 'admin' },
   { title: 'Manager', value: 'manager' },
@@ -1407,7 +1407,7 @@ const roleOptions = [
   { title: 'Office Admin', value: 'office_admin' },
   { title: 'Marketing Admin', value: 'marketing_admin' },
   { title: 'User', value: 'user' }
-]
+])
 
 // Access Matrix Configuration
 type AccessLevel = 'full' | 'view' | 'none'
@@ -1434,7 +1434,8 @@ interface AccessMatrixSection {
   pages: AccessMatrixPage[]
 }
 
-const accessMatrixRoles: AccessMatrixRole[] = [
+// Dynamically loaded roles for access matrix
+const accessMatrixRoles = ref<AccessMatrixRole[]>([
   { key: 'super_admin', name: 'Super Admin', shortName: 'SA', description: 'Full system access to all features', icon: 'mdi-shield-crown', color: 'error' },
   { key: 'admin', name: 'Admin', shortName: 'Admin', description: 'System administrator with full access', icon: 'mdi-shield-account', color: 'warning' },
   { key: 'manager', name: 'Manager', shortName: 'Mgr', description: 'Team manager with broad access', icon: 'mdi-account-tie', color: 'purple' },
@@ -1442,7 +1443,7 @@ const accessMatrixRoles: AccessMatrixRole[] = [
   { key: 'office_admin', name: 'Office Admin', shortName: 'Office', description: 'Office operations and scheduling', icon: 'mdi-office-building', color: 'teal' },
   { key: 'marketing_admin', name: 'Marketing Admin', shortName: 'Mktg', description: 'Marketing and GDU access', icon: 'mdi-bullhorn', color: 'green' },
   { key: 'user', name: 'User', shortName: 'User', description: 'Standard employee access', icon: 'mdi-account', color: 'grey' }
-]
+])
 
 const accessMatrixSections: AccessMatrixSection[] = [
   {
@@ -2456,11 +2457,49 @@ async function fetchLocations(): Promise<void> {
   locations.value = data || []
 }
 
+// Fetch roles from role_definitions table
+async function fetchRoles(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from('role_definitions')
+      .select('role_key, display_name, description, icon, color, tier')
+      .order('tier', { ascending: false })
+    
+    if (error) {
+      console.error('Error fetching role definitions:', error)
+      return // Keep default roles
+    }
+    
+    if (data && data.length > 0) {
+      // Update roleOptions for dropdowns
+      roleOptions.value = data.map(r => ({
+        title: r.display_name,
+        value: r.role_key
+      }))
+      
+      // Update accessMatrixRoles for the access matrix view
+      accessMatrixRoles.value = data.map(r => ({
+        key: r.role_key,
+        name: r.display_name,
+        shortName: r.display_name.length > 6 ? r.display_name.substring(0, 4) : r.display_name,
+        description: r.description || '',
+        icon: r.icon || 'mdi-account',
+        color: r.color || 'grey'
+      }))
+      
+      console.log('[Users] Loaded', data.length, 'roles from database')
+    }
+  } catch (error) {
+    console.error('Error fetching roles:', error)
+  }
+}
+
 async function fetchAllData(): Promise<void> {
   await Promise.all([
     fetchUsers(),
     fetchPendingEmployees(),
-    fetchLocations()
+    fetchLocations(),
+    fetchRoles()
   ])
 }
 
