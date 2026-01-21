@@ -161,27 +161,15 @@
           </v-chip>
         </template>
 
-        <!-- Skills Summary -->
-        <template #item.skills="{ item }">
-          <div class="d-flex gap-1 flex-wrap">
-            <template v-if="item.skills && item.skills.length > 0">
-              <v-chip 
-                v-for="skill in getTopSkills(item.skills, 2)" 
-                :key="skill.skill_id"
-                size="x-small"
-                variant="tonal"
-                color="primary"
-              >
-                {{ skill.skill_name }}
-                <v-icon end size="12" color="amber">mdi-star</v-icon>
-                {{ skill.rating }}
-              </v-chip>
-              <v-chip v-if="item.skills.length > 2" size="x-small" variant="outlined">
-                +{{ item.skills.length - 2 }}
-              </v-chip>
-            </template>
-            <span v-else class="text-caption text-grey-lighten-1">No skills</span>
+        <!-- Reports To (Manager) -->
+        <template #item.manager="{ item }">
+          <div v-if="item.manager" class="d-flex align-center gap-2">
+            <v-avatar size="24" color="grey-lighten-3">
+              <span class="text-caption">{{ item.manager.first_name?.charAt(0) }}{{ item.manager.last_name?.charAt(0) }}</span>
+            </v-avatar>
+            <span class="text-body-2">{{ item.manager.full_name }}</span>
           </div>
+          <span v-else class="text-caption text-grey">—</span>
         </template>
 
         <!-- Location -->
@@ -576,7 +564,7 @@ const tableHeaders = [
   { title: 'Employee', key: 'name', sortable: true, value: (item: any) => item.full_name || '' },
   { title: 'Position', key: 'position', sortable: true, value: (item: any) => item.position?.title || '' },
   { title: 'Status', key: 'status', sortable: true, value: (item: any) => item.employment_status || '' },
-  { title: 'Skills', key: 'skills', sortable: false },
+  { title: 'Reports To', key: 'manager', sortable: true, value: (item: any) => item.manager?.full_name || '' },
   { title: 'Location', key: 'location', sortable: true, value: (item: any) => item.location?.name || '' },
   { title: '', key: 'actions', sortable: false, align: 'end' as const }
 ]

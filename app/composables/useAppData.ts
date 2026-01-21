@@ -51,6 +51,12 @@ export interface AppEmployee {
     id: string
     name: string
   } | null
+  manager: {
+    id: string
+    first_name: string
+    last_name: string
+    full_name: string
+  } | null
   skills: {
     skill_id: string
     skill_name: string
@@ -267,10 +273,12 @@ export const useAppData = () => {
             phone_mobile,
             hire_date,
             employment_status,
+            manager_employee_id,
             profiles:profile_id ( id, avatar_url, role ),
             job_positions:position_id ( id, title ),
             departments:department_id ( id, name ),
-            locations:location_id ( id, name )
+            locations:location_id ( id, name ),
+            manager:manager_employee_id ( id, first_name, last_name )
           `)
           .order('last_name')
           : Promise.resolve({ data: null, error: null }),
@@ -345,6 +353,12 @@ export const useAppData = () => {
             location: emp.locations ? {
               id: emp.locations.id,
               name: emp.locations.name
+            } : null,
+            manager: emp.manager ? {
+              id: emp.manager.id,
+              first_name: emp.manager.first_name || '',
+              last_name: emp.manager.last_name || '',
+              full_name: `${emp.manager.first_name || ''} ${emp.manager.last_name || ''}`.trim()
             } : null,
             skills: [], // Skills loaded separately if needed
             initials: `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase(),

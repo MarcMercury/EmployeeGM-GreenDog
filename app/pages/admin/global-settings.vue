@@ -1010,10 +1010,14 @@ async function loadIntegrations() {
     const intList = []
     
     // Check Slack integration status via health endpoint
+    // Status can be 'healthy', 'degraded', or 'unhealthy'
+    // Consider connected if healthy OR degraded (degraded means warnings but still working)
     let slackConnected = false
     try {
       const slackHealth = await $fetch('/api/slack/health')
-      slackConnected = slackHealth?.status === 'healthy' || slackHealth?.connected === true
+      slackConnected = slackHealth?.status === 'healthy' || 
+                       slackHealth?.status === 'degraded' || 
+                       slackHealth?.connected === true
     } catch {
       slackConnected = false
     }
