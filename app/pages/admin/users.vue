@@ -88,6 +88,10 @@
           Disabled
           <v-chip class="ml-2" size="x-small" color="grey" variant="flat">{{ disabledUsers.length }}</v-chip>
         </v-tab>
+        <v-tab value="access-matrix">
+          <v-icon start>mdi-shield-check</v-icon>
+          Access Matrix
+        </v-tab>
       </v-tabs>
 
       <v-divider />
@@ -399,6 +403,142 @@
               </div>
             </template>
           </v-data-table>
+        </v-window-item>
+
+        <!-- Access Matrix Tab -->
+        <v-window-item value="access-matrix">
+          <v-card-text>
+            <v-alert type="info" variant="tonal" class="mb-4" density="compact">
+              <v-icon start>mdi-information</v-icon>
+              This matrix shows which pages are accessible to each user role. 
+              <strong>✓</strong> = Full access, <strong>👁</strong> = View only, <strong>—</strong> = No access
+            </v-alert>
+            
+            <!-- Role Legend -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <v-chip v-for="role in accessMatrixRoles" :key="role.key" :color="role.color" size="small" variant="flat">
+                <v-icon start size="14">{{ role.icon }}</v-icon>
+                {{ role.name }}
+              </v-chip>
+            </div>
+
+            <!-- Access Matrix Table -->
+            <v-table density="compact" class="access-matrix-table" fixed-header height="600">
+              <thead>
+                <tr>
+                  <th class="text-left" style="width: 250px; position: sticky; left: 0; z-index: 2; background: rgb(var(--v-theme-surface));">
+                    Navigation Page
+                  </th>
+                  <th v-for="role in accessMatrixRoles" :key="role.key" class="text-center" style="min-width: 100px;">
+                    <v-tooltip :text="role.description" location="top">
+                      <template #activator="{ props }">
+                        <span v-bind="props" class="cursor-help">
+                          {{ role.shortName }}
+                        </span>
+                      </template>
+                    </v-tooltip>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <template v-for="section in accessMatrixSections" :key="section.name">
+                  <!-- Section Header -->
+                  <tr class="bg-grey-lighten-4">
+                    <td :colspan="accessMatrixRoles.length + 1" class="font-weight-bold">
+                      <v-icon :icon="section.icon" size="small" class="mr-2" />
+                      {{ section.name }}
+                    </td>
+                  </tr>
+                  <!-- Section Pages -->
+                  <tr v-for="page in section.pages" :key="page.path">
+                    <td style="position: sticky; left: 0; z-index: 1; background: rgb(var(--v-theme-surface));">
+                      <div class="d-flex align-center">
+                        <v-icon :icon="page.icon" size="small" class="mr-2 text-grey" />
+                        <div>
+                          <div>{{ page.name }}</div>
+                          <div class="text-caption text-grey">{{ page.path }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td v-for="role in accessMatrixRoles" :key="role.key" class="text-center">
+                      <v-tooltip :text="getAccessTooltip(page.access[role.key])" location="top">
+                        <template #activator="{ props }">
+                          <span 
+                            v-bind="props"
+                            :class="getAccessClass(page.access[role.key])"
+                          >
+                            {{ getAccessIcon(page.access[role.key]) }}
+                          </span>
+                        </template>
+                      </v-tooltip>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </v-table>
+
+            <!-- Summary Statistics -->
+            <v-row class="mt-4">
+              <v-col cols="12" md="6">
+                <v-card variant="outlined" rounded="lg">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start color="primary">mdi-chart-pie</v-icon>
+                    Access Summary by Role
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact">
+                      <v-list-item v-for="role in accessMatrixRoles" :key="role.key">
+                        <template #prepend>
+                          <v-avatar :color="role.color" size="24">
+                            <v-icon size="14" color="white">{{ role.icon }}</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title>{{ role.name }}</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">
+                            {{ getRoleAccessCount(role.key) }} / {{ getTotalPages() }} pages
+                          </span>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-card variant="outlined" rounded="lg">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start color="warning">mdi-key</v-icon>
+                    Access Level Legend
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact">
+                      <v-list-item>
+                        <template #prepend>
+                          <span class="text-success font-weight-bold mr-3">✓</span>
+                        </template>
+                        <v-list-item-title>Full Access</v-list-item-title>
+                        <v-list-item-subtitle>Can view and edit/manage</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <template #prepend>
+                          <span class="text-info font-weight-bold mr-3">👁</span>
+                        </template>
+                        <v-list-item-title>View Only</v-list-item-title>
+                        <v-list-item-subtitle>Can see but not modify</v-list-item-subtitle>
+                      </v-list-item>
+                      <v-list-item>
+                        <template #prepend>
+                          <span class="text-grey mr-3">—</span>
+                        </template>
+                        <v-list-item-title>No Access</v-list-item-title>
+                        <v-list-item-subtitle>Page is hidden from navigation</v-list-item-subtitle>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-card-text>
         </v-window-item>
       </v-window>
     </v-card>
@@ -1032,6 +1172,325 @@ const roleOptions = [
   { title: 'User', value: 'user' }
 ]
 
+// Access Matrix Configuration
+type AccessLevel = 'full' | 'view' | 'none'
+
+interface AccessMatrixRole {
+  key: string
+  name: string
+  shortName: string
+  description: string
+  icon: string
+  color: string
+}
+
+interface AccessMatrixPage {
+  name: string
+  path: string
+  icon: string
+  access: Record<string, AccessLevel>
+}
+
+interface AccessMatrixSection {
+  name: string
+  icon: string
+  pages: AccessMatrixPage[]
+}
+
+const accessMatrixRoles: AccessMatrixRole[] = [
+  { key: 'super_admin', name: 'Super Admin', shortName: 'SA', description: 'Full system access to all features', icon: 'mdi-shield-crown', color: 'error' },
+  { key: 'admin', name: 'Admin', shortName: 'Admin', description: 'System administrator with full access', icon: 'mdi-shield-account', color: 'warning' },
+  { key: 'manager', name: 'Manager', shortName: 'Mgr', description: 'Team manager with broad access', icon: 'mdi-account-tie', color: 'purple' },
+  { key: 'hr_admin', name: 'HR Admin', shortName: 'HR', description: 'HR functions and recruiting', icon: 'mdi-account-group', color: 'info' },
+  { key: 'office_admin', name: 'Office Admin', shortName: 'Office', description: 'Office operations and scheduling', icon: 'mdi-office-building', color: 'teal' },
+  { key: 'marketing_admin', name: 'Marketing Admin', shortName: 'Mktg', description: 'Marketing and GDU access', icon: 'mdi-bullhorn', color: 'green' },
+  { key: 'user', name: 'User', shortName: 'User', description: 'Standard employee access', icon: 'mdi-account', color: 'grey' }
+]
+
+const accessMatrixSections: AccessMatrixSection[] = [
+  {
+    name: 'Dashboard & Profile',
+    icon: 'mdi-view-dashboard',
+    pages: [
+      { 
+        name: 'Dashboard', 
+        path: '/', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      },
+      { 
+        name: 'My Profile', 
+        path: '/profile', 
+        icon: 'mdi-account-card',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      },
+      { 
+        name: 'My Growth', 
+        path: '/development', 
+        icon: 'mdi-chart-line',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      },
+      { 
+        name: 'My Skills', 
+        path: '/people/my-skills', 
+        icon: 'mdi-lightbulb',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      }
+    ]
+  },
+  {
+    name: 'Contact List',
+    icon: 'mdi-account-group',
+    pages: [
+      { 
+        name: 'All Staff (Roster)', 
+        path: '/roster', 
+        icon: 'mdi-badge-account-horizontal',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+      },
+      { 
+        name: 'Skill Stats', 
+        path: '/people/skill-stats', 
+        icon: 'mdi-chart-bar',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
+      }
+    ]
+  },
+  {
+    name: 'Operations',
+    icon: 'mdi-calendar-clock',
+    pages: [
+      { 
+        name: 'Schedule', 
+        path: '/schedule', 
+        icon: 'mdi-calendar',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+      },
+      { 
+        name: 'Schedule Builder', 
+        path: '/schedule/builder', 
+        icon: 'mdi-view-dashboard-edit',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'full', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'Time Off', 
+        path: '/time-off', 
+        icon: 'mdi-calendar-remove',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+      },
+      { 
+        name: 'Training', 
+        path: '/training', 
+        icon: 'mdi-school',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      }
+    ]
+  },
+  {
+    name: 'Recruiting',
+    icon: 'mdi-account-search',
+    pages: [
+      { 
+        name: 'Pipeline', 
+        path: '/recruiting', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
+      },
+      { 
+        name: 'Candidates', 
+        path: '/recruiting/candidates', 
+        icon: 'mdi-account-multiple-plus',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
+      },
+      { 
+        name: 'Onboarding', 
+        path: '/recruiting/onboarding', 
+        icon: 'mdi-clipboard-check-multiple',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
+      }
+    ]
+  },
+  {
+    name: 'Marketing',
+    icon: 'mdi-bullhorn',
+    pages: [
+      { 
+        name: 'Command Center', 
+        path: '/marketing/command-center', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Calendar', 
+        path: '/marketing/calendar', 
+        icon: 'mdi-calendar-month',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Events', 
+        path: '/growth/events', 
+        icon: 'mdi-calendar-star',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Partners', 
+        path: '/marketing/partners', 
+        icon: 'mdi-handshake',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Influencers', 
+        path: '/marketing/influencers', 
+        icon: 'mdi-account-star-outline',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Inventory', 
+        path: '/marketing/inventory', 
+        icon: 'mdi-package-variant',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Resources', 
+        path: '/marketing/resources', 
+        icon: 'mdi-folder-multiple',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      }
+    ]
+  },
+  {
+    name: 'CRM & Analytics',
+    icon: 'mdi-chart-box',
+    pages: [
+      { 
+        name: 'EzyVet CRM', 
+        path: '/marketing/ezyvet-crm', 
+        icon: 'mdi-database-import',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'EzyVet Analytics', 
+        path: '/marketing/ezyvet-analytics', 
+        icon: 'mdi-chart-areaspline',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Event Leads', 
+        path: '/growth/leads', 
+        icon: 'mdi-account-star',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Referral CRM', 
+        path: '/marketing/partnerships', 
+        icon: 'mdi-handshake-outline',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      }
+    ]
+  },
+  {
+    name: 'GDU (Education)',
+    icon: 'mdi-school',
+    pages: [
+      { 
+        name: 'GDU Dashboard', 
+        path: '/gdu', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Student Contacts', 
+        path: '/gdu/students', 
+        icon: 'mdi-account-school',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'CE Course Contacts', 
+        path: '/gdu/visitors', 
+        icon: 'mdi-certificate',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'CE Events', 
+        path: '/gdu/events', 
+        icon: 'mdi-calendar-star',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      }
+    ]
+  },
+  {
+    name: 'Admin & Settings',
+    icon: 'mdi-cog',
+    pages: [
+      { 
+        name: 'Skill Library', 
+        path: '/admin/skills-management', 
+        icon: 'mdi-bookshelf',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'Settings', 
+        path: '/settings', 
+        icon: 'mdi-cog',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'User Management', 
+        path: '/admin/users', 
+        icon: 'mdi-account-cog',
+        access: { super_admin: 'full', admin: 'none', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'Global Settings', 
+        path: '/admin/global-settings', 
+        icon: 'mdi-tune',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      }
+    ]
+  }
+]
+
+// Access Matrix Helper Functions
+function getAccessIcon(access: AccessLevel): string {
+  switch (access) {
+    case 'full': return '✓'
+    case 'view': return '👁'
+    case 'none': return '—'
+  }
+}
+
+function getAccessClass(access: AccessLevel): string {
+  switch (access) {
+    case 'full': return 'text-success font-weight-bold'
+    case 'view': return 'text-info'
+    case 'none': return 'text-grey-lighten-1'
+  }
+}
+
+function getAccessTooltip(access: AccessLevel): string {
+  switch (access) {
+    case 'full': return 'Full access - can view and edit'
+    case 'view': return 'View only - cannot make changes'
+    case 'none': return 'No access - page is hidden'
+  }
+}
+
+function getRoleAccessCount(roleKey: string): number {
+  let count = 0
+  for (const section of accessMatrixSections) {
+    for (const page of section.pages) {
+      if (page.access[roleKey] !== 'none') {
+        count++
+      }
+    }
+  }
+  return count
+}
+
+function getTotalPages(): number {
+  return accessMatrixSections.reduce((total, section) => total + section.pages.length, 0)
+}
+
 // Computed
 const stats = computed(() => {
   const total = users.value.length
@@ -1547,11 +2006,39 @@ onMounted(() => {
   cursor: pointer;
 }
 
+.cursor-help {
+  cursor: help;
+}
+
 .border-b {
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
 }
 
 .border-warning {
   border: 2px solid rgb(var(--v-theme-warning)) !important;
+}
+
+/* Access Matrix Table Styles */
+.access-matrix-table {
+  font-size: 0.875rem;
+}
+
+.access-matrix-table th {
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgb(var(--v-theme-surface)) !important;
+}
+
+.access-matrix-table td {
+  padding: 8px 12px !important;
+}
+
+.access-matrix-table tr:hover td {
+  background: rgba(var(--v-theme-primary), 0.04);
+}
+
+.access-matrix-table .bg-grey-lighten-4 td {
+  background: rgb(var(--v-theme-grey-lighten-4)) !important;
+  padding: 6px 12px !important;
 }
 </style>
