@@ -5,10 +5,29 @@
  * Returns KPIs, charts data, and distribution metrics.
  */
 
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Authenticate user first
+  const supabaseUser = await serverSupabaseClient(event)
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
+  // Verify admin role
   const supabase = await serverSupabaseServiceRole(event)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+  
+  if (!profile || !['admin', 'super_admin', 'manager'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Manager or admin access required' })
+  }
+
   const query = getQuery(event)
   
   // Optional filters

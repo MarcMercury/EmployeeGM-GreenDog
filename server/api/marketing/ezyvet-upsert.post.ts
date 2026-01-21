@@ -5,10 +5,28 @@
  * Designed for performance with chunked processing to avoid timeouts.
  */
 
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Authenticate user first
+  const supabaseUser = await serverSupabaseClient(event)
+  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
+  
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
+  // Verify admin role
   const supabase = await serverSupabaseServiceRole(event)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+  
+  if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Admin access required' })
+  }
   
   let body: any
   try {

@@ -6,7 +6,7 @@
  * 
  * GET /api/slack/sync/scheduled
  * 
- * Optional header: X-Cron-Secret for authentication
+ * Required header: X-Cron-Secret for authentication
  */
 
 import { serverSupabaseServiceRole } from '#supabase/server'
@@ -14,12 +14,17 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
-  // Optional: Validate cron secret for security
+  // Validate cron secret for security (REQUIRED)
   const cronSecret = getHeader(event, 'x-cron-secret')
   const expectedSecret = process.env.CRON_SECRET
   
-  if (expectedSecret && cronSecret !== expectedSecret) {
-    return { ok: false, error: 'Unauthorized' }
+  if (!expectedSecret) {
+    console.error('[Slack Scheduled] CRON_SECRET not configured')
+    throw createError({ statusCode: 500, message: 'Server configuration error' })
+  }
+  
+  if (cronSecret !== expectedSecret) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN

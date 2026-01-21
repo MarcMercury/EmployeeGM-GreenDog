@@ -8,7 +8,7 @@
  * Body: { triggered_by?: string, force?: boolean }
  */
 
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
 interface SlackUser {
   id: string
@@ -41,15 +41,35 @@ export default defineEventHandler(async (event): Promise<SyncResult> => {
   const config = useRuntimeConfig()
   const body = await readBody(event)
   
+  // Authenticate user first
+  const supabaseUser = await serverSupabaseClient(event)
+  const { data: { user } } = await supabaseUser.auth.getUser()
+  
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
+  // Use Nuxt Supabase module's service role client
+  const supabase = await serverSupabaseServiceRole(event)
+  
+  // Verify admin role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+  
+  if (!profile || !['admin', 'super_admin'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Admin access required' })
+  }
+  
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
   
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
   }
 
-  // Use Nuxt Supabase module's service role client
-  const supabase = await serverSupabaseServiceRole(event)
-  const triggeredBy = body?.triggered_by || 'system'
+  const triggeredBy = body?.triggered_by || user.email || 'system'
   const startedAt = new Date().toISOString()
 
   // Initialize sync log
