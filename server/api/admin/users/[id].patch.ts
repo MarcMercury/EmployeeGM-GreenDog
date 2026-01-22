@@ -90,7 +90,16 @@ export default defineEventHandler(async (event) => {
 
   // Build update object with only allowed fields
   const allowedFields = ['role', 'is_active', 'first_name', 'last_name', 'phone']
-  const validRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
+  
+  // Fetch valid roles from database
+  const { data: roleData, error: roleError } = await supabaseAdmin
+    .from('role_definitions')
+    .select('role_key')
+  
+  // Fallback to default roles if database fetch fails
+  const validRoles = roleError || !roleData?.length 
+    ? ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
+    : roleData.map(r => r.role_key)
   
   const updateData: Record<string, any> = {}
   for (const field of allowedFields) {

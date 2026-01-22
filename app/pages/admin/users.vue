@@ -899,7 +899,7 @@
                   <v-icon color="primary">mdi-shield-account</v-icon>
                 </template>
                 <v-list-item-title>Role</v-list-item-title>
-                <v-list-item-subtitle>{{ roleOptions.find(r => r.value === createForm.role)?.title }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ formatRole(createForm.role) }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template #prepend>
