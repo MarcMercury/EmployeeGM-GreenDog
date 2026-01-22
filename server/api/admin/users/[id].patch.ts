@@ -19,7 +19,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const body = await readBody(event)
+  let body: Record<string, any>
+  try {
+    body = await readBody(event)
+    console.log('[Admin Users PATCH] Request body:', JSON.stringify(body))
+  } catch (e) {
+    console.error('[Admin Users PATCH] Failed to parse body:', e)
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid request body'
+    })
+  }
   
   // Verify authorization header
   const authHeader = getHeader(event, 'authorization')
@@ -91,15 +101,24 @@ export default defineEventHandler(async (event) => {
   // Build update object with only allowed fields
   const allowedFields = ['role', 'is_active', 'first_name', 'last_name', 'phone']
   
-  // Fetch valid roles from database
-  const { data: roleData, error: roleError } = await supabaseAdmin
-    .from('role_definitions')
-    .select('role_key')
+  // Default valid roles
+  let validRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
   
-  // Fallback to default roles if database fetch fails
-  const validRoles = roleError || !roleData?.length 
-    ? ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
-    : roleData.map(r => r.role_key)
+  // Try to fetch valid roles from database (non-blocking if table doesn't exist)
+  try {
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('role_definitions')
+      .select('role_key')
+    
+    if (!roleError && roleData?.length) {
+      validRoles = roleData.map(r => r.role_key)
+      console.log('[Admin Users PATCH] Loaded roles from database:', validRoles)
+    } else if (roleError) {
+      console.log('[Admin Users PATCH] Could not fetch role_definitions, using defaults:', roleError.message)
+    }
+  } catch (e) {
+    console.log('[Admin Users PATCH] role_definitions query failed, using defaults')
+  }
   
   const updateData: Record<string, any> = {}
   for (const field of allowedFields) {
