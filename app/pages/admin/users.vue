@@ -2125,7 +2125,7 @@ function getFullName(user: UserAccount): string {
 }
 
 function formatRole(role: string): string {
-  return roleOptions.find(r => r.value === role)?.title || role
+  return roleOptions.value.find(r => r.value === role)?.title || role
 }
 
 function getRoleColor(role: string): string {
