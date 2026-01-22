@@ -10,26 +10,27 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
-  const userId = getRouterParam(event, 'id')
-  
-  if (!userId) {
-    throw createError({
-      statusCode: 400,
-      message: 'Missing user ID'
-    })
-  }
-
-  let body: Record<string, any>
   try {
-    body = await readBody(event)
-    console.log('[Admin Users PATCH] Request body:', JSON.stringify(body))
-  } catch (e) {
-    console.error('[Admin Users PATCH] Failed to parse body:', e)
-    throw createError({
-      statusCode: 400,
-      message: 'Invalid request body'
-    })
-  }
+    const userId = getRouterParam(event, 'id')
+    
+    if (!userId) {
+      throw createError({
+        statusCode: 400,
+        message: 'Missing user ID'
+      })
+    }
+
+    let body: Record<string, any>
+    try {
+      body = await readBody(event)
+      console.log('[Admin Users PATCH] Request body:', JSON.stringify(body))
+    } catch (e) {
+      console.error('[Admin Users PATCH] Failed to parse body:', e)
+      throw createError({
+        statusCode: 400,
+        message: 'Invalid request body'
+      })
+    }
   
   // Verify authorization header
   const authHeader = getHeader(event, 'authorization')
@@ -166,5 +167,17 @@ export default defineEventHandler(async (event) => {
     success: true,
     user: updatedProfile,
     message: 'User updated successfully'
+  }
+  } catch (error: any) {
+    // If it's already a createError, re-throw
+    if (error.statusCode) {
+      throw error
+    }
+    // Otherwise, log and return a 500
+    console.error('[Admin Users PATCH] Unhandled error:', error)
+    throw createError({
+      statusCode: 500,
+      message: `Server error: ${error.message || 'Unknown error'}`
+    })
   }
 })
