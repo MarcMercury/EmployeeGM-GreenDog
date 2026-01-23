@@ -27,7 +27,7 @@ async function checkMigrations() {
   console.log(`${candErr ? '❌' : '✅'} 129 candidates.source_person_id column: ${candErr ? candErr.message : 'exists'}`)
 
   // Test 5: Check marketing_resources table
-  const { data: mr, error: mrErr } = await supabase.from('marketing_resources').select('id').limit(1)
+  const {   /workspaces/EmployeeGM-GreenDog/data/marketing/data: mr, error: mrErr } = await supabase.from('marketing_resources').select('id').limit(1)
   console.log(`${mrErr ? '❌' : '✅'} marketing_resources table: ${mrErr ? mrErr.message : 'exists'}`)
 
   // Test 6: Check marketing_folders table

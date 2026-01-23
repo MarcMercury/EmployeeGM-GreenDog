@@ -30,3 +30,4 @@ logs
 *.bak
 *.backup
 *.orig
+data/marketing/parsed/resources_passwords.csv
