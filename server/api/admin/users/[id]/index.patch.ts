@@ -116,17 +116,24 @@ export default defineEventHandler(async (event) => {
   const allowedFields = ['role', 'is_active', 'first_name', 'last_name', 'phone']
   
   // Fetch valid roles from the database (role_definitions table)
-  let validRoles: string[] = []
-  const { data: roleData } = await supabaseAdmin
-    .from('role_definitions')
-    .select('role_key')
+  let validRoles: string[] = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'sup_admin', 'user']
   
-  if (roleData && roleData.length > 0) {
-    validRoles = roleData.map(r => r.role_key)
-  } else {
-    // Fallback to default roles if table is empty
-    validRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'sup_admin', 'user']
+  try {
+    const { data: roleData, error: roleError } = await supabaseAdmin
+      .from('role_definitions')
+      .select('role_key')
+    
+    if (roleError) {
+      console.warn('[Admin Users PATCH] Could not fetch roles from DB, using defaults:', roleError.message)
+    } else if (roleData && roleData.length > 0) {
+      validRoles = roleData.map(r => r.role_key)
+      console.log('[Admin Users PATCH] Loaded', validRoles.length, 'roles from database')
+    }
+  } catch (e: any) {
+    console.warn('[Admin Users PATCH] Exception fetching roles, using defaults:', e.message)
   }
+  
+  // validRoles already has defaults, no need for else block
   
   const updateData: Record<string, any> = {}
   for (const field of allowedFields) {
