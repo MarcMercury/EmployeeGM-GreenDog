@@ -115,8 +115,18 @@ export default defineEventHandler(async (event) => {
   // Build update object with only allowed fields
   const allowedFields = ['role', 'is_active', 'first_name', 'last_name', 'phone']
   
-  // Valid roles (matches the database CHECK constraint on profiles.role)
-  const validRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
+  // Fetch valid roles from the database (role_definitions table)
+  let validRoles: string[] = []
+  const { data: roleData } = await supabaseAdmin
+    .from('role_definitions')
+    .select('role_key')
+  
+  if (roleData && roleData.length > 0) {
+    validRoles = roleData.map(r => r.role_key)
+  } else {
+    // Fallback to default roles if table is empty
+    validRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'sup_admin', 'user']
+  }
   
   const updateData: Record<string, any> = {}
   for (const field of allowedFields) {
@@ -124,7 +134,7 @@ export default defineEventHandler(async (event) => {
       // Validate role if changing it
       if (field === 'role') {
         if (!validRoles.includes(body[field])) {
-          console.log('[Admin Users PATCH] Invalid role:', body[field])
+          console.log('[Admin Users PATCH] Invalid role:', body[field], 'Valid roles:', validRoles)
           throw createError({
             statusCode: 400,
             message: `Invalid role: ${body[field]}. Valid roles are: ${validRoles.join(', ')}`
