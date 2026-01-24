@@ -1,6 +1,6 @@
 /**
  * Management Access Middleware
- * Allows: super_admin, admin, manager, hr_admin, office_admin
+ * Allows: super_admin, admin, manager, hr_admin, sup_admin, office_admin
  * Use for: Roster, Team Schedule, Time Off Approvals, Skill Stats
  * 
  * Note: This middleware is now unified with the new RBAC role system.
@@ -29,7 +29,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/auth/login')
   }
   
-  const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin']
+  const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
   
   if (!allowedRoles.includes(profile.role)) {
     console.warn('[Middleware] User without management access attempted:', to.path)

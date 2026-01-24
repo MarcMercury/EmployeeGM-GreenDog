@@ -33,6 +33,7 @@ export const useAuthStore = defineStore('auth', {
     isAdmin: (state) => ['super_admin', 'admin'].includes(state.profile?.role || ''),
     isManager: (state) => state.profile?.role === 'manager',
     isHrAdmin: (state) => state.profile?.role === 'hr_admin',
+    isSupervisor: (state) => state.profile?.role === 'sup_admin',
     isOfficeAdmin: (state) => state.profile?.role === 'office_admin',
     isMarketingAdmin: (state) => state.profile?.role === 'marketing_admin',
     isUser: (state) => state.profile?.role === 'user',

@@ -315,7 +315,7 @@ export function useAccessMatrix() {
   
   // Check if a role is a built-in (protected) role
   function isBuiltInRole(roleKey: string): boolean {
-    return ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
+    return ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
   }
   
   // Initialize access for a new role (copy from 'user' template)

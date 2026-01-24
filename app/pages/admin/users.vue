@@ -1970,7 +1970,7 @@ function getMatrixRolePageCount(roleKey: string): number {
 
 // Check if role is built-in
 function isBuiltInRoleCheck(roleKey: string): boolean {
-  return ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
+  return ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
 }
 
 // Open edit role dialog

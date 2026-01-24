@@ -52,9 +52,10 @@ const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSupe
 const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
 // Section access checks
-const hasManagementAccess = computed(() => ['super_admin', 'admin', 'office_admin'].includes(userRole.value))
-const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'marketing_admin'].includes(userRole.value))
-const hasGduAccess = computed(() => ['super_admin', 'admin', 'marketing_admin'].includes(userRole.value))
+// Note: sup_admin (Supervisor) has management access similar to office_admin
+const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'].includes(userRole.value))
+const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'marketing_admin'].includes(userRole.value))
+const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'].includes(userRole.value))
 const hasAdminOpsAccess = computed(() => ['super_admin', 'admin'].includes(userRole.value))
 
 // Display helpers

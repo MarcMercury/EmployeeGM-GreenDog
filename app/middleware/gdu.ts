@@ -1,9 +1,9 @@
 /**
  * GDU (Green Dog University) Access Middleware
- * Allows: super_admin, admin, manager, hr_admin, marketing_admin
+ * Allows: super_admin, admin, manager, hr_admin, sup_admin, marketing_admin
  * Use for: GDU Dashboard, Visitor CRM, CE Events, Education Content
  * 
- * Note: Both hr_admin (can create courses) and marketing_admin (content management) have access
+ * Note: Both hr_admin (can create courses), sup_admin (supervisor), and marketing_admin (content management) have access
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const supabase = useSupabaseClient()
@@ -28,7 +28,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/auth/login')
   }
   
-  const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin']
+  const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin']
   
   if (!allowedRoles.includes(profile.role)) {
     console.warn('[Middleware] User without GDU access attempted:', to.path)
