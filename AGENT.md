@@ -288,3 +288,82 @@ curl -s -X POST "https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/datab
 4. **Profile ID ≠ Employee ID** - join through `employees.profile_id`
 5. **Composables in Pinia** - use at module level, not inside actions
 6. **Reference docs folder** for detailed integration and architecture docs
+7. **Access Matrix**: Check Migration 155 status before making role-related changes
+8. **Roles are immutable** - managed via migrations, not UI (except access matrix)
+
+---
+
+## 🔐 Access Matrix & Role-Based Access Control (RBAC)
+
+### System Overview
+The system uses a **role-based access matrix** where each user role has specific access levels (full/view/none) to pages/sections.
+
+**Key Tables:**
+- `profiles.role` - User's role (one of 7 defined roles)
+- `role_definitions` - Role metadata (tier, display name, permissions JSON)
+- `page_definitions` - All navigable pages with sections
+- `page_access` - Matrix of (role, page, access_level)
+
+### User Roles (By Tier)
+| Tier | Role | Access Level | Use Case |
+|------|------|-------------|----------|
+| 200 | super_admin | Full system + user management | System owner |
+| 100 | admin | Full system except user mgmt | Administrator |
+| 80 | manager | HR + Marketing + Ops (no admin) | Team lead |
+| 60 | hr_admin | HR + Recruiting + Education | HR specialist |
+| 50 | office_admin | Roster + Schedules + Med Ops | Operations |
+| 40 | marketing_admin | Marketing + CRM + GDU | Marketing specialist |
+| 10 | user | Personal workspace + view access | Team member |
+
+### Important Files
+- [`app/composables/useAccessMatrix.ts`](app/composables/useAccessMatrix.ts) - Access matrix logic & loading
+- [`app/pages/admin/users.vue`](app/pages/admin/users.vue) - User management with access matrix UI
+- [`server/api/admin/access-matrix.ts`](server/api/admin/access-matrix.ts) - Backend access API
+- [`supabase/migrations/143_page_access_control.sql`](supabase/migrations/143_page_access_control.sql) - Original matrix (⚠️ Overridden by 144)
+- [`supabase/migrations/144_update_page_definitions.sql`](supabase/migrations/144_update_page_definitions.sql) - Overrides 143 (⚠️ Creates inconsistency!)
+- [`supabase/migrations/155_consolidate_access_matrix.sql`](supabase/migrations/155_consolidate_access_matrix.sql) - **FIX** (Ready to apply - consolidates both)
+
+### ⚠️ KNOWN ISSUE: Access Matrix Inconsistency (Jan 2026)
+**Status:** Under review, fix prepared in Migration 155
+
+Migrations 143 and 144 define conflicting access matrices:
+- Migration 143: Original detailed definition
+- Migration 144: Simplified/modified, deleted and recreated all records
+- **Result:** Permissions may not match expected documentation
+
+**Action Required:**
+1. Review [`docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md`](docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md) for complete details
+2. Apply Migration 155 to consolidate and fix
+3. Run audit: `scripts/audit-access-matrix.sql`
+4. Test each role's permissions
+
+### How Access Works
+```typescript
+// In middleware/RBAC middleware or useAccessMatrix:
+
+// 1. Get user's role from profiles table
+const role = user.profile.role // e.g., "manager"
+
+// 2. Check if they can access a page
+const access = getAccess(pageId, role) // Returns 'full', 'view', or 'none'
+
+// 3. Act based on access level
+switch(access) {
+  case 'full': // Can view and edit
+  case 'view': // Can only view
+  case 'none':  // Blocked from access
+}
+```
+
+### Troubleshooting Access Issues
+**Q: How do I add a new page to the matrix?**  
+A: Add to `page_definitions`, then run Migration 155 or manually insert page_access records.
+
+**Q: Why does user XYZ have no access?**  
+A: Check (1) their role in profiles table, (2) access matrix for that role+page, (3) console errors.
+
+**Q: I see "Supervisor" role but it's not defined?**  
+A: System only has 7 defined roles. "Supervisor" is legacy data - migrate to "manager" or "hr_admin".
+
+**Q: Can I give custom per-user access?**  
+A: Currently no - only role-based. Would need new `user_access_override` table.
