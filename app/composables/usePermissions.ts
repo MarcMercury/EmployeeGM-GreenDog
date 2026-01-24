@@ -186,11 +186,113 @@ export function usePermissions() {
       admin: 100,
       manager: 80,
       hr_admin: 60,
+      sup_admin: 55,
       office_admin: 50,
       marketing_admin: 40,
       user: 10
     }
     return (hierarchy[userRole.value] || 0) >= (hierarchy[role] || 0)
+  }
+  
+  /**
+   * Check page access level from database
+   * Returns: 'full' | 'view' | 'none'
+   * 
+   * - 'full': Can see the page AND interact with all items (click profiles, etc.)
+   * - 'view': Can see the page but limited interaction (only own profile, read-only)
+   * - 'none': Cannot access the page at all
+   */
+  async function getPageAccess(path: string): Promise<'full' | 'view' | 'none'> {
+    // Super admin always has full access
+    if (userRole.value === 'super_admin') {
+      return 'full'
+    }
+    
+    const supabase = useSupabaseClient()
+    
+    try {
+      // Get page definition
+      const { data: page, error: pageError } = await supabase
+        .from('page_definitions')
+        .select('id')
+        .eq('path', path)
+        .eq('is_active', true)
+        .single()
+      
+      if (pageError || !page) {
+        console.warn(`[Permissions] Page not found: ${path}`)
+        return 'none'
+      }
+      
+      // Get access level for this role
+      const { data: access, error: accessError } = await supabase
+        .from('page_access')
+        .select('access_level')
+        .eq('page_id', page.id)
+        .eq('role_key', userRole.value)
+        .single()
+      
+      if (accessError || !access) {
+        // Default to 'none' if no explicit access defined
+        return 'none'
+      }
+      
+      return access.access_level as 'full' | 'view' | 'none'
+    } catch (err) {
+      console.error('[Permissions] Error checking page access:', err)
+      return 'none'
+    }
+  }
+  
+  /**
+   * Reactive page access - use in components
+   * Returns a ref that will be populated with the access level
+   */
+  function usePageAccess(path: string) {
+    const accessLevel = ref<'full' | 'view' | 'none'>('none')
+    const loading = ref(true)
+    
+    // Check access on mount
+    onMounted(async () => {
+      accessLevel.value = await getPageAccess(path)
+      loading.value = false
+    })
+    
+    // Computed helpers
+    const hasFullAccess = computed(() => accessLevel.value === 'full')
+    const hasViewAccess = computed(() => accessLevel.value === 'view' || accessLevel.value === 'full')
+    const hasNoAccess = computed(() => accessLevel.value === 'none')
+    
+    return {
+      accessLevel,
+      loading,
+      hasFullAccess,
+      hasViewAccess,
+      hasNoAccess
+    }
+  }
+  
+  /**
+   * Check if user can view a specific employee profile
+   * - 'full' access: can view any profile
+   * - 'view' access: can only view own profile
+   * - 'none' access: cannot view any profiles
+   */
+  function canViewProfile(profileId: string): boolean {
+    const ownProfileId = authStore.profile?.id
+    
+    // Always allow viewing own profile
+    if (profileId === ownProfileId) {
+      return true
+    }
+    
+    // Super admin and admin can always view
+    if (['super_admin', 'admin'].includes(userRole.value)) {
+      return true
+    }
+    
+    // Check roster permission - if they have 'manage:roster' they have full access
+    return can('manage:roster')
   }
   
   // Check if user is admin (super_admin or admin)
@@ -217,6 +319,11 @@ export function usePermissions() {
     canAll,
     hasMinimumRole,
     getMissingPermissions,
+    
+    // Page-level access (database-backed)
+    getPageAccess,
+    usePageAccess,
+    canViewProfile,
     
     // Request Access
     showRequestAccess,

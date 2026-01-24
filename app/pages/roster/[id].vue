@@ -1740,10 +1740,21 @@ const userStore = useUserStore()
 const supabase = useSupabaseClient()
 const toast = useToast()
 const { invalidateCache: invalidateAppDataCache } = useAppData()
+const { canViewProfile } = usePermissions()
 
 // Route params
 const employeeId = computed(() => route.params.id as string)
 const currentYear = new Date().getFullYear()
+
+// Access control - check if user can view this profile
+const isOwnProfile = computed(() => employeeId.value === authStore.profile?.id)
+const hasProfileAccess = computed(() => {
+  // Always allow viewing own profile
+  if (isOwnProfile.value) return true
+  
+  // Check if user has full roster access
+  return canViewProfile(employeeId.value)
+})
 
 // ==========================================
 // STATE
@@ -2276,6 +2287,17 @@ function getActionColor(action: string): string {
 async function loadEmployeeData() {
   isLoading.value = true
   error.value = ''
+
+  // Check access first - redirect if user doesn't have permission
+  if (!hasProfileAccess.value) {
+    error.value = 'You do not have permission to view this profile.'
+    isLoading.value = false
+    // Redirect to own profile or roster after a delay
+    setTimeout(() => {
+      router.push('/roster')
+    }, 2000)
+    return
+  }
 
   try {
     // Load employee with related data
