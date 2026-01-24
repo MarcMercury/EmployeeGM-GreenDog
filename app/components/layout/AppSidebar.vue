@@ -214,6 +214,7 @@
             <v-list-item-subtitle class="text-grey text-caption">
               <v-chip v-if="isAdmin" size="x-small" color="warning" variant="flat" class="mr-1">Admin</v-chip>
               <v-chip v-else-if="isManager" size="x-small" color="purple" variant="flat" class="mr-1">Manager</v-chip>
+              <v-chip v-else-if="isSupervisor" size="x-small" color="teal" variant="flat" class="mr-1">Supervisor</v-chip>
               <v-chip v-else-if="hasHrAccess" size="x-small" color="info" variant="flat" class="mr-1">HR</v-chip>
               <v-chip v-else-if="hasMarketingAccess" size="x-small" color="success" variant="flat" class="mr-1">Marketing</v-chip>
               <span v-else>User</span>
@@ -288,6 +289,7 @@ const initials = computed(() => authStore.initials)
 // Role-based access helpers using the centralized SECTION_ACCESS matrix
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
+const isSupervisor = computed(() => userRole.value === 'sup_admin')
 const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value))
 const hasRecruitingAccess = computed(() => SECTION_ACCESS.recruiting.includes(userRole.value))
 const hasMarketingAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value))

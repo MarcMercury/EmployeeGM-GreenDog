@@ -69,6 +69,9 @@ const roleDisplay = computed(() => {
   const displays: Record<string, { label: string, class: string }> = {
     super_admin: { label: '👑 Super Admin', class: 'text-amber-500 font-bold' },
     admin: { label: '⭐ Admin', class: 'text-amber-400 font-semibold' },
+    manager: { label: '👔 Manager', class: 'text-emerald-400 font-semibold' },
+    hr_admin: { label: '👥 HR Admin', class: 'text-cyan-400 font-semibold' },
+    sup_admin: { label: '🧑‍💼 Supervisor', class: 'text-teal-400 font-semibold' },
     office_admin: { label: '🏢 Office Admin', class: 'text-blue-400 font-semibold' },
     marketing_admin: { label: '📣 Marketing', class: 'text-purple-400 font-semibold' },
     user: { label: 'Team Member', class: 'text-slate-400' }
