@@ -14,11 +14,12 @@ export * from './database.types'
  * admin (100): Full access to all features
  * manager (80): HR + Marketing + Recruiting + Schedules + Education
  * hr_admin (60): HR + Recruiting + Schedules + Education
+ * sup_admin (55): Supervisor - HR + Recruiting + Schedules
  * office_admin (50): Roster, Schedules, Time Off, Med Ops
  * marketing_admin (40): Marketing + GDU + Schedules (view only)
  * user (10): Dashboard, Own Profile, Own Schedule, Med Ops
  */
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'office_admin' | 'marketing_admin' | 'user'
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'sup_admin' | 'office_admin' | 'marketing_admin' | 'user'
 
 /**
  * Role hierarchy levels for access comparison
@@ -28,6 +29,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 100,
   manager: 80,
   hr_admin: 60,
+  sup_admin: 55,
   office_admin: 50,
   marketing_admin: 40,
   user: 10
@@ -41,6 +43,7 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   admin: '⭐ System Admin',
   manager: '👔 Manager',
   hr_admin: '👥 HR Admin',
+  sup_admin: '🧑‍💼 Supervisor',
   office_admin: '🏢 Office Admin',
   marketing_admin: '📣 Marketing Admin',
   user: 'Team Member'
@@ -48,31 +51,32 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
 
 /**
  * Section access matrix - which roles can access which sections
+ * NOTE: This controls sidebar visibility. Database page_access controls page-level access.
  */
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // HR Section (employee profiles, skills, reviews)
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
   
   // Recruiting Section (candidates, pipelines)
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
   
   // Marketing Section (CRM, campaigns, leads)
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
   // GDU/Education Section
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
   
   // Schedule Management (create/edit)
-  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
   
   // Schedule View (read-only)
-  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'],
+  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
   // Admin Settings
   admin: ['super_admin', 'admin'],
   
   // Med Ops (everyone has access)
-  med_ops: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'],
+  med_ops: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
 }
 
 export interface NavItem {

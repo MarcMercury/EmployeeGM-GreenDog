@@ -6,7 +6,7 @@ export * from './database.types'
 // =====================================================
 
 // User roles in order of access level (highest to lowest)
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'office_admin' | 'marketing_admin' | 'user'
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'sup_admin' | 'office_admin' | 'marketing_admin' | 'user'
 
 // Role hierarchy for access checks
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
@@ -14,6 +14,7 @@ export const ROLE_HIERARCHY: Record<UserRole, number> = {
   admin: 100,
   manager: 80,
   hr_admin: 60,
+  sup_admin: 55,  // Supervisor - between hr_admin and office_admin
   office_admin: 50,
   marketing_admin: 40,
   user: 10
@@ -25,19 +26,21 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   admin: 'Admin',
   manager: 'Manager',
   hr_admin: 'HR Admin',
+  sup_admin: 'Supervisor',
   office_admin: 'Office Admin',
   marketing_admin: 'Marketing Admin',
   user: 'User'
 }
 
 // Section access matrix - defines which roles can access each section
+// NOTE: This controls sidebar visibility. Database page_access controls page-level access.
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin'],
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
-  schedules_manage: ['super_admin', 'admin', 'manager', 'office_admin'],
-  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'],
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
+  schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
+  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   admin: ['super_admin', 'admin']
 }
 
