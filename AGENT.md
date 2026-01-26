@@ -3,6 +3,28 @@
 > **🤖 AI CONTEXT FILE:** This is the primary reference document for AI assistants.
 > Read this file first before making any changes.
 
+## 🚨 MANDATORY AI WORKFLOW
+
+### Before Starting ANY Task:
+1. **READ THIS ENTIRE FILE** - Do not skip sections
+2. **Check the "Last Updated" dates** - Outdated sections need verification
+3. **Verify current state** - If unsure, check the actual code/database
+
+### After Completing ANY Significant Change:
+1. **UPDATE THIS FILE** if you modified:
+   - Database schema (tables, columns, migrations)
+   - Role/access definitions
+   - Navigation or page structure
+   - Key composables or stores
+   - Skill system or level definitions
+2. **Add "Last Updated: [Month Year]"** to changed sections
+3. **COMMIT the AGENT.md update** with your other changes
+
+### Why This Matters:
+When context window resets, AI assistants lose session memory. This file is the **only persistent memory** between sessions. Outdated information here = AI reverting to old patterns.
+
+---
+
 ## 🚨 CRITICAL: CREDENTIALS FILE
 
 **⚠️ ALWAYS CHECK [`SUPABASE_CREDENTIALS.md`](SUPABASE_CREDENTIALS.md) FOR DATABASE CREDENTIALS!**
@@ -197,14 +219,61 @@ unified_persons (Core Identity)
 
 ## 📊 Skill System
 
-| Level | Name | Description |
-| ----- | ---- | ----------- |
-| 0 | Learner | Needs mentorship |
-| 1 | Beginner | Basic understanding |
-| 2 | Intermediate | Can work independently |
-| 3 | Proficient | Consistent quality |
-| 4 | Expert | Advanced knowledge |
-| 5 | Mentor | Can teach others |
+> **Last Updated:** January 2026
+
+### Skill Levels (0-5 Scale)
+
+| Level | Name | General Description |
+| ----- | ---- | ------------------- |
+| 0 | Untrained | Has not been trained in this skill |
+| 1 | Novice | Basic awareness, needs close supervision |
+| 2 | Apprentice | Can perform with guidance/oversight |
+| 3 | Professional | Performs independently with consistent quality |
+| 4 | Advanced | Handles complex/difficult cases, troubleshoots |
+| 5 | Mentor | Can teach others, develops protocols |
+
+### Skill Library Schema
+
+```typescript
+// skill_library table structure
+{
+  id: uuid,
+  name: string,           // e.g., "Blood Collection (Phlebotomy)"
+  category: string,       // e.g., "Clinical Skills"
+  description?: string,   // Optional general description
+  level_descriptions: {   // JSONB - per-skill level definitions
+    "0": "Untrained.",
+    "1": "Holds off vein.",
+    "2": "Draws from easy veins (Cephalic).",
+    "3": "Draws from all veins (Jugular, Saphenous) clean.",
+    "4": "Draws from tiny/blown veins.",
+    "5": "Teaches angle and technique."
+  },
+  is_active: boolean,     // Soft delete flag
+  updated_at: timestamp
+}
+```
+
+### Skill Categories (Current)
+- Clinical Skills, Administrative, Anesthesia, Animal Care
+- Client Service, Soft Skills, Leadership Skills, Emergency
+- Surgery, Dentistry, Facilities, Imaging, Inventory
+- Pharmacy, Specialty Skills, Technology, Training
+
+### Key Skill Pages
+
+| Page | Path | Access | Purpose |
+|------|------|--------|---------|
+| Skills Library | `/skills-library` | All users | Browse all skills with level descriptions |
+| My Skills | `/people/my-skills` | All users | Personal skill scorecard |
+| Skill Stats | `/people/skill-stats` | All users | Team skill analytics |
+| Skills Management | `/admin/skills-management` | Admin only | CRUD for skill library |
+
+### Skill Import Script
+```bash
+# Import skills with level descriptions (requires level_descriptions column)
+npx tsx scripts/apply-skills-migration.ts
+```
 
 ---
 
@@ -295,47 +364,52 @@ curl -s -X POST "https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/datab
 
 ## 🔐 Access Matrix & Role-Based Access Control (RBAC)
 
+> **Last Updated:** January 2026
+
 ### System Overview
 The system uses a **role-based access matrix** where each user role has specific access levels (full/view/none) to pages/sections.
 
 **Key Tables:**
-- `profiles.role` - User's role (one of 7 defined roles)
+- `profiles.role` - User's role (one of 8 defined roles)
 - `role_definitions` - Role metadata (tier, display name, permissions JSON)
 - `page_definitions` - All navigable pages with sections
 - `page_access` - Matrix of (role, page, access_level)
 
 ### User Roles (By Tier)
-| Tier | Role | Access Level | Use Case |
-|------|------|-------------|----------|
-| 200 | super_admin | Full system + user management | System owner |
-| 100 | admin | Full system except user mgmt | Administrator |
-| 80 | manager | HR + Marketing + Ops (no admin) | Team lead |
-| 60 | hr_admin | HR + Recruiting + Education | HR specialist |
-| 50 | office_admin | Roster + Schedules + Med Ops | Operations |
-| 40 | marketing_admin | Marketing + CRM + GDU | Marketing specialist |
-| 10 | user | Personal workspace + view access | Team member |
+
+| Tier | Role Key | Display Name | Use Case |
+|------|----------|--------------|----------|
+| 200 | `super_admin` | Super Admin | Full system + user management |
+| 100 | `admin` | Admin | Full system except user mgmt |
+| 80 | `manager` | Manager | HR + Marketing + Ops (no admin) |
+| 60 | `hr_admin` | HR Admin | HR + Recruiting + Education |
+| 55 | `sup_admin` | Supervisor | Team lead, between HR and office |
+| 50 | `office_admin` | Office Admin | Roster + Schedules + Med Ops |
+| 40 | `marketing_admin` | Marketing Admin | Marketing + CRM + GDU |
+| 10 | `user` | User | Personal workspace + view access |
+
+### Role Type Definition (app/types/index.ts)
+```typescript
+export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'sup_admin' | 'office_admin' | 'marketing_admin' | 'user'
+```
+
+### Section Access Matrix
+```typescript
+// SECTION_ACCESS in app/types/index.ts
+hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+marketing: ['super_admin', 'admin', 'manager', 'marketing_admin']
+education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin']
+schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin']
+schedules_view: [all roles]
+admin: ['super_admin', 'admin']
+```
 
 ### Important Files
+- [`app/types/index.ts`](app/types/index.ts) - UserRole type, ROLE_HIERARCHY, SECTION_ACCESS
 - [`app/composables/useAccessMatrix.ts`](app/composables/useAccessMatrix.ts) - Access matrix logic & loading
 - [`app/pages/admin/users.vue`](app/pages/admin/users.vue) - User management with access matrix UI
 - [`server/api/admin/access-matrix.ts`](server/api/admin/access-matrix.ts) - Backend access API
-- [`supabase/migrations/143_page_access_control.sql`](supabase/migrations/143_page_access_control.sql) - Original matrix (⚠️ Overridden by 144)
-- [`supabase/migrations/144_update_page_definitions.sql`](supabase/migrations/144_update_page_definitions.sql) - Overrides 143 (⚠️ Creates inconsistency!)
-- [`supabase/migrations/155_consolidate_access_matrix.sql`](supabase/migrations/155_consolidate_access_matrix.sql) - **FIX** (Ready to apply - consolidates both)
-
-### ⚠️ KNOWN ISSUE: Access Matrix Inconsistency (Jan 2026)
-**Status:** Under review, fix prepared in Migration 155
-
-Migrations 143 and 144 define conflicting access matrices:
-- Migration 143: Original detailed definition
-- Migration 144: Simplified/modified, deleted and recreated all records
-- **Result:** Permissions may not match expected documentation
-
-**Action Required:**
-1. Review [`docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md`](docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md) for complete details
-2. Apply Migration 155 to consolidate and fix
-3. Run audit: `scripts/audit-access-matrix.sql`
-4. Test each role's permissions
 
 ### How Access Works
 ```typescript
@@ -347,23 +421,36 @@ const role = user.profile.role // e.g., "manager"
 // 2. Check if they can access a page
 const access = getAccess(pageId, role) // Returns 'full', 'view', or 'none'
 
-// 3. Act based on access level
-switch(access) {
-  case 'full': // Can view and edit
-  case 'view': // Can only view
-  case 'none':  // Blocked from access
-}
+// 3. super_admin ALWAYS gets 'full' access (hardcoded bypass)
+if (roleKey === 'super_admin') return 'full'
 ```
 
 ### Troubleshooting Access Issues
-**Q: How do I add a new page to the matrix?**  
-A: Add to `page_definitions`, then run Migration 155 or manually insert page_access records.
+**Q: How do I add a new role?**  
+A: Update `UserRole` type, `ROLE_HIERARCHY`, `ROLE_DISPLAY_NAMES`, and `SECTION_ACCESS` in `app/types/index.ts`, then add to database `role_definitions` table.
 
 **Q: Why does user XYZ have no access?**  
 A: Check (1) their role in profiles table, (2) access matrix for that role+page, (3) console errors.
 
-**Q: I see "Supervisor" role but it's not defined?**  
-A: System only has 7 defined roles. "Supervisor" is legacy data - migrate to "manager" or "hr_admin".
-
 **Q: Can I give custom per-user access?**  
 A: Currently no - only role-based. Would need new `user_access_override` table.
+
+---
+
+## 📝 AGENT.md Changelog
+
+Track major updates to this file for AI context continuity.
+
+| Date | Section | Change |
+|------|---------|--------|
+| Jan 2026 | Skill System | Updated skill levels (0-5 with Untrained→Mentor), added level_descriptions schema, added skill categories and pages |
+| Jan 2026 | RBAC | Added `sup_admin` role (tier 55), updated to 8 roles total, added Section Access Matrix |
+| Jan 2026 | Workflow | Added "MANDATORY AI WORKFLOW" section requiring AI to read/update AGENT.md |
+| Jan 2026 | Skills Library | Added new `/skills-library` page accessible to all users |
+
+### How to Update This File
+When making significant changes:
+1. Update the relevant section with accurate information
+2. Add "Last Updated: [Month Year]" to the section header
+3. Add a row to this changelog table
+4. Commit AGENT.md with your other changes
