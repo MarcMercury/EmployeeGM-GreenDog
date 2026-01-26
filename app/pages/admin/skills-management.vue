@@ -8,16 +8,21 @@
           Create, edit, and manage the company skill library
         </p>
       </div>
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">
-        Add Skill
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn color="secondary" variant="tonal" prepend-icon="mdi-book-open-variant" to="/skills-library">
+          View Library
+        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">
+          Add Skill
+        </v-btn>
+      </div>
     </div>
 
     <!-- Skill Level Legend -->
     <v-card rounded="lg" class="mb-6">
       <v-card-title class="text-subtitle-1 d-flex align-center gap-2">
         <v-icon>mdi-information-outline</v-icon>
-        Skill Rating Definitions
+        Skill Rating Definitions (0-5 Scoring Model)
       </v-card-title>
       <v-card-text>
         <v-row>
@@ -28,62 +33,62 @@
               </v-avatar>
               <div>
                 <div class="font-weight-medium text-body-2">Untrained</div>
-                <div class="text-caption text-grey">No training started</div>
+                <div class="text-caption text-grey">No exposure or awareness</div>
               </div>
             </div>
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <div class="d-flex align-center gap-2">
-              <v-avatar color="red-lighten-2" size="32">
+              <v-avatar color="blue-grey" size="32">
                 <span class="text-white font-weight-bold">1</span>
               </v-avatar>
               <div>
-                <div class="font-weight-medium text-body-2">Initial Training</div>
-                <div class="text-caption text-grey">Reading/learning phase</div>
-              </div>
-            </div>
-          </v-col>
-          <v-col cols="12" sm="6" md="4" lg="2">
-            <div class="d-flex align-center gap-2">
-              <v-avatar color="orange" size="32">
-                <span class="text-white font-weight-bold">2</span>
-              </v-avatar>
-              <div>
-                <div class="font-weight-medium text-body-2">Formal Training</div>
-                <div class="text-caption text-grey">Quizzes, mentorship</div>
+                <div class="font-weight-medium text-body-2">Novice</div>
+                <div class="text-caption text-grey">Knows theory, observes</div>
               </div>
             </div>
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <div class="d-flex align-center gap-2">
               <v-avatar color="blue" size="32">
-                <span class="text-white font-weight-bold">3</span>
+                <span class="text-white font-weight-bold">2</span>
               </v-avatar>
               <div>
-                <div class="font-weight-medium text-body-2">Supervised</div>
-                <div class="text-caption text-grey">Can perform supervised</div>
+                <div class="font-weight-medium text-body-2">Apprentice</div>
+                <div class="text-caption text-grey">Performs with supervision</div>
               </div>
             </div>
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <div class="d-flex align-center gap-2">
               <v-avatar color="teal" size="32">
-                <span class="text-white font-weight-bold">4</span>
+                <span class="text-white font-weight-bold">3</span>
               </v-avatar>
               <div>
-                <div class="font-weight-medium text-body-2">Independent</div>
-                <div class="text-caption text-grey">Can perform unsupervised</div>
+                <div class="font-weight-medium text-body-2">Professional</div>
+                <div class="text-caption text-grey">Works independently</div>
               </div>
             </div>
           </v-col>
           <v-col cols="12" sm="6" md="4" lg="2">
             <div class="d-flex align-center gap-2">
               <v-avatar color="green" size="32">
+                <span class="text-white font-weight-bold">4</span>
+              </v-avatar>
+              <div>
+                <div class="font-weight-medium text-body-2">Advanced</div>
+                <div class="text-caption text-grey">Handles complex cases</div>
+              </div>
+            </div>
+          </v-col>
+          <v-col cols="12" sm="6" md="4" lg="2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar color="amber-darken-2" size="32">
                 <span class="text-white font-weight-bold">5</span>
               </v-avatar>
               <div>
                 <div class="font-weight-medium text-body-2">Mentor</div>
-                <div class="text-caption text-grey">Can teach others</div>
+                <div class="text-caption text-grey">Teaches and certifies</div>
               </div>
             </div>
           </v-col>

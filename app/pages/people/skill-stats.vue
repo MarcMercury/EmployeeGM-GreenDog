@@ -110,38 +110,6 @@
         </v-col>
       </v-row>
 
-      <!-- Skill Gap Analysis -->
-      <v-card rounded="lg" class="mt-6">
-        <v-card-title class="d-flex align-center">
-          <v-icon start color="warning">mdi-alert-circle</v-icon>
-          Skill Gap Analysis
-        </v-card-title>
-        <v-divider />
-        <v-card-text v-if="skillGaps.length === 0" class="text-center py-8">
-          <v-icon size="48" color="success">mdi-check-circle</v-icon>
-          <h3 class="text-h6 mt-4">No Critical Skill Gaps</h3>
-          <p class="text-grey">Your team has good coverage across all skills</p>
-        </v-card-text>
-        <v-list v-else>
-          <v-list-item v-for="gap in skillGaps" :key="gap.id">
-            <template #prepend>
-              <v-avatar :color="gap.severity === 'high' ? 'error' : 'warning'" size="36">
-                <v-icon size="20">mdi-alert</v-icon>
-              </v-avatar>
-            </template>
-            <v-list-item-title>{{ gap.name }}</v-list-item-title>
-            <v-list-item-subtitle>
-              Only {{ gap.employeeCount }} employee(s) have this skill • Avg level: {{ gap.avgLevel.toFixed(1) }}
-            </v-list-item-subtitle>
-            <template #append>
-              <v-chip :color="gap.severity === 'high' ? 'error' : 'warning'" size="small" variant="flat">
-                {{ gap.severity === 'high' ? 'Critical Gap' : 'Needs Attention' }}
-              </v-chip>
-            </template>
-          </v-list-item>
-        </v-list>
-      </v-card>
-
       <!-- Employee Skills Editor -->
       <v-card rounded="lg" class="mt-6">
         <v-card-title>
@@ -293,15 +261,6 @@ definePageMeta({
   middleware: ['auth', 'admin']
 })
 
-interface SkillStat {
-  id: string
-  name: string
-  category: string
-  employeeCount: number
-  avgLevel: number
-  severity?: 'high' | 'medium'
-}
-
 interface SkillRating {
   skill_id: string
   skill_name: string
@@ -393,42 +352,6 @@ const categoryStats = computed(() => {
       avgLevel: data.levels.reduce((a, b) => a + b, 0) / data.levels.length
     }))
     .sort((a, b) => b.avgLevel - a.avgLevel)
-})
-
-const skillGaps = computed((): SkillStat[] => {
-  // Find skills with low coverage or low average levels
-  const skillStats: Record<string, { count: number; totalLevel: number }> = {}
-  
-  employeeSkills.value.forEach(es => {
-    if (!skillStats[es.skill_id]) {
-      skillStats[es.skill_id] = { count: 0, totalLevel: 0 }
-    }
-    skillStats[es.skill_id].count++
-    skillStats[es.skill_id].totalLevel += es.level
-  })
-  
-  const gaps: SkillStat[] = []
-  
-  skillLibrary.value.forEach(skill => {
-    const stats = skillStats[skill.id] || { count: 0, totalLevel: 0 }
-    const avgLevel = stats.count > 0 ? stats.totalLevel / stats.count : 0
-    
-    // Flag as gap if less than 20% of employees have it OR avg level < 2.5
-    const coveragePercent = (stats.count / Math.max(totalEmployees.value, 1)) * 100
-    
-    if (coveragePercent < 20 || (avgLevel < 2.5 && stats.count > 0)) {
-      gaps.push({
-        id: skill.id,
-        name: skill.name,
-        category: skill.category,
-        employeeCount: stats.count,
-        avgLevel,
-        severity: coveragePercent < 10 ? 'high' : 'medium'
-      })
-    }
-  })
-  
-  return gaps.sort((a, b) => a.employeeCount - b.employeeCount).slice(0, 5)
 })
 
 // Employee Skills Editor Computed

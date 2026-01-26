@@ -90,8 +90,8 @@
                     Not Rated
                   </v-chip>
                 </v-list-item-title>
-                <v-list-item-subtitle>
-                  {{ skill.description || 'No description available' }}
+                <v-list-item-subtitle class="text-wrap">
+                  {{ getSkillLevelDescription(skill) }}
                 </v-list-item-subtitle>
                 
                 <template #append>
@@ -174,6 +174,7 @@ interface SkillLibraryItem {
   name: string
   category: string
   description?: string
+  level_descriptions?: Record<string, string> | null
 }
 
 interface EmployeeSkillRating {
@@ -186,6 +187,7 @@ interface MergedSkill {
   name: string
   category: string
   description?: string
+  level_descriptions?: Record<string, string> | null
   rating: number
 }
 
@@ -216,6 +218,7 @@ const mergedSkills = computed(() => {
     name: skill.name,
     category: skill.category,
     description: skill.description,
+    level_descriptions: skill.level_descriptions,
     rating: employeeRatings.value[skill.id] || 0
   }))
 })
@@ -319,13 +322,36 @@ const getLevelColor = (level: number) => {
 
 const getLevelLabel = (level: number) => {
   const labels: Record<number, string> = {
+    0: 'Untrained',
     1: 'Novice',
-    2: 'Beginner',
-    3: 'Intermediate',
+    2: 'Apprentice',
+    3: 'Professional',
     4: 'Advanced',
-    5: 'Expert'
+    5: 'Mentor'
   }
   return labels[level] || 'Unknown'
+}
+
+// Get the skill-specific description for the current level
+const getSkillLevelDescription = (skill: MergedSkill): string => {
+  // Check if skill has level_descriptions and we have a valid rating
+  if (skill.level_descriptions && skill.level_descriptions[String(skill.rating)]) {
+    return skill.level_descriptions[String(skill.rating)]
+  }
+  // Fall back to generic description or the skill's base description
+  if (skill.rating === 0) {
+    return skill.description || 'Rate this skill to see level-specific description'
+  }
+  // Generic level descriptions
+  const genericDescriptions: Record<number, string> = {
+    0: 'No training or exposure to this skill.',
+    1: 'Basic awareness. Observes others performing.',
+    2: 'Performs basic tasks with supervision.',
+    3: 'Works independently with standard cases.',
+    4: 'Handles complex or difficult cases.',
+    5: 'Expert level. Teaches and mentors others.'
+  }
+  return genericDescriptions[skill.rating] || skill.description || 'No description available'
 }
 
 const formatDate = (dateStr: string) => {
@@ -377,7 +403,7 @@ const fetchSkills = async () => {
     // Fetch ALL skills from library
     const { data: skillsData, error: skillsError } = await client
       .from('skill_library')
-      .select('id, name, category, description')
+      .select('id, name, category, description, level_descriptions')
       .order('category')
       .order('name')
     
