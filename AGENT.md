@@ -5,10 +5,51 @@
 
 ## 🚨 MANDATORY AI WORKFLOW
 
-### Before Starting ANY Task:
-1. **READ THIS ENTIRE FILE** - Do not skip sections
-2. **Check the "Last Updated" dates** - Outdated sections need verification
-3. **Verify current state** - If unsure, check the actual code/database
+### Before Starting ANY Task - READ THESE FILES:
+
+**STOP. Before writing any code or making any changes, review the following in order:**
+
+| Priority | File/Folder | Purpose |
+|----------|-------------|---------|
+| 1️⃣ | **This file (`AGENT.md`)** | Primary AI context, patterns, and directives |
+| 2️⃣ | **`README.md`** | Project overview, features, and setup |
+| 3️⃣ | **`REVIEW_GUIDE.md`** | Code review prep, key files, architecture highlights |
+| 4️⃣ | **`docs/` folder** | All documentation (see index below) |
+| 5️⃣ | **`docs/agents/`** | Specialized sub-agent instructions |
+| 6️⃣ | **Credentials files** | API keys and tokens (DO NOT EXPOSE) |
+
+### Documentation Index (`docs/` folder)
+
+| Document | Purpose | Review When |
+|----------|---------|-------------|
+| `SUPABASE_CREDENTIALS.md` | 🔑 Database API keys & tokens | Any DB work |
+| `SUPABASE_OPERATIONS.md` | Migration procedures & API access | Running migrations |
+| `SLACK_CREDENTIALS.md` | 🔑 Slack API tokens | Slack integration |
+| `OPENAI_CREDENTIALS.md` | 🔑 OpenAI API keys | AI features |
+| `INTEGRATIONS.md` | Live integrations status | Before suggesting new integrations |
+| `UNIFIED_USER_LIFECYCLE.md` | Person lifecycle & "hats" architecture | User/employee work |
+| `PROJECT_STRUCTURE.md` | Architecture and file organization | Understanding codebase |
+| `ACCESS_MATRIX_*.md` | Role-based access control docs | Permission changes |
+| `SLACK_INTEGRATION.md` | Slack sync & notifications | Slack features |
+| `CODE_REVIEW_CHECKLIST.md` | Code quality standards | Before submitting code |
+
+### Specialized Agents (`docs/agents/`)
+
+| Agent | When to Reference |
+|-------|-------------------|
+| `migration-reviewer.md` | Creating database migrations |
+| `git-committer.md` | Writing commit messages |
+| `page-auditor.md` | Auditing page components |
+| `vue-component-creator.md` | Creating new Vue components |
+| `nuxt-pattern-checker.md` | Validating Nuxt patterns |
+| `debugger.md` | Debugging issues |
+
+### Pre-Work Checklist
+- [ ] Read AGENT.md (this file) completely
+- [ ] Check relevant docs/ files for the task
+- [ ] Note any "Last Updated" dates on sections
+- [ ] Verify credentials files exist (don't expose contents)
+- [ ] Check REVIEW_GUIDE.md for code quality standards
 
 ### After Completing ANY Significant Change:
 1. **UPDATE THIS FILE** if you modified:
@@ -25,12 +66,22 @@ When context window resets, AI assistants lose session memory. This file is the 
 
 ---
 
-## 🚨 CRITICAL: CREDENTIALS FILE
+## 🚨 CRITICAL: CREDENTIALS FILES
 
-**⚠️ ALWAYS CHECK [`SUPABASE_CREDENTIALS.md`](SUPABASE_CREDENTIALS.md) FOR DATABASE CREDENTIALS!**
-**⚠️ NEVER DELETE OR MODIFY THE CREDENTIALS FILE!**
+**⚠️ NEVER EXPOSE OR LOG CREDENTIALS IN CODE OR TERMINAL OUTPUT!**
 
-All Supabase API keys, service role keys, and access tokens are stored there.
+| File | Contains |
+|------|----------|
+| `docs/SUPABASE_CREDENTIALS.md` | Database API keys, service role keys, access tokens |
+| `docs/SLACK_CREDENTIALS.md` | Slack bot tokens and signing secrets |
+| `docs/OPENAI_CREDENTIALS.md` | OpenAI API keys |
+| `.env` | Runtime environment variables |
+
+**Rules:**
+- ✅ Read credentials files to understand what's available
+- ❌ Never print credentials to console
+- ❌ Never include credentials in code commits
+- ❌ Never delete or modify credentials files without explicit permission
 
 ## 🚨 IMPORTANT DIRECTIVES
 
@@ -443,6 +494,9 @@ Track major updates to this file for AI context continuity.
 
 | Date | Section | Change |
 |------|---------|--------|
+| Jan 2026 | Mandatory Workflow | Expanded to require reading README, REVIEW_GUIDE, docs/, docs/agents/, and all credentials files before any work |
+| Jan 2026 | Credentials | Added all 3 credentials files (Supabase, Slack, OpenAI) with security rules |
+| Jan 2026 | Documentation Index | Added full docs/ folder index with "Review When" guidance |
 | Jan 2026 | Skill System | Updated skill levels (0-5 with Untrained→Mentor), added level_descriptions schema, added skill categories and pages |
 | Jan 2026 | RBAC | Added `sup_admin` role (tier 55), updated to 8 roles total, added Section Access Matrix |
 | Jan 2026 | Workflow | Added "MANDATORY AI WORKFLOW" section requiring AI to read/update AGENT.md |
