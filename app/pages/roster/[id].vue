@@ -1901,11 +1901,6 @@ const skillCategoryOptionsForReview = [
 // ==========================================
 const isAdmin = computed(() => authStore.isAdmin)
 
-const isOwnProfile = computed(() => {
-  const currentEmployeeId = userStore.employee?.id
-  return currentEmployeeId === employeeId.value
-})
-
 const canViewSensitiveData = computed(() => {
   // Admins can see everything
   if (isAdmin.value) return true
