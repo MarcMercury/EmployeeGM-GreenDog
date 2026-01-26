@@ -1,112 +1,208 @@
 <template>
-  <div class="activity-hub">
-    <!-- Hero Header -->
+  <div class="activity-hub pa-4 pa-md-6">
+    <!-- Hero Header with Personal Stats -->
     <div class="hero-header mb-6">
       <div class="d-flex align-center justify-space-between flex-wrap gap-4">
         <div>
+          <p class="text-body-2 text-grey-darken-1">{{ greeting }}, <span class="font-weight-medium">{{ firstName }}</span>! 👋</p>
           <h1 class="text-h4 font-weight-bold mb-1 d-flex align-center gap-2">
             <span class="hero-icon">🔔</span>
             Activity Hub
           </h1>
-          <p class="text-body-1 text-grey-darken-1">
-            {{ isAdmin ? 'All system activity and updates at a glance' : 'Your personal notifications and updates' }}
-          </p>
+          <p class="text-body-2 text-grey-darken-1">{{ currentDate }}</p>
         </div>
         <div class="d-flex gap-2 align-center">
-          <!-- Unread Badge -->
-          <v-chip v-if="unreadCount > 0" color="error" size="small" class="font-weight-bold">
-            {{ unreadCount }} unread
-          </v-chip>
-          <v-btn 
-            v-if="unreadCount > 0 && !showClosed"
-            variant="outlined" 
-            size="small"
-            prepend-icon="mdi-check-all"
-            @click="markAllAsRead"
-            :loading="markingAllRead"
+          <!-- View Toggle for Admins -->
+          <v-btn-toggle
+            v-if="isAdmin"
+            v-model="viewMode"
+            mandatory
+            density="compact"
+            variant="outlined"
+            divided
           >
-            Mark All Read
-          </v-btn>
+            <v-btn value="personal" size="small">
+              <v-icon start size="16">mdi-account</v-icon>
+              Personal
+            </v-btn>
+            <v-btn value="company" size="small">
+              <v-icon start size="16">mdi-domain</v-icon>
+              Company
+            </v-btn>
+          </v-btn-toggle>
+          
           <v-btn 
-            v-if="totalCount > 0 && !showClosed"
-            variant="outlined" 
+            color="primary"
+            :to="viewMode === 'personal' ? '/profile' : '/roster'"
             size="small"
-            color="grey"
-            prepend-icon="mdi-archive-arrow-down"
-            @click="closeAllNotifications"
-            :loading="closingAll"
           >
-            Close All
+            <v-icon start size="16">{{ viewMode === 'personal' ? 'mdi-account' : 'mdi-account-group' }}</v-icon>
+            {{ viewMode === 'personal' ? 'My Profile' : 'View Team' }}
           </v-btn>
-          <v-btn 
-            variant="text" 
-            icon="mdi-refresh"
-            :loading="loading"
-            @click="loadNotifications"
-          />
         </div>
       </div>
     </div>
 
-    <!-- Stats Summary -->
-    <v-row class="mb-6">
-      <v-col cols="6" sm="3" md="2">
+    <!-- Compact Personal Stats Row -->
+    <v-row class="mb-6" dense>
+      <v-col cols="6" sm="3">
+        <v-card 
+          class="stat-tile" 
+          rounded="xl" 
+          :to="'/my-schedule'"
+          hover
+        >
+          <v-card-text class="d-flex align-center gap-3 pa-3">
+            <div class="stat-icon-small bg-green">
+              <v-icon color="white" size="20">mdi-calendar-clock</v-icon>
+            </div>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ personalStats.upcomingShifts }}</div>
+              <div class="text-caption text-grey">Shifts This Week</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card 
+          class="stat-tile" 
+          rounded="xl" 
+          :to="'/people/my-skills'"
+          hover
+        >
+          <v-card-text class="d-flex align-center gap-3 pa-3">
+            <div class="stat-icon-small bg-amber">
+              <v-icon color="white" size="20">mdi-star</v-icon>
+            </div>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ personalStats.skillCount }}</div>
+              <div class="text-caption text-grey">My Skills</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card 
+          class="stat-tile" 
+          rounded="xl" 
+          :to="'/development'"
+          hover
+        >
+          <v-card-text class="d-flex align-center gap-3 pa-3">
+            <div class="stat-icon-small bg-pink">
+              <v-icon color="white" size="20">mdi-target</v-icon>
+            </div>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ personalStats.activeGoals }}</div>
+              <div class="text-caption text-grey">Active Goals</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="3">
+        <v-card 
+          class="stat-tile" 
+          rounded="xl" 
+          :to="'/academy/my-training'"
+          hover
+        >
+          <v-card-text class="d-flex align-center gap-3 pa-3">
+            <div class="stat-icon-small bg-purple">
+              <v-icon color="white" size="20">mdi-school</v-icon>
+            </div>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ personalStats.trainingInProgress }}</div>
+              <div class="text-caption text-grey">Courses In Progress</div>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Activity Stats Summary -->
+    <v-row class="mb-6" dense>
+      <v-col cols="6" sm="4" md="2">
         <v-card 
           class="stat-card" 
           :class="{ 'stat-card--active': !selectedCategories.length && !showClosed && !showPriorityOnly }"
           @click="clearFilters"
           rounded="xl"
         >
-          <v-card-text class="text-center py-4">
-            <div class="stat-icon mb-2">📬</div>
-            <div class="text-h4 font-weight-bold text-primary">{{ totalCount }}</div>
+          <v-card-text class="text-center py-3">
+            <div class="stat-emoji mb-1">📬</div>
+            <div class="text-h5 font-weight-bold text-primary">{{ totalCount }}</div>
             <div class="text-caption text-grey">Open</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
+      <v-col cols="6" sm="4" md="2">
         <v-card 
           class="stat-card"
           :class="{ 'stat-card--active': showPriorityOnly && !showClosed }"
           @click="togglePriorityFilter"
           rounded="xl"
         >
-          <v-card-text class="text-center py-4">
-            <div class="stat-icon mb-2">🔥</div>
-            <div class="text-h4 font-weight-bold text-error">{{ priorityCount }}</div>
+          <v-card-text class="text-center py-3">
+            <div class="stat-emoji mb-1">🔥</div>
+            <div class="text-h5 font-weight-bold text-error">{{ priorityCount }}</div>
             <div class="text-caption text-grey">Action Required</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
+      <v-col cols="6" sm="4" md="2">
         <v-card class="stat-card" rounded="xl">
-          <v-card-text class="text-center py-4">
-            <div class="stat-icon mb-2">📅</div>
-            <div class="text-h4 font-weight-bold text-info">{{ todayCount }}</div>
+          <v-card-text class="text-center py-3">
+            <div class="stat-emoji mb-1">📅</div>
+            <div class="text-h5 font-weight-bold text-info">{{ todayCount }}</div>
             <div class="text-caption text-grey">Today</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
+      <v-col cols="6" sm="4" md="2">
         <v-card class="stat-card" rounded="xl">
-          <v-card-text class="text-center py-4">
-            <div class="stat-icon mb-2">📆</div>
-            <div class="text-h4 font-weight-bold text-success">{{ thisWeekCount }}</div>
+          <v-card-text class="text-center py-3">
+            <div class="stat-emoji mb-1">📆</div>
+            <div class="text-h5 font-weight-bold text-success">{{ thisWeekCount }}</div>
             <div class="text-caption text-grey">This Week</div>
           </v-card-text>
         </v-card>
       </v-col>
-      <v-col cols="6" sm="3" md="2">
+      <v-col cols="6" sm="4" md="2">
         <v-card 
           class="stat-card"
           :class="{ 'stat-card--active': showClosed }"
           @click="showClosed = !showClosed; showPriorityOnly = false"
           rounded="xl"
         >
-          <v-card-text class="text-center py-4">
-            <div class="stat-icon mb-2">📦</div>
-            <div class="text-h4 font-weight-bold text-grey">{{ closedCount }}</div>
+          <v-card-text class="text-center py-3">
+            <div class="stat-emoji mb-1">📦</div>
+            <div class="text-h5 font-weight-bold text-grey">{{ closedCount }}</div>
             <div class="text-caption text-grey">Closed</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="6" sm="4" md="2">
+        <v-card class="stat-card d-flex align-center justify-center" rounded="xl">
+          <v-card-text class="text-center py-3">
+            <v-btn 
+              v-if="unreadCount > 0 && !showClosed"
+              variant="tonal" 
+              size="small"
+              color="primary"
+              @click.stop="markAllAsRead"
+              :loading="markingAllRead"
+              block
+            >
+              <v-icon start size="14">mdi-check-all</v-icon>
+              Mark Read
+            </v-btn>
+            <v-btn 
+              v-else
+              variant="text" 
+              icon="mdi-refresh"
+              :loading="loadingNotifications"
+              @click.stop="loadNotifications"
+            />
           </v-card-text>
         </v-card>
       </v-col>
@@ -156,7 +252,7 @@
     </v-card>
 
     <!-- Loading State -->
-    <div v-if="loading && notifications.length === 0" class="text-center py-12">
+    <div v-if="loadingNotifications && notifications.length === 0" class="text-center py-12">
       <v-progress-circular indeterminate color="primary" size="64" />
       <p class="text-grey mt-4">Loading your activity feed...</p>
     </div>
@@ -208,7 +304,7 @@
           @click="openNotification(notification)"
         >
           <!-- Priority Badge -->
-          <div v-if="notification.requires_action" class="priority-badge">
+          <div v-if="notification.requires_action && !notification.closed_at" class="priority-badge">
             <v-icon size="14" color="white">mdi-alert</v-icon>
             Action Required
           </div>
@@ -225,7 +321,7 @@
               <div class="flex-grow-1">
                 <div class="d-flex align-center gap-2">
                   <span class="text-caption text-grey">{{ getCategoryLabel(notification.category) }}</span>
-                  <v-chip v-if="!notification.is_read" color="primary" size="x-small" label>New</v-chip>
+                  <v-chip v-if="!notification.is_read && !notification.closed_at" color="primary" size="x-small" label>New</v-chip>
                 </div>
                 <div class="text-caption text-grey-darken-1">
                   {{ formatTimeAgo(notification.created_at) }}
@@ -402,9 +498,120 @@ useHead({
   title: 'Activity Hub'
 })
 
-// Use untyped client to bypass strict type checking for notifications table
+// Get global hydrated data
+const { employees, loading, isAdmin, currentUserProfile, fetchGlobalData } = useAppData()
 const supabase = useSupabaseClient() as SupabaseClient
-const { currentUserProfile, isAdmin } = useAppData()
+
+// Dashboard view mode: 'personal' or 'company'
+const viewMode = ref<'personal' | 'company'>('personal')
+
+// Personal dashboard data
+const myUpcomingShifts = ref<any[]>([])
+const myActiveGoals = ref<any[]>([])
+const myTrainingProgress = ref<any[]>([])
+const loadingPersonal = ref(false)
+
+// Greeting based on time of day
+const greeting = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+})
+
+const firstName = computed(() => currentUserProfile.value?.first_name || 'there')
+
+// Current date formatted
+const currentDate = computed(() => {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+})
+
+// Personal stats computed
+const personalStats = computed(() => {
+  const profile = currentUserProfile.value
+  if (!profile) return { skillCount: 0, upcomingShifts: 0, activeGoals: 0, trainingInProgress: 0 }
+  
+  // Get user's skills from employees array
+  const userEmployee = employees.value.find(e => e.id === profile.id)
+  const userSkills = userEmployee?.skills || []
+  
+  return {
+    skillCount: userSkills.length,
+    upcomingShifts: myUpcomingShifts.value.length,
+    activeGoals: myActiveGoals.value.length,
+    trainingInProgress: myTrainingProgress.value.length
+  }
+})
+
+// Fetch personal dashboard data
+async function fetchPersonalData() {
+  if (!currentUserProfile.value?.id) return
+  loadingPersonal.value = true
+  
+  try {
+    const userId = currentUserProfile.value.id
+    const today = new Date().toISOString().split('T')[0]
+    const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
+    // Fetch upcoming shifts
+    try {
+      const { data: shifts } = await supabase
+        .from('schedule_entries')
+        .select('*, shift_template:shift_templates(*)')
+        .eq('employee_id', userId)
+        .gte('date', today)
+        .lte('date', nextWeek)
+        .order('date', { ascending: true })
+        .limit(5)
+      
+      myUpcomingShifts.value = shifts || []
+    } catch {
+      myUpcomingShifts.value = []
+    }
+    
+    // Fetch active goals
+    try {
+      const { data: goals } = await supabase
+        .from('employee_goals')
+        .select('*')
+        .eq('employee_id', userId)
+        .eq('completed', false)
+        .order('target_date', { ascending: true })
+        .limit(5)
+      
+      myActiveGoals.value = goals || []
+    } catch {
+      myActiveGoals.value = []
+    }
+    
+    // Fetch training progress
+    try {
+      const { data: training } = await supabase
+        .from('course_enrollments')
+        .select('*, course:courses(*)')
+        .eq('user_id', userId)
+        .in('status', ['assigned', 'in_progress'])
+        .order('assigned_at', { ascending: false })
+        .limit(5)
+      
+      myTrainingProgress.value = training || []
+    } catch {
+      myTrainingProgress.value = []
+    }
+    
+  } catch (err) {
+    console.error('[ActivityHub] Error fetching personal data:', err)
+  } finally {
+    loadingPersonal.value = false
+  }
+}
+
+// ============= NOTIFICATIONS SECTION =============
 
 // Types
 interface Notification {
@@ -418,7 +625,6 @@ interface Notification {
   read_at: string | null
   closed_at: string | null
   created_at: string
-  // Computed/derived fields
   category: string
   requires_action: boolean
   action_url: string | null
@@ -437,10 +643,9 @@ const categories = [
 ]
 
 // State
-const loading = ref(true)
+const loadingNotifications = ref(true)
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const closingAll = ref(false)
 const notifications = ref<Notification[]>([])
 const selectedCategories = ref<string[]>([])
 const showPriorityOnly = ref(false)
@@ -469,20 +674,16 @@ const thisWeekCount = computed(() => {
 })
 
 const filteredNotifications = computed(() => {
-  // Start with either open or closed notifications based on toggle
   let result = showClosed.value ? [...closedNotifications.value] : [...openNotifications.value]
   
-  // Filter by priority (only applies to open notifications)
   if (showPriorityOnly.value && !showClosed.value) {
     result = result.filter(n => n.requires_action)
   }
   
-  // Filter by categories
   if (selectedCategories.value.length > 0) {
     result = result.filter(n => selectedCategories.value.includes(n.category))
   }
   
-  // Sort: priority items first, then by date
   result.sort((a, b) => {
     if (a.requires_action && !b.requires_action) return -1
     if (!a.requires_action && b.requires_action) return 1
@@ -494,20 +695,15 @@ const filteredNotifications = computed(() => {
 
 // Methods
 const loadNotifications = async () => {
-  loading.value = true
+  loadingNotifications.value = true
   page.value = 1
   
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('notifications')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(pageSize)
-    
-    // Admins see all notifications, users see only their own (enforced by RLS anyway)
-    // But we can add additional filtering here if needed
-    
-    const { data, error } = await query
     
     if (error) throw error
     
@@ -516,7 +712,7 @@ const loadNotifications = async () => {
   } catch (err) {
     console.error('Error loading notifications:', err)
   } finally {
-    loading.value = false
+    loadingNotifications.value = false
   }
 }
 
@@ -546,31 +742,19 @@ const loadMore = async () => {
 }
 
 const enrichNotification = (n: any): Notification => {
-  // Use database category if available, otherwise derive from type
   const category = n.category || n.type?.split('_')[0] || 'system'
-  
-  // Use database requires_action if available, otherwise check type
   const actionTypes = ['approval_needed', 'response_required', 'urgent', 'action_required']
   const requires_action = n.requires_action || actionTypes.some(t => n.type?.includes(t)) || n.data?.requires_action
-  
-  // Derive action URL from data
   const action_url = n.data?.url || n.data?.action_url || null
   const action_label = n.data?.action_label || null
   
-  return {
-    ...n,
-    category,
-    requires_action,
-    action_url,
-    action_label
-  }
+  return { ...n, category, requires_action, action_url, action_label }
 }
 
 const openNotification = async (notification: Notification) => {
   selectedNotification.value = notification
   detailDialog.value = true
   
-  // Mark as read when opened
   if (!notification.is_read) {
     await markAsRead(notification)
   }
@@ -583,9 +767,7 @@ const markAsRead = async (notification: Notification) => {
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', notification.id)
     
-    // Update local state
-    const idx = notifications.value.findIndex(n => n.id === notification.id)
-    const item = notifications.value[idx]
+    const item = notifications.value.find(n => n.id === notification.id)
     if (item) {
       item.is_read = true
       item.read_at = new Date().toISOString()
@@ -607,7 +789,6 @@ const markAllAsRead = async () => {
         .update({ is_read: true, read_at: new Date().toISOString() })
         .in('id', unreadIds)
       
-      // Update local state
       notifications.value.forEach(n => {
         if (!n.is_read) {
           n.is_read = true
@@ -630,50 +811,18 @@ const closeNotification = async (notification: Notification) => {
       .update({ closed_at: closedAt, is_read: true, read_at: notification.read_at || closedAt })
       .eq('id', notification.id)
     
-    // Update local state
-    const idx = notifications.value.findIndex(n => n.id === notification.id)
-    const item = notifications.value[idx]
+    const item = notifications.value.find(n => n.id === notification.id)
     if (item) {
       item.closed_at = closedAt
       item.is_read = true
       if (!item.read_at) item.read_at = closedAt
     }
     
-    // Close detail dialog if this notification was selected
     if (selectedNotification.value?.id === notification.id) {
       detailDialog.value = false
     }
   } catch (err) {
     console.error('Error closing notification:', err)
-  }
-}
-
-const closeAllNotifications = async () => {
-  closingAll.value = true
-  
-  try {
-    const openIds = openNotifications.value.map(n => n.id)
-    
-    if (openIds.length > 0) {
-      const closedAt = new Date().toISOString()
-      await supabase
-        .from('notifications')
-        .update({ closed_at: closedAt, is_read: true, read_at: closedAt })
-        .in('id', openIds)
-      
-      // Update local state
-      notifications.value.forEach(n => {
-        if (!n.closed_at) {
-          n.closed_at = closedAt
-          n.is_read = true
-          if (!n.read_at) n.read_at = closedAt
-        }
-      })
-    }
-  } catch (err) {
-    console.error('Error closing all notifications:', err)
-  } finally {
-    closingAll.value = false
   }
 }
 
@@ -684,9 +833,7 @@ const reopenNotification = async (notification: Notification) => {
       .update({ closed_at: null })
       .eq('id', notification.id)
     
-    // Update local state
-    const idx = notifications.value.findIndex(n => n.id === notification.id)
-    const item = notifications.value[idx]
+    const item = notifications.value.find(n => n.id === notification.id)
     if (item) {
       item.closed_at = null
     }
@@ -703,6 +850,7 @@ const clearFilters = () => {
 
 const togglePriorityFilter = () => {
   showPriorityOnly.value = !showPriorityOnly.value
+  showClosed.value = false
 }
 
 const getCategoryCount = (category: string) => {
@@ -759,8 +907,10 @@ const formatDateTime = (dateStr: string) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadNotifications()
+onMounted(async () => {
+  await fetchGlobalData()
+  await fetchPersonalData()
+  await loadNotifications()
 })
 </script>
 
@@ -788,6 +938,33 @@ onMounted(() => {
   50% { transform: rotate(0deg); }
 }
 
+/* Compact stat tiles */
+.stat-tile {
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.stat-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon-small {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-icon-small.bg-green { background: linear-gradient(135deg, #4CAF50, #2E7D32); }
+.stat-icon-small.bg-amber { background: linear-gradient(135deg, #FFC107, #FF8F00); }
+.stat-icon-small.bg-pink { background: linear-gradient(135deg, #E91E63, #C2185B); }
+.stat-icon-small.bg-purple { background: linear-gradient(135deg, #9C27B0, #6A1B9A); }
+
+/* Activity stats */
 .stat-card {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -804,8 +981,8 @@ onMounted(() => {
   background: rgba(var(--v-theme-primary), 0.05);
 }
 
-.stat-icon {
-  font-size: 1.5rem;
+.stat-emoji {
+  font-size: 1.25rem;
 }
 
 .filters-card {

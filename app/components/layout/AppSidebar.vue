@@ -25,92 +25,107 @@
 
     <v-divider class="border-opacity-10" />
 
-    <!-- Navigation Groups - Collapsible -->
+    <!-- Navigation Groups -->
     <v-list 
       v-model:opened="openGroups" 
       nav 
       density="compact" 
       class="px-2 mt-2"
     >
-      <!-- Dashboard - Always visible -->
+      <!-- ===== Activity Hub - Always visible ===== -->
       <v-list-item
-        to="/"
-        prepend-icon="mdi-view-dashboard"
-        title="Dashboard"
+        to="/activity"
+        prepend-icon="mdi-bell"
+        title="Activity Hub"
         rounded="lg"
         class="nav-item mb-1"
       />
 
-      <!-- Contact List Group - Collapsible -->
-      <v-list-group v-if="!rail" value="contacts">
-        <template #activator="{ props: activatorProps }">
-          <v-list-item
-            v-bind="activatorProps"
-            prepend-icon="mdi-account-group"
-            title="Contact List"
-            rounded="lg"
-            class="nav-item"
-          />
-        </template>
-        <v-list-item to="/roster" title="All Staff" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
-      </v-list-group>
-      <v-list-item v-else to="/roster" prepend-icon="mdi-account-group" title="Contacts" rounded="lg" class="nav-item mb-1" />
+      <!-- ===== Marketplace - Always visible ===== -->
+      <v-list-item
+        to="/marketplace"
+        prepend-icon="mdi-store"
+        title="Marketplace"
+        rounded="lg"
+        class="nav-item mb-2"
+      />
 
-      <!-- People & Skills Group - Collapsible -->
-      <v-list-group v-if="!rail" value="skills">
+      <!-- ===== My Workspace Group ===== -->
+      <v-list-group v-if="!rail" value="my-workspace">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
-            prepend-icon="mdi-hexagon-multiple"
-            title="People & Skills"
+            prepend-icon="mdi-account-circle"
+            title="My Workspace"
             rounded="lg"
             class="nav-item"
           />
         </template>
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/my-schedule" title="My Schedule" prepend-icon="mdi-calendar-account" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/skills-library" title="Skills Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/academy/my-training" title="My Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else to="/profile" prepend-icon="mdi-account-circle" title="My" rounded="lg" class="nav-item mb-1" />
+
+      <!-- ===== Management Group ===== -->
+      <v-list-group v-if="!rail" value="management">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-clipboard-text"
+            title="Management"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/roster" title="Contact List" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/facilities/resources" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasHrAccess" to="/academy/courses" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/profile" prepend-icon="mdi-hexagon-multiple" title="Skills" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Operations Group - Collapsible -->
-      <v-list-group v-if="!rail" value="operations">
+      <!-- ===== Med Ops Group ===== -->
+      <v-list-group v-if="!rail" value="med-ops">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
-            prepend-icon="mdi-calendar-clock"
-            title="Operations"
+            prepend-icon="mdi-medical-bag"
+            title="Med Ops"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/schedule" title="Schedule" prepend-icon="mdi-calendar" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasScheduleManageAccess" to="/schedule/builder" title="Schedule Builder" prepend-icon="mdi-view-dashboard-edit" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/time-off" title="Time Off" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/training" title="Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/schedule" prepend-icon="mdi-calendar-clock" title="Ops" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Recruiting Group - HR/Manager Access -->
-      <v-list-group v-if="hasRecruitingAccess && !rail" value="recruiting">
+      <!-- ===== HR Group - HR/Manager Access ===== -->
+      <v-list-group v-if="hasHrAccess && !rail" value="hr">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
-            prepend-icon="mdi-account-search"
-            title="Recruiting"
+            prepend-icon="mdi-briefcase"
+            title="HR"
             rounded="lg"
             class="nav-item"
           />
         </template>
-        <v-list-item to="/recruiting" title="Pipeline" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/recruiting/candidates" title="Candidates" prepend-icon="mdi-account-multiple-plus" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/recruiting/onboarding" title="Onboarding" prepend-icon="mdi-clipboard-check-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule" title="Team Schedule" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasRecruitingAccess" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/hr/payroll-export" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/roster" title="Master Roster" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasRecruitingAccess" to="/recruiting" prepend-icon="mdi-account-search" title="Recruiting" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
-      <!-- Marketing Group - Marketing Access -->
+      <!-- ===== Marketing Group - Marketing Access ===== -->
       <v-list-group v-if="hasMarketingAccess && !rail" value="marketing">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -121,22 +136,18 @@
             class="nav-item"
           />
         </template>
-        <!-- Command Center - Marketing Hub -->
-        <v-list-item to="/marketing/command-center" title="Command Center" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Calendar - visible to marketing roles -->
         <v-list-item to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Events -->
         <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Marketing Hubs -->
+        <v-list-item to="/growth/leads" title="Event Leads" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Visible to all marketing roles -->
         <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/partnerships" title="Referral CRM" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasMarketingAccess" to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
 
-      <!-- CRM & Analytics Group - Marketing Access -->
+      <!-- ===== CRM & Analytics Group - Marketing Access ===== -->
       <v-list-group v-if="hasMarketingAccess && !rail" value="crm-analytics">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -147,16 +158,12 @@
             class="nav-item"
           />
         </template>
-        <!-- EzyVet Ecosystem -->
         <v-list-item to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Event Leads -->
-        <v-list-item to="/growth/leads" title="Event Leads" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <!-- Referral CRM -->
-        <v-list-item to="/marketing/partnerships" title="Referral CRM" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
 
-      <!-- GDU (Education) Group - Education Access -->
+      <!-- ===== GDU (Education) Group - Education Access ===== -->
       <v-list-group v-if="hasEducationAccess && !rail" value="gdu">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -167,34 +174,35 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/gdu" title="Dashboard" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/gdu/students" title="Student Contacts" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/gdu/visitors" title="CE Course Contacts" prepend-icon="mdi-certificate" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu" title="GDU Dash" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu/students" title="Student CRM" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/gdu/visitors" title="Visitor CRM" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasEducationAccess" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
+
+      <!-- ===== Admin Ops Group - Admin Access ===== -->
+      <v-list-group v-if="hasAdminAccess && !rail" value="admin-ops">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-cog"
+            title="Admin Ops"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/system-health" title="System Health" prepend-icon="mdi-heart-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/settings" title="Global Settings" prepend-icon="mdi-tune" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else-if="hasAdminAccess" to="/settings" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>
       <v-divider class="border-opacity-10" />
-      
-      <!-- Admin Settings - Only for admin roles -->
-      <v-list v-if="hasAdminAccess" nav density="compact" class="px-2">
-        <v-list-item
-          to="/admin/skills-management"
-          prepend-icon="mdi-bookshelf"
-          title="Skill Library"
-          rounded="lg"
-          class="nav-item"
-        />
-        <v-list-item
-          to="/settings"
-          prepend-icon="mdi-cog"
-          title="Settings"
-          rounded="lg"
-          class="nav-item"
-        />
-      </v-list>
 
       <!-- User Section -->
       <div class="pa-3">
@@ -295,7 +303,6 @@ const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value))
 const hasRecruitingAccess = computed(() => SECTION_ACCESS.recruiting.includes(userRole.value))
 const hasMarketingAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value))
 const hasEducationAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value))
-const hasScheduleManageAccess = computed(() => SECTION_ACCESS.schedules_manage.includes(userRole.value))
 const hasAdminAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value))
 
 async function handleSignOut() {
