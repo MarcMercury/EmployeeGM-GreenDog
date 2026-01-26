@@ -59,6 +59,12 @@ interface ShiftRow {
 const { employees, locations, positions } = useAppData()
 const toast = useToast()
 const supabase = useSupabaseClient()
+const { 
+  validateShiftAssignment, 
+  getWeeklyHoursSummary,
+  shouldBlockAssignment,
+  showValidationToast 
+} = useScheduleValidation()
 
 // Types for Time Off
 interface TimeOffRequest {
@@ -78,6 +84,7 @@ const shiftRows = ref<ShiftRow[]>([]) // Built from services + requirements
 const shifts = ref<any[]>([])
 const timeOffRequests = ref<TimeOffRequest[]>([])
 const isLoading = ref(true)
+const employeeHours = ref(new Map<string, { hours: number; shiftCount: number }>())
 
 // Roster filters
 const rosterPositionFilter = ref<string | null>(null)
@@ -187,6 +194,43 @@ const rosterEmployees = computed(() => {
 // Get shift count for employee in current week
 function getWeekShiftCount(employeeId: string): number {
   return shifts.value.filter(s => s.employee_id === employeeId).length
+}
+
+// Get employee hours for current week
+function getEmployeeWeekHours(employeeId: string): number {
+  const info = employeeHours.value.get(employeeId)
+  return info?.hours || 0
+}
+
+// Get hours display color based on thresholds
+function getHoursColor(hours: number): string {
+  if (hours > 40) return 'error' // Overtime
+  if (hours > 35) return 'warning' // Approaching overtime
+  if (hours > 0) return 'success' // Normal scheduled
+  return 'grey' // Not scheduled
+}
+
+// Recalculate employee hours from shifts
+function recalculateEmployeeHours() {
+  const hoursMap = new Map<string, { hours: number; shiftCount: number }>()
+  
+  for (const shift of shifts.value) {
+    if (!shift.employee_id || !shift.start_at || !shift.end_at) continue
+    
+    const start = new Date(shift.start_at)
+    const end = new Date(shift.end_at)
+    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+    
+    const existing = hoursMap.get(shift.employee_id)
+    if (existing) {
+      existing.hours += hours
+      existing.shiftCount++
+    } else {
+      hoursMap.set(shift.employee_id, { hours, shiftCount: 1 })
+    }
+  }
+  
+  employeeHours.value = hoursMap
 }
 
 // Get role color - uses service color
@@ -321,6 +365,9 @@ async function loadShifts() {
     
     if (error) throw error
     shifts.value = data || []
+    
+    // Calculate employee hours
+    recalculateEmployeeHours()
   } catch (err) {
     console.error('Load shifts error:', err)
     shifts.value = []
@@ -425,6 +472,33 @@ async function onDrop(row: ShiftRow, date: Date, locId: string, e: DragEvent) {
   if (timeOffConflict) {
     const statusLabel = timeOffConflict.status === 'approved' ? 'APPROVED' : 'pending'
     toast.warning(`⚠️ ${draggedEmployee.value.first_name} has ${statusLabel} time off on ${format(date, 'MMM d')}`)
+    
+    // Block if approved time off
+    if (timeOffConflict.status === 'approved') {
+      toast.error('Cannot assign employee with approved time off')
+      onDragEnd()
+      return
+    }
+  }
+  
+  // Validate shift assignment against scheduling rules
+  const validation = await validateShiftAssignment(
+    draggedEmployee.value.id,
+    dateStr,
+    row.start_time,
+    row.end_time,
+    locId
+  )
+  
+  // Show violations and potentially block
+  if (validation.violations.length > 0) {
+    showValidationToast(validation.violations, draggedEmployee.value.first_name)
+    
+    // Block if there are errors (not just warnings)
+    if (shouldBlockAssignment(validation.violations)) {
+      onDragEnd()
+      return
+    }
   }
   
   try {
@@ -445,6 +519,10 @@ async function onDrop(row: ShiftRow, date: Date, locId: string, e: DragEvent) {
     
     if (error) throw error
     shifts.value.push(data)
+    
+    // Update employee hours
+    recalculateEmployeeHours()
+    
     toast.success(`Assigned ${draggedEmployee.value.first_name}`)
   } catch (err) {
     console.error('Assign error:', err)
@@ -459,6 +537,9 @@ async function removeAssignment(shiftId: string) {
     const { error } = await supabase.from('shifts').delete().eq('id', shiftId)
     if (error) throw error
     shifts.value = shifts.value.filter(s => s.id !== shiftId)
+    
+    // Recalculate hours after removal
+    recalculateEmployeeHours()
   } catch (err) {
     toast.error('Failed to remove')
   }
@@ -634,6 +715,10 @@ onMounted(async () => {
             v-for="emp in rosterEmployees"
             :key="emp.id"
             class="roster-item"
+            :class="{ 
+              'overtime': getEmployeeWeekHours(emp.id) > 40,
+              'near-overtime': getEmployeeWeekHours(emp.id) > 35 && getEmployeeWeekHours(emp.id) <= 40
+            }"
             draggable="true"
             @dragstart="onDragStart(emp, $event)"
             @dragend="onDragEnd"
@@ -642,8 +727,13 @@ onMounted(async () => {
               <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
               <span v-else class="text-white text-caption">{{ emp.initials }}</span>
             </v-avatar>
-            <span class="roster-name">{{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.</span>
-            <v-chip size="x-small" :color="getWeekShiftCount(emp.id) > 0 ? 'primary' : 'grey'" variant="flat">
+            <div class="roster-info">
+              <span class="roster-name">{{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.</span>
+              <span v-if="getEmployeeWeekHours(emp.id) > 0" class="roster-hours" :class="getHoursColor(getEmployeeWeekHours(emp.id))">
+                {{ getEmployeeWeekHours(emp.id).toFixed(1) }}h
+              </span>
+            </div>
+            <v-chip size="x-small" :color="getHoursColor(getEmployeeWeekHours(emp.id))" variant="flat">
               {{ getWeekShiftCount(emp.id) }}
             </v-chip>
           </div>
@@ -973,6 +1063,8 @@ onMounted(async () => {
   border-radius: 4px;
   cursor: grab;
   margin-bottom: 2px;
+  transition: background 0.15s, border 0.15s;
+  border: 2px solid transparent;
 }
 .roster-item:hover {
   background: #e3f2fd;
@@ -981,13 +1073,39 @@ onMounted(async () => {
   cursor: grabbing;
   background: #bbdefb;
 }
-.roster-name {
+.roster-item.overtime {
+  background: #ffebee;
+  border-color: #ef5350;
+}
+.roster-item.near-overtime {
+  background: #fff8e1;
+  border-color: #ffa726;
+}
+.roster-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.roster-name {
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.roster-hours {
+  font-size: 9px;
+  font-weight: 600;
+}
+.roster-hours.success {
+  color: #2e7d32;
+}
+.roster-hours.warning {
+  color: #f57c00;
+}
+.roster-hours.error {
+  color: #c62828;
 }
 .roster-empty {
   text-align: center;

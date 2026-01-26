@@ -439,6 +439,32 @@ The scheduling system enables AI-assisted shift scheduling with configurable ser
 2. `buildShiftRows()` - Transforms into grid rows with break separators
 3. `onDrop()` - Creates shift with `service_id` and `staffing_requirement_id`
 
+### Shift Validation (Phase 4)
+**Added:** Real-time validation when assigning shifts in the schedule builder.
+
+**Composable:** `useScheduleValidation` (`app/composables/useScheduleValidation.ts`)
+
+**Validation Checks:**
+- `max_hours_per_week` - Blocks if exceeding 40 hours, warns at 35
+- `max_hours_per_day` - Warns if single shift > 10 hours
+- `min_rest_between_shifts` - Blocks if < 8 hours rest since last shift
+- `max_consecutive_days` - Warns if > 6 consecutive days
+- `overtime_threshold` - Shows info message when entering overtime
+- Time off conflicts - Blocks if approved, warns if pending
+
+**Roster Enhancements:**
+- Shows weekly hours for each employee
+- Color-coded hours: green (< 35), yellow (35-40), red (> 40)
+- Visual highlighting of overtime/near-overtime employees
+- Shift count badge color matches hour status
+
+**Validation Flow:**
+1. User drops employee on cell
+2. `validateShiftAssignment()` RPC called
+3. Violations displayed via toast
+4. Error-level violations block assignment
+5. Warning-level violations allow assignment with notification
+
 ### Admin Pages
 
 | Page | Path | Purpose |
