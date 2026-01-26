@@ -1,0 +1,62 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/app.vue",
+    "app/error.vue",
+    "server/**/*.ts",
+    "app/pages/**/*.vue",
+    "app/layouts/**/*.vue",
+    "app/components/**/*.vue"
+  ],
+  "project": [
+    "app/**/*.{vue,ts,js}",
+    "server/**/*.ts"
+  ],
+  "ignore": [
+    "**/*.d.ts",
+    ".nuxt/**",
+    ".output/**",
+    "node_modules/**",
+    "scripts/**",
+    "supabase/**",
+    "public/**",
+    "app/composables/**",
+    "app/stores/**",
+    "app/middleware/**",
+    "app/plugins/**",
+    "app/utils/**",
+    "app/types/**",
+    "types/**"
+  ],
+  "ignoreDependencies": [
+    "@pinia-plugin-persistedstate/nuxt",
+    "@vee-validate/zod",
+    "autoprefixer",
+    "postcss",
+    "sass",
+    "vite-plugin-vuetify",
+    "vue-tsc",
+    "@mdi/font",
+    "pinia",
+    "vuetify",
+    "vee-validate",
+    "zod",
+    "apexcharts",
+    "vue3-apexcharts",
+    "canvas-confetti",
+    "@types/canvas-confetti",
+    "csv-parse",
+    "xlsx"
+  ],
+  "rules": {
+    "files": "warn",
+    "dependencies": "warn",
+    "devDependencies": "warn",
+    "unlisted": "off",
+    "binaries": "off",
+    "unresolved": "off",
+    "exports": "warn",
+    "types": "off",
+    "duplicates": "warn"
+  }
+}
