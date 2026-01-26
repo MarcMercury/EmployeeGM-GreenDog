@@ -91,6 +91,39 @@ When context window resets, AI assistants lose session memory. This file is the 
 - Use `supabase db push` to push to remote (requires auth token)
 - If push fails due to auth, create a combined SQL file in `/scripts/` for manual execution
 
+### 🚫 NO SHORTCUTS - Navigation & Page Link Auditing (MANDATORY)
+**DIRECTIVE:** When modifying navigation, sidebar links, or moving pages, you MUST:
+
+1. **VERIFY ALL LINKS POINT TO ACTUAL FILES:**
+   - Run `find app/pages -name "*.vue" | grep -i <page-name>` to confirm page paths
+   - NEVER assume a path exists - VERIFY IT EXISTS FIRST
+   
+2. **CHECK BOTH NAVIGATION FILES:**
+   - `/app/layouts/default.vue` - Custom Tailwind sidebar (primary)
+   - `/app/components/layout/AppSidebar.vue` - Vuetify sidebar (secondary)
+   - Both files contain navigation - BOTH must be updated consistently
+   
+3. **REMOVE DUPLICATES:**
+   - Same page should NOT appear in multiple sections
+   - If a page logically belongs in one section, remove from others
+   
+4. **COMMON PAGE PATHS (Reference):**
+   | Page | Correct Path | WRONG Paths |
+   |------|--------------|-------------|
+   | Facilities Resources | `/med-ops/facilities` | ❌ `/facilities/resources` |
+   | Course Manager | `/academy/course-manager` | ❌ `/academy/courses` |
+   | Export Payroll | `/export-payroll` | ❌ `/hr/payroll-export` |
+   | My Skills | `/people/my-skills` | ❌ `/my-skills` |
+   | Skill Stats | `/people/skill-stats` | ❌ `/skill-stats` |
+
+5. **AUDIT CHECKLIST:**
+   - [ ] All `to="/path"` links verified against actual file paths
+   - [ ] No duplicate links across sections
+   - [ ] Both navigation files updated identically
+   - [ ] Test navigation in browser after changes
+
+**Last Updated: January 2026**
+
 ## Project Vision
 
 Veterinary hospital management system ("Madden for Vets") for Green Dog Dental.

@@ -83,8 +83,8 @@
         <v-list-item to="/roster" title="Contact List" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/facilities/resources" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasHrAccess" to="/academy/courses" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasHrAccess" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
 
@@ -120,8 +120,7 @@
         <v-list-item to="/schedule" title="Team Schedule" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasRecruitingAccess" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/hr/payroll-export" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/roster" title="Master Roster" prepend-icon="mdi-badge-account-horizontal" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 

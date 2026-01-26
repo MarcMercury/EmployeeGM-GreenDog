@@ -328,12 +328,12 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
                   Skill Stats
                 </NuxtLink>
-                <NuxtLink to="/facilities/resources" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🏢</div>
                   Facilities Resources
                 </NuxtLink>
                 <template v-if="isAdmin">
-                  <NuxtLink to="/academy/courses" class="nav-link group" active-class="nav-link-active">
+                  <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                     <div class="nav-icon-wrap group-hover:bg-emerald-500/20">🎓</div>
                     Course Manager
                   </NuxtLink>
@@ -373,13 +373,9 @@ const closeMobileMenu = () => {
                     Recruiting Pipeline
                   </NuxtLink>
                 </template>
-                <NuxtLink to="/hr/payroll-export" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
-                </NuxtLink>
-                <NuxtLink to="/roster" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
-                  Master Roster
                 </NuxtLink>
               </div>
             </div>
@@ -501,14 +497,6 @@ const closeMobileMenu = () => {
                 <NuxtLink to="/marketing/ezyvet-analytics" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
                   EzyVet Analytics
-                </NuxtLink>
-                <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
-                  Event Leads
-                </NuxtLink>
-                <NuxtLink to="/marketing/partnerships" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
-                  Referral CRM
                 </NuxtLink>
                 <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
