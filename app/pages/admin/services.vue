@@ -822,4 +822,3 @@ onMounted(loadServices)
     </v-dialog>
   </div>
 </template>
-</script>

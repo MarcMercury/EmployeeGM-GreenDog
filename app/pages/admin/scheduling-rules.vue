@@ -636,4 +636,3 @@ onMounted(loadRules)
     </v-dialog>
   </div>
 </template>
-</script>
