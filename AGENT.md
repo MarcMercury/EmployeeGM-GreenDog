@@ -511,6 +511,32 @@ The scheduling system enables AI-assisted shift scheduling with configurable ser
 | `break_requirement` | Required breaks for long shifts |
 | `skill_required` | Require specific skill for assignment |
 
+### Template Schedules (Phase 5B)
+**Added:** Save and apply reusable schedule templates.
+
+**Tables:**
+- `schedule_templates` - Template metadata (name, description, location)
+- `schedule_template_shifts` - Shift patterns within a template
+
+**RPC Functions:**
+- `save_week_as_template(name, description, week_start, location_id)` - Save current week
+- `apply_template_to_week(template_id, week_start, clear_existing)` - Apply to target week
+- `get_schedule_templates()` - List templates with shift counts
+
+**UI Features:**
+- Templates dropdown menu in header
+- "Save Week as Template" dialog with name/description
+- "Apply Template" dialog with template list and clear option
+- Delete template functionality
+
+**Usage:**
+1. Build a schedule manually
+2. Click Templates → Save Week as Template
+3. Navigate to a new week
+4. Click Templates → Apply Template
+5. Select template and optionally clear existing drafts
+6. Template creates shift slots (without employee assignments)
+
 ### Shifts Table Enhancements
 Added columns to `shifts` table:
 - `service_id` - Links to services table
@@ -700,6 +726,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Scheduling System | Added Phase 1-2: services, staffing requirements, scheduling rules, helper functions |
 | Jan 2026 | Scheduling System | Added Phase 3-4: database-driven builder, shift validation, employee hours tracking |
 | Jan 2026 | Scheduling System | Added Phase 5A: schedule publishing with Slack notifications |
+| Jan 2026 | Scheduling System | Added Phase 5B: template schedules - save and apply reusable week templates |
 | Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File
