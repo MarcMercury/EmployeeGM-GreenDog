@@ -576,6 +576,29 @@ interface AISuggestionResult {
 5. Select desired suggestions (or use Select All)
 6. Click "Apply Selected" to add to schedule
 
+### Time Off Request Enhancements (Phase 5D)
+**Added:** Enhanced time-off request workflow with conflict detection and Slack notifications.
+
+**Features:**
+- **Shift Conflict Detection** - Automatically checks for scheduled shifts during requested dates
+- **Conflict Warning UI** - Shows count and details of conflicting shifts in request dialog
+- **Slack Notifications on Submit** - Notifies #time-off-requests channel with employee, dates, and conflict info
+- **Slack Notifications on Review** - DM to employee when approved/denied, plus channel update
+- **Schedule Integration** - Schedule builder shows time-off conflicts when assigning employees
+
+**UI Enhancements (my-schedule.vue):**
+- Warning alert when conflicts detected (shows shift count and times)
+- Loading indicator while checking conflicts
+- Automatic conflict check when dates change
+
+**Slack Message Formats:**
+- Submit: Posts to #time-off-requests with employee name, type, dates, reason, and conflict warning
+- Approve/Deny: DMs employee and posts status update to channel
+
+**Pages:**
+- `/my-schedule` - Employee requests time off (Time Off tab)
+- `/time-off` - Admin approves/denies requests
+
 ### Shifts Table Enhancements
 Added columns to `shifts` table:
 - `service_id` - Links to services table
@@ -767,6 +790,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Scheduling System | Added Phase 5A: schedule publishing with Slack notifications |
 | Jan 2026 | Scheduling System | Added Phase 5B: template schedules - save and apply reusable week templates |
 | Jan 2026 | Scheduling System | Added Phase 5C: AI schedule suggestions using OpenAI for smart shift filling |
+| Jan 2026 | Scheduling System | Added Phase 5D: time-off request enhancements - conflict detection and Slack notifications |
 | Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File

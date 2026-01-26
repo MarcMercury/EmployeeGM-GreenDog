@@ -303,8 +303,49 @@ async function submitRequest() {
 
 async function reviewRequest(id: string, status: 'approved' | 'denied') {
   try {
+    // Find the request to get employee info
+    const request = allRequests.value.find(r => r.id === id)
+    
     await scheduleStore.reviewTimeOff(id, status)
     uiStore.showSuccess(`Request ${status}`)
+    
+    // Send Slack notification to the employee
+    if (request) {
+      try {
+        const employeeName = getEmployeeName(request.employee_id)
+        const startFormatted = formatDate(request.start_date)
+        const endFormatted = formatDate(request.end_date)
+        const emoji = status === 'approved' ? '✅' : '❌'
+        const statusText = status === 'approved' ? 'Approved' : 'Denied'
+        
+        // Look up employee's Slack user to send DM
+        const emp = employees.value.find(e => e.id === request.employee_id)
+        const email = emp?.email || emp?.personal_email
+        
+        if (email) {
+          await $fetch('/api/slack/send', {
+            method: 'POST',
+            body: {
+              type: 'email',
+              email: email,
+              text: `${emoji} *Time Off Request ${statusText}*\n\nYour request for ${startFormatted} - ${endFormatted} has been *${status}*.\n\n${status === 'approved' ? '🎉 Enjoy your time off!' : 'Please reach out to your manager if you have questions.'}`
+            }
+          })
+        }
+        
+        // Also post to channel for visibility
+        await $fetch('/api/slack/send', {
+          method: 'POST',
+          body: {
+            type: 'channel',
+            channel: '#time-off-requests',
+            text: `${emoji} *Time Off Request ${statusText}*\n*Employee:* ${employeeName}\n*Dates:* ${startFormatted} - ${endFormatted}\n*Status:* ${statusText}`
+          }
+        })
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError)
+      }
+    }
   } catch {
     uiStore.showError('Failed to review request')
   }

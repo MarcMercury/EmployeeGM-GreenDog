@@ -495,7 +495,34 @@
               </v-col>
             </v-row>
             
-            <v-alert v-if="form.start_date && form.end_date" type="info" variant="tonal" class="mt-3">
+            <!-- Shift Conflict Warning -->
+            <v-alert 
+              v-if="conflictingShifts.length > 0" 
+              type="warning" 
+              variant="tonal" 
+              class="mt-3"
+              icon="mdi-alert"
+            >
+              <strong>⚠️ Schedule Conflict:</strong> You have 
+              <strong>{{ conflictingShifts.length }} scheduled shift{{ conflictingShifts.length !== 1 ? 's' : '' }}</strong>
+              during this time. Your manager will need to find coverage if this request is approved.
+              <div v-if="conflictingShifts.length <= 3" class="text-caption mt-2">
+                <div v-for="shift in conflictingShifts" :key="shift.id" class="d-flex align-center gap-1">
+                  <v-icon size="12">mdi-clock</v-icon>
+                  {{ new Date(shift.start_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) }}
+                  {{ new Date(shift.start_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) }} -
+                  {{ new Date(shift.end_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) }}
+                </div>
+              </div>
+            </v-alert>
+            
+            <!-- Checking for conflicts indicator -->
+            <div v-if="checkingConflicts" class="text-caption text-grey mt-2 d-flex align-center gap-2">
+              <v-progress-circular indeterminate size="12" width="2" />
+              Checking for schedule conflicts...
+            </div>
+            
+            <v-alert v-if="form.start_date && form.end_date && !checkingConflicts" type="info" variant="tonal" class="mt-3">
               This request is for <strong>{{ calculateDays }} day{{ calculateDays !== 1 ? 's' : '' }}</strong>.
               You'll have <strong>{{ ptoBalance.available - calculateDays }}</strong> days remaining.
             </v-alert>
@@ -577,6 +604,10 @@ const formRef = ref()
 // Time Off Types from database
 const timeOffTypes = ref<any[]>([])
 const loadingTypes = ref(true)
+
+// Shift conflict detection
+const conflictingShifts = ref<Shift[]>([])
+const checkingConflicts = ref(false)
 
 const form = reactive({
   type_id: '',  // UUID of time_off_type
@@ -703,6 +734,36 @@ const calculateDays = computed(() => {
   const end = new Date(form.end_date)
   const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
   return Math.max(1, diff)
+})
+
+// Watch for date changes to check shift conflicts
+watch([() => form.start_date, () => form.end_date], async ([startDate, endDate]) => {
+  if (!startDate || !endDate) {
+    conflictingShifts.value = []
+    return
+  }
+  
+  const employeeId = userStore.employee?.id
+  if (!employeeId) return
+  
+  checkingConflicts.value = true
+  try {
+    // Find published/scheduled shifts in the date range
+    const { data } = await supabase
+      .from('shifts')
+      .select('id, start_at, end_at, status')
+      .eq('employee_id', employeeId)
+      .in('status', ['published', 'scheduled'])
+      .gte('start_at', `${startDate}T00:00:00`)
+      .lte('start_at', `${endDate}T23:59:59`)
+    
+    conflictingShifts.value = (data as Shift[]) || []
+  } catch (err) {
+    console.error('Error checking shift conflicts:', err)
+    conflictingShifts.value = []
+  } finally {
+    checkingConflicts.value = false
+  }
 })
 
 const availableEmployees = computed(() => {
@@ -987,10 +1048,34 @@ async function submitTimeOffRequest() {
     snackbar.color = 'success'
     snackbar.show = true
     
+    // Send Slack notification to managers
+    try {
+      const employeeName = `${userStore.profile?.first_name || ''} ${userStore.profile?.last_name || ''}`.trim() || 'Unknown Employee'
+      const startFormatted = new Date(form.start_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      const endFormatted = new Date(form.end_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      const typeLabel = timeOffTypes.value.find(t => t.id === form.type_id)?.name || 'Time Off'
+      const conflictWarning = conflictingShifts.value.length > 0
+        ? `\n⚠️ *Schedule Conflict:* ${conflictingShifts.value.length} scheduled shift${conflictingShifts.value.length !== 1 ? 's' : ''} during this period`
+        : ''
+      
+      await $fetch('/api/slack/send', {
+        method: 'POST',
+        body: {
+          type: 'channel',
+          channel: '#time-off-requests',
+          text: `📅 *New Time Off Request*\n*Employee:* ${employeeName}\n*Type:* ${typeLabel}\n*Dates:* ${startFormatted} - ${endFormatted} (${calculateDays.value} day${calculateDays.value !== 1 ? 's' : ''})\n*Reason:* ${form.reason || 'No reason provided'}${conflictWarning}\n\n_Please review in Employee GM → Time Off_`
+        }
+      })
+    } catch (slackError) {
+      // Don't fail if Slack notification fails
+      console.error('Slack notification failed:', slackError)
+    }
+    
     requestDialog.value = false
     form.start_date = ''
     form.end_date = ''
     form.reason = ''
+    conflictingShifts.value = []
     // Reset to default type
     const ptoType = timeOffTypes.value.find(t => t.code === 'PTO' || t.name === 'Paid Time Off')
     form.type_id = ptoType?.id || timeOffTypes.value[0]?.id || ''
