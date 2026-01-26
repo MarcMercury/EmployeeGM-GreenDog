@@ -361,6 +361,70 @@ npx tsx scripts/apply-skills-migration.ts
 
 ---
 
+## 📅 Scheduling System
+
+> **Last Updated:** January 2026
+
+### Overview
+The scheduling system enables AI-assisted shift scheduling with configurable services, staffing requirements, and validation rules.
+
+### Database Tables (Phase 1 - Migration 159)
+
+| Table | Purpose |
+|-------|---------|
+| `services` | Clinic services: Surgery, NAP, Dental, IM, etc. |
+| `service_slots` | Recurring schedule patterns (what runs when at each location) |
+| `service_staffing_requirements` | What roles each service needs (Lead DVM, Tech 1, etc.) |
+| `employee_availability` | When employees can/prefer to work |
+| `schedule_weeks` | Week-level status tracking (draft→review→published→locked) |
+| `scheduling_rules` | Configurable constraints (max hours, rest time, etc.) |
+| `ai_scheduling_log` | AI suggestion tracking and learning |
+
+### Key Functions (Phase 2 - Migration 160)
+
+| Function | Purpose |
+|----------|---------|
+| `get_services_with_requirements()` | Services + staffing requirements for builder |
+| `get_employee_scheduling_context()` | Employee availability, skills, hours |
+| `get_or_create_schedule_week()` | Ensures schedule_weeks record exists |
+| `validate_shift_assignment()` | Check assignment against all rules |
+| `generate_shifts_from_template()` | Create shifts from service_slots |
+| `publish_schedule_week()` | Publish + notify employees |
+| `get_schedule_week_summary()` | Coverage stats for a week |
+
+### Admin Pages
+
+| Page | Path | Purpose |
+|------|------|---------|
+| Services | `/admin/services` | CRUD services + staffing requirements |
+| Scheduling Rules | `/admin/scheduling-rules` | Configure constraints |
+| Schedule Builder | `/schedule/builder` | Build weekly schedules |
+
+### Scheduling Rules Types
+
+| Rule Type | Description |
+|-----------|-------------|
+| `max_hours_per_week` | Limit total weekly hours (default: 40) |
+| `max_hours_per_day` | Limit single shift length (default: 10) |
+| `min_rest_between_shifts` | Required rest period (default: 8 hours) |
+| `max_consecutive_days` | Prevent burnout (default: 6 days) |
+| `overtime_threshold` | Flag overtime (default: 40 hours) |
+| `break_requirement` | Required breaks for long shifts |
+| `skill_required` | Require specific skill for assignment |
+
+### Shifts Table Enhancements
+Added columns to `shifts` table:
+- `service_id` - Links to services table
+- `service_slot_id` - Links to recurring pattern
+- `staffing_requirement_id` - Which role slot this fills
+- `schedule_week_id` - Links to week record
+- `ai_suggested` - Was this AI-recommended
+- `ai_confidence` - AI confidence score (0-1)
+- `ai_reasoning` - Why AI suggested this
+- `assignment_source` - 'manual', 'ai_suggested', 'ai_auto', 'template', 'swap'
+
+---
+
 ## 🧭 Navigation Structure
 
 ### Admin-Only Pages
@@ -534,6 +598,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | RBAC | Added `sup_admin` role (tier 55), updated to 8 roles total, added Section Access Matrix |
 | Jan 2026 | Workflow | Added "MANDATORY AI WORKFLOW" section requiring AI to read/update AGENT.md |
 | Jan 2026 | Skills Library | Added new `/skills-library` page accessible to all users |
+| Jan 2026 | Scheduling System | Added Phase 1-2: services, staffing requirements, scheduling rules, helper functions |
 
 ### How to Update This File
 When making significant changes:

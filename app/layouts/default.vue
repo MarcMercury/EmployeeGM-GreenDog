@@ -576,6 +576,14 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📚</div>
                   Skills Management
                 </NuxtLink>
+                <NuxtLink to="/admin/services" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">🏥</div>
+                  Services
+                </NuxtLink>
+                <NuxtLink to="/admin/scheduling-rules" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">📏</div>
+                  Scheduling Rules
+                </NuxtLink>
                 <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>
                   Course Manager
