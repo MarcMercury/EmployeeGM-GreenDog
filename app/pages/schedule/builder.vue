@@ -76,6 +76,18 @@ interface TimeOffRequest {
   employees?: { first_name: string; last_name: string }
 }
 
+// Types for Schedule Week
+interface ScheduleWeek {
+  id: string
+  location_id: string
+  week_start: string
+  status: 'draft' | 'review' | 'published' | 'locked'
+  published_at: string | null
+  published_by: string | null
+  total_shifts: number
+  filled_shifts: number
+}
+
 // State
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 0 }))
 const services = ref<Service[]>([])
@@ -83,6 +95,7 @@ const staffingRequirements = ref<StaffingRequirement[]>([])
 const shiftRows = ref<ShiftRow[]>([]) // Built from services + requirements
 const shifts = ref<any[]>([])
 const timeOffRequests = ref<TimeOffRequest[]>([])
+const scheduleWeek = ref<ScheduleWeek | null>(null)
 const isLoading = ref(true)
 const employeeHours = ref(new Map<string, { hours: number; shiftCount: number }>())
 
@@ -117,6 +130,7 @@ const editForm = ref({
 // Publishing state
 const isPublishing = ref(false)
 const publishDialog = ref(false)
+const sendSlackNotifications = ref(true)
 
 // Default shift times by role category
 const defaultShiftTimes: Record<string, { start: string, end: string, display: string }> = {
@@ -309,6 +323,12 @@ async function saveRowEdit() {
 
 // PUBLISH WEEK - commits all draft shifts to employee schedules
 async function publishWeek() {
+  // Check if week is already published
+  if (scheduleWeek.value?.status === 'published' || scheduleWeek.value?.status === 'locked') {
+    toast.warning('This week is already published')
+    return
+  }
+  
   const draftShifts = shifts.value.filter(s => s.status === 'draft')
   
   if (draftShifts.length === 0) {
@@ -323,22 +343,46 @@ async function confirmPublish() {
   isPublishing.value = true
   
   try {
-    const draftShifts = shifts.value.filter(s => s.status === 'draft')
+    // Ensure we have a schedule_week record
+    if (!scheduleWeek.value?.id) {
+      await loadOrCreateScheduleWeek()
+    }
     
-    // Update all draft shifts to 'published' status
-    const { error } = await supabase
+    if (!scheduleWeek.value?.id) {
+      throw new Error('Failed to create schedule week record')
+    }
+    
+    // Link all shifts to this schedule_week
+    const { error: linkError } = await supabase
       .from('shifts')
-      .update({ status: 'published' })
-      .in('id', draftShifts.map(s => s.id))
+      .update({ schedule_week_id: scheduleWeek.value.id })
+      .is('schedule_week_id', null)
+      .gte('start_at', currentWeekStart.value.toISOString())
+      .lt('start_at', addDays(currentWeekStart.value, 7).toISOString())
     
-    if (error) throw error
+    if (linkError) {
+      console.warn('Link error:', linkError)
+    }
+    
+    // Call RPC to publish (handles status + in-app notifications)
+    const { error: rpcError } = await supabase.rpc('publish_schedule_week', {
+      p_schedule_week_id: scheduleWeek.value.id
+    })
+    
+    if (rpcError) throw rpcError
     
     // Update local state
     shifts.value = shifts.value.map(s => 
-      s.status === 'draft' ? { ...s, status: 'published' } : s
+      s.status === 'draft' ? { ...s, status: 'published', is_published: true } : s
     )
+    scheduleWeek.value = { ...scheduleWeek.value, status: 'published', published_at: new Date().toISOString() }
     
-    toast.success(`Published ${draftShifts.length} shifts to employee schedules!`)
+    // Send Slack notifications if enabled
+    if (sendSlackNotifications.value) {
+      await sendScheduleSlackNotification()
+    }
+    
+    toast.success(`Published ${shifts.value.length} shifts! Employees have been notified.`)
     publishDialog.value = false
   } catch (err) {
     console.error('Publish error:', err)
@@ -348,9 +392,94 @@ async function confirmPublish() {
   }
 }
 
+// Send Slack notification for published schedule
+async function sendScheduleSlackNotification() {
+  try {
+    const weekLabel = `${format(currentWeekStart.value, 'MMM d')} - ${format(addDays(currentWeekStart.value, 6), 'MMM d, yyyy')}`
+    
+    // Get unique employees with shifts this week
+    const employeeIds = [...new Set(shifts.value.map(s => s.employee_id).filter(Boolean))]
+    
+    await $fetch('/api/slack/notifications/queue', {
+      method: 'POST',
+      body: {
+        triggerType: 'schedule_published',
+        channel: '#schedule',
+        message: `📅 Schedule Published for ${weekLabel}\n\n${employeeIds.length} team members have shifts scheduled this week. Check your schedule in TeamOS!`,
+        metadata: {
+          week_start: format(currentWeekStart.value, 'yyyy-MM-dd'),
+          schedule_week_id: scheduleWeek.value?.id,
+          shift_count: shifts.value.length,
+          employee_count: employeeIds.length
+        }
+      }
+    })
+  } catch (err) {
+    console.warn('Slack notification failed:', err)
+    // Don't fail the publish for notification errors
+  }
+}
+
+// Load or create schedule_week record for current week
+async function loadOrCreateScheduleWeek() {
+  try {
+    // Get primary location (first one)
+    const primaryLocation = locations.value?.[0]
+    if (!primaryLocation) return
+    
+    // Call RPC to get or create
+    const { data, error } = await supabase.rpc('get_or_create_schedule_week', {
+      p_location_id: primaryLocation.id,
+      p_week_start: format(currentWeekStart.value, 'yyyy-MM-dd')
+    })
+    
+    if (error) {
+      console.warn('get_or_create_schedule_week error:', error)
+      // Fallback: try direct query
+      const { data: existing } = await supabase
+        .from('schedule_weeks')
+        .select('*')
+        .eq('week_start', format(currentWeekStart.value, 'yyyy-MM-dd'))
+        .single()
+      
+      if (existing) {
+        scheduleWeek.value = existing
+      }
+      return
+    }
+    
+    // data is the schedule_week_id UUID
+    if (data) {
+      const { data: weekData } = await supabase
+        .from('schedule_weeks')
+        .select('*')
+        .eq('id', data)
+        .single()
+      
+      scheduleWeek.value = weekData
+    }
+  } catch (err) {
+    console.error('Failed to load schedule week:', err)
+  }
+}
+
 // Get count of shifts by status
 const draftShiftCount = computed(() => shifts.value.filter(s => s.status === 'draft').length)
 const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'published').length)
+
+// Is the week published/locked?
+const isWeekPublished = computed(() => scheduleWeek.value?.status === 'published' || scheduleWeek.value?.status === 'locked')
+const weekStatusLabel = computed(() => {
+  if (!scheduleWeek.value) return 'draft'
+  return scheduleWeek.value.status
+})
+const weekStatusColor = computed(() => {
+  const status = scheduleWeek.value?.status
+  if (status === 'published') return 'success'
+  if (status === 'locked') return 'info'
+  if (status === 'review') return 'warning'
+  return 'grey'
+})
 
 // Load shifts for current week
 async function loadShifts() {
@@ -368,6 +497,9 @@ async function loadShifts() {
     
     // Calculate employee hours
     recalculateEmployeeHours()
+    
+    // Load schedule week status
+    await loadOrCreateScheduleWeek()
   } catch (err) {
     console.error('Load shifts error:', err)
     shifts.value = []
@@ -652,6 +784,9 @@ onMounted(async () => {
       <div class="header-title">
         <h1>Schedule Builder</h1>
         <v-chip color="error" size="x-small">ADMIN</v-chip>
+        <v-chip v-if="scheduleWeek" :color="weekStatusColor" size="x-small" variant="flat" class="ml-2">
+          {{ weekStatusLabel.toUpperCase() }}
+        </v-chip>
       </div>
       <div class="header-actions">
         <v-chip v-if="draftShiftCount > 0" color="warning" size="small" variant="flat">
@@ -661,6 +796,7 @@ onMounted(async () => {
           {{ publishedShiftCount }} published
         </v-chip>
         <v-btn 
+          v-if="!isWeekPublished"
           color="success" 
           size="small" 
           variant="flat"
@@ -670,6 +806,10 @@ onMounted(async () => {
           <v-icon start>mdi-send</v-icon>
           PUBLISH WEEK
         </v-btn>
+        <v-chip v-else color="success" size="small" variant="tonal">
+          <v-icon start size="small">mdi-check-circle</v-icon>
+          Published {{ scheduleWeek?.published_at ? format(new Date(scheduleWeek.published_at), 'MMM d') : '' }}
+        </v-chip>
       </div>
       <div class="header-nav">
         <v-btn icon size="small" variant="text" @click="prevWeek"><v-icon>mdi-chevron-left</v-icon></v-btn>
@@ -678,6 +818,22 @@ onMounted(async () => {
         <v-btn icon size="small" variant="text" @click="nextWeek"><v-icon>mdi-chevron-right</v-icon></v-btn>
       </div>
     </header>
+
+    <!-- Published Week Banner -->
+    <v-alert 
+      v-if="isWeekPublished" 
+      type="info" 
+      density="compact" 
+      variant="tonal"
+      class="ma-0 rounded-0"
+    >
+      <div class="d-flex align-center justify-space-between">
+        <span>
+          <v-icon size="small" class="mr-1">mdi-lock</v-icon>
+          This week has been published. Changes will notify affected employees.
+        </span>
+      </div>
+    </v-alert>
 
     <!-- Location Filter Bar -->
     <div class="location-bar">
@@ -902,25 +1058,42 @@ onMounted(async () => {
     </v-dialog>
 
     <!-- Publish Confirmation Dialog -->
-    <v-dialog v-model="publishDialog" max-width="450">
+    <v-dialog v-model="publishDialog" max-width="500">
       <v-card>
         <v-card-title class="text-h6">
           <v-icon color="success" class="mr-2">mdi-send</v-icon>
           Publish Week Schedule
         </v-card-title>
         <v-card-text>
-          <p class="mb-3">You are about to publish <strong>{{ draftShiftCount }}</strong> draft shifts for:</p>
+          <p class="mb-3">You are about to publish <strong>{{ shifts.length }}</strong> shifts for:</p>
           <p class="text-subtitle-1 font-weight-bold mb-3">
             Week {{ weekNum }}: {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
           </p>
-          <v-alert type="info" density="compact" variant="tonal" class="mb-0">
+          
+          <v-alert type="info" density="compact" variant="tonal" class="mb-4">
             <strong>This will:</strong>
             <ul class="mt-1 mb-0 pl-4">
               <li>Make shifts visible on employee schedules</li>
               <li>Enable attendance tracking for these shifts</li>
               <li>Allow clock-in/out for reliability scoring</li>
+              <li>Lock the week status to "published"</li>
             </ul>
           </v-alert>
+          
+          <v-divider class="my-3" />
+          
+          <div class="d-flex align-center justify-space-between">
+            <div>
+              <div class="text-subtitle-2">Notify team via Slack</div>
+              <div class="text-caption text-grey">Post to #schedule channel</div>
+            </div>
+            <v-switch 
+              v-model="sendSlackNotifications" 
+              color="primary" 
+              hide-details 
+              density="compact"
+            />
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -931,7 +1104,8 @@ onMounted(async () => {
             @click="confirmPublish"
             :loading="isPublishing"
           >
-            Publish {{ draftShiftCount }} Shifts
+            <v-icon start>mdi-send</v-icon>
+            Publish Schedule
           </v-btn>
         </v-card-actions>
       </v-card>

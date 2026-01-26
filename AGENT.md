@@ -465,6 +465,32 @@ The scheduling system enables AI-assisted shift scheduling with configurable ser
 4. Error-level violations block assignment
 5. Warning-level violations allow assignment with notification
 
+### Schedule Publishing (Phase 5A)
+**Added:** Publish workflow to lock schedules and notify employees.
+
+**Features:**
+- Tracks `schedule_week_id` for each week (auto-creates via `get_or_create_schedule_week()`)
+- "Publish" button calls `publish_schedule_week()` RPC
+- Week status display in header (draft → published → locked)
+- Published week banner warns about changes to locked schedules
+- Slack notification to #schedule channel on publish
+- In-app notifications to all employees with shifts
+
+**Publish Flow:**
+1. Manager builds schedule (draft status)
+2. Clicks "Publish Week" button
+3. Confirmation dialog with Slack toggle
+4. RPC updates `schedule_weeks.status = 'published'`
+5. All shifts marked `is_published = true`
+6. In-app notifications created for employees
+7. Optional Slack message to #schedule channel
+
+**UI Changes:**
+- Week status chip in header (DRAFT/PUBLISHED/LOCKED)
+- Published date display when week is published
+- Warning banner when viewing published week
+- Publish button hidden for already-published weeks
+
 ### Admin Pages
 
 | Page | Path | Purpose |
@@ -672,6 +698,8 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Workflow | Added "MANDATORY AI WORKFLOW" section requiring AI to read/update AGENT.md |
 | Jan 2026 | Skills Library | Added new `/skills-library` page accessible to all users |
 | Jan 2026 | Scheduling System | Added Phase 1-2: services, staffing requirements, scheduling rules, helper functions |
+| Jan 2026 | Scheduling System | Added Phase 3-4: database-driven builder, shift validation, employee hours tracking |
+| Jan 2026 | Scheduling System | Added Phase 5A: schedule publishing with Slack notifications |
 | Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File
