@@ -328,6 +328,14 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
                   Skill Stats
                 </NuxtLink>
+                <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
+                  Facilities Resources
+                </NuxtLink>
+                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎓</div>
+                  Course Manager
+                </NuxtLink>
               </div>
             </div>
           </template>
@@ -367,6 +375,10 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
                 </NuxtLink>
+                <NuxtLink to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
+                  Master Roster
+                </NuxtLink>
               </div>
             </div>
           </template>
@@ -384,6 +396,10 @@ const closeMobileMenu = () => {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.medOps }">
+              <NuxtLink to="/med-ops/wiki" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
+                Wiki
+              </NuxtLink>
               <NuxtLink to="/med-ops/calculators" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-red-500/20">💊</div>
                 Drug Calculators
@@ -395,14 +411,6 @@ const closeMobileMenu = () => {
               <NuxtLink to="/med-ops/partners" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏭</div>
                 Med Ops Partners
-              </NuxtLink>
-              <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
-                Facilities Resources
-              </NuxtLink>
-              <NuxtLink to="/med-ops/wiki" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
-                Wiki
               </NuxtLink>
             </div>
           </div>
@@ -550,10 +558,6 @@ const closeMobileMenu = () => {
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="section-content" :class="{ 'section-open': sections.adminOps }">
-                <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
-                  Global Settings
-                </NuxtLink>
                 <NuxtLink v-if="isSuperAdmin" to="/admin/users" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-red-500/20">👥</div>
                   User Management
@@ -566,25 +570,13 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📚</div>
                   Skills Management
                 </NuxtLink>
-                <NuxtLink to="/admin/services" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-pink-500/20">🏥</div>
-                  Services
-                </NuxtLink>
-                <NuxtLink to="/admin/scheduling-rules" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">📏</div>
-                  Scheduling Rules
-                </NuxtLink>
-                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">🎓</div>
-                  Course Manager
-                </NuxtLink>
-                <NuxtLink to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
-                  Master Roster
-                </NuxtLink>
                 <NuxtLink to="/admin/system-health" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🏥</div>
                   System Health
+                </NuxtLink>
+                <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
+                  Global Settings
                 </NuxtLink>
               </div>
             </div>

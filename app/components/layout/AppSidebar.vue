@@ -83,6 +83,8 @@
         <v-list-item to="/roster" title="Contact List" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasAdminAccess" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
 
@@ -100,7 +102,6 @@
         <v-list-item to="/med-ops/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
@@ -120,6 +121,7 @@
         <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasRecruitingAccess" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
@@ -193,9 +195,6 @@
         <v-list-item to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/services" title="Services" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/scheduling-rules" title="Scheduling Rules" prepend-icon="mdi-shield-check" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/system-health" title="System Health" prepend-icon="mdi-heart-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/settings" title="Global Settings" prepend-icon="mdi-tune" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
