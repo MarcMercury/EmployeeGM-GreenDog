@@ -85,6 +85,38 @@ When context window resets, AI assistants lose session memory. This file is the 
 
 ## 🚨 IMPORTANT DIRECTIVES
 
+### 🔴 COMPREHENSIVE ERROR FIXING PROTOCOL (MANDATORY)
+**DIRECTIVE:** When the user reports ANY error (visual, functional, broken link, etc.), you MUST:
+
+1. **FIX THE REPORTED PROBLEM:**
+   - Address the specific issue identified by the user
+   - Do NOT assume it's a cache issue - IT IS NEVER A CACHE ISSUE
+   - Verify the fix works before considering it complete
+
+2. **AUDIT CONNECTED CODE:**
+   - Identify all files, components, and systems connected to the problem
+   - Check if the same issue affects related functionality
+   - Fix any related issues found during the audit
+
+3. **SEARCH FOR PATTERN ACROSS CODEBASE:**
+   - The reported problem likely exists elsewhere
+   - Use `grep_search` to find similar patterns throughout the codebase
+   - Fix ALL instances of the problem, not just the one reported
+
+4. **DOCUMENT WHAT WAS FIXED:**
+   - List all files modified
+   - Explain what the original issue was
+   - Confirm all instances have been addressed
+
+**Example:** User reports "Facilities page not found"
+- ✅ Fix the broken link
+- ✅ Check ALL other navigation links in both sidebar files
+- ✅ Search for other broken paths in the codebase
+- ✅ Verify all pages referenced actually exist
+- ❌ Do NOT just fix the one link and stop
+
+**Last Updated: January 2026**
+
 ### Auto-Push Supabase Migrations
 **DIRECTIVE:** When creating SQL migrations, automatically run them against the database.
 - Run `supabase db reset --local` to test locally first
@@ -599,6 +631,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Workflow | Added "MANDATORY AI WORKFLOW" section requiring AI to read/update AGENT.md |
 | Jan 2026 | Skills Library | Added new `/skills-library` page accessible to all users |
 | Jan 2026 | Scheduling System | Added Phase 1-2: services, staffing requirements, scheduling rules, helper functions |
+| Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File
 When making significant changes:
