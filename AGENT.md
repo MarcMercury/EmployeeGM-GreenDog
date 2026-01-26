@@ -537,6 +537,45 @@ The scheduling system enables AI-assisted shift scheduling with configurable ser
 5. Select template and optionally clear existing drafts
 6. Template creates shift slots (without employee assignments)
 
+### AI Schedule Suggestions (Phase 5C)
+**Added:** OpenAI-powered shift suggestions based on employee availability, skills, and scheduling rules.
+
+**API Endpoint:**
+- `/api/ai/schedule-suggest.post.ts` - OpenAI GPT-4 integration for smart scheduling
+
+**Features:**
+- "AI Suggest" button (purple) in schedule builder header
+- Considers employee availability, skills, certifications, max hours, location preferences
+- Returns structured suggestions with confidence scores (0-100%)
+- Shows AI reasoning for each suggestion
+- Batch select/deselect suggestions before applying
+- Applied shifts marked with `assignment_source: 'ai_suggested'`
+
+**AI Response Structure:**
+```typescript
+interface AISuggestionResult {
+  shifts: AISuggestedShift[]
+  coverage: { role: string; needed: number; filled: number }[]
+  warnings: string[]
+  summary: string
+}
+```
+
+**UI Components:**
+- AI Suggest button with sparkle icon
+- Modal dialog with loading/error/suggestions states
+- Confidence tooltip on each suggestion
+- Select all/deselect all controls
+- Apply selected suggestions to schedule
+
+**Usage:**
+1. Navigate to schedule builder for a week
+2. Click "AI Suggest" (purple button)
+3. Wait for OpenAI to analyze requirements
+4. Review suggestions with confidence scores
+5. Select desired suggestions (or use Select All)
+6. Click "Apply Selected" to add to schedule
+
 ### Shifts Table Enhancements
 Added columns to `shifts` table:
 - `service_id` - Links to services table
@@ -727,6 +766,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Scheduling System | Added Phase 3-4: database-driven builder, shift validation, employee hours tracking |
 | Jan 2026 | Scheduling System | Added Phase 5A: schedule publishing with Slack notifications |
 | Jan 2026 | Scheduling System | Added Phase 5B: template schedules - save and apply reusable week templates |
+| Jan 2026 | Scheduling System | Added Phase 5C: AI schedule suggestions using OpenAI for smart shift filling |
 | Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File
