@@ -424,13 +424,28 @@ The scheduling system enables AI-assisted shift scheduling with configurable ser
 | `publish_schedule_week()` | Publish + notify employees |
 | `get_schedule_week_summary()` | Coverage stats for a week |
 
+### Schedule Builder (Phase 3)
+**Updated:** The schedule builder now loads services and staffing requirements from the database instead of using hardcoded templates.
+
+**Key Changes:**
+- Rows are dynamically built from `services` + `service_staffing_requirements` tables
+- Visual grouping by service with automatic break rows between services
+- When creating shifts, stores `service_id` and `staffing_requirement_id` for linking
+- Shift matching uses `staffing_requirement_id` (falls back to `role_required` for legacy)
+- Default shift times are based on `role_category` (DVM, Lead, Tech, DA, Intern, Admin, Float)
+
+**Data Flow:**
+1. `loadServicesAndRequirements()` - Fetches services and staffing requirements
+2. `buildShiftRows()` - Transforms into grid rows with break separators
+3. `onDrop()` - Creates shift with `service_id` and `staffing_requirement_id`
+
 ### Admin Pages
 
 | Page | Path | Purpose |
 |------|------|---------|
 | Services | `/admin/services` | CRUD services + staffing requirements |
 | Scheduling Rules | `/admin/scheduling-rules` | Configure constraints |
-| Schedule Builder | `/schedule/builder` | Build weekly schedules |
+| Schedule Builder | `/schedule/builder` | Build weekly schedules (database-driven) |
 
 ### Scheduling Rules Types
 

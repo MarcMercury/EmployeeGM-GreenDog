@@ -1,10 +1,15 @@
 <script setup lang="ts">
 /**
- * Schedule Builder
+ * Schedule Builder (Phase 3)
  * 
  * LAYOUT:
  * - LEFT SIDEBAR: Employee Roster (independent, filterable, drag source)
- * - MAIN GRID: Shifts as ROWS, Days/Locations as COLUMNS
+ * - MAIN GRID: Shifts as ROWS (grouped by Service), Days/Locations as COLUMNS
+ * 
+ * Data Sources (Database-driven):
+ * - services: Defines service types (Surgery, NAP, AP, IM, etc.)
+ * - service_staffing_requirements: Defines roles needed per service
+ * - Shifts created reference service_id and staffing_requirement_id
  */
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 
@@ -14,15 +19,40 @@ definePageMeta({
 })
 
 // Types
-interface ShiftTemplate {
+interface Service {
   id: string
-  role_name: string
   name: string
-  raw_shift: string | null
+  code: string
+  color: string
+  icon?: string
+  sort_order: number
+  is_active: boolean
+}
+
+interface StaffingRequirement {
+  id: string
+  service_id: string
+  role_category: string
+  role_label: string
+  min_count: number
+  max_count: number
+  is_required: boolean
+  priority: number
+  sort_order: number
+}
+
+interface ShiftRow {
+  id: string
+  service_id: string
+  staffing_requirement_id: string | null
+  role_label: string
+  role_category: string
   start_time: string
   end_time: string
-  color?: string
-  isBreak?: boolean // Visual separator row
+  raw_shift: string
+  color: string
+  isBreak?: boolean
+  service_code?: string
 }
 
 // Composables
@@ -42,7 +72,9 @@ interface TimeOffRequest {
 
 // State
 const currentWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 0 }))
-const shiftTemplates = ref<ShiftTemplate[]>([])
+const services = ref<Service[]>([])
+const staffingRequirements = ref<StaffingRequirement[]>([])
+const shiftRows = ref<ShiftRow[]>([]) // Built from services + requirements
 const shifts = ref<any[]>([])
 const timeOffRequests = ref<TimeOffRequest[]>([])
 const isLoading = ref(true)
@@ -66,10 +98,9 @@ const dragOverCell = ref<string | null>(null)
 
 // Shift editing state
 const editDialog = ref(false)
-const editingShift = ref<ShiftTemplate | null>(null)
+const editingRow = ref<ShiftRow | null>(null)
 const editForm = ref({
-  role_name: '',
-  name: '',
+  role_label: '',
   raw_shift: '',
   start_time: '',
   end_time: '',
@@ -80,37 +111,16 @@ const editForm = ref({
 const isPublishing = ref(false)
 const publishDialog = ref(false)
 
-// Default shift templates (with section breaks)
-const defaultShiftTemplates: ShiftTemplate[] = [
-  { id: 'd1', role_name: 'VET-SURGERY', name: 'Surgeon', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ff00ff' },
-  { id: 'd2', role_name: 'Intern', name: 'Intern', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99ff' },
-  { id: 'd3', role_name: 'Extern/Student', name: 'Student', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffccff' },
-  { id: 'd4', role_name: 'Surgery Lead', name: 'Surg Lead', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ff66cc' },
-  { id: 'd5', role_name: 'Surgery Tech 1', name: 'Surg Tech 1', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff99cc' },
-  { id: 'd6', role_name: 'Surgery Tech 2', name: 'Surg Tech 2', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffcccc' },
-  { id: 'break1', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
-  { id: 'd7', role_name: 'VET-AP', name: 'AP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#ffff00' },
-  { id: 'd8', role_name: 'AP Lead', name: 'AP Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffff66' },
-  { id: 'd9', role_name: 'AP Tech', name: 'AP Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ffffcc' },
-  { id: 'break2', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
-  { id: 'd10', role_name: 'VET-NAP', name: 'NAP Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ffff' },
-  { id: 'd11', role_name: 'DA - NAP', name: 'DA NAP', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#66ffff' },
-  { id: 'd12', role_name: 'DA - TRAINING', name: 'DA Training', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#99ffff' },
-  { id: 'd13', role_name: 'Clinic Tech', name: 'Clinic Tech', raw_shift: '8:30-5', start_time: '08:30', end_time: '17:00', color: '#ccffff' },
-  { id: 'd14', role_name: 'Float/Lead', name: 'Float Lead', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#ffcc00' },
-  { id: 'd15', role_name: 'Dentals', name: 'Dentals', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#ff9900' },
-  { id: 'break3', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
-  { id: 'd16', role_name: 'VET-IM', name: 'IM Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff00' },
-  { id: 'd17', role_name: 'IM Tech/DA', name: 'IM Tech', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#99ff99' },
-  { id: 'd18', role_name: 'VET-EXOTICS', name: 'Exotics Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#00ff99' },
-  { id: 'd19', role_name: 'Exotics Tech', name: 'Exotics Tech', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#99ffcc' },
-  { id: 'break4', role_name: '', name: '', raw_shift: null, start_time: '', end_time: '', isBreak: true },
-  { id: 'd20', role_name: 'VET-MPMV', name: 'MPMV Vet', raw_shift: '9-6:30', start_time: '09:00', end_time: '18:30', color: '#0099ff' },
-  { id: 'd21', role_name: 'Manager', name: 'Manager', raw_shift: '10-6:30', start_time: '10:00', end_time: '18:30', color: '#e0e0e0' },
-  { id: 'd22', role_name: 'In House Admin', name: 'Admin', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#d0d0d0' },
-  { id: 'd23', role_name: 'Sch Admin', name: 'Scheduler', raw_shift: '9:30-6', start_time: '09:30', end_time: '18:00', color: '#c0c0c0' },
-  { id: 'd24', role_name: 'Office Admin', name: 'Office Admin', raw_shift: '9-5:30', start_time: '09:00', end_time: '17:30', color: '#b0b0b0' },
-]
+// Default shift times by role category
+const defaultShiftTimes: Record<string, { start: string, end: string, display: string }> = {
+  DVM: { start: '09:00', end: '18:30', display: '9-6:30' },
+  Lead: { start: '08:30', end: '17:00', display: '8:30-5' },
+  Tech: { start: '09:00', end: '17:30', display: '9-5:30' },
+  DA: { start: '09:00', end: '18:30', display: '9-6:30' },
+  Intern: { start: '09:00', end: '17:30', display: '9-5:30' },
+  Admin: { start: '09:30', end: '18:00', display: '9:30-6' },
+  Float: { start: '10:00', end: '18:30', display: '10-6:30' }
+}
 
 // Week days
 const weekDays = computed(() => {
@@ -179,58 +189,49 @@ function getWeekShiftCount(employeeId: string): number {
   return shifts.value.filter(s => s.employee_id === employeeId).length
 }
 
-// Get role color - uses template color if available
-function getRoleColor(role: string, template?: ShiftTemplate): string {
-  if (template?.color) return template.color
-  const r = (role || '').toLowerCase()
-  if (r.includes('surgery') || r.includes('surg')) return '#ff00ff'
-  if (r.includes('intern')) return '#ff99ff'
-  if (r.includes('extern') || r.includes('student')) return '#ffccff'
-  if (r.includes('ap') && r.includes('lead')) return '#ffff00'
-  if (r.includes('ap') && r.includes('tech')) return '#ffffcc'
-  if (r.includes('vet-ap') || r.includes('ap vet')) return '#ffff00'
-  if (r.includes('nap')) return '#00ffff'
-  if (r.includes('da')) return '#99ffff'
-  if (r.includes('clinic tech')) return '#ccffff'
-  if (r.includes('float') || r.includes('lead')) return '#ffcc00'
-  if (r.includes('dental')) return '#ff9900'
-  if (r.includes('im') && r.includes('vet')) return '#00ff00'
-  if (r.includes('im') && r.includes('tech')) return '#99ff99'
-  if (r.includes('exotic') && r.includes('vet')) return '#00ff99'
-  if (r.includes('exotic') && r.includes('tech')) return '#99ffcc'
-  if (r.includes('mpmv')) return '#0099ff'
-  if (r.includes('manager')) return '#e0e0e0'
-  if (r.includes('admin')) return '#d0d0d0'
+// Get role color - uses service color
+function getRoleColor(row: ShiftRow): string {
+  if (row.color) return row.color
+  // Fallback based on role category
+  const cat = (row.role_category || '').toLowerCase()
+  if (cat.includes('dvm')) return '#ff00ff'
+  if (cat.includes('lead')) return '#ffcc00'
+  if (cat.includes('tech')) return '#00ffff'
+  if (cat.includes('da')) return '#99ffff'
+  if (cat.includes('intern')) return '#ff99ff'
+  if (cat.includes('admin')) return '#e0e0e0'
   return '#f5f5f5'
 }
 
-// Open shift edit dialog
-function openShiftEdit(tmpl: ShiftTemplate) {
-  if (tmpl.isBreak) return // Don't edit breaks
-  editingShift.value = tmpl
+// Open shift row edit dialog
+function openRowEdit(row: ShiftRow) {
+  if (row.isBreak) return
+  editingRow.value = row
   editForm.value = {
-    role_name: tmpl.role_name,
-    name: tmpl.name,
-    raw_shift: tmpl.raw_shift || '',
-    start_time: tmpl.start_time,
-    end_time: tmpl.end_time,
-    color: tmpl.color || getRoleColor(tmpl.role_name)
+    role_label: row.role_label,
+    raw_shift: row.raw_shift || '',
+    start_time: row.start_time,
+    end_time: row.end_time,
+    color: row.color || getRoleColor(row)
   }
   editDialog.value = true
 }
 
-// Insert a section break after a shift
-function insertBreakAfter(tmplId: string) {
-  const idx = shiftTemplates.value.findIndex(t => t.id === tmplId)
+// Insert a section break after a row
+function insertBreakAfter(rowId: string) {
+  const idx = shiftRows.value.findIndex(r => r.id === rowId)
   if (idx >= 0) {
     const breakId = `break-${Date.now()}`
-    shiftTemplates.value.splice(idx + 1, 0, {
+    shiftRows.value.splice(idx + 1, 0, {
       id: breakId,
-      role_name: '',
-      name: '',
-      raw_shift: null,
+      service_id: '',
+      staffing_requirement_id: null,
+      role_label: '',
+      role_category: '',
       start_time: '',
       end_time: '',
+      raw_shift: '',
+      color: '',
       isBreak: true
     })
   }
@@ -238,20 +239,18 @@ function insertBreakAfter(tmplId: string) {
 
 // Remove a section break
 function removeBreak(breakId: string) {
-  shiftTemplates.value = shiftTemplates.value.filter(t => t.id !== breakId)
+  shiftRows.value = shiftRows.value.filter(r => r.id !== breakId)
 }
 
-// Save shift template changes
-async function saveShiftEdit() {
-  if (!editingShift.value) return
+// Save row edit changes
+async function saveRowEdit() {
+  if (!editingRow.value) return
   
-  // Update local template
-  const idx = shiftTemplates.value.findIndex(t => t.id === editingShift.value!.id)
+  const idx = shiftRows.value.findIndex(r => r.id === editingRow.value!.id)
   if (idx >= 0) {
-    shiftTemplates.value[idx] = {
-      ...shiftTemplates.value[idx],
-      role_name: editForm.value.role_name,
-      name: editForm.value.name,
+    shiftRows.value[idx] = {
+      ...shiftRows.value[idx],
+      role_label: editForm.value.role_label,
       raw_shift: editForm.value.raw_shift,
       start_time: editForm.value.start_time,
       end_time: editForm.value.end_time,
@@ -259,29 +258,9 @@ async function saveShiftEdit() {
     }
   }
   
-  // If not a default template (has UUID), save to DB
-  if (!editingShift.value.id.startsWith('d')) {
-    try {
-      await supabase
-        .from('shift_templates')
-        .update({
-          role_name: editForm.value.role_name,
-          name: editForm.value.name,
-          raw_shift: editForm.value.raw_shift,
-          start_time: editForm.value.start_time,
-          end_time: editForm.value.end_time
-        })
-        .eq('id', editingShift.value.id)
-      toast.success('Shift template updated')
-    } catch {
-      toast.error('Failed to save to database')
-    }
-  } else {
-    toast.success('Shift template updated locally')
-  }
-  
+  toast.success('Shift row updated')
   editDialog.value = false
-  editingShift.value = null
+  editingRow.value = null
 }
 
 // PUBLISH WEEK - commits all draft shifts to employee schedules
@@ -328,25 +307,6 @@ async function confirmPublish() {
 // Get count of shifts by status
 const draftShiftCount = computed(() => shifts.value.filter(s => s.status === 'draft').length)
 const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'published').length)
-
-// Load shift templates from DB or use defaults
-async function loadShiftTemplates() {
-  try {
-    const { data, error } = await supabase
-      .from('shift_templates')
-      .select('*')
-      .eq('is_active', true)
-      .order('start_time')
-    
-    if (error || !data || data.length === 0) {
-      shiftTemplates.value = defaultShiftTemplates
-    } else {
-      shiftTemplates.value = data
-    }
-  } catch {
-    shiftTemplates.value = defaultShiftTemplates
-  }
-}
 
 // Load shifts for current week
 async function loadShifts() {
@@ -406,17 +366,29 @@ function getTimeOffBadgeColor(status: string): string {
 }
 
 // Get cell key
-function getCellKey(shiftId: string, date: Date, locId: string): string {
-  return `${shiftId}-${format(date, 'yyyy-MM-dd')}-${locId}`
+function getCellKey(rowId: string, date: Date, locId: string): string {
+  return `${rowId}-${format(date, 'yyyy-MM-dd')}-${locId}`
 }
 
-// Get assigned employee for cell
-function getCellAssignment(shiftTemplate: ShiftTemplate, date: Date, locId: string) {
+// Get assigned employee for cell - matches by service_id + staffing_requirement_id
+function getCellAssignment(row: ShiftRow, date: Date, locId: string) {
+  if (row.isBreak) return null
   const dateStr = format(date, 'yyyy-MM-dd')
+  
+  // Match by staffing_requirement_id if available (new shifts)
+  if (row.staffing_requirement_id) {
+    return shifts.value.find(s => 
+      s.location_id === locId &&
+      s.start_at?.startsWith(dateStr) &&
+      s.staffing_requirement_id === row.staffing_requirement_id
+    )
+  }
+  
+  // Fallback: match by role_required for legacy shifts
   return shifts.value.find(s => 
     s.location_id === locId &&
     s.start_at?.startsWith(dateStr) &&
-    s.role_required === shiftTemplate.role_name
+    s.role_required === row.role_label
   )
 }
 
@@ -440,13 +412,13 @@ function onDragLeave() {
   dragOverCell.value = null
 }
 
-async function onDrop(template: ShiftTemplate, date: Date, locId: string, e: DragEvent) {
+async function onDrop(row: ShiftRow, date: Date, locId: string, e: DragEvent) {
   e.preventDefault()
-  if (!draggedEmployee.value) return
+  if (!draggedEmployee.value || row.isBreak) return
   
   const dateStr = format(date, 'yyyy-MM-dd')
-  const startAt = `${dateStr}T${template.start_time}:00`
-  const endAt = `${dateStr}T${template.end_time}:00`
+  const startAt = `${dateStr}T${row.start_time}:00`
+  const endAt = `${dateStr}T${row.end_time}:00`
   
   // Check for time off conflict
   const timeOffConflict = hasTimeOffOnDate(draggedEmployee.value.id, date)
@@ -463,7 +435,9 @@ async function onDrop(template: ShiftTemplate, date: Date, locId: string, e: Dra
         location_id: locId,
         start_at: startAt,
         end_at: endAt,
-        role_required: template.role_name,
+        role_required: row.role_label,
+        service_id: row.service_id || null,
+        staffing_requirement_id: row.staffing_requirement_id || null,
         status: 'draft'
       })
       .select(`*, employees:employee_id(first_name, last_name)`)
@@ -500,12 +474,92 @@ const weekNum = computed(() => {
   return Math.ceil(((currentWeekStart.value.getTime() - start.getTime()) / 86400000 + 1) / 7)
 })
 
+// Load services and staffing requirements from database
+async function loadServicesAndRequirements() {
+  try {
+    // Load services
+    const { data: servicesData, error: servicesError } = await supabase
+      .from('services')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+    
+    if (servicesError) throw servicesError
+    services.value = servicesData || []
+    
+    // Load staffing requirements
+    const { data: reqsData, error: reqsError } = await supabase
+      .from('service_staffing_requirements')
+      .select('*')
+      .order('sort_order')
+    
+    if (reqsError) throw reqsError
+    staffingRequirements.value = reqsData || []
+    
+    // Build shift rows from services and requirements
+    buildShiftRows()
+  } catch (err) {
+    console.error('Failed to load services:', err)
+    toast.error('Failed to load services configuration')
+    // Build empty rows
+    shiftRows.value = []
+  }
+}
+
+// Build shift rows grouped by service
+function buildShiftRows() {
+  const rows: ShiftRow[] = []
+  
+  for (const service of services.value) {
+    // Get requirements for this service
+    const reqs = staffingRequirements.value
+      .filter(r => r.service_id === service.id)
+      .sort((a, b) => a.sort_order - b.sort_order)
+    
+    // Add each requirement as a row
+    for (const req of reqs) {
+      const times = defaultShiftTimes[req.role_category] || defaultShiftTimes.Tech
+      rows.push({
+        id: req.id,
+        service_id: service.id,
+        staffing_requirement_id: req.id,
+        role_label: req.role_label,
+        role_category: req.role_category,
+        start_time: times.start,
+        end_time: times.end,
+        raw_shift: times.display,
+        color: service.color,
+        service_code: service.code
+      })
+    }
+    
+    // Add a break row after each service (except the last)
+    const lastService = services.value[services.value.length - 1]
+    if (service.id !== lastService?.id) {
+      rows.push({
+        id: `break-${service.id}`,
+        service_id: '',
+        staffing_requirement_id: null,
+        role_label: '',
+        role_category: '',
+        start_time: '',
+        end_time: '',
+        raw_shift: '',
+        color: '',
+        isBreak: true
+      })
+    }
+  }
+  
+  shiftRows.value = rows
+}
+
 watch(currentWeekStart, () => {
   loadShifts()
   loadTimeOffRequests()
 })
 onMounted(async () => {
-  await loadShiftTemplates()
+  await loadServicesAndRequirements()
   await Promise.all([loadShifts(), loadTimeOffRequests()])
 })
 </script>
@@ -628,15 +682,15 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <template v-for="(tmpl, tmplIdx) in shiftTemplates" :key="tmpl.id">
+              <template v-for="(row, rowIdx) in shiftRows" :key="row.id">
                 <!-- Section Break Row -->
-                <tr v-if="tmpl.isBreak" class="row-break">
+                <tr v-if="row.isBreak" class="row-break">
                   <td class="col-break-shift">
-                    <button class="break-remove" @click="removeBreak(tmpl.id)" title="Remove break">×</button>
+                    <button class="break-remove" @click="removeBreak(row.id)" title="Remove break">×</button>
                   </td>
                   <td 
                     v-for="day in weekDays" 
-                    :key="`break-${tmpl.id}-${day.toISOString()}`"
+                    :key="`break-${row.id}-${day.toISOString()}`"
                     :colspan="activeLocations.length"
                     class="col-break"
                   ></td>
@@ -645,47 +699,48 @@ onMounted(async () => {
                 <tr v-else class="row-shift">
                   <td 
                     class="col-shift col-shift-clickable" 
-                    :style="{ backgroundColor: tmpl.color || getRoleColor(tmpl.role_name, tmpl) }"
-                    @click="openShiftEdit(tmpl)"
+                    :style="{ backgroundColor: row.color || getRoleColor(row) }"
+                    @click="openRowEdit(row)"
                   >
-                    <div class="shift-role">{{ tmpl.role_name }}</div>
-                    <div class="shift-time">{{ tmpl.raw_shift }}</div>
+                    <div class="shift-service" v-if="row.service_code">{{ row.service_code }}</div>
+                    <div class="shift-role">{{ row.role_label }}</div>
+                    <div class="shift-time">{{ row.raw_shift }}</div>
                     <v-icon class="shift-edit-icon" size="12">mdi-pencil</v-icon>
                     <button 
                       class="add-break-btn" 
-                      @click.stop="insertBreakAfter(tmpl.id)" 
+                      @click.stop="insertBreakAfter(row.id)" 
                       title="Add section break below"
                     >
                       <v-icon size="10">mdi-minus</v-icon>
                     </button>
                   </td>
-                  <template v-for="day in weekDays" :key="`cells-${tmpl.id}-${day.toISOString()}`">
+                  <template v-for="day in weekDays" :key="`cells-${row.id}-${day.toISOString()}`">
                     <td 
                       v-for="loc in activeLocations"
-                      :key="getCellKey(tmpl.id, day, loc.id)"
+                      :key="getCellKey(row.id, day, loc.id)"
                       class="col-cell"
                       :class="{ 
-                        'drag-over': dragOverCell === getCellKey(tmpl.id, day, loc.id),
-                        'has-emp': getCellAssignment(tmpl, day, loc.id),
+                        'drag-over': dragOverCell === getCellKey(row.id, day, loc.id),
+                        'has-emp': getCellAssignment(row, day, loc.id),
                         'today': isSameDay(day, new Date()),
-                        'time-off-conflict': getCellAssignment(tmpl, day, loc.id) && hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day),
-                        'time-off-approved': getCellAssignment(tmpl, day, loc.id) && hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved'
+                        'time-off-conflict': getCellAssignment(row, day, loc.id) && hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day),
+                        'time-off-approved': getCellAssignment(row, day, loc.id) && hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day)?.status === 'approved'
                       }"
-                      @dragover="onDragOver(getCellKey(tmpl.id, day, loc.id), $event)"
+                      @dragover="onDragOver(getCellKey(row.id, day, loc.id), $event)"
                       @dragleave="onDragLeave"
-                      @drop="onDrop(tmpl, day, loc.id, $event)"
+                      @drop="onDrop(row, day, loc.id, $event)"
                     >
-                      <template v-if="getCellAssignment(tmpl, day, loc.id)">
-                        <div class="cell-emp" :class="{ 'has-warning': hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day) }">
+                      <template v-if="getCellAssignment(row, day, loc.id)">
+                        <div class="cell-emp" :class="{ 'has-warning': hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day) }">
                           <v-icon 
-                            v-if="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)"
+                            v-if="hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day)"
                             size="10" 
-                            :color="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'error' : 'warning'"
+                            :color="hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'error' : 'warning'"
                             class="time-off-icon"
-                            :title="hasTimeOffOnDate(getCellAssignment(tmpl, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'APPROVED Time Off!' : 'Pending Time Off Request'"
+                            :title="hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day)?.status === 'approved' ? 'APPROVED Time Off!' : 'Pending Time Off Request'"
                           >mdi-calendar-alert</v-icon>
-                          <span>{{ getCellAssignment(tmpl, day, loc.id)?.employees?.first_name }}</span>
-                          <button class="cell-remove" @click="removeAssignment(getCellAssignment(tmpl, day, loc.id)!.id)">×</button>
+                          <span>{{ getCellAssignment(row, day, loc.id)?.employees?.first_name }}</span>
+                          <button class="cell-remove" @click="removeAssignment(getCellAssignment(row, day, loc.id)!.id)">×</button>
                         </div>
                       </template>
                     </td>
@@ -698,21 +753,14 @@ onMounted(async () => {
       </main>
     </div>
 
-    <!-- Edit Shift Dialog -->
+    <!-- Edit Shift Row Dialog -->
     <v-dialog v-model="editDialog" max-width="450">
       <v-card>
-        <v-card-title class="text-h6">Edit Shift Template</v-card-title>
+        <v-card-title class="text-h6">Edit Shift Row</v-card-title>
         <v-card-text>
           <v-text-field
-            v-model="editForm.role_name"
-            label="Role Name"
-            density="compact"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-text-field
-            v-model="editForm.name"
-            label="Short Name"
+            v-model="editForm.role_label"
+            label="Role Label"
             density="compact"
             variant="outlined"
             class="mb-3"
@@ -758,7 +806,7 @@ onMounted(async () => {
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="editDialog = false">Cancel</v-btn>
-          <v-btn color="primary" variant="flat" @click="saveShiftEdit">Save</v-btn>
+          <v-btn color="primary" variant="flat" @click="saveRowEdit">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1027,6 +1075,13 @@ onMounted(async () => {
 }
 .row-shift .col-shift {
   font-size: 10px;
+}
+.shift-service {
+  font-size: 8px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .shift-role {
   font-weight: 700;
