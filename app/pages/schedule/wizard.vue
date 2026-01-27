@@ -70,6 +70,9 @@ interface AvailableEmployee {
   conflict_reason: string | null
   current_week_hours: number
   reliability_score: number
+  availability_type: string
+  availability_note: string | null
+  preference_level: number
 }
 
 interface ValidationResult {
@@ -113,6 +116,13 @@ const isLoadingEmployees = ref(false)
 // Quick action states
 const isCopyingWeek = ref(false)
 const isAutoFilling = ref(false)
+
+// Time editing dialog
+const timeEditDialog = ref(false)
+const editingSlot = ref<DraftSlot | null>(null)
+const editStartTime = ref('')
+const editEndTime = ref('')
+const isSavingTime = ref(false)
 
 // Day labels
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -399,6 +409,59 @@ async function clearSlot(slot: DraftSlot) {
     slot.employee = undefined
   } catch (err) {
     console.error('Failed to clear slot:', err)
+  }
+}
+
+// Open time edit dialog
+function openTimeEdit(slot: DraftSlot, event: Event) {
+  event.stopPropagation()
+  editingSlot.value = slot
+  editStartTime.value = slot.start_time || '09:00'
+  editEndTime.value = slot.end_time || '17:30'
+  timeEditDialog.value = true
+}
+
+// Save time changes
+async function saveSlotTimes() {
+  if (!editingSlot.value) return
+  
+  isSavingTime.value = true
+  try {
+    const { error } = await supabase.rpc('update_slot_times', {
+      p_slot_id: editingSlot.value.id,
+      p_start_time: editStartTime.value,
+      p_end_time: editEndTime.value
+    })
+    
+    if (error) throw error
+    
+    // Update local state
+    editingSlot.value.start_time = editStartTime.value
+    editingSlot.value.end_time = editEndTime.value
+    
+    timeEditDialog.value = false
+    toast.success('Shift time updated')
+  } catch (err) {
+    console.error('Failed to update times:', err)
+    toast.error('Failed to update shift time')
+  } finally {
+    isSavingTime.value = false
+  }
+}
+
+// Get availability display info
+function getAvailabilityDisplay(emp: AvailableEmployee): { icon: string; color: string; text: string } {
+  switch (emp.availability_type) {
+    case 'preferred':
+      return { icon: 'mdi-star', color: 'success', text: 'Prefers this day' }
+    case 'available':
+      return { icon: 'mdi-check-circle', color: 'success', text: 'Available' }
+    case 'avoid':
+      return { icon: 'mdi-alert', color: 'warning', text: emp.availability_note || 'Prefers not to work' }
+    case 'unavailable':
+      return { icon: 'mdi-close-circle', color: 'error', text: emp.availability_note || 'Not available' }
+    default:
+      return { icon: 'mdi-help-circle-outline', color: 'grey', text: 'No preference set' }
   }
 }
 
@@ -905,8 +968,13 @@ onMounted(async () => {
                     {{ slot.role_label }}
                   </div>
                   
-                  <!-- Shift Time Display -->
-                  <div class="slot-time text-caption text-grey-darken-1">
+                  <!-- Shift Time Display - Clickable to edit -->
+                  <div 
+                    class="slot-time text-caption text-grey-darken-1 slot-time-editable"
+                    @click.stop="openTimeEdit(slot, $event)"
+                    title="Click to edit time"
+                  >
+                    <v-icon size="10" class="mr-1">mdi-clock-outline</v-icon>
                     {{ formatShiftTime(slot.start_time) }} - {{ formatShiftTime(slot.end_time) }}
                   </div>
                   
@@ -1103,7 +1171,7 @@ onMounted(async () => {
           <v-progress-circular indeterminate color="primary" />
         </v-card-text>
         
-        <v-list v-else lines="two" class="py-0">
+        <v-list v-else lines="three" class="py-0">
           <v-list-item
             v-for="emp in availableEmployees"
             :key="emp.employee_id"
@@ -1129,9 +1197,22 @@ onMounted(async () => {
               </template>
             </v-list-item-subtitle>
             
+            <!-- Availability Status Row -->
+            <v-list-item-subtitle class="mt-1">
+              <v-chip 
+                size="x-small" 
+                :color="getAvailabilityDisplay(emp).color"
+                variant="tonal"
+                class="mr-1"
+              >
+                <v-icon size="12" start>{{ getAvailabilityDisplay(emp).icon }}</v-icon>
+                {{ getAvailabilityDisplay(emp).text }}
+              </v-chip>
+            </v-list-item-subtitle>
+            
             <template #append>
               <div class="text-right">
-                <div class="text-caption">{{ emp.current_week_hours }}h this week</div>
+                <div class="text-caption">{{ emp.current_week_hours?.toFixed(1) || 0 }}h this week</div>
                 <v-chip 
                   size="x-small" 
                   :color="emp.reliability_score >= 90 ? 'success' : emp.reliability_score >= 70 ? 'warning' : 'error'"
@@ -1149,6 +1230,53 @@ onMounted(async () => {
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="selectorDialog = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Time Edit Dialog -->
+    <v-dialog v-model="timeEditDialog" max-width="360">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
+          Edit Shift Time
+        </v-card-title>
+        
+        <v-card-text>
+          <div v-if="editingSlot" class="mb-4">
+            <v-chip size="small" :color="getRoleCategoryColor(editingSlot.role_category)" class="mb-2">
+              {{ editingSlot.role_label }}
+            </v-chip>
+          </div>
+          
+          <v-row>
+            <v-col cols="6">
+              <v-text-field
+                v-model="editStartTime"
+                label="Start Time"
+                type="time"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model="editEndTime"
+                label="End Time"
+                type="time"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="timeEditDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="isSavingTime" @click="saveSlotTimes">
+            Save
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1288,6 +1416,18 @@ onMounted(async () => {
   font-size: 0.7rem;
   margin-top: -2px;
   margin-bottom: 2px;
+}
+
+.slot-time-editable {
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.slot-time-editable:hover {
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .slot-employee {
