@@ -10,7 +10,7 @@
  * POST /api/ai/schedule-suggest
  */
 
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 interface ShiftRequirement {
   date: string
@@ -58,21 +58,32 @@ interface ScheduleSuggestion {
 
 export default defineEventHandler(async (event) => {
   const client = await serverSupabaseClient(event)
+  const adminClient = await serverSupabaseServiceRole(event)
   const user = await serverSupabaseUser(event)
 
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
-  // Check admin access
-  const { data: profile } = await client
+  // Check admin access using service role to bypass RLS
+  const { data: profile, error: profileError } = await adminClient
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
+  // Log for debugging
+  console.log('[AI Schedule] User ID:', user.id)
+  console.log('[AI Schedule] Profile:', profile)
+  console.log('[AI Schedule] Profile Error:', profileError)
+
+  if (profileError) {
+    console.error('[AI Schedule] Failed to fetch profile:', profileError)
+    throw createError({ statusCode: 500, message: 'Failed to verify access: ' + profileError.message })
+  }
+
   if (!profile || !['admin', 'super_admin', 'manager', 'hr_admin'].includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Admin access required' })
+    throw createError({ statusCode: 403, message: `Admin access required. Current role: ${profile?.role || 'unknown'}` })
   }
 
   const body = await readBody(event)
@@ -94,10 +105,10 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    // 1. Gather context data
-    const employees = await getAvailableEmployees(client, departmentId, locationId)
-    const requirements = await getShiftRequirements(client, weekStart, departmentId)
-    const recentSchedules = await getRecentScheduleData(client, employees.map(e => e.id))
+    // 1. Gather context data (use adminClient to bypass RLS)
+    const employees = await getAvailableEmployees(adminClient, departmentId, locationId)
+    const requirements = await getShiftRequirements(adminClient, weekStart, departmentId)
+    const recentSchedules = await getRecentScheduleData(adminClient, employees.map(e => e.id))
 
     // 2. Build the prompt
     const prompt = buildSchedulingPrompt(employees, requirements, recentSchedules, weekStart)
