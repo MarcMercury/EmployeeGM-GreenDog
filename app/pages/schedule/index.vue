@@ -275,7 +275,6 @@ async function fetchLocations(): Promise<void> {
     .from('locations')
     .select('id, name, code')
     .eq('is_active', true)
-    .order('sort_order', { ascending: true })
     .order('name')
   
   if (error) {
