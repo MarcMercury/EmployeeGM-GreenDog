@@ -487,6 +487,15 @@ function getRoleCategoryColor(category: string): string {
   return colors[category] || '#6B7280'
 }
 
+// Format shift time (HH:MM -> h:mma)
+function formatShiftTime(time: string): string {
+  if (!time) return ''
+  const [hours, minutes] = time.split(':').map(Number)
+  const h = hours % 12 || 12
+  const ampm = hours < 12 ? 'a' : 'p'
+  return minutes === 0 ? `${h}${ampm}` : `${h}:${minutes.toString().padStart(2, '0')}${ampm}`
+}
+
 // Initialize
 onMounted(async () => {
   isLoading.value = true
@@ -771,6 +780,11 @@ onMounted(async () => {
                 >
                   <div class="slot-role text-caption font-weight-medium">
                     {{ slot.role_label }}
+                  </div>
+                  
+                  <!-- Shift Time Display -->
+                  <div class="slot-time text-caption text-grey-darken-1">
+                    {{ formatShiftTime(slot.start_time) }} - {{ formatShiftTime(slot.end_time) }}
                   </div>
                   
                   <div v-if="slot.employee" class="slot-employee">
@@ -1145,6 +1159,12 @@ onMounted(async () => {
 
 .slot-role {
   color: #666;
+}
+
+.slot-time {
+  font-size: 0.7rem;
+  margin-top: -2px;
+  margin-bottom: 2px;
 }
 
 .slot-employee {
