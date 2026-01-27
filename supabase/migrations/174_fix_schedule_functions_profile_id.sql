@@ -406,3 +406,353 @@ $$;
 
 -- Grant permissions
 GRANT EXECUTE ON FUNCTION assign_employee_to_slot(UUID, UUID) TO authenticated;
+-- ============================================================================
+-- 4. FIX publish_schedule_draft FUNCTION
+-- Uses auth.uid() for published_by on both schedule_weeks and schedule_drafts
+-- ============================================================================
+CREATE OR REPLACE FUNCTION publish_schedule_draft(p_draft_id UUID)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_draft RECORD;
+  v_slot RECORD;
+  v_schedule_week_id UUID;
+  v_profile_id UUID;
+BEGIN
+  -- Get profile ID for current user
+  SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = auth.uid();
+
+  -- Get draft
+  SELECT * INTO v_draft FROM schedule_drafts WHERE id = p_draft_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Draft not found';
+  END IF;
+  
+  -- Get or create schedule_week
+  SELECT id INTO v_schedule_week_id
+  FROM schedule_weeks
+  WHERE location_id = v_draft.location_id AND week_start = v_draft.week_start;
+  
+  IF v_schedule_week_id IS NULL THEN
+    INSERT INTO schedule_weeks (location_id, week_start, status)
+    VALUES (v_draft.location_id, v_draft.week_start, 'draft')
+    RETURNING id INTO v_schedule_week_id;
+  END IF;
+  
+  -- Convert draft_slots to shifts
+  FOR v_slot IN
+    SELECT ds.*, s.name as service_name
+    FROM draft_slots ds
+    JOIN services s ON ds.service_id = s.id
+    WHERE ds.draft_id = p_draft_id
+    AND ds.employee_id IS NOT NULL
+  LOOP
+    INSERT INTO shifts (
+      employee_id,
+      location_id,
+      service_id,
+      staffing_requirement_id,
+      schedule_week_id,
+      start_at,
+      end_at,
+      role_required,
+      status,
+      is_published,
+      assignment_source
+    ) VALUES (
+      v_slot.employee_id,
+      v_draft.location_id,
+      v_slot.service_id,
+      v_slot.staffing_requirement_id,
+      v_schedule_week_id,
+      (v_slot.slot_date::TEXT || ' ' || v_slot.start_time::TEXT)::TIMESTAMPTZ,
+      (v_slot.slot_date::TEXT || ' ' || v_slot.end_time::TEXT)::TIMESTAMPTZ,
+      v_slot.role_label,
+      'published',
+      true,
+      'manual'
+    );
+  END LOOP;
+  
+  -- Update schedule_week status (use profile ID, not auth.uid())
+  UPDATE schedule_weeks
+  SET status = 'published',
+      published_at = now(),
+      published_by = v_profile_id
+  WHERE id = v_schedule_week_id;
+  
+  -- Mark draft as published (use profile ID, not auth.uid())
+  UPDATE schedule_drafts
+  SET status = 'published',
+      published_at = now(),
+      published_by = v_profile_id
+  WHERE id = p_draft_id;
+  
+  RETURN true;
+END;
+$$;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION publish_schedule_draft(UUID) TO authenticated;
+
+-- ============================================================================
+-- 5. FIX save_template_from_draft FUNCTION
+-- Uses auth.uid() for created_by on schedule_templates
+-- ============================================================================
+CREATE OR REPLACE FUNCTION save_template_from_draft(
+  p_draft_id UUID,
+  p_name TEXT,
+  p_description TEXT DEFAULT NULL,
+  p_location_specific BOOLEAN DEFAULT false
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_draft RECORD;
+  v_template_id UUID;
+  v_slot_defs JSONB := '[]'::JSONB;
+  v_slot RECORD;
+  v_profile_id UUID;
+BEGIN
+  -- Get profile ID for current user
+  SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = auth.uid();
+
+  -- Get draft info
+  SELECT * INTO v_draft FROM schedule_drafts WHERE id = p_draft_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Draft not found';
+  END IF;
+  
+  -- Build slot definitions from draft slots
+  FOR v_slot IN
+    SELECT DISTINCT ON (ds.service_id, ds.role_category, ds.role_label, EXTRACT(DOW FROM ds.slot_date))
+      s.code as service_code,
+      ds.role_label,
+      ds.role_category,
+      EXTRACT(DOW FROM ds.slot_date)::INT as day_of_week,
+      ds.start_time::TEXT,
+      ds.end_time::TEXT,
+      ds.is_required,
+      ds.priority
+    FROM draft_slots ds
+    JOIN services s ON ds.service_id = s.id
+    WHERE ds.draft_id = p_draft_id
+    ORDER BY ds.service_id, ds.role_category, ds.role_label, EXTRACT(DOW FROM ds.slot_date), ds.priority
+  LOOP
+    v_slot_defs := v_slot_defs || jsonb_build_object(
+      'service_code', v_slot.service_code,
+      'role_label', v_slot.role_label,
+      'role_category', v_slot.role_category,
+      'day_of_week', v_slot.day_of_week,
+      'start_time', v_slot.start_time,
+      'end_time', v_slot.end_time,
+      'is_required', v_slot.is_required,
+      'priority', v_slot.priority
+    );
+  END LOOP;
+  
+  -- Create template (use profile ID, not auth.uid())
+  INSERT INTO schedule_templates (
+    name,
+    description,
+    location_id,
+    operational_days,
+    service_ids,
+    slot_definitions,
+    created_by
+  ) VALUES (
+    p_name,
+    p_description,
+    CASE WHEN p_location_specific THEN v_draft.location_id ELSE NULL END,
+    v_draft.operational_days,
+    v_draft.selected_service_ids,
+    v_slot_defs,
+    v_profile_id
+  )
+  RETURNING id INTO v_template_id;
+  
+  RETURN v_template_id;
+END;
+$$;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION save_template_from_draft(UUID, TEXT, TEXT, BOOLEAN) TO authenticated;
+
+-- ============================================================================
+-- 6. FIX apply_template_to_draft FUNCTION
+-- Uses auth.uid() for created_by on schedule_drafts
+-- ============================================================================
+CREATE OR REPLACE FUNCTION apply_template_to_draft(
+  p_template_id UUID,
+  p_location_id UUID,
+  p_week_start DATE
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_template RECORD;
+  v_draft_id UUID;
+  v_slot JSONB;
+  v_service_id UUID;
+  v_slot_date DATE;
+  v_day INT;
+  v_profile_id UUID;
+BEGIN
+  -- Get profile ID for current user
+  SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = auth.uid();
+
+  -- Get template
+  SELECT * INTO v_template FROM schedule_templates WHERE id = p_template_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Template not found';
+  END IF;
+  
+  -- Check for existing draft
+  SELECT id INTO v_draft_id
+  FROM schedule_drafts
+  WHERE location_id = p_location_id AND week_start = p_week_start;
+  
+  IF v_draft_id IS NOT NULL THEN
+    -- Clear existing slots
+    DELETE FROM draft_slots WHERE draft_id = v_draft_id;
+    
+    -- Update draft with template settings
+    UPDATE schedule_drafts
+    SET 
+      operational_days = v_template.operational_days,
+      selected_service_ids = v_template.service_ids,
+      status = 'building',
+      updated_at = now()
+    WHERE id = v_draft_id;
+  ELSE
+    -- Create new draft (use profile ID, not auth.uid())
+    INSERT INTO schedule_drafts (
+      location_id,
+      week_start,
+      operational_days,
+      selected_service_ids,
+      created_by
+    ) VALUES (
+      p_location_id,
+      p_week_start,
+      v_template.operational_days,
+      v_template.service_ids,
+      v_profile_id
+    )
+    RETURNING id INTO v_draft_id;
+  END IF;
+  
+  -- Create slots from template definitions
+  FOR v_slot IN SELECT * FROM jsonb_array_elements(v_template.slot_definitions)
+  LOOP
+    -- Get service ID by code
+    SELECT id INTO v_service_id FROM services WHERE code = v_slot->>'service_code';
+    
+    IF v_service_id IS NOT NULL THEN
+      -- Calculate slot date
+      v_day := (v_slot->>'day_of_week')::INT;
+      v_slot_date := p_week_start + v_day;
+      
+      -- Only create if day is in operational days
+      IF v_day = ANY(v_template.operational_days) THEN
+        INSERT INTO draft_slots (
+          draft_id,
+          service_id,
+          role_category,
+          role_label,
+          slot_date,
+          start_time,
+          end_time,
+          is_required,
+          priority
+        ) VALUES (
+          v_draft_id,
+          v_service_id,
+          v_slot->>'role_category',
+          v_slot->>'role_label',
+          v_slot_date,
+          (v_slot->>'start_time')::TIME,
+          (v_slot->>'end_time')::TIME,
+          COALESCE((v_slot->>'is_required')::BOOLEAN, true),
+          COALESCE((v_slot->>'priority')::INT, 1)
+        );
+      END IF;
+    END IF;
+  END LOOP;
+  
+  -- Update template usage stats
+  UPDATE schedule_templates
+  SET 
+    usage_count = usage_count + 1,
+    last_used_at = now()
+  WHERE id = p_template_id;
+  
+  RETURN v_draft_id;
+END;
+$$;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION apply_template_to_draft(UUID, UUID, DATE) TO authenticated;
+
+-- ============================================================================
+-- 7. FIX RLS POLICIES
+-- Policies were using WHERE id = auth.uid() but should use WHERE auth_user_id = auth.uid()
+-- The profiles.id is NOT the same as auth.uid() - we need to match on auth_user_id
+-- ============================================================================
+
+-- Fix schedule_drafts policies
+DROP POLICY IF EXISTS "schedule_drafts_select_admin" ON schedule_drafts;
+CREATE POLICY "schedule_drafts_select_admin" ON schedule_drafts
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE auth_user_id = auth.uid() 
+      AND role IN ('super_admin', 'admin', 'hr_admin', 'manager', 'sup_admin')
+    )
+  );
+
+DROP POLICY IF EXISTS "schedule_drafts_modify_admin" ON schedule_drafts;
+CREATE POLICY "schedule_drafts_modify_admin" ON schedule_drafts
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE auth_user_id = auth.uid() 
+      AND role IN ('super_admin', 'admin', 'hr_admin', 'manager', 'sup_admin')
+    )
+  );
+
+-- Fix draft_slots policies
+DROP POLICY IF EXISTS "draft_slots_select_admin" ON draft_slots;
+CREATE POLICY "draft_slots_select_admin" ON draft_slots
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE auth_user_id = auth.uid() 
+      AND role IN ('super_admin', 'admin', 'hr_admin', 'manager', 'sup_admin')
+    )
+  );
+
+DROP POLICY IF EXISTS "draft_slots_modify_admin" ON draft_slots;
+CREATE POLICY "draft_slots_modify_admin" ON draft_slots
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE auth_user_id = auth.uid() 
+      AND role IN ('super_admin', 'admin', 'hr_admin', 'manager', 'sup_admin')
+    )
+  );
+
+-- Fix schedule_templates policy (from migration 167)
+DROP POLICY IF EXISTS "schedule_templates_modify" ON schedule_templates;
+CREATE POLICY "schedule_templates_modify" ON schedule_templates FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE auth_user_id = auth.uid() AND role IN ('super_admin', 'admin', 'hr_admin', 'manager'))
+);
