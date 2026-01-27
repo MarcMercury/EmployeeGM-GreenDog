@@ -84,6 +84,37 @@ interface ValidationResult {
   is_valid: boolean
 }
 
+interface ScheduleTemplate {
+  id: string
+  name: string
+  description: string | null
+  location_id: string | null
+  location_name: string | null
+  operational_days: number[]
+  service_count: number
+  slot_count: number
+  is_default: boolean
+  usage_count: number
+  last_used_at: string | null
+  created_at: string
+}
+
+interface DashboardLocation {
+  location_id: string
+  location_name: string
+  location_code: string
+  draft_id: string | null
+  draft_status: string
+  total_slots: number
+  filled_slots: number
+  required_slots: number
+  required_filled: number
+  coverage_percentage: number
+  has_draft: boolean
+  published_at: string | null
+  last_updated: string | null
+}
+
 // Composables
 const supabase = useSupabaseClient()
 const toast = useToast()
@@ -123,6 +154,22 @@ const editingSlot = ref<DraftSlot | null>(null)
 const editStartTime = ref('')
 const editEndTime = ref('')
 const isSavingTime = ref(false)
+
+// Templates
+const templates = ref<ScheduleTemplate[]>([])
+const templatesDialog = ref(false)
+const saveTemplateDialog = ref(false)
+const templateName = ref('')
+const templateDescription = ref('')
+const templateLocationSpecific = ref(false)
+const isSavingTemplate = ref(false)
+const isApplyingTemplate = ref(false)
+const isLoadingTemplates = ref(false)
+
+// Multi-Location Dashboard
+const viewMode = ref<'wizard' | 'dashboard'>('wizard')
+const dashboardData = ref<DashboardLocation[]>([])
+const isLoadingDashboard = ref(false)
 
 // Day labels
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -618,6 +665,196 @@ function resetWizard() {
   selectedServiceIds.value = []
 }
 
+// ============================================================
+// TEMPLATES FUNCTIONS
+// ============================================================
+
+// Load available templates
+async function loadTemplates() {
+  isLoadingTemplates.value = true
+  try {
+    const { data, error } = await supabase.rpc('list_schedule_templates', {
+      p_location_id: selectedLocationId.value
+    })
+    
+    if (error) throw error
+    templates.value = data || []
+  } catch (err) {
+    console.error('Failed to load templates:', err)
+    templates.value = []
+  } finally {
+    isLoadingTemplates.value = false
+  }
+}
+
+// Open templates dialog
+async function openTemplatesDialog() {
+  await loadTemplates()
+  templatesDialog.value = true
+}
+
+// Apply template to current draft
+async function applyTemplate(template: ScheduleTemplate) {
+  if (!selectedLocationId.value) {
+    toast.error('Please select a location first')
+    return
+  }
+  
+  isApplyingTemplate.value = true
+  try {
+    const { data, error } = await supabase.rpc('apply_template_to_draft', {
+      p_template_id: template.id,
+      p_location_id: selectedLocationId.value,
+      p_week_start: format(selectedWeekStart.value, 'yyyy-MM-dd')
+    })
+    
+    if (error) throw error
+    
+    draftId.value = data
+    operationalDays.value = [...template.operational_days]
+    
+    // Load the applied slots
+    await loadDraftSlots()
+    
+    templatesDialog.value = false
+    currentStep.value = 2
+    toast.success(`Applied template "${template.name}" - ${template.slot_count} slots created`)
+  } catch (err) {
+    console.error('Failed to apply template:', err)
+    toast.error('Failed to apply template')
+  } finally {
+    isApplyingTemplate.value = false
+  }
+}
+
+// Open save template dialog
+function openSaveTemplateDialog() {
+  templateName.value = `${selectedLocation.value?.name || 'Schedule'} Template`
+  templateDescription.value = ''
+  templateLocationSpecific.value = false
+  saveTemplateDialog.value = true
+}
+
+// Save current draft as template
+async function saveAsTemplate() {
+  if (!draftId.value || !templateName.value.trim()) {
+    toast.error('Please provide a template name')
+    return
+  }
+  
+  isSavingTemplate.value = true
+  try {
+    const { data, error } = await supabase.rpc('save_template_from_draft', {
+      p_draft_id: draftId.value,
+      p_name: templateName.value.trim(),
+      p_description: templateDescription.value.trim() || null,
+      p_location_specific: templateLocationSpecific.value
+    })
+    
+    if (error) throw error
+    
+    saveTemplateDialog.value = false
+    toast.success('Template saved successfully!')
+  } catch (err) {
+    console.error('Failed to save template:', err)
+    toast.error('Failed to save template')
+  } finally {
+    isSavingTemplate.value = false
+  }
+}
+
+// Delete a template
+async function deleteTemplate(template: ScheduleTemplate) {
+  if (!confirm(`Delete template "${template.name}"?`)) return
+  
+  try {
+    const { error } = await supabase.rpc('delete_schedule_template', {
+      p_template_id: template.id
+    })
+    
+    if (error) throw error
+    
+    templates.value = templates.value.filter(t => t.id !== template.id)
+    toast.success('Template deleted')
+  } catch (err) {
+    console.error('Failed to delete template:', err)
+    toast.error('Failed to delete template')
+  }
+}
+
+// ============================================================
+// DASHBOARD FUNCTIONS
+// ============================================================
+
+// Load dashboard data for all locations
+async function loadDashboard() {
+  isLoadingDashboard.value = true
+  try {
+    const { data, error } = await supabase.rpc('get_schedule_dashboard', {
+      p_week_start: format(selectedWeekStart.value, 'yyyy-MM-dd')
+    })
+    
+    if (error) throw error
+    dashboardData.value = data || []
+  } catch (err) {
+    console.error('Failed to load dashboard:', err)
+    dashboardData.value = []
+  } finally {
+    isLoadingDashboard.value = false
+  }
+}
+
+// Switch to wizard for a specific location from dashboard
+function openLocationWizard(loc: DashboardLocation) {
+  selectedLocationId.value = loc.location_id
+  
+  if (loc.has_draft && loc.draft_id) {
+    // Load existing draft
+    draftId.value = loc.draft_id
+    loadDraftSlots().then(() => {
+      currentStep.value = 2
+      viewMode.value = 'wizard'
+    })
+  } else {
+    // Start fresh
+    viewMode.value = 'wizard'
+  }
+}
+
+// Toggle between wizard and dashboard
+function toggleViewMode() {
+  if (viewMode.value === 'wizard') {
+    viewMode.value = 'dashboard'
+    loadDashboard()
+  } else {
+    viewMode.value = 'wizard'
+  }
+}
+
+// Get status color for dashboard
+function getStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    published: 'success',
+    validated: 'info',
+    building: 'warning',
+    draft: 'grey',
+    none: 'grey-lighten-1'
+  }
+  return colors[status] || 'grey'
+}
+
+// Get status label for dashboard
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    published: 'Published',
+    validated: 'Validated',
+    building: 'In Progress',
+    draft: 'Draft',
+    none: 'Not Started'
+  }
+  return labels[status] || status
+}
+
 // Get role color based on category
 function getRoleCategoryColor(category: string): string {
   const colors: Record<string, string> = {
@@ -660,22 +897,155 @@ onMounted(async () => {
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Schedule Wizard</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">
+          {{ viewMode === 'dashboard' ? 'Schedule Dashboard' : 'Schedule Wizard' }}
+        </h1>
         <p class="text-body-2 text-grey-darken-1 mb-0">
-          Build your weekly schedule in 4 easy steps
+          {{ viewMode === 'dashboard' 
+            ? 'Overview of all locations for the selected week' 
+            : 'Build your weekly schedule in 4 easy steps' 
+          }}
         </p>
       </div>
       
-      <v-btn
-        v-if="currentStep > 1 && currentStep < 4"
-        variant="text"
-        color="grey"
-        @click="resetWizard"
-      >
-        <v-icon start>mdi-refresh</v-icon>
-        Start Over
-      </v-btn>
+      <div class="d-flex gap-2">
+        <!-- View Mode Toggle -->
+        <v-btn-toggle v-model="viewMode" mandatory variant="outlined" density="compact">
+          <v-btn value="wizard" size="small">
+            <v-icon start>mdi-wizard-hat</v-icon>
+            Wizard
+          </v-btn>
+          <v-btn value="dashboard" size="small" @click="loadDashboard">
+            <v-icon start>mdi-view-dashboard</v-icon>
+            Dashboard
+          </v-btn>
+        </v-btn-toggle>
+        
+        <!-- Templates Button -->
+        <v-btn 
+          variant="outlined" 
+          color="secondary"
+          @click="openTemplatesDialog"
+        >
+          <v-icon start>mdi-file-document-outline</v-icon>
+          Templates
+        </v-btn>
+        
+        <v-btn
+          v-if="viewMode === 'wizard' && currentStep > 1 && currentStep < 4"
+          variant="text"
+          color="grey"
+          @click="resetWizard"
+        >
+          <v-icon start>mdi-refresh</v-icon>
+          Start Over
+        </v-btn>
+      </div>
     </div>
+
+    <!-- Dashboard View -->
+    <template v-if="viewMode === 'dashboard'">
+      <!-- Week Navigation -->
+      <v-card rounded="lg" class="mb-4">
+        <v-card-text class="d-flex align-center justify-center gap-4 py-3">
+          <v-btn icon="mdi-chevron-left" variant="text" @click="changeWeek(-1); loadDashboard()" />
+          <v-chip size="large" color="primary" variant="flat">
+            {{ weekLabel }}
+          </v-chip>
+          <v-btn icon="mdi-chevron-right" variant="text" @click="changeWeek(1); loadDashboard()" />
+          <v-btn variant="outlined" size="small" @click="goToThisWeek(); loadDashboard()">
+            This Week
+          </v-btn>
+        </v-card-text>
+      </v-card>
+      
+      <!-- Dashboard Loading -->
+      <div v-if="isLoadingDashboard" class="d-flex justify-center align-center py-12">
+        <v-progress-circular indeterminate color="primary" size="48" />
+      </div>
+      
+      <!-- Dashboard Grid -->
+      <v-row v-else>
+        <v-col 
+          v-for="loc in dashboardData" 
+          :key="loc.location_id" 
+          cols="12" 
+          md="6" 
+          lg="4"
+        >
+          <v-card rounded="lg" class="h-100 dashboard-location-card" @click="openLocationWizard(loc)">
+            <v-card-title class="d-flex align-center justify-space-between">
+              <span>{{ loc.location_name }}</span>
+              <v-chip 
+                size="small" 
+                :color="getStatusColor(loc.draft_status)"
+                variant="flat"
+              >
+                {{ getStatusLabel(loc.draft_status) }}
+              </v-chip>
+            </v-card-title>
+            
+            <v-card-text>
+              <!-- Coverage Progress -->
+              <div class="mb-4">
+                <div class="d-flex justify-space-between mb-1">
+                  <span class="text-caption">Coverage</span>
+                  <span class="text-caption font-weight-bold">{{ loc.coverage_percentage }}%</span>
+                </div>
+                <v-progress-linear
+                  :model-value="loc.coverage_percentage"
+                  :color="loc.coverage_percentage >= 80 ? 'success' : loc.coverage_percentage >= 50 ? 'warning' : 'error'"
+                  height="8"
+                  rounded
+                />
+              </div>
+              
+              <!-- Stats -->
+              <div class="d-flex justify-space-around text-center">
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ loc.filled_slots }}</div>
+                  <div class="text-caption text-grey">Filled</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ loc.total_slots }}</div>
+                  <div class="text-caption text-grey">Total</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ loc.required_filled }}/{{ loc.required_slots }}</div>
+                  <div class="text-caption text-grey">Required</div>
+                </div>
+              </div>
+              
+              <!-- Last Updated -->
+              <div v-if="loc.last_updated" class="text-caption text-grey mt-4 text-center">
+                Last updated: {{ format(parseISO(loc.last_updated), 'MMM d, h:mm a') }}
+              </div>
+            </v-card-text>
+            
+            <v-card-actions>
+              <v-btn 
+                block 
+                :color="loc.has_draft ? 'primary' : 'grey'" 
+                variant="tonal"
+              >
+                <v-icon start>{{ loc.has_draft ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+                {{ loc.has_draft ? 'Continue Editing' : 'Start Schedule' }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-col>
+        
+        <!-- Empty State -->
+        <v-col v-if="dashboardData.length === 0" cols="12">
+          <v-alert type="info" variant="tonal">
+            No locations found. Make sure locations are configured in the system.
+          </v-alert>
+        </v-col>
+      </v-row>
+    </template>
+
+    <!-- Wizard View -->
+    <template v-else>
 
     <!-- Stepper Progress -->
     <v-stepper
@@ -900,6 +1270,16 @@ onMounted(async () => {
             >
               <v-icon start>mdi-auto-fix</v-icon>
               AI Auto-Fill
+            </v-btn>
+            
+            <v-btn
+              variant="tonal"
+              color="secondary"
+              size="small"
+              @click="openSaveTemplateDialog"
+            >
+              <v-icon start>mdi-content-save-outline</v-icon>
+              Save Template
             </v-btn>
             
             <v-spacer />
@@ -1152,6 +1532,7 @@ onMounted(async () => {
         </v-card>
       </v-window-item>
     </v-window>
+    </template>
 
     <!-- Employee Selector Dialog -->
     <v-dialog v-model="selectorDialog" max-width="600">
@@ -1276,6 +1657,157 @@ onMounted(async () => {
           <v-btn variant="text" @click="timeEditDialog = false">Cancel</v-btn>
           <v-btn color="primary" :loading="isSavingTime" @click="saveSlotTimes">
             Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Templates Dialog -->
+    <v-dialog v-model="templatesDialog" max-width="700">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-file-document-multiple-outline</v-icon>
+          Schedule Templates
+          <v-spacer />
+          <v-btn 
+            v-if="draftId" 
+            variant="tonal" 
+            color="primary" 
+            size="small"
+            @click="templatesDialog = false; openSaveTemplateDialog()"
+          >
+            <v-icon start>mdi-content-save</v-icon>
+            Save Current as Template
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider />
+        
+        <v-card-text v-if="isLoadingTemplates" class="text-center py-8">
+          <v-progress-circular indeterminate color="primary" />
+        </v-card-text>
+        
+        <v-list v-else-if="templates.length > 0" lines="three">
+          <v-list-item
+            v-for="template in templates"
+            :key="template.id"
+            :disabled="isApplyingTemplate"
+            @click="applyTemplate(template)"
+          >
+            <template #prepend>
+              <v-avatar color="secondary" variant="tonal">
+                <v-icon>mdi-file-document-outline</v-icon>
+              </v-avatar>
+            </template>
+            
+            <v-list-item-title class="font-weight-medium">
+              {{ template.name }}
+              <v-chip v-if="template.is_default" size="x-small" color="primary" class="ml-2">
+                Default
+              </v-chip>
+            </v-list-item-title>
+            
+            <v-list-item-subtitle>
+              {{ template.description || 'No description' }}
+            </v-list-item-subtitle>
+            
+            <v-list-item-subtitle class="mt-1">
+              <v-chip size="x-small" variant="outlined" class="mr-1">
+                {{ template.slot_count }} slots
+              </v-chip>
+              <v-chip size="x-small" variant="outlined" class="mr-1">
+                {{ template.service_count }} services
+              </v-chip>
+              <v-chip v-if="template.location_name" size="x-small" variant="outlined">
+                {{ template.location_name }}
+              </v-chip>
+              <v-chip v-else size="x-small" variant="outlined" color="success">
+                Any Location
+              </v-chip>
+            </v-list-item-subtitle>
+            
+            <template #append>
+              <div class="d-flex flex-column align-end">
+                <div class="text-caption text-grey mb-1">
+                  Used {{ template.usage_count }} times
+                </div>
+                <v-btn 
+                  icon="mdi-delete" 
+                  size="x-small" 
+                  variant="text" 
+                  color="error"
+                  @click.stop="deleteTemplate(template)"
+                />
+              </div>
+            </template>
+          </v-list-item>
+        </v-list>
+        
+        <v-card-text v-else class="text-center py-8">
+          <v-icon size="48" color="grey">mdi-file-document-outline</v-icon>
+          <p class="text-body-2 text-grey mt-2">No templates found</p>
+          <p class="text-caption text-grey">
+            Build a schedule and save it as a template to reuse it later
+          </p>
+        </v-card-text>
+        
+        <v-divider />
+        
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="templatesDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    
+    <!-- Save Template Dialog -->
+    <v-dialog v-model="saveTemplateDialog" max-width="450">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-content-save-outline</v-icon>
+          Save as Template
+        </v-card-title>
+        
+        <v-card-text>
+          <v-text-field
+            v-model="templateName"
+            label="Template Name"
+            placeholder="e.g., Standard Monday-Friday"
+            variant="outlined"
+            density="compact"
+            :rules="[(v: string) => !!v.trim() || 'Name is required']"
+            class="mb-3"
+          />
+          
+          <v-textarea
+            v-model="templateDescription"
+            label="Description (optional)"
+            placeholder="Describe when to use this template..."
+            variant="outlined"
+            density="compact"
+            rows="2"
+            class="mb-3"
+          />
+          
+          <v-checkbox
+            v-model="templateLocationSpecific"
+            label="Location-specific template"
+            hint="If checked, this template will only be available for the current location"
+            persistent-hint
+            density="compact"
+          />
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="saveTemplateDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="isSavingTemplate" 
+            :disabled="!templateName.trim()"
+            @click="saveAsTemplate"
+          >
+            Save Template
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1463,5 +1995,16 @@ onMounted(async () => {
   .slots-cell {
     min-width: 110px;
   }
+}
+
+/* Dashboard Cards */
+.dashboard-location-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dashboard-location-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
 }
 </style>

@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -84,6 +85,248 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_parsed_documents: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          document_type: string | null
+          extracted_certifications: Json | null
+          extracted_education: Json | null
+          extracted_experience: Json | null
+          extracted_person: Json | null
+          extracted_skills: Json | null
+          file_type: string | null
+          id: string
+          linked_to_candidate_id: string | null
+          linked_to_employee_id: string | null
+          original_filename: string | null
+          parsed_by: string | null
+          raw_text_preview: string | null
+          storage_path: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          document_type?: string | null
+          extracted_certifications?: Json | null
+          extracted_education?: Json | null
+          extracted_experience?: Json | null
+          extracted_person?: Json | null
+          extracted_skills?: Json | null
+          file_type?: string | null
+          id?: string
+          linked_to_candidate_id?: string | null
+          linked_to_employee_id?: string | null
+          original_filename?: string | null
+          parsed_by?: string | null
+          raw_text_preview?: string | null
+          storage_path?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          document_type?: string | null
+          extracted_certifications?: Json | null
+          extracted_education?: Json | null
+          extracted_experience?: Json | null
+          extracted_person?: Json | null
+          extracted_skills?: Json | null
+          file_type?: string | null
+          id?: string
+          linked_to_candidate_id?: string | null
+          linked_to_employee_id?: string | null
+          original_filename?: string | null
+          parsed_by?: string | null
+          raw_text_preview?: string | null
+          storage_path?: string | null
+        }
+        Relationships: []
+      }
+      ai_schedule_suggestions: {
+        Row: {
+          applied_at: string | null
+          confidence_score: number | null
+          coverage_analysis: Json | null
+          created_at: string | null
+          department_id: string | null
+          id: string
+          location_id: string | null
+          requested_by: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          suggested_shifts: Json
+          warnings: string[] | null
+          week_start: string
+        }
+        Insert: {
+          applied_at?: string | null
+          confidence_score?: number | null
+          coverage_analysis?: Json | null
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          location_id?: string | null
+          requested_by?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          suggested_shifts: Json
+          warnings?: string[] | null
+          week_start: string
+        }
+        Update: {
+          applied_at?: string | null
+          confidence_score?: number | null
+          coverage_analysis?: Json | null
+          created_at?: string | null
+          department_id?: string | null
+          id?: string
+          location_id?: string | null
+          requested_by?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          suggested_shifts?: Json
+          warnings?: string[] | null
+          week_start?: string
+        }
+        Relationships: []
+      }
+      ai_scheduling_log: {
+        Row: {
+          accepted_suggestions: Json | null
+          action: string
+          created_at: string | null
+          created_by: string | null
+          feedback: string | null
+          id: string
+          input_context: Json | null
+          location_id: string | null
+          model_version: string | null
+          processing_time_ms: number | null
+          rejected_suggestions: Json | null
+          suggestions: Json | null
+          week_start: string
+        }
+        Insert: {
+          accepted_suggestions?: Json | null
+          action: string
+          created_at?: string | null
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          input_context?: Json | null
+          location_id?: string | null
+          model_version?: string | null
+          processing_time_ms?: number | null
+          rejected_suggestions?: Json | null
+          suggestions?: Json | null
+          week_start: string
+        }
+        Update: {
+          accepted_suggestions?: Json | null
+          action?: string
+          created_at?: string | null
+          created_by?: string | null
+          feedback?: string | null
+          id?: string
+          input_context?: Json | null
+          location_id?: string | null
+          model_version?: string | null
+          processing_time_ms?: number | null
+          rejected_suggestions?: Json | null
+          suggestions?: Json | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_scheduling_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ai_scheduling_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_scheduling_log_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_scheduling_log_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_usage_log: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          estimated_cost_usd: number | null
+          feature: string
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          profile_id: string | null
+          request_metadata: Json | null
+          response_summary: string | null
+          success: boolean | null
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          feature: string
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          profile_id?: string | null
+          request_metadata?: Json | null
+          response_summary?: string | null
+          success?: boolean | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          estimated_cost_usd?: number | null
+          feature?: string
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          profile_id?: string | null
+          request_metadata?: Json | null
+          response_summary?: string | null
+          success?: boolean | null
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           audience_filter: Json | null
@@ -125,6 +368,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcements_published_by_employee_id_fkey"
+            columns: ["published_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "announcements_published_by_employee_id_fkey"
+            columns: ["published_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -235,6 +492,13 @@ export type Database = {
             foreignKeyName: "appointments_created_by_profile_id_fkey"
             columns: ["created_by_profile_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "appointments_created_by_profile_id_fkey"
+            columns: ["created_by_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -251,6 +515,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "appointments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -315,11 +593,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "attendance_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "attendance_excused_by_employee_id_fkey"
             columns: ["excused_by_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_excused_by_employee_id_fkey"
+            columns: ["excused_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "attendance_excused_by_employee_id_fkey"
+            columns: ["excused_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "attendance_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_builder_details"
+            referencedColumns: ["shift_id"]
           },
           {
             foreignKeyName: "attendance_shift_id_fkey"
@@ -329,6 +642,120 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          action_category: string | null
+          actor_email: string | null
+          actor_id: string | null
+          actor_ip: unknown
+          changes: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          request_path: string | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          action_category?: string | null
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_ip?: unknown
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          request_path?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          action_category?: string | null
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_ip?: unknown
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          request_path?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_archive: {
+        Row: {
+          action: string
+          action_category: string | null
+          actor_email: string | null
+          actor_id: string | null
+          actor_ip: unknown
+          changes: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          request_path: string | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          action_category?: string | null
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_ip?: unknown
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          request_path?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          action_category?: string | null
+          actor_email?: string | null
+          actor_id?: string | null
+          actor_ip?: unknown
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          request_path?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -359,6 +786,13 @@ export type Database = {
           occurred_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "audit_logs_actor_profile_id_fkey"
             columns: ["actor_profile_id"]
@@ -475,11 +909,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "candidate_forwards_forwarded_by_employee_id_fkey"
+            columns: ["forwarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "candidate_forwards_forwarded_by_employee_id_fkey"
+            columns: ["forwarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "candidate_forwards_forwarded_to_employee_id_fkey"
             columns: ["forwarded_to_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_forwards_forwarded_to_employee_id_fkey"
+            columns: ["forwarded_to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "candidate_forwards_forwarded_to_employee_id_fkey"
+            columns: ["forwarded_to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -568,6 +1030,20 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "candidate_interviews_interviewer_employee_id_fkey"
+            columns: ["interviewer_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "candidate_interviews_interviewer_employee_id_fkey"
+            columns: ["interviewer_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
       }
       candidate_notes: {
@@ -611,6 +1087,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "candidate_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "candidate_notes_author_id_fkey"
             columns: ["author_id"]
@@ -688,6 +1171,13 @@ export type Database = {
             foreignKeyName: "candidate_onboarding_assigned_to_fkey"
             columns: ["assigned_to"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "candidate_onboarding_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -704,6 +1194,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "candidates"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_onboarding_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "candidate_onboarding_created_by_fkey"
@@ -791,6 +1288,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "candidate_onboarding_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "candidate_onboarding_tasks_completed_by_fkey"
             columns: ["completed_by"]
@@ -915,6 +1419,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "candidate_shadow_visits_host_employee_id_fkey"
+            columns: ["host_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "candidate_shadow_visits_host_employee_id_fkey"
+            columns: ["host_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "candidate_shadow_visits_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
@@ -966,6 +1484,13 @@ export type Database = {
             foreignKeyName: "candidate_skills_rated_by_fkey"
             columns: ["rated_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "candidate_skills_rated_by_fkey"
+            columns: ["rated_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -993,6 +1518,7 @@ export type Database = {
           avatar_url: string | null
           candidate_type: string | null
           city: string | null
+          conversion_source: string | null
           created_at: string
           date_of_birth: string | null
           department_id: string | null
@@ -1028,6 +1554,8 @@ export type Database = {
           resume_url: string | null
           salary_expectation: number | null
           source: string | null
+          source_enrollment_id: string | null
+          source_person_id: string | null
           state: string | null
           status: string
           target_position_id: string | null
@@ -1042,6 +1570,7 @@ export type Database = {
           avatar_url?: string | null
           candidate_type?: string | null
           city?: string | null
+          conversion_source?: string | null
           created_at?: string
           date_of_birth?: string | null
           department_id?: string | null
@@ -1077,6 +1606,8 @@ export type Database = {
           resume_url?: string | null
           salary_expectation?: number | null
           source?: string | null
+          source_enrollment_id?: string | null
+          source_person_id?: string | null
           state?: string | null
           status?: string
           target_position_id?: string | null
@@ -1091,6 +1622,7 @@ export type Database = {
           avatar_url?: string | null
           candidate_type?: string | null
           city?: string | null
+          conversion_source?: string | null
           created_at?: string
           date_of_birth?: string | null
           department_id?: string | null
@@ -1126,6 +1658,8 @@ export type Database = {
           resume_url?: string | null
           salary_expectation?: number | null
           source?: string | null
+          source_enrollment_id?: string | null
+          source_person_id?: string | null
           state?: string | null
           status?: string
           target_position_id?: string | null
@@ -1140,6 +1674,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_interviewed_by_fkey"
+            columns: ["interviewed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "candidates_interviewed_by_fkey"
@@ -1303,6 +1844,13 @@ export type Database = {
             foreignKeyName: "ce_event_tasks_backup_assignee_id_fkey"
             columns: ["backup_assignee_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ce_event_tasks_backup_assignee_id_fkey"
+            columns: ["backup_assignee_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1324,6 +1872,13 @@ export type Database = {
             foreignKeyName: "ce_event_tasks_completed_by_fkey"
             columns: ["completed_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ce_event_tasks_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1333,6 +1888,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_role_info"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_event_tasks_primary_assignee_id_fkey"
+            columns: ["primary_assignee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "ce_event_tasks_primary_assignee_id_fkey"
@@ -1521,6 +2083,13 @@ export type Database = {
             foreignKeyName: "ce_events_organizer_id_fkey"
             columns: ["organizer_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ce_events_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1640,6 +2209,13 @@ export type Database = {
             foreignKeyName: "clinic_visits_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "clinic_visits_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1695,6 +2271,9 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          address: string | null
+          company_name: string | null
+          contact_email: string | null
           created_at: string
           default_workweek_start: number | null
           display_name: string | null
@@ -1702,11 +2281,17 @@ export type Database = {
           industry: string | null
           legal_name: string | null
           locale: string | null
+          logo_url: string | null
+          phone: string | null
           primary_address: Json | null
           timezone: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
+          address?: string | null
+          company_name?: string | null
+          contact_email?: string | null
           created_at?: string
           default_workweek_start?: number | null
           display_name?: string | null
@@ -1714,11 +2299,17 @@ export type Database = {
           industry?: string | null
           legal_name?: string | null
           locale?: string | null
+          logo_url?: string | null
+          phone?: string | null
           primary_address?: Json | null
           timezone?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
+          address?: string | null
+          company_name?: string | null
+          contact_email?: string | null
           created_at?: string
           default_workweek_start?: number | null
           display_name?: string | null
@@ -1726,11 +2317,183 @@ export type Database = {
           industry?: string | null
           legal_name?: string | null
           locale?: string | null
+          logo_url?: string | null
+          phone?: string | null
           primary_address?: Json | null
           timezone?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: []
+      }
+      compliance_alerts: {
+        Row: {
+          alert_type: string
+          auto_generated: boolean | null
+          created_at: string | null
+          days_until_due: number | null
+          description: string | null
+          due_date: string | null
+          entity_id: string
+          entity_name: string | null
+          entity_type: string
+          id: string
+          last_notified_at: string | null
+          notified_users: string[] | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          auto_generated?: boolean | null
+          created_at?: string | null
+          days_until_due?: number | null
+          description?: string | null
+          due_date?: string | null
+          entity_id: string
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          last_notified_at?: string | null
+          notified_users?: string[] | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          auto_generated?: boolean | null
+          created_at?: string | null
+          days_until_due?: number | null
+          description?: string | null
+          due_date?: string | null
+          entity_id?: string
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          last_notified_at?: string | null
+          notified_users?: string[] | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      contact_notes: {
+        Row: {
+          author_id: string | null
+          author_initials: string | null
+          contact_id: string
+          contact_type: string
+          created_at: string
+          edited_at: string | null
+          edited_by_id: string | null
+          edited_by_initials: string | null
+          enrollment_id: string | null
+          id: string
+          is_archived: boolean | null
+          is_pinned: boolean | null
+          note: string
+          note_type: string | null
+          source_note_id: string | null
+          transferred_at: string | null
+          transferred_from: string | null
+          updated_at: string
+          visibility: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          author_initials?: string | null
+          contact_id: string
+          contact_type: string
+          created_at?: string
+          edited_at?: string | null
+          edited_by_id?: string | null
+          edited_by_initials?: string | null
+          enrollment_id?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_pinned?: boolean | null
+          note: string
+          note_type?: string | null
+          source_note_id?: string | null
+          transferred_at?: string | null
+          transferred_from?: string | null
+          updated_at?: string
+          visibility?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          author_initials?: string | null
+          contact_id?: string
+          contact_type?: string
+          created_at?: string
+          edited_at?: string | null
+          edited_by_id?: string | null
+          edited_by_initials?: string | null
+          enrollment_id?: string | null
+          id?: string
+          is_archived?: boolean | null
+          is_pinned?: boolean | null
+          note?: string
+          note_type?: string | null
+          source_note_id?: string | null
+          transferred_at?: string | null
+          transferred_from?: string | null
+          updated_at?: string
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       departments: {
         Row: {
@@ -1766,6 +2529,173 @@ export type Database = {
             columns: ["parent_department_id"]
             isOneToOne: false
             referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_slots: {
+        Row: {
+          ai_confidence: number | null
+          ai_reasoning: string | null
+          ai_suggested_employee_id: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          conflict_reason: string | null
+          created_at: string | null
+          draft_id: string
+          employee_id: string | null
+          end_time: string
+          has_conflict: boolean | null
+          id: string
+          is_filled: boolean | null
+          is_required: boolean | null
+          priority: number | null
+          role_category: string
+          role_label: string
+          service_id: string
+          slot_date: string
+          staffing_requirement_id: string | null
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          ai_suggested_employee_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          conflict_reason?: string | null
+          created_at?: string | null
+          draft_id: string
+          employee_id?: string | null
+          end_time?: string
+          has_conflict?: boolean | null
+          id?: string
+          is_filled?: boolean | null
+          is_required?: boolean | null
+          priority?: number | null
+          role_category: string
+          role_label: string
+          service_id: string
+          slot_date: string
+          staffing_requirement_id?: string | null
+          start_time?: string
+          updated_at?: string | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          ai_suggested_employee_id?: string | null
+          assigned_at?: string | null
+          assigned_by?: string | null
+          conflict_reason?: string | null
+          created_at?: string | null
+          draft_id?: string
+          employee_id?: string | null
+          end_time?: string
+          has_conflict?: boolean | null
+          id?: string
+          is_filled?: boolean | null
+          is_required?: boolean | null
+          priority?: number | null
+          role_category?: string
+          role_label?: string
+          service_id?: string
+          slot_date?: string
+          staffing_requirement_id?: string | null
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_slots_ai_suggested_employee_id_fkey"
+            columns: ["ai_suggested_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_ai_suggested_employee_id_fkey"
+            columns: ["ai_suggested_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_ai_suggested_employee_id_fkey"
+            columns: ["ai_suggested_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "draft_slots_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_slots_staffing_requirement_id_fkey"
+            columns: ["staffing_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "service_staffing_requirements"
             referencedColumns: ["id"]
           },
         ]
@@ -1871,6 +2801,39 @@ export type Database = {
           },
         ]
       }
+      email_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          updated_at: string | null
+        }
+        Insert: {
+          body: string
+          category: string
+          created_at?: string | null
+          id: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          updated_at?: string | null
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employee_achievements: {
         Row: {
           achievement_id: string
@@ -1915,11 +2878,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_achievements_awarded_by_employee_id_fkey"
+            columns: ["awarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_achievements_awarded_by_employee_id_fkey"
+            columns: ["awarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "employee_achievements_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_achievements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_achievements_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -1980,6 +2971,13 @@ export type Database = {
             foreignKeyName: "employee_assets_assigned_by_fkey"
             columns: ["assigned_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_assets_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2002,6 +3000,124 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_assets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_assets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
+      employee_availability: {
+        Row: {
+          availability_type: string | null
+          created_at: string | null
+          created_by: string | null
+          day_of_week: number
+          effective_from: string | null
+          effective_until: string | null
+          employee_id: string
+          end_time: string
+          id: string
+          is_recurring: boolean | null
+          location_id: string | null
+          preference_level: number | null
+          reason: string | null
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          availability_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_week: number
+          effective_from?: string | null
+          effective_until?: string | null
+          employee_id: string
+          end_time: string
+          id?: string
+          is_recurring?: boolean | null
+          location_id?: string | null
+          preference_level?: number | null
+          reason?: string | null
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          availability_type?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          day_of_week?: number
+          effective_from?: string | null
+          effective_until?: string | null
+          employee_id?: string
+          end_time?: string
+          id?: string
+          is_recurring?: boolean | null
+          location_id?: string | null
+          preference_level?: number | null
+          reason?: string | null
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_availability_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_availability_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_availability_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_availability_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
         ]
@@ -2166,11 +3282,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_certifications_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_certifications_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "employee_certifications_verified_by_employee_id_fkey"
             columns: ["verified_by_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_certifications_verified_by_employee_id_fkey"
+            columns: ["verified_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_certifications_verified_by_employee_id_fkey"
+            columns: ["verified_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -2228,6 +3372,13 @@ export type Database = {
             foreignKeyName: "employee_change_log_changed_by_profile_id_fkey"
             columns: ["changed_by_profile_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "employee_change_log_changed_by_profile_id_fkey"
+            columns: ["changed_by_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2244,6 +3395,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_change_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_change_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -2297,6 +3462,20 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_compensation_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_compensation_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -2467,6 +3646,7 @@ export type Database = {
           edited_at: string | null
           edited_by_initials: string | null
           employee_id: string
+          hr_only: boolean | null
           id: string
           is_pinned: boolean | null
           note: string | null
@@ -2481,6 +3661,7 @@ export type Database = {
           edited_at?: string | null
           edited_by_initials?: string | null
           employee_id: string
+          hr_only?: boolean | null
           id?: string
           is_pinned?: boolean | null
           note?: string | null
@@ -2495,6 +3676,7 @@ export type Database = {
           edited_at?: string | null
           edited_by_initials?: string | null
           employee_id?: string
+          hr_only?: boolean | null
           id?: string
           is_pinned?: boolean | null
           note?: string | null
@@ -2511,11 +3693,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_notes_author_employee_id_fkey"
+            columns: ["author_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_notes_author_employee_id_fkey"
+            columns: ["author_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "employee_notes_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_notes_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -2567,6 +3777,20 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employee_pay_settings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_pay_settings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
       }
       employee_skills: {
@@ -2615,11 +3839,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_skills_certified_by_employee_id_fkey"
+            columns: ["certified_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_skills_certified_by_employee_id_fkey"
+            columns: ["certified_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "employee_skills_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_skills_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_skills_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "employee_skills_skill_id_fkey"
@@ -2659,6 +3911,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_teams_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_teams_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "employee_teams_team_id_fkey"
@@ -2714,6 +3980,58 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_wallets: {
+        Row: {
+          created_at: string
+          current_balance: number
+          employee_id: string
+          id: string
+          lifetime_earned: number
+          lifetime_spent: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_balance?: number
+          employee_id: string
+          id?: string
+          lifetime_earned?: number
+          lifetime_spent?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_balance?: number
+          employee_id?: string
+          id?: string
+          lifetime_earned?: number
+          lifetime_spent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_wallets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_wallets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_wallets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           address_city: string | null
@@ -2741,7 +4059,9 @@ export type Database = {
           last_slack_sync: string | null
           location_id: string | null
           manager_employee_id: string | null
+          needs_user_account: boolean | null
           notes_internal: string | null
+          onboarding_status: string | null
           phone_mobile: string | null
           phone_work: string | null
           position_id: string | null
@@ -2752,6 +4072,8 @@ export type Database = {
           termination_date: string | null
           termination_reason: string | null
           updated_at: string
+          user_created_at: string | null
+          user_created_by: string | null
         }
         Insert: {
           address_city?: string | null
@@ -2779,7 +4101,9 @@ export type Database = {
           last_slack_sync?: string | null
           location_id?: string | null
           manager_employee_id?: string | null
+          needs_user_account?: boolean | null
           notes_internal?: string | null
+          onboarding_status?: string | null
           phone_mobile?: string | null
           phone_work?: string | null
           position_id?: string | null
@@ -2790,6 +4114,8 @@ export type Database = {
           termination_date?: string | null
           termination_reason?: string | null
           updated_at?: string
+          user_created_at?: string | null
+          user_created_by?: string | null
         }
         Update: {
           address_city?: string | null
@@ -2817,7 +4143,9 @@ export type Database = {
           last_slack_sync?: string | null
           location_id?: string | null
           manager_employee_id?: string | null
+          needs_user_account?: boolean | null
           notes_internal?: string | null
+          onboarding_status?: string | null
           phone_mobile?: string | null
           phone_work?: string | null
           position_id?: string | null
@@ -2828,6 +4156,8 @@ export type Database = {
           termination_date?: string | null
           termination_reason?: string | null
           updated_at?: string
+          user_created_at?: string | null
+          user_created_by?: string | null
         }
         Relationships: [
           {
@@ -2852,11 +4182,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employees_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employees_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "employees_position_id_fkey"
             columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "job_positions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "employees_profile_id_fkey"
@@ -2927,6 +4278,150 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ezyvet_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          ezyvet_id: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          synced_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          ezyvet_id?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          synced_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          ezyvet_id?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          synced_at?: string | null
+        }
+        Relationships: []
+      }
+      ezyvet_crm_contacts: {
+        Row: {
+          address_city: string | null
+          address_zip: string | null
+          breed: string | null
+          created_at: string | null
+          department: string | null
+          division: string | null
+          email: string | null
+          ezyvet_contact_code: string
+          first_name: string | null
+          id: string
+          is_active: boolean | null
+          last_name: string | null
+          last_sync_at: string | null
+          last_visit: string | null
+          phone_mobile: string | null
+          referral_source: string | null
+          revenue_ytd: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          address_city?: string | null
+          address_zip?: string | null
+          breed?: string | null
+          created_at?: string | null
+          department?: string | null
+          division?: string | null
+          email?: string | null
+          ezyvet_contact_code: string
+          first_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_name?: string | null
+          last_sync_at?: string | null
+          last_visit?: string | null
+          phone_mobile?: string | null
+          referral_source?: string | null
+          revenue_ytd?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          address_city?: string | null
+          address_zip?: string | null
+          breed?: string | null
+          created_at?: string | null
+          department?: string | null
+          division?: string | null
+          email?: string | null
+          ezyvet_contact_code?: string
+          first_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_name?: string | null
+          last_sync_at?: string | null
+          last_visit?: string | null
+          phone_mobile?: string | null
+          referral_source?: string | null
+          revenue_ytd?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ezyvet_sync_history: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_count: number | null
+          error_details: Json | null
+          file_name: string | null
+          id: string
+          inserted_count: number | null
+          started_at: string | null
+          status: string
+          sync_type: string
+          total_rows: number | null
+          triggered_by: string | null
+          updated_count: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_count?: number | null
+          error_details?: Json | null
+          file_name?: string | null
+          id?: string
+          inserted_count?: number | null
+          started_at?: string | null
+          status?: string
+          sync_type?: string
+          total_rows?: number | null
+          triggered_by?: string | null
+          updated_count?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_count?: number | null
+          error_details?: Json | null
+          file_name?: string | null
+          id?: string
+          inserted_count?: number | null
+          started_at?: string | null
+          status?: string
+          sync_type?: string
+          total_rows?: number | null
+          triggered_by?: string | null
+          updated_count?: number | null
+        }
+        Relationships: []
       }
       facility_resource_locations: {
         Row: {
@@ -3060,6 +4555,13 @@ export type Database = {
             foreignKeyName: "facility_resources_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "facility_resources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3136,11 +4638,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "feedback_from_employee_id_fkey"
+            columns: ["from_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "feedback_from_employee_id_fkey"
+            columns: ["from_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "feedback_to_employee_id_fkey"
             columns: ["to_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "feedback_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -3182,6 +4712,13 @@ export type Database = {
           uploader_profile_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "files_uploader_profile_id_fkey"
+            columns: ["uploader_profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "files_uploader_profile_id_fkey"
             columns: ["uploader_profile_id"]
@@ -3312,6 +4849,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "goal_updates_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "goal_updates_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "goal_updates_goal_id_fkey"
             columns: ["goal_id"]
             isOneToOne: false
@@ -3382,6 +4933,261 @@ export type Database = {
             columns: ["owner_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_owner_employee_id_fkey"
+            columns: ["owner_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "goals_owner_employee_id_fkey"
+            columns: ["owner_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
+      influencer_campaigns: {
+        Row: {
+          campaign_name: string
+          campaign_type: string | null
+          clicks: number | null
+          compensation_amount: number | null
+          compensation_type: string | null
+          content_urls: string[] | null
+          conversions: number | null
+          created_at: string | null
+          created_by: string | null
+          deliverables: string[] | null
+          end_date: string | null
+          engagements: number | null
+          id: string
+          impressions: number | null
+          influencer_id: string
+          notes: string | null
+          payment_date: string | null
+          payment_status: string | null
+          posts_delivered: number | null
+          posts_required: number | null
+          promo_code_uses: number | null
+          reach: number | null
+          reels_delivered: number | null
+          reels_required: number | null
+          start_date: string | null
+          status: string | null
+          stories_delivered: number | null
+          stories_required: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          campaign_name: string
+          campaign_type?: string | null
+          clicks?: number | null
+          compensation_amount?: number | null
+          compensation_type?: string | null
+          content_urls?: string[] | null
+          conversions?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deliverables?: string[] | null
+          end_date?: string | null
+          engagements?: number | null
+          id?: string
+          impressions?: number | null
+          influencer_id: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          posts_delivered?: number | null
+          posts_required?: number | null
+          promo_code_uses?: number | null
+          reach?: number | null
+          reels_delivered?: number | null
+          reels_required?: number | null
+          start_date?: string | null
+          status?: string | null
+          stories_delivered?: number | null
+          stories_required?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          campaign_name?: string
+          campaign_type?: string | null
+          clicks?: number | null
+          compensation_amount?: number | null
+          compensation_type?: string | null
+          content_urls?: string[] | null
+          conversions?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          deliverables?: string[] | null
+          end_date?: string | null
+          engagements?: number | null
+          id?: string
+          impressions?: number | null
+          influencer_id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          posts_delivered?: number | null
+          posts_required?: number | null
+          promo_code_uses?: number | null
+          reach?: number | null
+          reels_delivered?: number | null
+          reels_required?: number | null
+          start_date?: string | null
+          status?: string | null
+          stories_delivered?: number | null
+          stories_required?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_campaigns_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_content: {
+        Row: {
+          campaign_id: string | null
+          caption: string | null
+          comments: number | null
+          content_type: string
+          content_url: string | null
+          created_at: string | null
+          hashtags: string[] | null
+          id: string
+          impressions: number | null
+          influencer_id: string
+          likes: number | null
+          platform: string
+          posted_at: string | null
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          views: number | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          caption?: string | null
+          comments?: number | null
+          content_type: string
+          content_url?: string | null
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          impressions?: number | null
+          influencer_id: string
+          likes?: number | null
+          platform: string
+          posted_at?: string | null
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          campaign_id?: string | null
+          caption?: string | null
+          comments?: number | null
+          content_type?: string
+          content_url?: string | null
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          impressions?: number | null
+          influencer_id?: string
+          likes?: number | null
+          platform?: string
+          posted_at?: string | null
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_content_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "influencer_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "influencer_content_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_influencers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      influencer_notes: {
+        Row: {
+          author_initials: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          created_by_name: string | null
+          edited_at: string | null
+          edited_by: string | null
+          edited_by_initials: string | null
+          id: string
+          influencer_id: string
+          is_pinned: boolean | null
+          note_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_initials?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          edited_by_initials?: string | null
+          id?: string
+          influencer_id: string
+          is_pinned?: boolean | null
+          note_type?: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_initials?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          created_by_name?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          edited_by_initials?: string | null
+          id?: string
+          influencer_id?: string
+          is_pinned?: boolean | null
+          note_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "influencer_notes_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_influencers"
             referencedColumns: ["id"]
           },
         ]
@@ -3464,6 +5270,13 @@ export type Database = {
             foreignKeyName: "intake_links_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "intake_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -3478,6 +5291,20 @@ export type Database = {
             foreignKeyName: "intake_links_resulting_person_id_fkey"
             columns: ["resulting_person_id"]
             isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_links_resulting_person_id_fkey"
+            columns: ["resulting_person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "intake_links_resulting_person_id_fkey"
+            columns: ["resulting_person_id"]
+            isOneToOne: false
             referencedRelation: "unified_persons"
             referencedColumns: ["id"]
           },
@@ -3487,6 +5314,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unified_persons_view"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_links_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "intake_links_sent_by_fkey"
@@ -3576,6 +5410,20 @@ export type Database = {
             foreignKeyName: "intake_submissions_duplicate_of_person_id_fkey"
             columns: ["duplicate_of_person_id"]
             isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_submissions_duplicate_of_person_id_fkey"
+            columns: ["duplicate_of_person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "intake_submissions_duplicate_of_person_id_fkey"
+            columns: ["duplicate_of_person_id"]
+            isOneToOne: false
             referencedRelation: "unified_persons"
             referencedColumns: ["id"]
           },
@@ -3592,6 +5440,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "intake_links"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_submissions_resulting_person_id_fkey"
+            columns: ["resulting_person_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "intake_submissions_resulting_person_id_fkey"
+            columns: ["resulting_person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
           },
           {
             foreignKeyName: "intake_submissions_resulting_person_id_fkey"
@@ -3682,6 +5544,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lead_activities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "lead_activities_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "lead_activities_lead_id_fkey"
             columns: ["lead_id"]
             isOneToOne: false
@@ -3754,6 +5630,20 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "leads_owner_employee_id_fkey"
+            columns: ["owner_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "leads_owner_employee_id_fkey"
+            columns: ["owner_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
       }
       lifecycle_transitions: {
@@ -3807,6 +5697,20 @@ export type Database = {
             foreignKeyName: "lifecycle_transitions_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lifecycle_transitions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "lifecycle_transitions_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "unified_persons"
             referencedColumns: ["id"]
           },
@@ -3816,6 +5720,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unified_persons_view"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lifecycle_transitions_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "lifecycle_transitions_triggered_by_fkey"
@@ -3881,6 +5792,54 @@ export type Database = {
           state?: string | null
           timezone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      manager_insights: {
+        Row: {
+          action_items: Json | null
+          actioned_at: string | null
+          content: string
+          department_id: string | null
+          dismissed_at: string | null
+          expires_at: string | null
+          generated_at: string | null
+          id: string
+          insight_type: string
+          manager_id: string
+          priority: string | null
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          action_items?: Json | null
+          actioned_at?: string | null
+          content: string
+          department_id?: string | null
+          dismissed_at?: string | null
+          expires_at?: string | null
+          generated_at?: string | null
+          id?: string
+          insight_type: string
+          manager_id: string
+          priority?: string | null
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          action_items?: Json | null
+          actioned_at?: string | null
+          content?: string
+          department_id?: string | null
+          dismissed_at?: string | null
+          expires_at?: string | null
+          generated_at?: string | null
+          id?: string
+          insight_type?: string
+          manager_id?: string
+          priority?: string | null
+          read_at?: string | null
+          title?: string
         }
         Relationships: []
       }
@@ -4179,89 +6138,239 @@ export type Database = {
       marketing_influencers: {
         Row: {
           agreement_details: string | null
+          audience_age_range: string | null
+          audience_gender_split: string | null
+          audience_location: string | null
+          avg_comments: number | null
+          avg_likes: number | null
+          avg_saves: number | null
+          avg_shares: number | null
+          avg_views: number | null
+          bio: string | null
+          brand_alignment_score: number | null
+          collaboration_type: string | null
+          commission_percentage: number | null
+          compensation_rate: number | null
+          compensation_type: string | null
           contact_name: string
+          content_guidelines: string | null
+          content_niche: string | null
+          content_rights: string | null
+          contract_end_date: string | null
+          contract_start_date: string | null
+          conversion_rate: number | null
           created_at: string | null
           created_by: string | null
+          discovered_via: string | null
           email: string | null
           engagement_rate: number | null
           events_attended: string[] | null
+          exclusivity_terms: string | null
           ezyvet_tracking: string | null
+          facebook_followers: number | null
           facebook_url: string | null
           follower_count: number | null
           highest_platform: string | null
           id: string
+          instagram_followers: number | null
           instagram_handle: string | null
           instagram_url: string | null
+          last_contact_date: string | null
           last_post_date: string | null
           location: string | null
+          media_kit_url: string | null
+          needs_followup: boolean | null
+          next_followup_date: string | null
           notes: string | null
+          pet_age: string | null
+          pet_breed: string | null
+          pet_instagram: string | null
           pet_name: string | null
+          pet_type: string | null
           phone: string | null
           posts_completed: number | null
+          preferred_content_types: string[] | null
+          priority: string | null
+          profile_image_url: string | null
           promo_code: string | null
           reels_completed: number | null
+          referral_source: string | null
+          relationship_score: number | null
+          relationship_status: string | null
+          roi: number | null
+          source: string | null
           status: Database["public"]["Enums"]["influencer_status"]
           stories_completed: number | null
+          tags: string[] | null
+          tier: string | null
+          tiktok_followers: number | null
           tiktok_handle: string | null
+          total_campaigns: number | null
+          total_clicks: number | null
+          total_conversions: number | null
+          total_impressions: number | null
+          total_paid: number | null
+          total_value_generated: number | null
           updated_at: string | null
+          youtube_subscribers: number | null
           youtube_url: string | null
         }
         Insert: {
           agreement_details?: string | null
+          audience_age_range?: string | null
+          audience_gender_split?: string | null
+          audience_location?: string | null
+          avg_comments?: number | null
+          avg_likes?: number | null
+          avg_saves?: number | null
+          avg_shares?: number | null
+          avg_views?: number | null
+          bio?: string | null
+          brand_alignment_score?: number | null
+          collaboration_type?: string | null
+          commission_percentage?: number | null
+          compensation_rate?: number | null
+          compensation_type?: string | null
           contact_name: string
+          content_guidelines?: string | null
+          content_niche?: string | null
+          content_rights?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          conversion_rate?: number | null
           created_at?: string | null
           created_by?: string | null
+          discovered_via?: string | null
           email?: string | null
           engagement_rate?: number | null
           events_attended?: string[] | null
+          exclusivity_terms?: string | null
           ezyvet_tracking?: string | null
+          facebook_followers?: number | null
           facebook_url?: string | null
           follower_count?: number | null
           highest_platform?: string | null
           id?: string
+          instagram_followers?: number | null
           instagram_handle?: string | null
           instagram_url?: string | null
+          last_contact_date?: string | null
           last_post_date?: string | null
           location?: string | null
+          media_kit_url?: string | null
+          needs_followup?: boolean | null
+          next_followup_date?: string | null
           notes?: string | null
+          pet_age?: string | null
+          pet_breed?: string | null
+          pet_instagram?: string | null
           pet_name?: string | null
+          pet_type?: string | null
           phone?: string | null
           posts_completed?: number | null
+          preferred_content_types?: string[] | null
+          priority?: string | null
+          profile_image_url?: string | null
           promo_code?: string | null
           reels_completed?: number | null
+          referral_source?: string | null
+          relationship_score?: number | null
+          relationship_status?: string | null
+          roi?: number | null
+          source?: string | null
           status?: Database["public"]["Enums"]["influencer_status"]
           stories_completed?: number | null
+          tags?: string[] | null
+          tier?: string | null
+          tiktok_followers?: number | null
           tiktok_handle?: string | null
+          total_campaigns?: number | null
+          total_clicks?: number | null
+          total_conversions?: number | null
+          total_impressions?: number | null
+          total_paid?: number | null
+          total_value_generated?: number | null
           updated_at?: string | null
+          youtube_subscribers?: number | null
           youtube_url?: string | null
         }
         Update: {
           agreement_details?: string | null
+          audience_age_range?: string | null
+          audience_gender_split?: string | null
+          audience_location?: string | null
+          avg_comments?: number | null
+          avg_likes?: number | null
+          avg_saves?: number | null
+          avg_shares?: number | null
+          avg_views?: number | null
+          bio?: string | null
+          brand_alignment_score?: number | null
+          collaboration_type?: string | null
+          commission_percentage?: number | null
+          compensation_rate?: number | null
+          compensation_type?: string | null
           contact_name?: string
+          content_guidelines?: string | null
+          content_niche?: string | null
+          content_rights?: string | null
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          conversion_rate?: number | null
           created_at?: string | null
           created_by?: string | null
+          discovered_via?: string | null
           email?: string | null
           engagement_rate?: number | null
           events_attended?: string[] | null
+          exclusivity_terms?: string | null
           ezyvet_tracking?: string | null
+          facebook_followers?: number | null
           facebook_url?: string | null
           follower_count?: number | null
           highest_platform?: string | null
           id?: string
+          instagram_followers?: number | null
           instagram_handle?: string | null
           instagram_url?: string | null
+          last_contact_date?: string | null
           last_post_date?: string | null
           location?: string | null
+          media_kit_url?: string | null
+          needs_followup?: boolean | null
+          next_followup_date?: string | null
           notes?: string | null
+          pet_age?: string | null
+          pet_breed?: string | null
+          pet_instagram?: string | null
           pet_name?: string | null
+          pet_type?: string | null
           phone?: string | null
           posts_completed?: number | null
+          preferred_content_types?: string[] | null
+          priority?: string | null
+          profile_image_url?: string | null
           promo_code?: string | null
           reels_completed?: number | null
+          referral_source?: string | null
+          relationship_score?: number | null
+          relationship_status?: string | null
+          roi?: number | null
+          source?: string | null
           status?: Database["public"]["Enums"]["influencer_status"]
           stories_completed?: number | null
+          tags?: string[] | null
+          tier?: string | null
+          tiktok_followers?: number | null
           tiktok_handle?: string | null
+          total_campaigns?: number | null
+          total_clicks?: number | null
+          total_conversions?: number | null
+          total_impressions?: number | null
+          total_paid?: number | null
+          total_value_generated?: number | null
           updated_at?: string | null
+          youtube_subscribers?: number | null
           youtube_url?: string | null
         }
         Relationships: []
@@ -4465,6 +6574,13 @@ export type Database = {
             foreignKeyName: "marketing_partner_contacts_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketing_partner_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -4538,6 +6654,13 @@ export type Database = {
             foreignKeyName: "marketing_partner_notes_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketing_partner_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -4547,6 +6670,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_role_info"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketing_partner_notes_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "marketing_partner_notes_edited_by_fkey"
@@ -4889,6 +7019,425 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_gigs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bounty_value: number
+          category: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          difficulty: string | null
+          duration_minutes: number
+          flake_penalty: number
+          icon: string | null
+          id: string
+          is_recurring: boolean | null
+          max_claims: number | null
+          proof_notes: string | null
+          proof_url: string | null
+          rejection_reason: string | null
+          status: string
+          times_completed: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bounty_value: number
+          category?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number
+          flake_penalty?: number
+          icon?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          max_claims?: number | null
+          proof_notes?: string | null
+          proof_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          times_completed?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bounty_value?: number
+          category?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number
+          flake_penalty?: number
+          icon?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          max_claims?: number | null
+          proof_notes?: string | null
+          proof_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          times_completed?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_gigs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_gigs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_redemptions: {
+        Row: {
+          cost_paid: number
+          created_at: string
+          denial_reason: string | null
+          employee_id: string
+          fulfilled_at: string | null
+          fulfilled_by: string | null
+          fulfillment_notes: string | null
+          id: string
+          reward_id: string
+          status: string
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_paid: number
+          created_at?: string
+          denial_reason?: string | null
+          employee_id: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_notes?: string | null
+          id?: string
+          reward_id: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_paid?: number
+          created_at?: string
+          denial_reason?: string | null
+          employee_id?: string
+          fulfilled_at?: string | null
+          fulfilled_by?: string | null
+          fulfillment_notes?: string | null
+          id?: string
+          reward_id?: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_redemptions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_fulfilled_by_fkey"
+            columns: ["fulfilled_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_fulfilled_by_fkey"
+            columns: ["fulfilled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_fulfilled_by_fkey"
+            columns: ["fulfilled_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_redemptions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_rewards: {
+        Row: {
+          category: string | null
+          cost: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          fulfillment_notes: string | null
+          icon: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          requires_approval: boolean | null
+          stock_quantity: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          cost: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fulfillment_notes?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          requires_approval?: boolean | null
+          stock_quantity?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fulfillment_notes?: string | null
+          icon?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          requires_approval?: boolean | null
+          stock_quantity?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_rewards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketplace_rewards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_rewards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          employee_id: string
+          gig_id: string | null
+          id: string
+          notes: string | null
+          reward_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id: string
+          gig_id?: string | null
+          id?: string
+          notes?: string | null
+          reward_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id?: string
+          gig_id?: string | null
+          id?: string
+          notes?: string | null
+          reward_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_gig_id_fkey"
+            columns: ["gig_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_gigs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_transactions_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       med_ops_partner_contacts: {
         Row: {
           created_at: string | null
@@ -5176,11 +7725,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "mentorships_mentee_employee_id_fkey"
+            columns: ["mentee_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "mentorships_mentee_employee_id_fkey"
+            columns: ["mentee_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "mentorships_mentor_employee_id_fkey"
             columns: ["mentor_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentorships_mentor_employee_id_fkey"
+            columns: ["mentor_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "mentorships_mentor_employee_id_fkey"
+            columns: ["mentor_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "mentorships_skill_id_fkey"
@@ -5342,6 +7919,13 @@ export type Database = {
           type?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "notifications_profile_id_fkey"
             columns: ["profile_id"]
@@ -5607,6 +8191,13 @@ export type Database = {
             foreignKeyName: "onboarding_templates_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "onboarding_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -5632,6 +8223,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      page_access: {
+        Row: {
+          access_level: string
+          created_at: string
+          id: string
+          page_id: string
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          page_id: string
+          role_key: string
+          updated_at?: string
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          page_id?: string
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_access_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "access_matrix_view"
+            referencedColumns: ["page_id"]
+          },
+          {
+            foreignKeyName: "page_access_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "page_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      page_definitions: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          path: string
+          section: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          path: string
+          section: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          path?: string
+          section?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       partner_contacts: {
         Row: {
@@ -5744,6 +8416,13 @@ export type Database = {
             foreignKeyName: "partner_events_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "partner_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -5828,6 +8507,13 @@ export type Database = {
             foreignKeyName: "partner_goals_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "partner_goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -5908,6 +8594,13 @@ export type Database = {
             foreignKeyName: "partner_notes_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "partner_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -5917,6 +8610,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_role_info"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_notes_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "partner_notes_edited_by_fkey"
@@ -5986,6 +8686,13 @@ export type Database = {
           visit_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "partner_visit_logs_logged_by_fkey"
+            columns: ["logged_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "partner_visit_logs_logged_by_fkey"
             columns: ["logged_by"]
@@ -6205,11 +8912,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payroll_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "payroll_adjustments_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_adjustments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_adjustments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -6254,6 +8989,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_run_items_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_run_items_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "payroll_run_items_payroll_run_id_fkey"
@@ -6390,11 +9139,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payroll_signoffs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_signoffs_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "payroll_signoffs_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_signoffs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_signoffs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "payroll_signoffs_reviewed_by_fkey"
@@ -6403,7 +9180,48 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payroll_signoffs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "payroll_signoffs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
+      }
+      performance_log: {
+        Row: {
+          created_at: string | null
+          duration_ms: number
+          id: string
+          metadata: Json | null
+          operation_name: string
+          operation_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms: number
+          id?: string
+          metadata?: Json | null
+          operation_name: string
+          operation_type: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number
+          id?: string
+          metadata?: Json | null
+          operation_name?: string
+          operation_type?: string
+        }
+        Relationships: []
       }
       performance_reviews: {
         Row: {
@@ -6463,11 +9281,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "performance_reviews_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "performance_reviews_manager_employee_id_fkey"
             columns: ["manager_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "performance_reviews_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "performance_reviews_review_cycle_id_fkey"
@@ -6505,6 +9351,469 @@ export type Database = {
           key?: string
         }
         Relationships: []
+      }
+      person_crm_data: {
+        Row: {
+          acquisition_campaign: string | null
+          acquisition_detail: string | null
+          acquisition_source: string | null
+          business_info: Json | null
+          created_at: string
+          created_by: string | null
+          email_opt_in: boolean | null
+          event_attendance_count: number | null
+          events_attended: Json | null
+          first_touch_date: string | null
+          id: string
+          interests: Json | null
+          last_event_attended_at: string | null
+          lead_score: number | null
+          lead_status: string | null
+          lead_temperature: string | null
+          mail_opt_in: boolean | null
+          marketing_notes: string | null
+          person_id: string
+          pets_info: Json | null
+          preferred_contact_method: string | null
+          referral_partner_id: string | null
+          sms_opt_in: boolean | null
+          tags: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          acquisition_campaign?: string | null
+          acquisition_detail?: string | null
+          acquisition_source?: string | null
+          business_info?: Json | null
+          created_at?: string
+          created_by?: string | null
+          email_opt_in?: boolean | null
+          event_attendance_count?: number | null
+          events_attended?: Json | null
+          first_touch_date?: string | null
+          id?: string
+          interests?: Json | null
+          last_event_attended_at?: string | null
+          lead_score?: number | null
+          lead_status?: string | null
+          lead_temperature?: string | null
+          mail_opt_in?: boolean | null
+          marketing_notes?: string | null
+          person_id: string
+          pets_info?: Json | null
+          preferred_contact_method?: string | null
+          referral_partner_id?: string | null
+          sms_opt_in?: boolean | null
+          tags?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          acquisition_campaign?: string | null
+          acquisition_detail?: string | null
+          acquisition_source?: string | null
+          business_info?: Json | null
+          created_at?: string
+          created_by?: string | null
+          email_opt_in?: boolean | null
+          event_attendance_count?: number | null
+          events_attended?: Json | null
+          first_touch_date?: string | null
+          id?: string
+          interests?: Json | null
+          last_event_attended_at?: string | null
+          lead_score?: number | null
+          lead_status?: string | null
+          lead_temperature?: string | null
+          mail_opt_in?: boolean | null
+          marketing_notes?: string | null
+          person_id?: string
+          pets_info?: Json | null
+          preferred_contact_method?: string | null
+          referral_partner_id?: string | null
+          sms_opt_in?: boolean | null
+          tags?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_crm_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_referral_partner_id_fkey"
+            columns: ["referral_partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_referral_partner_id_fkey"
+            columns: ["referral_partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_crm_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_employee_data: {
+        Row: {
+          benefits_eligible: boolean | null
+          benefits_enrolled: Json | null
+          benefits_enrollment_date: string | null
+          compensation_history: Json | null
+          created_at: string
+          created_by: string | null
+          default_schedule: Json | null
+          department_id: string | null
+          direct_deposit_info: Json | null
+          eligible_for_rehire: boolean | null
+          employee_handbook_signed: boolean | null
+          employee_number: string | null
+          employment_status: string | null
+          employment_type: string | null
+          exit_interview_completed: boolean | null
+          final_paycheck_issued: boolean | null
+          flsa_status: string | null
+          handbook_signed_at: string | null
+          hire_date: string | null
+          i9_verified: boolean | null
+          i9_verified_at: string | null
+          id: string
+          legacy_employee_id: string | null
+          location_id: string | null
+          manager_id: string | null
+          original_hire_date: string | null
+          pay_frequency: string | null
+          pay_rate: number | null
+          pay_type: string | null
+          permissions: Json | null
+          person_id: string
+          position_id: string | null
+          probation_end_date: string | null
+          pto_balance_hours: number | null
+          role: string | null
+          sick_balance_hours: number | null
+          ssn_encrypted: string | null
+          ssn_last_four: string | null
+          status_changed_at: string | null
+          status_reason: string | null
+          termination_date: string | null
+          termination_reason: string | null
+          termination_type: string | null
+          updated_at: string
+          updated_by: string | null
+          w4_submitted: boolean | null
+          w4_submitted_at: string | null
+        }
+        Insert: {
+          benefits_eligible?: boolean | null
+          benefits_enrolled?: Json | null
+          benefits_enrollment_date?: string | null
+          compensation_history?: Json | null
+          created_at?: string
+          created_by?: string | null
+          default_schedule?: Json | null
+          department_id?: string | null
+          direct_deposit_info?: Json | null
+          eligible_for_rehire?: boolean | null
+          employee_handbook_signed?: boolean | null
+          employee_number?: string | null
+          employment_status?: string | null
+          employment_type?: string | null
+          exit_interview_completed?: boolean | null
+          final_paycheck_issued?: boolean | null
+          flsa_status?: string | null
+          handbook_signed_at?: string | null
+          hire_date?: string | null
+          i9_verified?: boolean | null
+          i9_verified_at?: string | null
+          id?: string
+          legacy_employee_id?: string | null
+          location_id?: string | null
+          manager_id?: string | null
+          original_hire_date?: string | null
+          pay_frequency?: string | null
+          pay_rate?: number | null
+          pay_type?: string | null
+          permissions?: Json | null
+          person_id: string
+          position_id?: string | null
+          probation_end_date?: string | null
+          pto_balance_hours?: number | null
+          role?: string | null
+          sick_balance_hours?: number | null
+          ssn_encrypted?: string | null
+          ssn_last_four?: string | null
+          status_changed_at?: string | null
+          status_reason?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          termination_type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          w4_submitted?: boolean | null
+          w4_submitted_at?: string | null
+        }
+        Update: {
+          benefits_eligible?: boolean | null
+          benefits_enrolled?: Json | null
+          benefits_enrollment_date?: string | null
+          compensation_history?: Json | null
+          created_at?: string
+          created_by?: string | null
+          default_schedule?: Json | null
+          department_id?: string | null
+          direct_deposit_info?: Json | null
+          eligible_for_rehire?: boolean | null
+          employee_handbook_signed?: boolean | null
+          employee_number?: string | null
+          employment_status?: string | null
+          employment_type?: string | null
+          exit_interview_completed?: boolean | null
+          final_paycheck_issued?: boolean | null
+          flsa_status?: string | null
+          handbook_signed_at?: string | null
+          hire_date?: string | null
+          i9_verified?: boolean | null
+          i9_verified_at?: string | null
+          id?: string
+          legacy_employee_id?: string | null
+          location_id?: string | null
+          manager_id?: string | null
+          original_hire_date?: string | null
+          pay_frequency?: string | null
+          pay_rate?: number | null
+          pay_type?: string | null
+          permissions?: Json | null
+          person_id?: string
+          position_id?: string | null
+          probation_end_date?: string | null
+          pto_balance_hours?: number | null
+          role?: string | null
+          sick_balance_hours?: number | null
+          ssn_encrypted?: string | null
+          ssn_last_four?: string | null
+          status_changed_at?: string | null
+          status_reason?: string | null
+          termination_date?: string | null
+          termination_reason?: string | null
+          termination_type?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          w4_submitted?: boolean | null
+          w4_submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_employee_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_legacy_employee_id_fkey"
+            columns: ["legacy_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_legacy_employee_id_fkey"
+            columns: ["legacy_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_legacy_employee_id_fkey"
+            columns: ["legacy_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_employee_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       person_extended_data: {
         Row: {
@@ -6545,6 +9854,13 @@ export type Database = {
             foreignKeyName: "person_extended_data_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_extended_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -6559,6 +9875,20 @@ export type Database = {
             foreignKeyName: "person_extended_data_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_extended_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_extended_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "unified_persons"
             referencedColumns: ["id"]
           },
@@ -6567,6 +9897,617 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_program_data: {
+        Row: {
+          academic_advisor: string | null
+          actual_completion_date: string | null
+          additional_documents: Json | null
+          application_data: Json | null
+          application_source: string | null
+          applied_at: string | null
+          assigned_coordinator_id: string | null
+          assigned_department_id: string | null
+          assigned_location_id: string | null
+          assigned_mentor_id: string | null
+          certificate_issued_at: string | null
+          cohort_identifier: string | null
+          competencies_achieved: Json | null
+          completion_certificate_issued: boolean | null
+          converted_employee_id: string | null
+          converted_to_employee: boolean | null
+          coordinator_notes: string | null
+          cover_letter_url: string | null
+          created_at: string
+          created_by: string | null
+          eligible_for_employment: boolean | null
+          employee_conversion_date: string | null
+          employment_interest_level: string | null
+          end_date: string | null
+          enrollment_status: Database["public"]["Enums"]["program_enrollment_status"]
+          entrance_evaluation_notes: string | null
+          entrance_evaluation_score: number | null
+          exit_survey_completed: boolean | null
+          exit_survey_data: Json | null
+          expected_graduation_date: string | null
+          final_evaluation_notes: string | null
+          final_evaluation_score: number | null
+          hours_completed: number | null
+          hours_required: number | null
+          id: string
+          is_paid: boolean | null
+          learning_objectives: Json | null
+          legacy_visitor_id: string | null
+          midpoint_evaluation_notes: string | null
+          midpoint_evaluation_score: number | null
+          overall_performance_rating: string | null
+          payment_method: string | null
+          payment_notes: string | null
+          person_id: string
+          program_name: string | null
+          program_notes: string | null
+          program_type: Database["public"]["Enums"]["education_program_type"]
+          resume_url: string | null
+          schedule_data: Json | null
+          schedule_notes: string | null
+          schedule_type: string | null
+          scheduled_hours_per_week: number | null
+          school_coordinator_email: string | null
+          school_coordinator_phone: string | null
+          school_of_origin: string | null
+          school_program: string | null
+          start_date: string | null
+          status_changed_at: string | null
+          status_changed_by: string | null
+          stipend_amount: number | null
+          stipend_frequency: string | null
+          student_feedback: string | null
+          transcript_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          academic_advisor?: string | null
+          actual_completion_date?: string | null
+          additional_documents?: Json | null
+          application_data?: Json | null
+          application_source?: string | null
+          applied_at?: string | null
+          assigned_coordinator_id?: string | null
+          assigned_department_id?: string | null
+          assigned_location_id?: string | null
+          assigned_mentor_id?: string | null
+          certificate_issued_at?: string | null
+          cohort_identifier?: string | null
+          competencies_achieved?: Json | null
+          completion_certificate_issued?: boolean | null
+          converted_employee_id?: string | null
+          converted_to_employee?: boolean | null
+          coordinator_notes?: string | null
+          cover_letter_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligible_for_employment?: boolean | null
+          employee_conversion_date?: string | null
+          employment_interest_level?: string | null
+          end_date?: string | null
+          enrollment_status?: Database["public"]["Enums"]["program_enrollment_status"]
+          entrance_evaluation_notes?: string | null
+          entrance_evaluation_score?: number | null
+          exit_survey_completed?: boolean | null
+          exit_survey_data?: Json | null
+          expected_graduation_date?: string | null
+          final_evaluation_notes?: string | null
+          final_evaluation_score?: number | null
+          hours_completed?: number | null
+          hours_required?: number | null
+          id?: string
+          is_paid?: boolean | null
+          learning_objectives?: Json | null
+          legacy_visitor_id?: string | null
+          midpoint_evaluation_notes?: string | null
+          midpoint_evaluation_score?: number | null
+          overall_performance_rating?: string | null
+          payment_method?: string | null
+          payment_notes?: string | null
+          person_id: string
+          program_name?: string | null
+          program_notes?: string | null
+          program_type: Database["public"]["Enums"]["education_program_type"]
+          resume_url?: string | null
+          schedule_data?: Json | null
+          schedule_notes?: string | null
+          schedule_type?: string | null
+          scheduled_hours_per_week?: number | null
+          school_coordinator_email?: string | null
+          school_coordinator_phone?: string | null
+          school_of_origin?: string | null
+          school_program?: string | null
+          start_date?: string | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          stipend_amount?: number | null
+          stipend_frequency?: string | null
+          student_feedback?: string | null
+          transcript_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          academic_advisor?: string | null
+          actual_completion_date?: string | null
+          additional_documents?: Json | null
+          application_data?: Json | null
+          application_source?: string | null
+          applied_at?: string | null
+          assigned_coordinator_id?: string | null
+          assigned_department_id?: string | null
+          assigned_location_id?: string | null
+          assigned_mentor_id?: string | null
+          certificate_issued_at?: string | null
+          cohort_identifier?: string | null
+          competencies_achieved?: Json | null
+          completion_certificate_issued?: boolean | null
+          converted_employee_id?: string | null
+          converted_to_employee?: boolean | null
+          coordinator_notes?: string | null
+          cover_letter_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligible_for_employment?: boolean | null
+          employee_conversion_date?: string | null
+          employment_interest_level?: string | null
+          end_date?: string | null
+          enrollment_status?: Database["public"]["Enums"]["program_enrollment_status"]
+          entrance_evaluation_notes?: string | null
+          entrance_evaluation_score?: number | null
+          exit_survey_completed?: boolean | null
+          exit_survey_data?: Json | null
+          expected_graduation_date?: string | null
+          final_evaluation_notes?: string | null
+          final_evaluation_score?: number | null
+          hours_completed?: number | null
+          hours_required?: number | null
+          id?: string
+          is_paid?: boolean | null
+          learning_objectives?: Json | null
+          legacy_visitor_id?: string | null
+          midpoint_evaluation_notes?: string | null
+          midpoint_evaluation_score?: number | null
+          overall_performance_rating?: string | null
+          payment_method?: string | null
+          payment_notes?: string | null
+          person_id?: string
+          program_name?: string | null
+          program_notes?: string | null
+          program_type?: Database["public"]["Enums"]["education_program_type"]
+          resume_url?: string | null
+          schedule_data?: Json | null
+          schedule_notes?: string | null
+          schedule_type?: string | null
+          scheduled_hours_per_week?: number | null
+          school_coordinator_email?: string | null
+          school_coordinator_phone?: string | null
+          school_of_origin?: string | null
+          school_program?: string | null
+          start_date?: string | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
+          stipend_amount?: number | null
+          stipend_frequency?: string | null
+          student_feedback?: string | null
+          transcript_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_department_id_fkey"
+            columns: ["assigned_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_location_id_fkey"
+            columns: ["assigned_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_converted_employee_id_fkey"
+            columns: ["converted_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_converted_employee_id_fkey"
+            columns: ["converted_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_converted_employee_id_fkey"
+            columns: ["converted_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_legacy_visitor_id_fkey"
+            columns: ["legacy_visitor_id"]
+            isOneToOne: false
+            referencedRelation: "education_visitors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_status_changed_by_fkey"
+            columns: ["status_changed_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_recruiting_data: {
+        Row: {
+          application_data: Json | null
+          application_source: string | null
+          applied_at: string | null
+          available_start_date: string | null
+          background_check_date: string | null
+          background_check_status: string | null
+          candidate_type: string | null
+          cover_letter_url: string | null
+          created_at: string
+          created_by: string | null
+          documents: Json | null
+          id: string
+          interview_notes: Json | null
+          interview_scores: Json | null
+          legacy_candidate_id: string | null
+          offer_accepted_at: string | null
+          offer_details: Json | null
+          offer_extended_at: string | null
+          offer_response_deadline: string | null
+          overall_rating: number | null
+          person_id: string
+          portfolio_url: string | null
+          preferred_schedule: string | null
+          recruiting_status: string | null
+          references: Json | null
+          rejection_notes: string | null
+          rejection_reason: string | null
+          relocation_willing: boolean | null
+          resume_url: string | null
+          salary_expectation_max: number | null
+          salary_expectation_min: number | null
+          salary_expectation_type: string | null
+          skills_assessment: Json | null
+          status_changed_at: string | null
+          target_department_id: string | null
+          target_location_id: string | null
+          target_position_id: string | null
+          updated_at: string
+          updated_by: string | null
+          withdrawal_reason: string | null
+          work_authorization: string | null
+        }
+        Insert: {
+          application_data?: Json | null
+          application_source?: string | null
+          applied_at?: string | null
+          available_start_date?: string | null
+          background_check_date?: string | null
+          background_check_status?: string | null
+          candidate_type?: string | null
+          cover_letter_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          documents?: Json | null
+          id?: string
+          interview_notes?: Json | null
+          interview_scores?: Json | null
+          legacy_candidate_id?: string | null
+          offer_accepted_at?: string | null
+          offer_details?: Json | null
+          offer_extended_at?: string | null
+          offer_response_deadline?: string | null
+          overall_rating?: number | null
+          person_id: string
+          portfolio_url?: string | null
+          preferred_schedule?: string | null
+          recruiting_status?: string | null
+          references?: Json | null
+          rejection_notes?: string | null
+          rejection_reason?: string | null
+          relocation_willing?: boolean | null
+          resume_url?: string | null
+          salary_expectation_max?: number | null
+          salary_expectation_min?: number | null
+          salary_expectation_type?: string | null
+          skills_assessment?: Json | null
+          status_changed_at?: string | null
+          target_department_id?: string | null
+          target_location_id?: string | null
+          target_position_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          withdrawal_reason?: string | null
+          work_authorization?: string | null
+        }
+        Update: {
+          application_data?: Json | null
+          application_source?: string | null
+          applied_at?: string | null
+          available_start_date?: string | null
+          background_check_date?: string | null
+          background_check_status?: string | null
+          candidate_type?: string | null
+          cover_letter_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          documents?: Json | null
+          id?: string
+          interview_notes?: Json | null
+          interview_scores?: Json | null
+          legacy_candidate_id?: string | null
+          offer_accepted_at?: string | null
+          offer_details?: Json | null
+          offer_extended_at?: string | null
+          offer_response_deadline?: string | null
+          overall_rating?: number | null
+          person_id?: string
+          portfolio_url?: string | null
+          preferred_schedule?: string | null
+          recruiting_status?: string | null
+          references?: Json | null
+          rejection_notes?: string | null
+          rejection_reason?: string | null
+          relocation_willing?: boolean | null
+          resume_url?: string | null
+          salary_expectation_max?: number | null
+          salary_expectation_min?: number | null
+          salary_expectation_type?: string | null
+          skills_assessment?: Json | null
+          status_changed_at?: string | null
+          target_department_id?: string | null
+          target_location_id?: string | null
+          target_position_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          withdrawal_reason?: string | null
+          work_authorization?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_recruiting_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_legacy_candidate_id_fkey"
+            columns: ["legacy_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "master_profile_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "student_program_view"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "unified_persons_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_target_department_id_fkey"
+            columns: ["target_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_target_location_id_fkey"
+            columns: ["target_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_target_position_id_fkey"
+            columns: ["target_position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
             referencedColumns: ["id"]
           },
         ]
@@ -6611,11 +10552,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "points_log_awarded_by_employee_id_fkey"
+            columns: ["awarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "points_log_awarded_by_employee_id_fkey"
+            columns: ["awarded_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "points_log_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "points_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "points_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -6639,6 +10608,13 @@ export type Database = {
           role_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profile_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "profile_roles_profile_id_fkey"
             columns: ["profile_id"]
@@ -7001,6 +10977,13 @@ export type Database = {
             foreignKeyName: "referral_sync_history_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "referral_sync_history_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -7086,6 +11069,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "review_participants_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "review_participants_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "review_participants_performance_review_id_fkey"
             columns: ["performance_review_id"]
             isOneToOne: false
@@ -7161,6 +11158,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "review_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "review_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "review_requests_performance_review_id_fkey"
             columns: ["performance_review_id"]
             isOneToOne: false
@@ -7173,6 +11184,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_requests_requested_by_employee_id_fkey"
+            columns: ["requested_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "review_requests_requested_by_employee_id_fkey"
+            columns: ["requested_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -7228,6 +11253,20 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "review_responses_responder_employee_id_fkey"
+            columns: ["responder_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "review_responses_responder_employee_id_fkey"
+            columns: ["responder_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
       }
       review_signoffs: {
@@ -7265,6 +11304,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "review_signoffs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "review_signoffs_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "review_signoffs_performance_review_id_fkey"
@@ -7410,6 +11463,161 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_queries: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          generated_sql: string
+          id: string
+          is_public: boolean | null
+          last_run_at: string | null
+          name: string
+          natural_language: string
+          run_count: number | null
+          shared_with_roles: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          generated_sql: string
+          id?: string
+          is_public?: boolean | null
+          last_run_at?: string | null
+          name: string
+          natural_language: string
+          run_count?: number | null
+          shared_with_roles?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          generated_sql?: string
+          id?: string
+          is_public?: boolean | null
+          last_run_at?: string | null
+          name?: string
+          natural_language?: string
+          run_count?: number | null
+          shared_with_roles?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      schedule_drafts: {
+        Row: {
+          ai_analysis: Json | null
+          ai_suggestions: Json | null
+          coverage_score: number | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          location_id: string
+          operational_days: number[]
+          published_at: string | null
+          published_by: string | null
+          selected_service_ids: string[]
+          status: string | null
+          updated_at: string | null
+          validated_at: string | null
+          validation_errors: Json | null
+          validation_warnings: Json | null
+          week_start: string
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          ai_suggestions?: Json | null
+          coverage_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          location_id: string
+          operational_days?: number[]
+          published_at?: string | null
+          published_by?: string | null
+          selected_service_ids?: string[]
+          status?: string | null
+          updated_at?: string | null
+          validated_at?: string | null
+          validation_errors?: Json | null
+          validation_warnings?: Json | null
+          week_start: string
+        }
+        Update: {
+          ai_analysis?: Json | null
+          ai_suggestions?: Json | null
+          coverage_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          location_id?: string
+          operational_days?: number[]
+          published_at?: string | null
+          published_by?: string | null
+          selected_service_ids?: string[]
+          status?: string | null
+          updated_at?: string | null
+          validated_at?: string | null
+          validation_errors?: Json | null
+          validation_warnings?: Json | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_drafts_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_template_shifts: {
         Row: {
           created_at: string
@@ -7420,7 +11628,11 @@ export type Database = {
           id: string
           location_id: string | null
           notes: string | null
+          role_category: string | null
+          role_label: string | null
           role_required: string | null
+          service_id: string | null
+          staffing_requirement_id: string | null
           start_time: string
           template_id: string
         }
@@ -7433,7 +11645,11 @@ export type Database = {
           id?: string
           location_id?: string | null
           notes?: string | null
+          role_category?: string | null
+          role_label?: string | null
           role_required?: string | null
+          service_id?: string | null
+          staffing_requirement_id?: string | null
           start_time: string
           template_id: string
         }
@@ -7446,49 +11662,227 @@ export type Database = {
           id?: string
           location_id?: string | null
           notes?: string | null
+          role_category?: string | null
+          role_label?: string | null
           role_required?: string | null
+          service_id?: string | null
+          staffing_requirement_id?: string | null
           start_time?: string
           template_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "schedule_template_shifts_template_id_fkey"
-            columns: ["template_id"]
+            foreignKeyName: "schedule_template_shifts_service_id_fkey"
+            columns: ["service_id"]
             isOneToOne: false
-            referencedRelation: "schedule_templates"
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "schedule_template_shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_template_shifts_staffing_requirement_id_fkey"
+            columns: ["staffing_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "service_staffing_requirements"
             referencedColumns: ["id"]
           },
         ]
       }
       schedule_templates: {
         Row: {
-          created_at: string
+          created_at: string | null
           created_by: string | null
           description: string | null
           id: string
-          is_active: boolean
+          is_active: boolean | null
+          is_default: boolean | null
+          last_used_at: string | null
+          location_id: string | null
           name: string
-          updated_at: string
+          operational_days: number[]
+          service_ids: string[]
+          slot_definitions: Json
+          updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_used_at?: string | null
+          location_id?: string | null
           name: string
-          updated_at?: string
+          operational_days?: number[]
+          service_ids?: string[]
+          slot_definitions?: Json
+          updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           created_by?: string | null
           description?: string | null
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
+          is_default?: boolean | null
+          last_used_at?: string | null
+          location_id?: string | null
           name?: string
-          updated_at?: string
+          operational_days?: number[]
+          service_ids?: string[]
+          slot_definitions?: Json
+          updated_at?: string | null
+          usage_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "schedule_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedule_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_templates_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_weeks: {
+        Row: {
+          ai_suggestions: Json | null
+          conflict_count: number | null
+          coverage_score: number | null
+          created_at: string | null
+          filled_shifts: number | null
+          id: string
+          location_id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          open_shifts: number | null
+          published_at: string | null
+          published_by: string | null
+          status: string | null
+          total_shifts: number | null
+          updated_at: string | null
+          week_start: string
+        }
+        Insert: {
+          ai_suggestions?: Json | null
+          conflict_count?: number | null
+          coverage_score?: number | null
+          created_at?: string | null
+          filled_shifts?: number | null
+          id?: string
+          location_id: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          open_shifts?: number | null
+          published_at?: string | null
+          published_by?: string | null
+          status?: string | null
+          total_shifts?: number | null
+          updated_at?: string | null
+          week_start: string
+        }
+        Update: {
+          ai_suggestions?: Json | null
+          conflict_count?: number | null
+          coverage_score?: number | null
+          created_at?: string | null
+          filled_shifts?: number | null
+          id?: string
+          location_id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          open_shifts?: number | null
+          published_at?: string | null
+          published_by?: string | null
+          status?: string | null
+          total_shifts?: number | null
+          updated_at?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_weeks_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_weeks_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedules: {
         Row: {
@@ -7541,6 +11935,13 @@ export type Database = {
             foreignKeyName: "schedules_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -7559,11 +11960,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "schedules_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "schedules_profile_id_fkey"
@@ -7577,6 +11999,308 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduling_rules: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          location_id: string | null
+          name: string
+          parameters: Json
+          position_id: string | null
+          rule_type: string
+          severity: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          name: string
+          parameters?: Json
+          position_id?: string | null
+          rule_type: string
+          severity?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_id?: string | null
+          name?: string
+          parameters?: Json
+          position_id?: string | null
+          rule_type?: string
+          severity?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "scheduling_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_rules_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_rules_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduling_rules_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_slots: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          day_of_week: number
+          effective_from: string | null
+          effective_until: string | null
+          end_time: string
+          id: string
+          is_active: boolean | null
+          location_id: string
+          notes: string | null
+          service_id: string
+          start_time: string
+          updated_at: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          day_of_week: number
+          effective_from?: string | null
+          effective_until?: string | null
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          location_id: string
+          notes?: string | null
+          service_id: string
+          start_time: string
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          day_of_week?: number
+          effective_from?: string | null
+          effective_until?: string | null
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          location_id?: string
+          notes?: string | null
+          service_id?: string
+          start_time?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_slots_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_slots_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_slots_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_staffing_requirements: {
+        Row: {
+          created_at: string | null
+          default_end_time: string | null
+          default_start_time: string | null
+          id: string
+          is_required: boolean | null
+          max_count: number | null
+          min_count: number
+          notes: string | null
+          position_id: string | null
+          priority: number | null
+          role_category: string | null
+          role_label: string | null
+          service_id: string
+          skills_required: string[] | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_end_time?: string | null
+          default_start_time?: string | null
+          id?: string
+          is_required?: boolean | null
+          max_count?: number | null
+          min_count?: number
+          notes?: string | null
+          position_id?: string | null
+          priority?: number | null
+          role_category?: string | null
+          role_label?: string | null
+          service_id: string
+          skills_required?: string[] | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_end_time?: string | null
+          default_start_time?: string | null
+          id?: string
+          is_required?: boolean | null
+          max_count?: number | null
+          min_count?: number
+          notes?: string | null
+          position_id?: string | null
+          priority?: number | null
+          role_category?: string | null
+          role_label?: string | null
+          service_id?: string
+          skills_required?: string[] | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_staffing_requirements_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_staffing_requirements_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_staffing_requirements_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          code: string | null
+          color: string | null
+          created_at: string | null
+          default_duration_minutes: number | null
+          department_id: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          max_staff_count: number | null
+          min_staff_count: number | null
+          name: string
+          requires_dvm: boolean | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          code?: string | null
+          color?: string | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          department_id?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_staff_count?: number | null
+          min_staff_count?: number | null
+          name: string
+          requires_dvm?: boolean | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          code?: string | null
+          color?: string | null
+          created_at?: string | null
+          default_duration_minutes?: number | null
+          department_id?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_staff_count?: number | null
+          min_staff_count?: number | null
+          name?: string
+          requires_dvm?: boolean | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]
@@ -7630,11 +12354,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shift_changes_from_employee_id_fkey"
+            columns: ["from_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shift_changes_from_employee_id_fkey"
+            columns: ["from_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "shift_changes_manager_employee_id_fkey"
             columns: ["manager_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_changes_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shift_changes_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shift_changes_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_builder_details"
+            referencedColumns: ["shift_id"]
           },
           {
             foreignKeyName: "shift_changes_shift_id_fkey"
@@ -7649,6 +12408,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_changes_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shift_changes_to_employee_id_fkey"
+            columns: ["to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -7717,6 +12490,11 @@ export type Database = {
       }
       shifts: {
         Row: {
+          ai_confidence: number | null
+          ai_reasoning: string | null
+          ai_suggested: boolean | null
+          assignment_source: string | null
+          conflict_flags: Json | null
           created_at: string
           created_by_employee_id: string | null
           department_id: string | null
@@ -7729,12 +12507,21 @@ export type Database = {
           notes: string | null
           published_at: string | null
           role_required: string | null
+          schedule_week_id: string | null
+          service_id: string | null
+          service_slot_id: string | null
+          staffing_requirement_id: string | null
           start_at: string
           status: string
           updated_at: string
           version: number | null
         }
         Insert: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          ai_suggested?: boolean | null
+          assignment_source?: string | null
+          conflict_flags?: Json | null
           created_at?: string
           created_by_employee_id?: string | null
           department_id?: string | null
@@ -7747,12 +12534,21 @@ export type Database = {
           notes?: string | null
           published_at?: string | null
           role_required?: string | null
+          schedule_week_id?: string | null
+          service_id?: string | null
+          service_slot_id?: string | null
+          staffing_requirement_id?: string | null
           start_at: string
           status?: string
           updated_at?: string
           version?: number | null
         }
         Update: {
+          ai_confidence?: number | null
+          ai_reasoning?: string | null
+          ai_suggested?: boolean | null
+          assignment_source?: string | null
+          conflict_flags?: Json | null
           created_at?: string
           created_by_employee_id?: string | null
           department_id?: string | null
@@ -7765,6 +12561,10 @@ export type Database = {
           notes?: string | null
           published_at?: string | null
           role_required?: string | null
+          schedule_week_id?: string | null
+          service_id?: string | null
+          service_slot_id?: string | null
+          staffing_requirement_id?: string | null
           start_at?: string
           status?: string
           updated_at?: string
@@ -7777,6 +12577,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shifts_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "shifts_department_id_fkey"
@@ -7793,10 +12607,66 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "shifts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shifts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "shifts_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_schedule_week_id_fkey"
+            columns: ["schedule_week_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_schedule_week_id_fkey"
+            columns: ["schedule_week_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["schedule_week_id"]
+          },
+          {
+            foreignKeyName: "shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_service_slot_id_fkey"
+            columns: ["service_slot_id"]
+            isOneToOne: false
+            referencedRelation: "service_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_staffing_requirement_id_fkey"
+            columns: ["staffing_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "service_staffing_requirements"
             referencedColumns: ["id"]
           },
         ]
@@ -7843,21 +12713,30 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_active: boolean | null
+          level_descriptions: Json | null
           name: string
+          updated_at: string | null
         }
         Insert: {
           category: string
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          level_descriptions?: Json | null
           name: string
+          updated_at?: string | null
         }
         Update: {
           category?: string
           created_at?: string
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          level_descriptions?: Json | null
           name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -7922,6 +12801,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "slack_sync_conflicts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "slack_sync_conflicts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "slack_sync_conflicts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
             foreignKeyName: "slack_sync_conflicts_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -7934,6 +12834,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_role_info"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "slack_sync_conflicts_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "slack_sync_conflicts_resolved_by_fkey"
@@ -8142,6 +13049,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "social_posts_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "social_posts_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "social_posts_social_account_id_fkey"
             columns: ["social_account_id"]
             isOneToOne: false
@@ -8149,6 +13070,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staffing_predictions: {
+        Row: {
+          accuracy_score: number | null
+          actual_demand: Json | null
+          confidence_score: number | null
+          department_id: string | null
+          factors_considered: Json | null
+          generated_at: string | null
+          id: string
+          location_id: string | null
+          predicted_demand: Json | null
+          prediction_date: string
+          recommended_staff: Json | null
+        }
+        Insert: {
+          accuracy_score?: number | null
+          actual_demand?: Json | null
+          confidence_score?: number | null
+          department_id?: string | null
+          factors_considered?: Json | null
+          generated_at?: string | null
+          id?: string
+          location_id?: string | null
+          predicted_demand?: Json | null
+          prediction_date: string
+          recommended_staff?: Json | null
+        }
+        Update: {
+          accuracy_score?: number | null
+          actual_demand?: Json | null
+          confidence_score?: number | null
+          department_id?: string | null
+          factors_considered?: Json | null
+          generated_at?: string | null
+          id?: string
+          location_id?: string | null
+          predicted_demand?: Json | null
+          prediction_date?: string
+          recommended_staff?: Json | null
+        }
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -8202,11 +13165,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_assigned_to_employee_id_fkey"
+            columns: ["assigned_to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "tasks_assigned_to_employee_id_fkey"
+            columns: ["assigned_to_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "tasks_created_by_employee_id_fkey"
             columns: ["created_by_employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "tasks_created_by_employee_id_fkey"
+            columns: ["created_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -8286,11 +13277,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "time_entries_approved_by_employee_id_fkey"
+            columns: ["approved_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_entries_approved_by_employee_id_fkey"
+            columns: ["approved_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "time_entries_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_entries_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shift_builder_details"
+            referencedColumns: ["shift_id"]
           },
           {
             foreignKeyName: "time_entries_shift_id_fkey"
@@ -8354,6 +13380,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entry_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_entry_corrections_corrected_by_fkey"
+            columns: ["corrected_by"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "time_entry_corrections_time_entry_id_fkey"
@@ -8425,11 +13465,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "time_off_requests_approved_by_employee_id_fkey"
+            columns: ["approved_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_approved_by_employee_id_fkey"
+            columns: ["approved_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "time_off_requests_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_off_requests_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "time_off_requests_profile_id_fkey"
@@ -8552,6 +13627,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "time_punches_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "time_punches_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "time_punches_geofence_id_fkey"
             columns: ["geofence_id"]
             isOneToOne: false
@@ -8623,7 +13712,21 @@ export type Database = {
             foreignKeyName: "training_courses_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
-            referencedRelation: "employees"
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "training_courses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_courses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
             referencedColumns: ["id"]
           },
           {
@@ -8637,36 +13740,81 @@ export type Database = {
       }
       training_enrollments: {
         Row: {
+          assigned_by: string | null
+          completed_at: string | null
           course_id: string
           created_at: string
           due_date: string | null
           employee_id: string
           enrolled_at: string
           id: string
+          progress_percent: number | null
+          requires_signoff: boolean | null
+          signoff_at: string | null
+          signoff_by: string | null
+          signoff_notes: string | null
+          skill_awarded: boolean | null
           status: string | null
           updated_at: string
         }
         Insert: {
+          assigned_by?: string | null
+          completed_at?: string | null
           course_id: string
           created_at?: string
           due_date?: string | null
           employee_id: string
           enrolled_at?: string
           id?: string
+          progress_percent?: number | null
+          requires_signoff?: boolean | null
+          signoff_at?: string | null
+          signoff_by?: string | null
+          signoff_notes?: string | null
+          skill_awarded?: boolean | null
           status?: string | null
           updated_at?: string
         }
         Update: {
+          assigned_by?: string | null
+          completed_at?: string | null
           course_id?: string
           created_at?: string
           due_date?: string | null
           employee_id?: string
           enrolled_at?: string
           id?: string
+          progress_percent?: number | null
+          requires_signoff?: boolean | null
+          signoff_at?: string | null
+          signoff_by?: string | null
+          signoff_notes?: string | null
+          skill_awarded?: boolean | null
           status?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "training_enrollments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "training_enrollments_course_id_fkey"
             columns: ["course_id"]
@@ -8681,38 +13829,85 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "training_enrollments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
         ]
       }
       training_lessons: {
         Row: {
           content: string | null
+          content_payload: Json | null
+          content_type: string | null
           course_id: string
           created_at: string
+          est_minutes: number | null
           file_id: string | null
           id: string
           position: number | null
+          requires_completion: boolean | null
           title: string
           updated_at: string
           video_url: string | null
         }
         Insert: {
           content?: string | null
+          content_payload?: Json | null
+          content_type?: string | null
           course_id: string
           created_at?: string
+          est_minutes?: number | null
           file_id?: string | null
           id?: string
           position?: number | null
+          requires_completion?: boolean | null
           title: string
           updated_at?: string
           video_url?: string | null
         }
         Update: {
           content?: string | null
+          content_payload?: Json | null
+          content_type?: string | null
           course_id?: string
           created_at?: string
+          est_minutes?: number | null
           file_id?: string | null
           id?: string
           position?: number | null
+          requires_completion?: boolean | null
           title?: string
           updated_at?: string
           video_url?: string | null
@@ -8774,6 +13969,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "training_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_progress_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "training_progress_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
@@ -8823,6 +14032,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_quiz_attempts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_quiz_attempts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
           {
             foreignKeyName: "training_quiz_attempts_quiz_id_fkey"
@@ -9085,6 +14308,13 @@ export type Database = {
             foreignKeyName: "unified_persons_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "unified_persons_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -9110,6 +14340,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "unified_persons_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "unified_persons_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "unified_persons_marketing_lead_id_fkey"
             columns: ["marketing_lead_id"]
             isOneToOne: false
@@ -9120,11 +14364,88 @@ export type Database = {
             foreignKeyName: "unified_persons_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "unified_persons_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "unified_persons_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_role_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          id: string
+          profile_id: string | null
+          role_key: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          role_key: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          role_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_role_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_role_assignments_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "user_role_info"
@@ -9210,19 +14531,129 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "work_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "work_schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
         ]
       }
     }
     Views: {
+      access_matrix_summary: {
+        Row: {
+          display_name: string | null
+          full_access_pages: number | null
+          no_access_pages: number | null
+          role_key: string | null
+          tier: number | null
+          total_pages_defined: number | null
+          view_access_pages: number | null
+        }
+        Relationships: []
+      }
+      access_matrix_view: {
+        Row: {
+          access_level: string | null
+          page_icon: string | null
+          page_id: string | null
+          page_name: string | null
+          path: string | null
+          role_color: string | null
+          role_display_name: string | null
+          role_icon: string | null
+          role_key: string | null
+          role_tier: number | null
+          section: string | null
+          sort_order: number | null
+        }
+        Relationships: []
+      }
+      contact_notes_view: {
+        Row: {
+          author_id: string | null
+          author_initials: string | null
+          author_name: string | null
+          contact_id: string | null
+          contact_type: string | null
+          created_at: string | null
+          edited_at: string | null
+          edited_by_id: string | null
+          edited_by_initials: string | null
+          edited_by_name: string | null
+          enrollment_id: string | null
+          id: string | null
+          is_archived: boolean | null
+          is_pinned: boolean | null
+          note: string | null
+          note_type: string | null
+          source_note_id: string | null
+          transferred_at: string | null
+          transferred_from: string | null
+          updated_at: string | null
+          visibility: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_notes_edited_by_id_fkey"
+            columns: ["edited_by_id"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_change_log_view: {
         Row: {
           change_note: string | null
           change_source: string | null
-          changed_by_avatar: string | null
-          changed_by_display_name: string | null
+          changed_by_email: string | null
           changed_by_name: string | null
           changed_by_profile_id: string | null
-          changed_by_user_id: string | null
           created_at: string | null
           employee_id: string | null
           employee_name: string | null
@@ -9234,6 +14665,13 @@ export type Database = {
           table_name: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_change_log_changed_by_profile_id_fkey"
+            columns: ["changed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "employee_change_log_changed_by_profile_id_fkey"
             columns: ["changed_by_profile_id"]
@@ -9254,6 +14692,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_change_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employee_change_log_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
           },
         ]
       }
@@ -9291,6 +14743,126 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: []
+      }
+      ezyvet_division_summary: {
+        Row: {
+          active_count: number | null
+          avg_revenue: number | null
+          client_count: number | null
+          division: string | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      ezyvet_revenue_by_breed: {
+        Row: {
+          avg_revenue: number | null
+          breed: string | null
+          client_count: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      ezyvet_revenue_by_city: {
+        Row: {
+          avg_revenue: number | null
+          city: string | null
+          client_count: number | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      ezyvet_revenue_by_department: {
+        Row: {
+          avg_revenue: number | null
+          client_count: number | null
+          department: string | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      ezyvet_revenue_by_referral: {
+        Row: {
+          avg_revenue: number | null
+          client_count: number | null
+          source: string | null
+          total_revenue: number | null
+        }
+        Relationships: []
+      }
+      master_profile_view: {
+        Row: {
+          access_active: boolean | null
+          acquisition_source: string | null
+          address_line1: string | null
+          address_line2: string | null
+          applied_at: string | null
+          avatar_url: string | null
+          candidate_type: string | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          crm_tags: Json | null
+          current_position_title: string | null
+          current_stage:
+            | Database["public"]["Enums"]["person_lifecycle_stage"]
+            | null
+          date_of_birth: string | null
+          department_name: string | null
+          email: string | null
+          email_secondary: string | null
+          emergency_contact_email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
+          employee_number: string | null
+          employment_status: string | null
+          employment_type: string | null
+          first_name: string | null
+          gender: string | null
+          has_crm_data: boolean | null
+          has_employee_data: boolean | null
+          has_recruiting_data: boolean | null
+          has_system_access: boolean | null
+          hire_date: string | null
+          id: string | null
+          is_active: boolean | null
+          last_activity_at: string | null
+          last_name: string | null
+          lead_score: number | null
+          lead_status: string | null
+          linkedin_url: string | null
+          location_name: string | null
+          overall_rating: number | null
+          pay_rate: number | null
+          pay_type: string | null
+          phone_home: string | null
+          phone_mobile: string | null
+          phone_work: string | null
+          postal_code: string | null
+          preferred_name: string | null
+          pronouns: string | null
+          recruiting_status: string | null
+          referral_source: string | null
+          source_detail: string | null
+          source_type: string | null
+          stage_entered_at: string | null
+          state: string | null
+          system_role: string | null
+          target_position_id: string | null
+          target_position_title: string | null
+          updated_at: string | null
+          website_url: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_recruiting_data_target_position_id_fkey"
+            columns: ["target_position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       partner_details: {
         Row: {
@@ -9592,6 +15164,135 @@ export type Database = {
           },
         ]
       }
+      pending_course_signoffs: {
+        Row: {
+          completed_at: string | null
+          course_id: string | null
+          course_title: string | null
+          department_id: string | null
+          employee_id: string | null
+          employee_name: string | null
+          enrollment_id: string | null
+          manager_employee_id: string | null
+          progress_percent: number | null
+          requires_signoff: boolean | null
+          signoff_at: string | null
+          signoff_by: string | null
+          skill_id: string | null
+          skill_level_awarded: number | null
+          skill_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "employees_manager_employee_id_fkey"
+            columns: ["manager_employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_courses_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "training_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_enrollments_signoff_by_fkey"
+            columns: ["signoff_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_user_accounts: {
+        Row: {
+          auth_user_id: string | null
+          department_name: string | null
+          display_name: string | null
+          email_personal: string | null
+          email_work: string | null
+          employee_id: string | null
+          employee_number: string | null
+          employment_status: string | null
+          first_name: string | null
+          hire_date: string | null
+          hired_at: string | null
+          last_name: string | null
+          location_name: string | null
+          needs_user_account: boolean | null
+          onboarding_status: string | null
+          phone_mobile: string | null
+          position_title: string | null
+          profile_id: string | null
+          profile_role: string | null
+        }
+        Relationships: []
+      }
       schedule_with_names: {
         Row: {
           created_at: string | null
@@ -9618,6 +15319,13 @@ export type Database = {
             foreignKeyName: "schedules_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -9636,11 +15344,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "schedules_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
             foreignKeyName: "schedules_location_id_fkey"
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "schedules_profile_id_fkey"
@@ -9658,136 +15387,289 @@ export type Database = {
           },
         ]
       }
-      unified_persons_view: {
+      scheduling_context: {
         Row: {
-          address_line1: string | null
-          address_line2: string | null
-          avatar_url: string | null
-          candidate_id: string | null
-          candidate_status: string | null
-          city: string | null
-          country: string | null
-          created_at: string | null
-          created_by: string | null
-          current_position_title: string | null
-          current_stage:
-            | Database["public"]["Enums"]["person_lifecycle_stage"]
-            | null
-          date_of_birth: string | null
-          department_name: string | null
-          do_not_contact: boolean | null
-          education_visitor_id: string | null
-          email: string | null
-          email_secondary: string | null
-          email_verified: boolean | null
-          emergency_contact_email: string | null
-          emergency_contact_name: string | null
-          emergency_contact_phone: string | null
-          emergency_contact_relationship: string | null
+          current_week_hours: number | null
           employee_id: string | null
-          employee_number: string | null
-          employment_status: string | null
+          employment_type: string | null
           first_name: string | null
-          gender: string | null
-          hire_date: string | null
-          id: string | null
           is_active: boolean | null
-          last_activity_at: string | null
           last_name: string | null
-          linkedin_url: string | null
-          location_name: string | null
-          marketing_lead_id: string | null
-          phone_home: string | null
-          phone_mobile: string | null
-          phone_verified: boolean | null
-          phone_work: string | null
-          postal_code: string | null
-          preferred_name: string | null
-          profile_id: string | null
-          program_name: string | null
-          pronouns: string | null
-          referral_source: string | null
-          resume_url: string | null
-          school_of_origin: string | null
-          source_detail: string | null
-          source_type: string | null
-          stage_entered_at: string | null
-          state: string | null
-          student_type:
-            | Database["public"]["Enums"]["education_visitor_type"]
-            | null
-          target_position_id: string | null
-          target_position_title: string | null
-          updated_at: string | null
-          utm_campaign: string | null
-          utm_medium: string | null
-          utm_source: string | null
-          visit_end_date: string | null
-          visit_start_date: string | null
-          website_url: string | null
+          position_id: string | null
+          position_title: string | null
+          primary_location_id: string | null
+          recent_hours_4_weeks: number | null
+          skills: string[] | null
         }
         Relationships: [
           {
-            foreignKeyName: "candidates_target_position_id_fkey"
-            columns: ["target_position_id"]
+            foreignKeyName: "employees_position_id_fkey"
+            columns: ["position_id"]
             isOneToOne: false
             referencedRelation: "job_positions"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      service_coverage_summary: {
+        Row: {
+          filled_slots: number | null
+          location_id: string | null
+          location_name: string | null
+          schedule_week_id: string | null
+          service_code: string | null
+          service_id: string | null
+          service_name: string | null
+          status: string | null
+          total_slots: number | null
+          week_start: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "unified_persons_candidate_id_fkey"
-            columns: ["candidate_id"]
+            foreignKeyName: "schedule_weeks_location_id_fkey"
+            columns: ["location_id"]
             isOneToOne: false
-            referencedRelation: "candidates"
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      shift_builder_details: {
+        Row: {
+          ai_confidence: number | null
+          ai_reasoning: string | null
+          ai_suggested: boolean | null
+          assignment_source: string | null
+          conflict_flags: Json | null
+          employee_first_name: string | null
+          employee_id: string | null
+          employee_last_name: string | null
+          employee_position: string | null
+          end_at: string | null
+          hours: number | null
+          is_open_shift: boolean | null
+          is_published: boolean | null
+          location_id: string | null
+          location_name: string | null
+          notes: string | null
+          role_category: string | null
+          role_label: string | null
+          schedule_week_id: string | null
+          service_code: string | null
+          service_color: string | null
+          service_id: string | null
+          service_name: string | null
+          shift_id: string | null
+          staffing_requirement_id: string | null
+          start_at: string | null
+          week_start: string | null
+          week_status: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "unified_persons_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "unified_persons_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "user_role_info"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "unified_persons_education_visitor_id_fkey"
-            columns: ["education_visitor_id"]
-            isOneToOne: false
-            referencedRelation: "education_visitors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "unified_persons_employee_id_fkey"
+            foreignKeyName: "shifts_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "unified_persons_marketing_lead_id_fkey"
-            columns: ["marketing_lead_id"]
+            foreignKeyName: "shifts_employee_id_fkey"
+            columns: ["employee_id"]
             isOneToOne: false
-            referencedRelation: "marketing_leads"
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shifts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "shifts_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "unified_persons_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "shifts_schedule_week_id_fkey"
+            columns: ["schedule_week_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "schedule_weeks"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "unified_persons_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "shifts_schedule_week_id_fkey"
+            columns: ["schedule_week_id"]
             isOneToOne: false
-            referencedRelation: "user_role_info"
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["schedule_week_id"]
+          },
+          {
+            foreignKeyName: "shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_coverage_summary"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "shifts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shifts_staffing_requirement_id_fkey"
+            columns: ["staffing_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "service_staffing_requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_program_view: {
+        Row: {
+          academic_advisor: string | null
+          actual_completion_date: string | null
+          assigned_coordinator_id: string | null
+          assigned_location_id: string | null
+          assigned_mentor_id: string | null
+          avatar_url: string | null
+          cohort_identifier: string | null
+          completion_percentage: number | null
+          converted_to_employee: boolean | null
+          coordinator_name: string | null
+          created_at: string | null
+          display_name: string | null
+          eligible_for_employment: boolean | null
+          email: string | null
+          employment_interest_level: string | null
+          end_date: string | null
+          enrollment_id: string | null
+          enrollment_status:
+            | Database["public"]["Enums"]["program_enrollment_status"]
+            | null
+          expected_graduation_date: string | null
+          first_name: string | null
+          hours_completed: number | null
+          hours_required: number | null
+          is_paid: boolean | null
+          last_name: string | null
+          lifecycle_stage:
+            | Database["public"]["Enums"]["person_lifecycle_stage"]
+            | null
+          location_name: string | null
+          mentor_name: string | null
+          overall_performance_rating: string | null
+          person_id: string | null
+          phone_mobile: string | null
+          preferred_name: string | null
+          program_name: string | null
+          program_type:
+            | Database["public"]["Enums"]["education_program_type"]
+            | null
+          schedule_type: string | null
+          scheduled_hours_per_week: number | null
+          school_of_origin: string | null
+          school_program: string | null
+          start_date: string | null
+          stipend_amount: number | null
+          stipend_frequency: string | null
+          time_status: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_coordinator_id_fkey"
+            columns: ["assigned_coordinator_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_location_id_fkey"
+            columns: ["assigned_location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["employee_id"]
+          },
+          {
+            foreignKeyName: "person_program_data_assigned_mentor_id_fkey"
+            columns: ["assigned_mentor_id"]
+            isOneToOne: false
+            referencedRelation: "scheduling_context"
+            referencedColumns: ["employee_id"]
+          },
+        ]
+      }
+      unified_persons_view: {
+        Row: {
+          acquisition_campaign: string | null
+          acquisition_source: string | null
+          created_at: string | null
+          current_stage:
+            | Database["public"]["Enums"]["person_lifecycle_stage"]
+            | null
+          department_id: string | null
+          email: string | null
+          employee_number: string | null
+          employment_status: string | null
+          first_name: string | null
+          hire_date: string | null
+          id: string | null
+          last_name: string | null
+          lead_status: string | null
+          phone_mobile: string | null
+          recruiting_status: string | null
+          resume_url: string | null
+          target_position_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_employee_data_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_recruiting_data_target_position_id_fkey"
+            columns: ["target_position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
             referencedColumns: ["id"]
           },
         ]
@@ -9811,6 +15693,126 @@ export type Database = {
       }
     }
     Functions: {
+      add_contact_note: {
+        Args: {
+          p_contact_id: string
+          p_contact_type: string
+          p_enrollment_id?: string
+          p_note: string
+          p_note_type?: string
+          p_visibility?: string
+        }
+        Returns: string
+      }
+      add_crm_hat: {
+        Args: {
+          p_acquisition_detail?: string
+          p_acquisition_source?: string
+          p_notes?: string
+          p_person_id: string
+          p_tags?: Json
+        }
+        Returns: string
+      }
+      add_employee_hat: {
+        Args: {
+          p_department_id?: string
+          p_employment_type?: string
+          p_hire_date?: string
+          p_location_id?: string
+          p_pay_rate?: number
+          p_pay_type?: string
+          p_person_id: string
+          p_position_id: string
+        }
+        Returns: string
+      }
+      add_program_hat: {
+        Args: {
+          p_application_data?: Json
+          p_assigned_location_id?: string
+          p_assigned_mentor_id?: string
+          p_end_date?: string
+          p_person_id: string
+          p_program_name?: string
+          p_program_type: Database["public"]["Enums"]["education_program_type"]
+          p_school_of_origin?: string
+          p_start_date?: string
+        }
+        Returns: string
+      }
+      add_recruiting_hat: {
+        Args: {
+          p_candidate_type?: string
+          p_person_id: string
+          p_resume_url?: string
+          p_target_department_id?: string
+          p_target_location_id?: string
+          p_target_position_id?: string
+        }
+        Returns: string
+      }
+      ai_auto_fill_draft: {
+        Args: {
+          p_balance_hours?: boolean
+          p_draft_id: string
+          p_respect_availability?: boolean
+        }
+        Returns: Json
+      }
+      apply_template_to_draft: {
+        Args: {
+          p_location_id: string
+          p_template_id: string
+          p_week_start: string
+        }
+        Returns: string
+      }
+      apply_template_to_week: {
+        Args: {
+          p_clear_existing?: boolean
+          p_template_id: string
+          p_week_start: string
+        }
+        Returns: {
+          shifts_created: number
+          shifts_skipped: number
+        }[]
+      }
+      archive_old_audit_logs: { Args: never; Returns: number }
+      assign_employee_to_slot: {
+        Args: { p_employee_id: string; p_slot_id: string }
+        Returns: boolean
+      }
+      assign_training_course_to_all: {
+        Args: {
+          p_assigned_by?: string
+          p_course_id: string
+          p_due_days?: number
+          p_requires_signoff?: boolean
+        }
+        Returns: number
+      }
+      assign_training_course_to_department: {
+        Args: {
+          p_assigned_by?: string
+          p_course_id: string
+          p_department: string
+          p_due_days?: number
+          p_requires_signoff?: boolean
+        }
+        Returns: number
+      }
+      assign_training_course_to_employee: {
+        Args: {
+          p_assigned_by?: string
+          p_course_id: string
+          p_due_date?: string
+          p_employee_id: string
+          p_requires_signoff?: boolean
+        }
+        Returns: string
+      }
       auto_complete_past_shifts: {
         Args: never
         Returns: {
@@ -9826,6 +15828,10 @@ export type Database = {
           records_processed: number
           source_table: string
         }[]
+      }
+      calculate_influencer_tier: {
+        Args: { follower_count: number }
+        Returns: string
       }
       calculate_overtime_breakdown: {
         Args: {
@@ -9844,6 +15850,11 @@ export type Database = {
         Args: { p_employee_id: string; p_lookback_days?: number }
         Returns: number
       }
+      can_access_hr: { Args: never; Returns: boolean }
+      can_access_marketing: { Args: never; Returns: boolean }
+      can_manage_schedule: { Args: never; Returns: boolean }
+      can_view_schedule: { Args: never; Returns: boolean }
+      check_database_health: { Args: never; Returns: Json }
       check_duplicate_person_email: {
         Args: { p_email: string }
         Returns: {
@@ -9853,6 +15864,12 @@ export type Database = {
           is_duplicate: boolean
         }[]
       }
+      check_page_access: {
+        Args: { p_path: string; p_role?: string }
+        Returns: string
+      }
+      cleanup_performance_logs: { Args: never; Returns: undefined }
+      clear_draft_assignments: { Args: { p_draft_id: string }; Returns: Json }
       complete_hire_to_employee: {
         Args: {
           p_department_id?: string
@@ -9896,6 +15913,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      copy_previous_week_schedule: {
+        Args: { p_draft_id: string }
+        Returns: Json
+      }
       create_intake_link: {
         Args: {
           p_expires_in_days?: number
@@ -9916,14 +15937,50 @@ export type Database = {
           token: string
         }[]
       }
+      create_schedule_draft: {
+        Args: {
+          p_location_id: string
+          p_operational_days: number[]
+          p_service_ids: string[]
+          p_week_start: string
+        }
+        Returns: string
+      }
       current_employee_id: { Args: never; Returns: string }
       current_profile_id: { Args: never; Returns: string }
       deduct_event_supplies: { Args: { p_event_id: string }; Returns: boolean }
-      extract_resume_text: { Args: { p_document_id: string }; Returns: Json }
+      delete_schedule_template: {
+        Args: { p_template_id: string }
+        Returns: boolean
+      }
+      extract_resume_text:
+        | { Args: { p_document_id: string }; Returns: Json }
+        | { Args: { p_file_url: string }; Returns: string }
+      find_or_create_person: {
+        Args: {
+          p_email: string
+          p_first_name: string
+          p_last_name: string
+          p_phone?: string
+          p_source_detail?: string
+          p_source_type?: string
+        }
+        Returns: {
+          existing_stage: Database["public"]["Enums"]["person_lifecycle_stage"]
+          is_new: boolean
+          person_id: string
+        }[]
+      }
       generate_ce_event_checklist: {
         Args: { p_event_id: string }
         Returns: undefined
       }
+      generate_compliance_alerts: { Args: never; Returns: number }
+      generate_shifts_from_template: {
+        Args: { p_location_id: string; p_week_start: string }
+        Returns: number
+      }
+      get_ai_usage_stats: { Args: { p_days?: number }; Returns: Json }
       get_attendance_breakdown: {
         Args: { p_employee_id: string; p_lookback_days?: number }
         Returns: {
@@ -9950,6 +16007,46 @@ export type Database = {
           shift_date: string
         }[]
       }
+      get_available_employees_for_slot: {
+        Args: {
+          p_draft_id: string
+          p_end_time: string
+          p_role_category?: string
+          p_slot_date: string
+          p_start_time: string
+        }
+        Returns: {
+          availability_note: string
+          availability_type: string
+          conflict_reason: string
+          current_week_hours: number
+          employee_id: string
+          first_name: string
+          is_available: boolean
+          last_name: string
+          position_title: string
+          preference_level: number
+          reliability_score: number
+        }[]
+      }
+      get_employee_scheduling_context: {
+        Args: { p_location_id?: string; p_week_start?: string }
+        Returns: {
+          availability: Json
+          employee_id: string
+          employment_type: string
+          first_name: string
+          last_name: string
+          position_id: string
+          position_title: string
+          primary_location_id: string
+          scheduled_hours_4_weeks: number
+          scheduled_hours_this_week: number
+          skill_levels: Json
+          skills: string[]
+          time_off_dates: string[]
+        }[]
+      }
       get_employee_timecard: {
         Args: {
           p_employee_id: string
@@ -9970,6 +16067,18 @@ export type Database = {
           shift_id: string
           total_hours: number
         }[]
+      }
+      get_employee_week_hours: {
+        Args: {
+          p_draft_id?: string
+          p_employee_id: string
+          p_week_start: string
+        }
+        Returns: number
+      }
+      get_or_create_schedule_week: {
+        Args: { p_location_id: string; p_week_start: string }
+        Returns: string
       }
       get_overdue_partners: {
         Args: never
@@ -9999,6 +16108,68 @@ export type Database = {
           status: string
         }[]
       }
+      get_role_level: { Args: { role_name: string }; Returns: number }
+      get_schedule_dashboard: {
+        Args: { p_week_start: string }
+        Returns: {
+          coverage_percentage: number
+          draft_id: string
+          draft_status: string
+          filled_slots: number
+          has_draft: boolean
+          last_updated: string
+          location_code: string
+          location_id: string
+          location_name: string
+          published_at: string
+          required_filled: number
+          required_slots: number
+          total_slots: number
+        }[]
+      }
+      get_schedule_templates: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by: string
+          created_by_name: string
+          description: string
+          id: string
+          is_active: boolean
+          location_id: string
+          location_name: string
+          name: string
+          shift_count: number
+        }[]
+      }
+      get_schedule_week_summary: {
+        Args: { p_location_id: string; p_week_start: string }
+        Returns: {
+          coverage_percentage: number
+          filled_shifts: number
+          open_shifts: number
+          published_at: string
+          schedule_week_id: string
+          services: Json
+          status: string
+          total_hours: number
+          total_shifts: number
+        }[]
+      }
+      get_services_with_requirements: {
+        Args: { p_location_id?: string }
+        Returns: {
+          max_staff: number
+          min_staff: number
+          requires_dvm: boolean
+          service_code: string
+          service_color: string
+          service_icon: string
+          service_id: string
+          service_name: string
+          staffing_requirements: Json
+        }[]
+      }
       get_skill_training_courses: {
         Args: { p_skill_id: string }
         Returns: {
@@ -10011,35 +16182,135 @@ export type Database = {
           title: string
         }[]
       }
-      get_user_initials: { Args: { profile_id: string }; Returns: string }
+      get_table_statistics: {
+        Args: never
+        Returns: {
+          row_count: number
+          table_name: string
+          total_size: string
+        }[]
+      }
+      get_user_initials: { Args: { p_profile_id: string }; Returns: string }
       get_user_role: { Args: never; Returns: string }
+      grant_person_access: {
+        Args: {
+          p_person_id: string
+          p_role?: string
+          p_send_welcome_email?: boolean
+        }
+        Returns: string
+      }
       has_admin_ops_access: { Args: never; Returns: boolean }
       has_gdu_access: { Args: never; Returns: boolean }
       has_management_access: { Args: never; Returns: boolean }
       has_marketing_access: { Args: never; Returns: boolean }
+      has_minimum_role: { Args: { required_role: string }; Returns: boolean }
+      invite_student: {
+        Args: {
+          p_assigned_location_id?: string
+          p_assigned_mentor_id?: string
+          p_created_by?: string
+          p_email: string
+          p_end_date?: string
+          p_expires_in_days?: number
+          p_first_name: string
+          p_last_name: string
+          p_phone?: string
+          p_program_name?: string
+          p_program_type: Database["public"]["Enums"]["education_program_type"]
+          p_school_of_origin?: string
+          p_send_email?: boolean
+          p_start_date?: string
+        }
+        Returns: {
+          existing_stage: Database["public"]["Enums"]["person_lifecycle_stage"]
+          invite_token: string
+          invite_url: string
+          is_new_person: boolean
+          person_id: string
+          program_enrollment_id: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
+      is_hr_admin: { Args: never; Returns: boolean }
+      is_marketing_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      list_schedule_templates: {
+        Args: { p_location_id?: string }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          is_default: boolean
+          last_used_at: string
+          location_id: string
+          location_name: string
+          name: string
+          operational_days: number[]
+          service_count: number
+          slot_count: number
+          usage_count: number
+        }[]
+      }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_action_category?: string
+          p_changes?: Json
+          p_entity_id: string
+          p_entity_name: string
+          p_entity_type: string
+          p_new_values?: Json
+          p_old_values?: Json
+        }
+        Returns: string
+      }
       migrate_education_visitor_to_candidate: {
         Args: { p_visitor_id: string }
         Returns: string
+      }
+      migrate_education_visitors_to_program_data: {
+        Args: never
+        Returns: {
+          migrated_count: number
+          skipped_count: number
+        }[]
+      }
+      migrate_to_extension_tables: {
+        Args: never
+        Returns: {
+          extension_table: string
+          records_created: number
+          records_updated: number
+        }[]
       }
       process_intake_submission: {
         Args: { p_submission_id: string }
         Returns: string
       }
-      promote_candidate_to_employee: {
-        Args: {
-          p_candidate_id: string
-          p_department_id?: string
-          p_employment_type: string
-          p_job_title_id: string
-          p_location_id?: string
-          p_pay_type?: string
-          p_start_date: string
-          p_starting_wage: number
-        }
-        Returns: string
-      }
+      promote_candidate_to_employee:
+        | {
+            Args: {
+              p_candidate_id: string
+              p_department_id?: string
+              p_employment_type: string
+              p_job_title_id: string
+              p_location_id?: string
+              p_pay_type?: string
+              p_start_date: string
+              p_starting_wage: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_candidate_id: string
+              p_department_id?: string
+              p_position_id?: string
+              p_start_date?: string
+            }
+            Returns: string
+          }
       promote_to_applicant: {
         Args: {
           p_notes?: string
@@ -10066,15 +16337,62 @@ export type Database = {
         }
         Returns: string
       }
-      start_candidate_onboarding: {
+      publish_schedule_draft: { Args: { p_draft_id: string }; Returns: boolean }
+      publish_schedule_week: {
+        Args: { p_schedule_week_id: string }
+        Returns: boolean
+      }
+      revoke_person_access: {
+        Args: { p_person_id: string; p_reason?: string }
+        Returns: boolean
+      }
+      save_template_from_draft: {
         Args: {
-          p_assigned_to?: string
-          p_candidate_id: string
-          p_target_start_date?: string
-          p_template_id?: string
+          p_description?: string
+          p_draft_id: string
+          p_location_specific?: boolean
+          p_name: string
         }
         Returns: string
       }
+      save_week_as_template: {
+        Args: {
+          p_location_id?: string
+          p_template_description: string
+          p_template_name: string
+          p_week_start: string
+        }
+        Returns: string
+      }
+      signoff_course_completion: {
+        Args: {
+          p_enrollment_id: string
+          p_notes?: string
+          p_signoff_by: string
+        }
+        Returns: Json
+      }
+      smart_assign_training_course: {
+        Args: {
+          p_assigned_by?: string
+          p_course_id: string
+          p_due_days?: number
+          p_requires_signoff?: boolean
+          p_skill_threshold?: number
+        }
+        Returns: number
+      }
+      start_candidate_onboarding:
+        | { Args: { p_candidate_id: string }; Returns: boolean }
+        | {
+            Args: {
+              p_assigned_to?: string
+              p_candidate_id: string
+              p_target_start_date?: string
+              p_template_id?: string
+            }
+            Returns: string
+          }
       sync_attendance_from_shift: {
         Args: { p_shift_id: string }
         Returns: {
@@ -10109,6 +16427,30 @@ export type Database = {
           profile_role: string
         }[]
       }
+      test_into_func: { Args: never; Returns: string }
+      test_simple: { Args: never; Returns: string }
+      transfer_contact_notes: {
+        Args: {
+          p_mark_hr_only?: boolean
+          p_source_id: string
+          p_source_type: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: number
+      }
+      update_employee_with_profile_sync: {
+        Args: {
+          p_employee_data: Json
+          p_employee_id: string
+          p_sync_to_profile?: boolean
+        }
+        Returns: Json
+      }
+      update_slot_times: {
+        Args: { p_end_time: string; p_slot_id: string; p_start_time: string }
+        Returns: boolean
+      }
       upsert_person_extended_data: {
         Args: {
           p_created_by?: string
@@ -10117,6 +16459,21 @@ export type Database = {
           p_person_id: string
         }
         Returns: string
+      }
+      validate_schedule_draft: { Args: { p_draft_id: string }; Returns: Json }
+      validate_shift_assignment: {
+        Args: {
+          p_employee_id: string
+          p_end_time: string
+          p_exclude_shift_id?: string
+          p_location_id?: string
+          p_shift_date: string
+          p_start_time: string
+        }
+        Returns: {
+          is_valid: boolean
+          violations: Json
+        }[]
       }
     }
     Enums: {
@@ -10143,6 +16500,13 @@ export type Database = {
         | "completed"
         | "blocked"
         | "skipped"
+      education_program_type:
+        | "internship"
+        | "externship"
+        | "paid_cohort"
+        | "intensive"
+        | "shadow"
+        | "ce_course"
       education_visitor_type:
         | "intern"
         | "extern"
@@ -10190,6 +16554,19 @@ export type Database = {
         | "employee"
         | "alumni"
         | "archived"
+      program_enrollment_status:
+        | "inquiry"
+        | "applied"
+        | "reviewing"
+        | "interview"
+        | "accepted"
+        | "enrolled"
+        | "in_progress"
+        | "completed"
+        | "withdrawn"
+        | "dismissed"
+        | "deferred"
+        | "waitlisted"
       race_approval_status:
         | "not_submitted"
         | "pending"
@@ -10352,6 +16729,14 @@ export const Constants = {
         "blocked",
         "skipped",
       ],
+      education_program_type: [
+        "internship",
+        "externship",
+        "paid_cohort",
+        "intensive",
+        "shadow",
+        "ce_course",
+      ],
       education_visitor_type: [
         "intern",
         "extern",
@@ -10403,6 +16788,20 @@ export const Constants = {
         "employee",
         "alumni",
         "archived",
+      ],
+      program_enrollment_status: [
+        "inquiry",
+        "applied",
+        "reviewing",
+        "interview",
+        "accepted",
+        "enrolled",
+        "in_progress",
+        "completed",
+        "withdrawn",
+        "dismissed",
+        "deferred",
+        "waitlisted",
       ],
       race_approval_status: [
         "not_submitted",
