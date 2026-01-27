@@ -285,7 +285,7 @@ function getConflictColor(type: string) {
   <div>
     <!-- Header -->
     <div class="d-flex align-center mb-6">
-      <v-btn icon variant="text" to="/admin/global-settings" class="mr-2">
+      <v-btn icon variant="text" to="/admin/system-health?tab=integrations" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>

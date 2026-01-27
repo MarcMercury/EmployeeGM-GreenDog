@@ -197,8 +197,7 @@
         <v-list-item to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/system-health" title="System Health" prepend-icon="mdi-heart-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/settings" title="Global Settings" prepend-icon="mdi-tune" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/system-health" title="System Settings" prepend-icon="mdi-cog" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasAdminAccess" to="/settings" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
     </v-list>

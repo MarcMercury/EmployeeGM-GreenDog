@@ -73,31 +73,7 @@
                 </div>
               </v-card>
 
-              <!-- Skill Hexagon (Radar Chart) -->
-              <v-card rounded="lg" class="mb-4">
-                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
-                  <v-icon start color="primary">mdi-radar</v-icon>
-                  Skill Hexagon
-                </v-card-title>
-                <v-card-text>
-                  <ClientOnly>
-                    <SkillHexagon 
-                      v-if="skillCategories.length > 0"
-                      :categories="skillCategories" 
-                      :size="300"
-                    />
-                    <div v-else class="text-center py-8">
-                      <v-icon size="48" color="grey-lighten-1">mdi-chart-radar</v-icon>
-                      <p class="text-grey mt-2">No skills recorded yet</p>
-                      <v-btn color="primary" variant="tonal" size="small" class="mt-2" to="/people/my-skills">
-                        Add Skills
-                      </v-btn>
-                    </div>
-                  </ClientOnly>
-                </v-card-text>
-              </v-card>
-
-              <!-- Skill Gaps (To-Do List) -->
+              <!-- Skill Gaps (Position Requirements vs My Skills) -->
               <v-card rounded="lg">
                 <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
                   <v-icon start color="warning">mdi-target</v-icon>
@@ -105,31 +81,37 @@
                   <v-spacer />
                   <v-chip size="x-small" color="warning" variant="tonal">{{ skillGaps.length }} areas</v-chip>
                 </v-card-title>
+                <v-card-text v-if="!positionRequiredSkills.length" class="text-caption text-grey">
+                  Skills required for your position. Improve these to advance your career.
+                </v-card-text>
                 <v-divider />
                 <v-list v-if="skillGaps.length > 0" density="compact" class="pa-0">
                   <v-list-item 
                     v-for="gap in skillGaps" 
-                    :key="gap.id"
-                    :class="{ 'bg-primary-lighten-5': selectedGap?.id === gap.id }"
+                    :key="gap.skill_id"
+                    :class="{ 'bg-primary-lighten-5': selectedGap?.skill_id === gap.skill_id }"
                     @click="selectGap(gap)"
                   >
                     <template #prepend>
-                      <v-icon size="20" :color="gap.is_goal ? 'success' : 'warning'">
-                        {{ gap.is_goal ? 'mdi-flag' : 'mdi-arrow-up-bold' }}
+                      <v-icon size="20" :color="gap.current_rating >= gap.required_level ? 'success' : (gap.current_rating === 0 ? 'error' : 'warning')">
+                        {{ gap.current_rating >= gap.required_level ? 'mdi-check-circle' : (gap.current_rating === 0 ? 'mdi-alert-circle' : 'mdi-arrow-up-bold') }}
                       </v-icon>
                     </template>
                     <v-list-item-title class="text-body-2">{{ gap.skill_name }}</v-list-item-title>
                     <v-list-item-subtitle>
-                      <div class="d-flex align-center gap-1">
-                        <v-rating
-                          :model-value="gap.rating"
-                          readonly
-                          density="compact"
-                          size="12"
-                          color="amber"
-                          active-color="amber"
-                        />
-                        <span class="text-caption">({{ gap.rating }}/5)</span>
+                      <div class="d-flex align-center gap-2">
+                        <span class="text-caption">Current: {{ gap.current_rating }}/5</span>
+                        <v-icon size="12">mdi-arrow-right</v-icon>
+                        <span class="text-caption font-weight-bold">Required: {{ gap.required_level }}/5</span>
+                        <v-chip 
+                          v-if="gap.is_core" 
+                          size="x-small" 
+                          color="error" 
+                          variant="tonal"
+                          class="ml-1"
+                        >
+                          Core
+                        </v-chip>
                       </div>
                     </v-list-item-subtitle>
                     <template #append>
@@ -146,7 +128,9 @@
                 </v-list>
                 <div v-else class="text-center py-8">
                   <v-icon size="48" color="success">mdi-check-circle</v-icon>
-                  <p class="text-grey mt-2">All skills are looking great!</p>
+                  <p class="text-grey mt-2">
+                    {{ positionRequiredSkills.length === 0 ? 'No skills defined for your position yet' : 'You meet all skill requirements!' }}
+                  </p>
                 </div>
               </v-card>
             </v-col>
@@ -851,7 +835,6 @@
 </template>
 
 <script setup lang="ts">
-import SkillHexagon from '~/components/skill/SkillHexagon.vue'
 import GoalProgressModal from '~/components/performance/GoalProgressModal.vue'
 import ReviewDetailDialog from '~/components/performance/ReviewDetailDialog.vue'
 
@@ -890,6 +873,7 @@ const reviewTab = ref('my-reviews')
 // Skills & Mentorship state
 const currentEmployee = ref<any>(null)
 const mySkills = ref<any[]>([])
+const positionRequiredSkills = ref<any[]>([]) // Skills required for current position
 const mentorshipRequests = ref<any[]>([])
 const selectedGap = ref<any>(null)
 const selectedSkillFilter = ref<string | null>(null)
@@ -981,12 +965,37 @@ const skillCategories = computed(() => {
 })
 
 const skillGaps = computed(() => {
-  return mySkills.value.filter(s => s.is_goal || s.rating < 3)
+  // Build a map of user's current skills by skill_id
+  const mySkillMap = new Map(
+    mySkills.value.map(s => [s.skill_id, s.rating || 0])
+  )
+  
+  // Compare position requirements to user's skills
+  return positionRequiredSkills.value
+    .map(req => {
+      const currentRating = mySkillMap.get(req.skill_id) || 0
+      return {
+        skill_id: req.skill_id,
+        skill_name: req.skill_name,
+        category: req.category,
+        required_level: req.required_level,
+        current_rating: currentRating,
+        is_core: req.is_core,
+        gap: req.required_level - currentRating
+      }
+    })
+    .filter(s => s.current_rating < s.required_level) // Only show where improvement needed
+    .sort((a, b) => {
+      // Sort: core skills first, then by gap size (largest first)
+      if (a.is_core !== b.is_core) return b.is_core ? 1 : -1
+      return b.gap - a.gap
+    })
 })
 
 const skillFilterOptions = computed(() => {
+  // Show all skill gaps as options for finding mentors
   return skillGaps.value.map(s => ({
-    title: s.skill_name,
+    title: `${s.skill_name} (Need: ${s.required_level}, Have: ${s.current_rating})`,
     value: s.skill_id
   }))
 })
@@ -1505,6 +1514,44 @@ async function fetchMySkills() {
   }
 }
 
+async function fetchPositionRequiredSkills() {
+  if (!currentEmployee.value?.position?.id) {
+    positionRequiredSkills.value = []
+    return
+  }
+  
+  try {
+    const { data, error } = await client
+      .from('position_required_skills')
+      .select(`
+        id,
+        skill_id,
+        required_level,
+        is_core,
+        skill:skill_library(id, name, category)
+      `)
+      .eq('position_id', currentEmployee.value.position.id)
+      .order('is_core', { ascending: false })
+      .order('required_level', { ascending: false })
+    
+    if (error) {
+      // Table might not exist yet - that's OK
+      console.log('Position skills not available:', error.message)
+      positionRequiredSkills.value = []
+      return
+    }
+    
+    positionRequiredSkills.value = (data || []).map((r: any) => ({
+      ...r,
+      skill_name: r.skill?.name,
+      category: r.skill?.category
+    }))
+  } catch (err) {
+    console.error('Error fetching position required skills:', err)
+    positionRequiredSkills.value = []
+  }
+}
+
 async function fetchPoints() {
   if (!currentEmployee.value) return
   
@@ -1554,6 +1601,7 @@ onMounted(async () => {
     await fetchCurrentEmployee()
     await Promise.all([
       fetchMySkills(),
+      fetchPositionRequiredSkills(),
       fetchPoints(),
       fetchMentorshipRequests(),
       performanceStore.fetchGoals(),
