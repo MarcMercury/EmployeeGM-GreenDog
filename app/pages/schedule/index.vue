@@ -1,19 +1,46 @@
 <template>
   <div class="schedule-command-center">
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-4">
+    <div class="d-flex flex-wrap align-center justify-space-between mb-4 gap-2">
       <div>
         <h1 class="text-h5 font-weight-bold mb-1">Schedule Command Center</h1>
         <p class="text-body-2 text-grey-darken-1 mb-0">
           Week of {{ formatWeekRange(currentWeekStart) }} • {{ totalShiftsThisWeek }} shifts scheduled
         </p>
       </div>
-      <div class="d-flex align-center gap-2">
+      <div class="d-flex flex-wrap align-center gap-2">
         <v-btn-group density="compact" variant="outlined">
           <v-btn icon="mdi-chevron-left" size="small" @click="changeWeek(-1)" />
           <v-btn size="small" @click="goToThisWeek">Today</v-btn>
           <v-btn icon="mdi-chevron-right" size="small" @click="changeWeek(1)" />
         </v-btn-group>
+        
+        <!-- Quick Actions Menu -->
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn variant="outlined" size="small" v-bind="props">
+              <v-icon start>mdi-plus</v-icon>
+              Build Schedule
+              <v-icon end>mdi-chevron-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item to="/schedule/wizard" prepend-icon="mdi-wizard-hat">
+              <v-list-item-title>Schedule Wizard</v-list-item-title>
+              <v-list-item-subtitle>Step-by-step service-based builder</v-list-item-subtitle>
+            </v-list-item>
+            <v-list-item to="/schedule/builder" prepend-icon="mdi-grid">
+              <v-list-item-title>Quick Builder</v-list-item-title>
+              <v-list-item-subtitle>Drag-and-drop shift editor</v-list-item-subtitle>
+            </v-list-item>
+            <v-divider />
+            <v-list-item to="/schedule/services" prepend-icon="mdi-cog">
+              <v-list-item-title>Service Settings</v-list-item-title>
+              <v-list-item-subtitle>Configure staffing requirements</v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+        
         <v-btn
           color="primary"
           size="small"

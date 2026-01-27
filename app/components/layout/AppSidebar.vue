@@ -117,7 +117,9 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/schedule" title="Team Schedule" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasRecruitingAccess" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
