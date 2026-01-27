@@ -791,6 +791,7 @@ Track major updates to this file for AI context continuity.
 | Jan 2026 | Scheduling System | Added Phase 5B: template schedules - save and apply reusable week templates |
 | Jan 2026 | Scheduling System | Added Phase 5C: AI schedule suggestions using OpenAI for smart shift filling |
 | Jan 2026 | Scheduling System | Added Phase 5D: time-off request enhancements - conflict detection and Slack notifications |
+| Jan 2026 | Scheduling Audit | Fixed Activity Hub shifts query (uses 'shifts' table), added notification triggers, attendance auto-population, reliability in AI |
 | Jan 2026 | Error Protocol | Added COMPREHENSIVE ERROR FIXING PROTOCOL - audit connected code + search codebase for patterns |
 
 ### How to Update This File

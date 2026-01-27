@@ -558,18 +558,30 @@ async function fetchPersonalData() {
     const today = new Date().toISOString().split('T')[0]
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     
-    // Fetch upcoming shifts
+    // Fetch upcoming shifts from the shifts table
     try {
-      const { data: shifts } = await supabase
-        .from('schedule_entries')
-        .select('*, shift_template:shift_templates(*)')
-        .eq('employee_id', userId)
-        .gte('date', today)
-        .lte('date', nextWeek)
-        .order('date', { ascending: true })
-        .limit(5)
+      // First try to get employee_id from employees table using profile_id
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('profile_id', userId)
+        .single()
       
-      myUpcomingShifts.value = shifts || []
+      if (empData?.id) {
+        const { data: shifts } = await supabase
+          .from('shifts')
+          .select('id, start_at, end_at, status, location:locations(name)')
+          .eq('employee_id', empData.id)
+          .in('status', ['published', 'scheduled'])
+          .gte('start_at', `${today}T00:00:00`)
+          .lte('start_at', `${nextWeek}T23:59:59`)
+          .order('start_at', { ascending: true })
+          .limit(5)
+        
+        myUpcomingShifts.value = shifts || []
+      } else {
+        myUpcomingShifts.value = []
+      }
     } catch {
       myUpcomingShifts.value = []
     }

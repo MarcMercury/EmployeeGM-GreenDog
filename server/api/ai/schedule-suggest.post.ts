@@ -205,12 +205,55 @@ async function getAvailableEmployees(client: any, departmentId?: string, locatio
     return []
   }
 
+  // Fetch reliability scores for all employees
+  const employeeIds = data.map((emp: any) => emp.id)
+  const reliabilityScores = await getReliabilityScores(client, employeeIds)
+
   return data.map((emp: any) => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
     skills: emp.employee_skills?.map((s: any) => s.skill_library?.name).filter(Boolean) || [],
+    reliabilityScore: reliabilityScores[emp.id] ?? 100,
     preferences: {} // Could be enhanced with actual preferences
   }))
+}
+
+/**
+ * Get reliability scores for employees from attendance data
+ */
+async function getReliabilityScores(client: any, employeeIds: string[]): Promise<Record<string, number>> {
+  const scores: Record<string, number> = {}
+  const lookbackDays = 90
+  const cutoffDate = new Date()
+  cutoffDate.setDate(cutoffDate.getDate() - lookbackDays)
+
+  // Try to get from attendance table
+  const { data: attendanceData } = await client
+    .from('attendance')
+    .select('employee_id, penalty_weight')
+    .in('employee_id', employeeIds)
+    .gte('shift_date', cutoffDate.toISOString().split('T')[0])
+
+  if (attendanceData && attendanceData.length > 0) {
+    // Group by employee and calculate score
+    const groupedByEmployee: Record<string, { total: number; penalty: number }> = {}
+    
+    for (const record of attendanceData) {
+      if (!groupedByEmployee[record.employee_id]) {
+        groupedByEmployee[record.employee_id] = { total: 0, penalty: 0 }
+      }
+      groupedByEmployee[record.employee_id].total++
+      groupedByEmployee[record.employee_id].penalty += (record.penalty_weight || 0)
+    }
+    
+    for (const [empId, data] of Object.entries(groupedByEmployee)) {
+      if (data.total > 0) {
+        scores[empId] = Math.round(100 - (data.penalty / data.total * 100))
+      }
+    }
+  }
+
+  return scores
 }
 
 async function getShiftRequirements(client: any, weekStart: string, departmentId?: string) {
@@ -253,11 +296,20 @@ function buildSchedulingPrompt(
   recentData: any,
   weekStart: string
 ): string {
+  // Format employees with reliability info
+  const employeeInfo = employees.map(emp => ({
+    id: emp.id,
+    name: emp.name,
+    skills: emp.skills,
+    reliabilityScore: emp.reliabilityScore,
+    preferences: emp.preferences
+  }))
+
   return `
 Generate an optimal schedule for the week starting ${weekStart}.
 
 ## Available Employees
-${JSON.stringify(employees, null, 2)}
+${JSON.stringify(employeeInfo, null, 2)}
 
 ## Shift Requirements
 ${JSON.stringify(requirements, null, 2)}
@@ -271,6 +323,7 @@ ${JSON.stringify(recentData.weekendCounts, null, 2)}
 3. Distribute weekend shifts fairly (prioritize those with fewer recent weekend shifts)
 4. Each employee should work 32-40 hours per week
 5. Avoid scheduling the same person for closing (ends after 20:00) then opening (starts before 08:00) the next day
+6. RELIABILITY SCORES: Consider reliability scores when assigning shifts. Employees with higher reliability (90+) are more dependable. For critical shifts, prefer employees with higher reliability. Factor reliability into your confidence score.
 
 ## Required Response Format
 {
