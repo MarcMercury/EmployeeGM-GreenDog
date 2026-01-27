@@ -575,12 +575,8 @@ const closeMobileMenu = () => {
                   Skills Management
                 </NuxtLink>
                 <NuxtLink to="/admin/system-health" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🏥</div>
-                  System Health
-                </NuxtLink>
-                <NuxtLink to="/settings" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-slate-500/20">🌐</div>
-                  Global Settings
+                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">⚙️</div>
+                  System Settings
                 </NuxtLink>
               </div>
             </div>

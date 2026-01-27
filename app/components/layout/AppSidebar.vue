@@ -199,7 +199,7 @@
         <v-list-item to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/admin/system-health" title="System Settings" prepend-icon="mdi-cog" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasAdminAccess" to="/settings" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasAdminAccess" to="/admin/system-health" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
     </v-list>
 
     <template #append>
