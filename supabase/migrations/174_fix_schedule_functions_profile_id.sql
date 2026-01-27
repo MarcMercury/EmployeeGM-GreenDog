@@ -100,7 +100,7 @@ BEGIN
       AND ea.day_of_week = EXTRACT(DOW FROM v_slot.slot_date)
       AND (ea.effective_from IS NULL OR ea.effective_from <= v_slot.slot_date)
       AND (ea.effective_until IS NULL OR ea.effective_until >= v_slot.slot_date)
-    WHERE e.employment_status = 'Active'
+    WHERE e.employment_status = 'active'
       AND NOT EXISTS (
         SELECT 1 FROM draft_slots ds2
         WHERE ds2.draft_id = p_draft_id
@@ -286,7 +286,7 @@ BEGIN
         END)
         FROM attendance a
         WHERE a.employee_id = e.id
-        AND a.date > CURRENT_DATE - 90),
+        AND a.shift_date > CURRENT_DATE - 90),
         85
       ) as reliability,
       -- Get availability for this day of week
@@ -324,7 +324,7 @@ BEGIN
       ) as pref_level
     FROM employees e
     LEFT JOIN job_positions jp ON e.position_id = jp.id
-    WHERE e.employment_status = 'Active'
+    WHERE e.employment_status = 'active'
   )
   SELECT 
     ed.id,
