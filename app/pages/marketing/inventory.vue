@@ -16,6 +16,8 @@ interface InventoryItem {
   quantity_venice: number
   quantity_sherman_oaks: number
   quantity_valley: number
+  quantity_mpmv: number
+  quantity_offsite: number
   boxes_on_hand: number | null
   units_per_box: number | null
   total_quantity: number
@@ -111,6 +113,8 @@ const formData = ref({
   quantity_venice: 0,
   quantity_sherman_oaks: 0,
   quantity_valley: 0,
+  quantity_mpmv: 0,
+  quantity_offsite: 0,
   boxes_on_hand: null as number | null,
   units_per_box: null as number | null,
   reorder_point: 100,
@@ -130,6 +134,8 @@ function openAddDialog() {
     quantity_venice: 0,
     quantity_sherman_oaks: 0,
     quantity_valley: 0,
+    quantity_mpmv: 0,
+    quantity_offsite: 0,
     boxes_on_hand: null,
     units_per_box: null,
     reorder_point: 100,
@@ -151,6 +157,8 @@ function openEditDialog(item: InventoryItem) {
     quantity_venice: item.quantity_venice,
     quantity_sherman_oaks: item.quantity_sherman_oaks,
     quantity_valley: item.quantity_valley,
+    quantity_mpmv: item.quantity_mpmv,
+    quantity_offsite: item.quantity_offsite,
     boxes_on_hand: item.boxes_on_hand,
     units_per_box: item.units_per_box,
     reorder_point: item.reorder_point,
@@ -171,6 +179,8 @@ async function saveItem() {
     quantity_venice: formData.value.quantity_venice,
     quantity_sherman_oaks: formData.value.quantity_sherman_oaks,
     quantity_valley: formData.value.quantity_valley,
+    quantity_mpmv: formData.value.quantity_mpmv,
+    quantity_offsite: formData.value.quantity_offsite,
     boxes_on_hand: formData.value.boxes_on_hand,
     units_per_box: formData.value.units_per_box,
     reorder_point: formData.value.reorder_point,
@@ -208,7 +218,7 @@ async function deleteItem(id: string) {
 }
 
 // Quick update quantity
-async function updateQuantity(item: InventoryItem, location: 'venice' | 'sherman_oaks' | 'valley', delta: number) {
+async function updateQuantity(item: InventoryItem, location: 'venice' | 'sherman_oaks' | 'valley' | 'mpmv' | 'offsite', delta: number) {
   const field = `quantity_${location}` as keyof InventoryItem
   const currentValue = item[field] as number
   const newValue = Math.max(0, currentValue + delta)
@@ -374,6 +384,8 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
             <th class="text-center">Venice</th>
             <th class="text-center">Sherman Oaks</th>
             <th class="text-center">Valley</th>
+            <th class="text-center">MPMV</th>
+            <th class="text-center">Off-Site</th>
             <th class="text-center">Total</th>
             <th class="text-center">Reorder Point</th>
             <th class="text-center">Status</th>
@@ -472,6 +484,56 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
                   variant="text"
                   size="x-small"
                   @click.stop="updateQuantity(item, 'valley', 10)"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </td>
+            
+            <!-- MPMV (Mobile) -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'mpmv', -10)"
+                >
+                  <v-icon>mdi-minus</v-icon>
+                </v-btn>
+                <span class="mx-2 font-weight-medium" style="min-width: 40px;">
+                  {{ item.quantity_mpmv }}
+                </span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'mpmv', 10)"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </td>
+            
+            <!-- Off-Site -->
+            <td class="text-center">
+              <div class="d-flex align-center justify-center">
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'offsite', -10)"
+                >
+                  <v-icon>mdi-minus</v-icon>
+                </v-btn>
+                <span class="mx-2 font-weight-medium" style="min-width: 40px;">
+                  {{ item.quantity_offsite }}
+                </span>
+                <v-btn
+                  icon
+                  variant="text"
+                  size="x-small"
+                  @click.stop="updateQuantity(item, 'offsite', 10)"
                 >
                   <v-icon>mdi-plus</v-icon>
                 </v-btn>
@@ -618,6 +680,24 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
                 variant="outlined"
                 type="number"
                 prepend-inner-icon="mdi-terrain"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="formData.quantity_mpmv"
+                label="MPMV (Mobile)"
+                variant="outlined"
+                type="number"
+                prepend-inner-icon="mdi-van-utility"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="formData.quantity_offsite"
+                label="Off-Site"
+                variant="outlined"
+                type="number"
+                prepend-inner-icon="mdi-map-marker-outline"
               />
             </v-col>
             

@@ -280,7 +280,9 @@ const locationOptions = [
   { title: 'Venice', value: 'Venice' },
   { title: 'The Valley', value: 'The Valley' },
   { title: 'Sherman Oaks', value: 'Sherman Oaks' },
-  { title: 'Aetna', value: 'Aetna' }
+  { title: 'Aetna', value: 'Aetna' },
+  { title: 'MPMV (Mobile)', value: 'MPMV' },
+  { title: 'Off-Site', value: 'Off-Site' }
 ]
 
 const departmentOptions = [
