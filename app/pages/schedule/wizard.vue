@@ -119,6 +119,7 @@ interface DashboardLocation {
 // Composables
 const supabase = useSupabaseClient()
 const toast = useToast()
+const route = useRoute()
 const { employees, locations } = useAppData()
 
 // Wizard state
@@ -439,6 +440,54 @@ async function createDraftAndProceed() {
   } finally {
     isLoading.value = false
   }
+}
+
+// Load existing draft for a week/location (if one exists)
+async function loadExistingDraft(weekStart: Date, locationId: string) {
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd')
+  
+  const { data, error } = await supabase
+    .from('schedule_drafts')
+    .select('*')
+    .eq('location_id', locationId)
+    .eq('week_start', weekStartStr)
+    .neq('status', 'archived')
+    .single()
+  
+  if (error || !data) {
+    // No existing draft - stay on step 1
+    return false
+  }
+  
+  // Found existing draft - load its data
+  draftId.value = data.id
+  
+  // Restore the service days matrix
+  if (data.service_days_matrix && Object.keys(data.service_days_matrix).length > 0) {
+    serviceDaysMatrix.value = data.service_days_matrix
+  } else if (data.selected_service_ids && data.operational_days) {
+    // Fallback: rebuild matrix from old format (all services on all days)
+    const matrix: Record<string, string[]> = {}
+    for (const day of data.operational_days) {
+      matrix[day.toString()] = [...data.selected_service_ids]
+    }
+    serviceDaysMatrix.value = matrix
+  }
+  
+  // Load the draft slots
+  await loadDraftSlots()
+  
+  // Determine which step to go to based on draft status
+  if (data.status === 'validated') {
+    currentStep.value = 3  // Go to validation step
+  } else if (draftSlots.value.length > 0) {
+    currentStep.value = 2  // Has slots, go to staffing
+  } else {
+    currentStep.value = 1  // No slots yet, stay on scope
+  }
+  
+  toast.info(`Loaded existing draft for ${format(weekStart, 'MMM d, yyyy')}`)
+  return true
 }
 
 // Load draft slots
@@ -973,9 +1022,22 @@ onMounted(async () => {
   isLoading.value = true
   await Promise.all([loadServices(), loadStaffingRequirements()])
   
-  // Set default location
-  if (locations.value?.length && !selectedLocationId.value) {
-    selectedLocationId.value = locations.value[0].id
+  // Check for URL query params (coming from Command Center)
+  const queryWeek = route.query.week as string | undefined
+  const queryLocation = route.query.location as string | undefined
+  
+  if (queryWeek && queryLocation) {
+    // Set the week and location from query params
+    selectedWeekStart.value = parseISO(queryWeek)
+    selectedLocationId.value = queryLocation
+    
+    // Try to load existing draft for this week/location
+    await loadExistingDraft(selectedWeekStart.value, queryLocation)
+  } else {
+    // No query params - use defaults
+    if (locations.value?.length && !selectedLocationId.value) {
+      selectedLocationId.value = locations.value[0].id
+    }
   }
   
   isLoading.value = false
