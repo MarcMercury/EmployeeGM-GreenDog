@@ -143,6 +143,19 @@ const selectorDialog = ref(false)
 const selectedSlot = ref<DraftSlot | null>(null)
 const availableEmployees = ref<AvailableEmployee[]>([])
 const isLoadingEmployees = ref(false)
+const employeeSearch = ref('')
+
+// Filtered employees based on search
+const filteredEmployees = computed(() => {
+  const search = employeeSearch.value.toLowerCase().trim()
+  if (!search) return availableEmployees.value
+  
+  return availableEmployees.value.filter(emp => {
+    const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase()
+    const position = (emp.position_title || '').toLowerCase()
+    return fullName.includes(search) || position.includes(search)
+  })
+})
 
 // Quick action states
 const isCopyingWeek = ref(false)
@@ -1536,7 +1549,7 @@ onMounted(async () => {
     </template>
 
     <!-- Employee Selector Dialog -->
-    <v-dialog v-model="selectorDialog" max-width="600">
+    <v-dialog v-model="selectorDialog" max-width="600" @after-leave="employeeSearch = ''">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-account-search</v-icon>
@@ -1549,13 +1562,35 @@ onMounted(async () => {
         
         <v-divider />
         
+        <!-- Search Field -->
+        <div class="px-4 pt-4">
+          <v-text-field
+            v-model="employeeSearch"
+            placeholder="Search by name or position..."
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+            autofocus
+            @keydown.esc="selectorDialog = false"
+          />
+        </div>
+        
         <v-card-text v-if="isLoadingEmployees" class="text-center py-8">
           <v-progress-circular indeterminate color="primary" />
         </v-card-text>
         
-        <v-list v-else lines="three" class="py-0">
+        <v-list v-else lines="three" class="py-0" style="max-height: 400px; overflow-y: auto;">
+          <template v-if="filteredEmployees.length === 0">
+            <v-list-item>
+              <v-list-item-title class="text-center text-grey">
+                No employees match "{{ employeeSearch }}"
+              </v-list-item-title>
+            </v-list-item>
+          </template>
           <v-list-item
-            v-for="emp in availableEmployees"
+            v-for="emp in filteredEmployees"
             :key="emp.employee_id"
             :disabled="!emp.is_available"
             @click="emp.is_available && assignEmployee(emp.employee_id)"
