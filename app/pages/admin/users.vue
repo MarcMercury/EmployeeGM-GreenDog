@@ -1505,7 +1505,7 @@ const accessMatrixSections: AccessMatrixSection[] = [
     icon: 'mdi-clipboard-text',
     pages: [
       { 
-        name: 'Contact List', 
+        name: 'Roster', 
         path: '/roster', 
         icon: 'mdi-account-group',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }

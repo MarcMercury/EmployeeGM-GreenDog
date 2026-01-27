@@ -99,7 +99,7 @@ export function useAccessMatrix() {
       'Admin Ops': 'mdi-cog',
       'Recruiting': 'mdi-account-search',
       'Dashboard & Profile': 'mdi-view-dashboard',
-      'Contact List': 'mdi-badge-account-horizontal',
+      'Roster': 'mdi-badge-account-horizontal',
       'Operations': 'mdi-calendar',
       'GDU (Education)': 'mdi-school',
       'Admin & Settings': 'mdi-cog'

@@ -237,7 +237,7 @@ const closeMobileMenu = () => {
             <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group justify-center" title="Marketplace">
               <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
             </NuxtLink>
-            <NuxtLink to="/roster" class="nav-link group justify-center" title="Contact List">
+            <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
             </NuxtLink>
             <NuxtLink to="/profile" class="nav-link group justify-center" title="Profile">
@@ -296,6 +296,10 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-orange-500/20">🎓</div>
                 My Training
               </NuxtLink>
+              <NuxtLink to="/contact-list" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">📇</div>
+                Contact List
+              </NuxtLink>
             </div>
           </div>
 
@@ -318,7 +322,7 @@ const closeMobileMenu = () => {
               <div class="section-content" :class="{ 'section-open': sections.management }">
                 <NuxtLink to="/roster" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
-                  Contact List
+                  Roster
                 </NuxtLink>
                 <NuxtLink to="/skills-library" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>

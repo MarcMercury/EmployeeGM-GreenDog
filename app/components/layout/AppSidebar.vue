@@ -80,7 +80,7 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/roster" title="Contact List" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/roster" title="Roster" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
