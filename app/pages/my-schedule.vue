@@ -78,14 +78,15 @@
     <v-window v-model="activeTab">
       <!-- SCHEDULE TAB -->
       <v-window-item value="schedule">
-        <v-row>
-          <!-- Time Clock -->
-          <v-col cols="12" md="4">
+        <!-- Mobile-first: Time Clock on top, then shifts -->
+        <v-row class="schedule-row">
+          <!-- Time Clock - Full width on mobile first -->
+          <v-col cols="12" md="4" order="1" order-md="1">
             <OperationsTimeClock />
           </v-col>
 
-          <!-- Upcoming Shifts -->
-          <v-col cols="12" md="8">
+          <!-- Upcoming Shifts - Below time clock on mobile -->
+          <v-col cols="12" md="8" order="2" order-md="2">
             <OperationsUpcomingShifts 
               @request-swap="openSwapDialog"
               @request-drop="openDropDialog"
@@ -1150,6 +1151,19 @@ onMounted(async () => {
   margin-bottom: 24px;
 }
 
+/* Mobile page header */
+@media (max-width: 599px) {
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .page-header h1 {
+    font-size: 1.5rem !important;
+  }
+}
+
 /* Horizontal scrollable stats on mobile */
 .stats-scroll {
   overflow-x: auto;
@@ -1182,6 +1196,30 @@ onMounted(async () => {
   }
 }
 
+/* Mobile tab improvements */
+@media (max-width: 599px) {
+  :deep(.v-tabs) {
+    padding: 0 4px;
+  }
+  
+  :deep(.v-tab) {
+    min-width: 0;
+    padding: 0 12px;
+  }
+}
+
+/* Schedule row mobile spacing */
+.schedule-row {
+  gap: 16px 0;
+}
+
+@media (max-width: 959px) {
+  .schedule-row > .v-col {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
 /* PTO Types Grid */
 .pto-types-grid {
   display: grid;
@@ -1199,5 +1237,32 @@ onMounted(async () => {
   text-align: center;
   padding: 12px 8px;
   border-radius: 8px;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 599px) {
+  :deep(.v-list-item) {
+    min-height: 56px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  
+  :deep(.v-btn) {
+    min-height: 44px;
+  }
+  
+  :deep(.v-chip-group) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+}
+
+/* Pull-to-refresh indicator area */
+.schedule-row::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 0;
+  transition: height 0.2s;
 }
 </style>
