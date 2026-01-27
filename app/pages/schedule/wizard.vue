@@ -81,6 +81,7 @@ interface ValidationResult {
   coverage_score: number
   total_slots: number
   filled_slots: number
+  required_unfilled: number
   is_valid: boolean
 }
 
@@ -1530,42 +1531,44 @@ onMounted(async () => {
             <v-card rounded="lg" class="h-100">
               <v-card-title class="d-flex align-center">
                 <v-icon 
-                  :color="validationResult?.is_valid ? 'success' : 'error'" 
+                  :color="validationResult?.is_valid ? 'success' : 'warning'" 
                   class="mr-2"
                 >
                   {{ validationResult?.is_valid ? 'mdi-check-circle' : 'mdi-alert-circle' }}
                 </v-icon>
-                Validation Results
+                Schedule Summary
               </v-card-title>
               <v-card-text>
-                <!-- Coverage Score -->
+                <!-- Staffing Summary -->
                 <div class="text-center mb-6">
                   <v-progress-circular
                     :model-value="validationResult?.coverage_score || 0"
                     :size="120"
                     :width="12"
-                    :color="(validationResult?.coverage_score || 0) >= 80 ? 'success' : (validationResult?.coverage_score || 0) >= 50 ? 'warning' : 'error'"
+                    :color="(validationResult?.coverage_score || 0) >= 80 ? 'success' : (validationResult?.coverage_score || 0) >= 50 ? 'warning' : 'grey'"
                   >
                     <div class="text-h4 font-weight-bold">
                       {{ Math.round(validationResult?.coverage_score || 0) }}%
                     </div>
                   </v-progress-circular>
-                  <div class="text-body-2 text-grey mt-2">Coverage Score</div>
+                  <div class="text-body-2 text-grey mt-2">Staffing Coverage</div>
                   <div class="text-caption">
-                    {{ validationResult?.filled_slots }} of {{ validationResult?.total_slots }} slots filled
+                    {{ validationResult?.filled_slots || 0 }} of {{ validationResult?.total_slots || 0 }} slots assigned
                   </div>
                 </div>
 
                 <!-- Status -->
                 <v-alert
-                  :type="validationResult?.is_valid ? 'success' : 'error'"
+                  :type="validationResult?.is_valid ? 'success' : 'warning'"
                   variant="tonal"
                   class="mb-4"
                 >
-                  {{ validationResult?.is_valid 
-                    ? 'Schedule is ready to publish!' 
-                    : 'Please fix the errors before publishing.' 
-                  }}
+                  <template v-if="validationResult?.is_valid">
+                    <strong>Ready to publish!</strong> All required positions are filled.
+                  </template>
+                  <template v-else>
+                    <strong>{{ validationResult?.required_unfilled || 0 }} required position(s)</strong> still need to be filled before publishing.
+                  </template>
                 </v-alert>
               </v-card-text>
             </v-card>
@@ -1573,31 +1576,17 @@ onMounted(async () => {
 
           <v-col cols="12" md="6">
             <v-card rounded="lg" class="h-100">
-              <v-card-title>Issues Found</v-card-title>
+              <v-card-title>Alerts & Warnings</v-card-title>
               <v-card-text>
-                <!-- Errors -->
-                <div v-if="validationResult?.errors?.length" class="mb-4">
-                  <div class="text-subtitle-2 text-error mb-2">
-                    <v-icon size="16" color="error" class="mr-1">mdi-close-circle</v-icon>
-                    {{ validationResult.errors.length }} Error(s)
-                  </div>
-                  <v-list density="compact" class="bg-transparent">
-                    <v-list-item
-                      v-for="(err, idx) in validationResult.errors"
-                      :key="idx"
-                      class="px-0"
-                    >
-                      <template #prepend>
-                        <v-icon color="error" size="small">mdi-alert</v-icon>
-                      </template>
-                      <v-list-item-title class="text-body-2">
-                        {{ err.message }}
-                      </v-list-item-title>
-                    </v-list-item>
-                  </v-list>
+                <!-- Required Unfilled - Main blocking issue -->
+                <div v-if="validationResult?.required_unfilled > 0" class="mb-4">
+                  <v-alert type="error" variant="tonal" class="mb-2">
+                    <strong>{{ validationResult.required_unfilled }} required position(s) unfilled</strong>
+                    <div class="text-caption mt-1">Go back to Staffing to assign employees</div>
+                  </v-alert>
                 </div>
 
-                <!-- Warnings -->
+                <!-- Warnings (overtime, consecutive days, etc) -->
                 <div v-if="validationResult?.warnings?.length">
                   <div class="text-subtitle-2 text-warning mb-2">
                     <v-icon size="16" color="warning" class="mr-1">mdi-alert-outline</v-icon>
@@ -1619,10 +1608,16 @@ onMounted(async () => {
                   </v-list>
                 </div>
 
-                <!-- No Issues -->
-                <div v-if="!validationResult?.errors?.length && !validationResult?.warnings?.length" class="text-center py-4">
+                <!-- All Good -->
+                <div v-if="validationResult?.is_valid && !validationResult?.warnings?.length" class="text-center py-4">
                   <v-icon size="48" color="success">mdi-check-decagram</v-icon>
-                  <p class="text-body-2 text-grey mt-2">No issues found!</p>
+                  <p class="text-body-2 text-grey mt-2">All positions filled, no warnings!</p>
+                </div>
+                
+                <!-- Valid but with warnings -->
+                <div v-else-if="validationResult?.is_valid && validationResult?.warnings?.length" class="text-center py-4 mt-4">
+                  <v-icon size="32" color="success">mdi-check-circle</v-icon>
+                  <p class="text-body-2 text-grey mt-1">Warnings won't block publishing</p>
                 </div>
               </v-card-text>
             </v-card>
