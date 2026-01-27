@@ -365,7 +365,8 @@ async function loadDraftSlots() {
         employee:employee_id(first_name, last_name)
       `)
       .eq('draft_id', draftId.value)
-      .order('slot_date, priority, sort_order')
+      .order('slot_date')
+      .order('priority')
     
     if (error) throw error
     draftSlots.value = data || []
