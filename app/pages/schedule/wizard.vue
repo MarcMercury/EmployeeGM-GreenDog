@@ -128,8 +128,23 @@ const isSaving = ref(false)
 // Step 1: Scope
 const selectedWeekStart = ref(startOfWeek(new Date(), { weekStartsOn: 0 }))
 const selectedLocationId = ref<string | null>(null)
-const operationalDays = ref<number[]>([1, 2, 3, 4, 5]) // Mon-Fri default
-const selectedServiceIds = ref<string[]>([])
+// serviceDaysMatrix: { "0": ["service-id-1"], "1": ["service-id-1", "service-id-2"], ... }
+// Key is day of week (0=Sun, 6=Sat), value is array of service IDs
+const serviceDaysMatrix = ref<Record<string, string[]>>({})
+// Computed from matrix for backward compatibility
+const operationalDays = computed(() => {
+  return Object.keys(serviceDaysMatrix.value)
+    .filter(day => serviceDaysMatrix.value[day]?.length > 0)
+    .map(day => parseInt(day))
+    .sort((a, b) => a - b)
+})
+const selectedServiceIds = computed(() => {
+  const allIds = new Set<string>()
+  Object.values(serviceDaysMatrix.value).forEach(ids => {
+    ids.forEach(id => allIds.add(id))
+  })
+  return Array.from(allIds)
+})
 
 // Data
 const services = ref<Service[]>([])
@@ -303,35 +318,93 @@ function goToThisWeek() {
   selectedWeekStart.value = startOfWeek(new Date(), { weekStartsOn: 0 })
 }
 
-// Toggle day
-function toggleDay(day: number) {
-  const idx = operationalDays.value.indexOf(day)
+// Toggle service on a specific day in the matrix
+function toggleServiceDay(day: number, serviceId: string) {
+  const dayKey = day.toString()
+  if (!serviceDaysMatrix.value[dayKey]) {
+    serviceDaysMatrix.value[dayKey] = []
+  }
+  
+  const idx = serviceDaysMatrix.value[dayKey].indexOf(serviceId)
   if (idx >= 0) {
-    operationalDays.value.splice(idx, 1)
+    serviceDaysMatrix.value[dayKey].splice(idx, 1)
+    // Clean up empty days
+    if (serviceDaysMatrix.value[dayKey].length === 0) {
+      delete serviceDaysMatrix.value[dayKey]
+    }
   } else {
-    operationalDays.value.push(day)
-    operationalDays.value.sort()
+    serviceDaysMatrix.value[dayKey].push(serviceId)
   }
 }
 
-// Toggle service
-function toggleService(serviceId: string) {
-  const idx = selectedServiceIds.value.indexOf(serviceId)
-  if (idx >= 0) {
-    selectedServiceIds.value.splice(idx, 1)
+// Check if a service is enabled for a specific day
+function isServiceEnabledForDay(day: number, serviceId: string): boolean {
+  return serviceDaysMatrix.value[day.toString()]?.includes(serviceId) || false
+}
+
+// Toggle all services for a day (column toggle)
+function toggleAllServicesForDay(day: number) {
+  const dayKey = day.toString()
+  const allServiceIds = services.value.map(s => s.id)
+  const currentDayServices = serviceDaysMatrix.value[dayKey] || []
+  
+  if (currentDayServices.length === allServiceIds.length) {
+    // All selected, clear the day
+    delete serviceDaysMatrix.value[dayKey]
   } else {
-    selectedServiceIds.value.push(serviceId)
+    // Select all services for this day
+    serviceDaysMatrix.value[dayKey] = [...allServiceIds]
   }
 }
 
-// Select all services
-function selectAllServices() {
-  selectedServiceIds.value = services.value.map(s => s.id)
+// Toggle a service for all days (row toggle)
+function toggleServiceAllDays(serviceId: string) {
+  const allDays = [0, 1, 2, 3, 4, 5, 6]
+  const daysWithService = allDays.filter(day => 
+    serviceDaysMatrix.value[day.toString()]?.includes(serviceId)
+  )
+  
+  if (daysWithService.length === allDays.length) {
+    // Service is on all days, remove from all
+    allDays.forEach(day => {
+      const dayKey = day.toString()
+      if (serviceDaysMatrix.value[dayKey]) {
+        const idx = serviceDaysMatrix.value[dayKey].indexOf(serviceId)
+        if (idx >= 0) {
+          serviceDaysMatrix.value[dayKey].splice(idx, 1)
+          if (serviceDaysMatrix.value[dayKey].length === 0) {
+            delete serviceDaysMatrix.value[dayKey]
+          }
+        }
+      }
+    })
+  } else {
+    // Add service to all days
+    allDays.forEach(day => {
+      const dayKey = day.toString()
+      if (!serviceDaysMatrix.value[dayKey]) {
+        serviceDaysMatrix.value[dayKey] = []
+      }
+      if (!serviceDaysMatrix.value[dayKey].includes(serviceId)) {
+        serviceDaysMatrix.value[dayKey].push(serviceId)
+      }
+    })
+  }
 }
 
-// Clear all services
-function clearAllServices() {
-  selectedServiceIds.value = []
+// Quick select: Weekdays (Mon-Fri) for all services
+function selectWeekdaysAllServices() {
+  const weekdays = [1, 2, 3, 4, 5]
+  const allServiceIds = services.value.map(s => s.id)
+  serviceDaysMatrix.value = {}
+  weekdays.forEach(day => {
+    serviceDaysMatrix.value[day.toString()] = [...allServiceIds]
+  })
+}
+
+// Clear all selections
+function clearAllSelections() {
+  serviceDaysMatrix.value = {}
 }
 
 // Create draft and move to step 2
@@ -340,12 +413,13 @@ async function createDraftAndProceed() {
   
   isLoading.value = true
   try {
-    // Call RPC to create/update draft
+    // Call RPC to create/update draft with the service-days matrix
     const { data, error } = await supabase.rpc('create_schedule_draft', {
       p_location_id: selectedLocationId.value,
       p_week_start: format(selectedWeekStart.value, 'yyyy-MM-dd'),
       p_operational_days: operationalDays.value,
-      p_service_ids: selectedServiceIds.value
+      p_service_ids: selectedServiceIds.value,
+      p_service_days_matrix: serviceDaysMatrix.value
     })
     
     if (error) throw error
@@ -1107,7 +1181,7 @@ onMounted(async () => {
           </v-col>
 
           <!-- Location Selection -->
-          <v-col cols="12" md="4">
+          <v-col cols="12" md="8">
             <v-card rounded="lg" class="h-100">
               <v-card-title class="text-subtitle-1">
                 <v-icon start color="primary">mdi-map-marker</v-icon>
@@ -1128,71 +1202,121 @@ onMounted(async () => {
             </v-card>
           </v-col>
 
-          <!-- Operational Days -->
-          <v-col cols="12" md="4">
-            <v-card rounded="lg" class="h-100">
-              <v-card-title class="text-subtitle-1">
-                <v-icon start color="primary">mdi-calendar-check</v-icon>
-                Operational Days
-              </v-card-title>
-              <v-card-text>
-                <div class="d-flex flex-wrap gap-2">
-                  <v-chip
-                    v-for="(label, idx) in dayLabels"
-                    :key="idx"
-                    :color="operationalDays.includes(idx) ? 'primary' : 'grey'"
-                    :variant="operationalDays.includes(idx) ? 'flat' : 'outlined'"
-                    @click="toggleDay(idx)"
-                    class="cursor-pointer"
-                  >
-                    {{ label }}
-                  </v-chip>
-                </div>
-                <p class="text-caption text-grey mt-3">
-                  {{ operationalDays.length }} days selected
-                </p>
-              </v-card-text>
-            </v-card>
-          </v-col>
-
-          <!-- Services Selection -->
+          <!-- Service-Day Matrix Grid -->
           <v-col cols="12">
             <v-card rounded="lg">
               <v-card-title class="d-flex align-center justify-space-between">
                 <span class="text-subtitle-1">
-                  <v-icon start color="primary">mdi-medical-bag</v-icon>
-                  Select Services to Staff
+                  <v-icon start color="primary">mdi-grid</v-icon>
+                  Service Schedule Matrix
                 </span>
                 <div class="d-flex gap-2">
-                  <v-btn size="small" variant="text" @click="selectAllServices">Select All</v-btn>
-                  <v-btn size="small" variant="text" color="grey" @click="clearAllServices">Clear</v-btn>
+                  <v-btn size="small" variant="tonal" color="primary" @click="selectWeekdaysAllServices">
+                    <v-icon start size="16">mdi-calendar-week</v-icon>
+                    Mon-Fri All
+                  </v-btn>
+                  <v-btn size="small" variant="text" color="grey" @click="clearAllSelections">
+                    <v-icon start size="16">mdi-eraser</v-icon>
+                    Clear All
+                  </v-btn>
                 </div>
               </v-card-title>
               <v-card-text>
-                <div class="services-grid">
-                  <v-card
-                    v-for="service in services"
-                    :key="service.id"
-                    :color="selectedServiceIds.includes(service.id) ? 'primary' : undefined"
-                    :variant="selectedServiceIds.includes(service.id) ? 'tonal' : 'outlined'"
-                    rounded="lg"
-                    class="service-card cursor-pointer"
-                    @click="toggleService(service.id)"
-                  >
-                    <v-card-text class="text-center pa-3">
-                      <v-icon :color="service.color" size="32" class="mb-2">
-                        {{ service.icon || 'mdi-medical-bag' }}
-                      </v-icon>
-                      <div class="text-body-2 font-weight-medium">{{ service.name }}</div>
-                      <div class="text-caption text-grey">
-                        {{ service.requires_dvm ? 'Requires DVM' : 'No DVM' }}
-                      </div>
-                    </v-card-text>
-                  </v-card>
+                <p class="text-body-2 text-grey mb-4">
+                  Check the boxes to select which services should be staffed on each day of the week.
+                </p>
+                
+                <!-- Matrix Grid -->
+                <div class="scope-matrix-wrapper">
+                  <table class="scope-matrix">
+                    <!-- Header Row - Days of Week -->
+                    <thead>
+                      <tr>
+                        <th class="service-header-cell">
+                          <span class="text-body-2 font-weight-medium">Services</span>
+                        </th>
+                        <th 
+                          v-for="(label, dayIdx) in dayLabels" 
+                          :key="dayIdx"
+                          class="day-header-cell"
+                          @click="toggleAllServicesForDay(dayIdx)"
+                        >
+                          <div class="day-header-content">
+                            <span class="font-weight-bold">{{ label }}</span>
+                            <v-icon 
+                              size="14" 
+                              class="ml-1"
+                              :color="serviceDaysMatrix[dayIdx.toString()]?.length === services.length ? 'primary' : 'grey-lighten-1'"
+                            >
+                              {{ serviceDaysMatrix[dayIdx.toString()]?.length === services.length ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}
+                            </v-icon>
+                          </div>
+                          <div class="text-caption text-grey">
+                            {{ serviceDaysMatrix[dayIdx.toString()]?.length || 0 }} services
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <!-- Body - Service Rows -->
+                    <tbody>
+                      <tr v-for="service in services" :key="service.id">
+                        <!-- Service Name Cell -->
+                        <td 
+                          class="service-name-cell"
+                          @click="toggleServiceAllDays(service.id)"
+                        >
+                          <div class="d-flex align-center">
+                            <v-icon :color="service.color" size="20" class="mr-2">
+                              {{ service.icon || 'mdi-medical-bag' }}
+                            </v-icon>
+                            <div>
+                              <div class="text-body-2 font-weight-medium">{{ service.name }}</div>
+                              <div class="text-caption text-grey">
+                                {{ service.requires_dvm ? 'DVM Required' : '' }}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        <!-- Day Checkbox Cells -->
+                        <td 
+                          v-for="(label, dayIdx) in dayLabels"
+                          :key="`${service.id}-${dayIdx}`"
+                          class="checkbox-cell"
+                          @click="toggleServiceDay(dayIdx, service.id)"
+                        >
+                          <v-checkbox
+                            :model-value="isServiceEnabledForDay(dayIdx, service.id)"
+                            hide-details
+                            density="compact"
+                            :color="service.color"
+                            @click.stop="toggleServiceDay(dayIdx, service.id)"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Summary Stats -->
+                <div class="d-flex align-center gap-4 mt-4 pt-3 border-t">
+                  <v-chip size="small" color="primary" variant="tonal">
+                    <v-icon start size="14">mdi-calendar</v-icon>
+                    {{ operationalDays.length }} days
+                  </v-chip>
+                  <v-chip size="small" color="secondary" variant="tonal">
+                    <v-icon start size="14">mdi-medical-bag</v-icon>
+                    {{ selectedServiceIds.length }} services
+                  </v-chip>
+                  <v-chip size="small" color="info" variant="tonal">
+                    <v-icon start size="14">mdi-checkbox-marked</v-icon>
+                    {{ Object.values(serviceDaysMatrix).reduce((sum, arr) => sum + arr.length, 0) }} total slots
+                  </v-chip>
                 </div>
                 
                 <v-alert v-if="selectedServiceIds.length === 0" type="info" variant="tonal" class="mt-4">
-                  Select at least one service to continue
+                  Select at least one service on at least one day to continue
                 </v-alert>
               </v-card-text>
             </v-card>
@@ -2042,5 +2166,91 @@ onMounted(async () => {
 .dashboard-location-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+/* Scope Matrix Grid */
+.scope-matrix-wrapper {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.scope-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.scope-matrix th,
+.scope-matrix td {
+  border-bottom: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+}
+
+.scope-matrix th:last-child,
+.scope-matrix td:last-child {
+  border-right: none;
+}
+
+.scope-matrix tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.service-header-cell {
+  padding: 12px 16px;
+  background: #f5f5f5;
+  text-align: left;
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.day-header-cell {
+  padding: 8px 12px;
+  background: #f5f5f5;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 85px;
+}
+
+.day-header-cell:hover {
+  background: #e8e8e8;
+}
+
+.day-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-name-cell {
+  padding: 10px 16px;
+  background: white;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.service-name-cell:hover {
+  background: #f5f5f5;
+}
+
+.checkbox-cell {
+  text-align: center;
+  padding: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.checkbox-cell:hover {
+  background: #f0f7ff;
+}
+
+.border-t {
+  border-top: 1px solid #e0e0e0;
 }
 </style>
