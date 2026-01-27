@@ -365,3 +365,44 @@ $$;
 
 -- Grant permissions
 GRANT EXECUTE ON FUNCTION get_available_employees_for_slot(UUID, DATE, TIME, TIME, TEXT) TO authenticated;
+
+-- ============================================================================
+-- 3. FIX assign_employee_to_slot FUNCTION
+-- Uses auth.uid() for assigned_by but FK references profiles.id
+-- ============================================================================
+CREATE OR REPLACE FUNCTION assign_employee_to_slot(
+  p_slot_id UUID,
+  p_employee_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_slot RECORD;
+  v_profile_id UUID;
+BEGIN
+  -- Get profile ID for current user
+  SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = auth.uid();
+
+  -- Get slot details
+  SELECT * INTO v_slot FROM draft_slots WHERE id = p_slot_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Slot not found';
+  END IF;
+  
+  -- Update the slot
+  UPDATE draft_slots
+  SET employee_id = p_employee_id,
+      assigned_at = now(),
+      assigned_by = v_profile_id,
+      updated_at = now()
+  WHERE id = p_slot_id;
+  
+  RETURN true;
+END;
+$$;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION assign_employee_to_slot(UUID, UUID) TO authenticated;
