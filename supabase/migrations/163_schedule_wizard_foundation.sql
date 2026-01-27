@@ -51,6 +51,7 @@ CREATE INDEX IF NOT EXISTS idx_schedule_drafts_status ON schedule_drafts(status)
 ALTER TABLE schedule_drafts ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "schedule_drafts_select_admin" ON schedule_drafts;
 CREATE POLICY "schedule_drafts_select_admin" ON schedule_drafts
   FOR SELECT USING (
     EXISTS (
@@ -60,6 +61,7 @@ CREATE POLICY "schedule_drafts_select_admin" ON schedule_drafts
     )
   );
 
+DROP POLICY IF EXISTS "schedule_drafts_modify_admin" ON schedule_drafts;
 CREATE POLICY "schedule_drafts_modify_admin" ON schedule_drafts
   FOR ALL USING (
     EXISTS (
@@ -123,6 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_draft_slots_unfilled ON draft_slots(draft_id, is_
 ALTER TABLE draft_slots ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "draft_slots_select_admin" ON draft_slots;
 CREATE POLICY "draft_slots_select_admin" ON draft_slots
   FOR SELECT USING (
     EXISTS (
@@ -132,6 +135,7 @@ CREATE POLICY "draft_slots_select_admin" ON draft_slots
     )
   );
 
+DROP POLICY IF EXISTS "draft_slots_modify_admin" ON draft_slots;
 CREATE POLICY "draft_slots_modify_admin" ON draft_slots
   FOR ALL USING (
     EXISTS (
@@ -147,11 +151,12 @@ CREATE POLICY "draft_slots_modify_admin" ON draft_slots
 -- ============================================================================
 
 -- First, ensure existing services have proper codes if missing
+-- Clean up any duplicate codes and ensure proper codes exist
 UPDATE services SET code = 'CLINIC' WHERE name ILIKE '%clinic%' AND code IS NULL;
 UPDATE services SET code = 'NAP' WHERE name ILIKE '%nap%' AND code IS NULL;
-UPDATE services SET code = 'AP' WHERE name ILIKE '%anesthesia%' OR name ILIKE '%ap dental%' AND code IS NULL;
-UPDATE services SET code = 'SURG' WHERE name ILIKE '%surgery%' AND code IS NULL;
-UPDATE services SET code = 'IM' WHERE name ILIKE '%internal%' AND code IS NULL;
+UPDATE services SET code = 'AP' WHERE (name ILIKE '%anesthesia%' OR name ILIKE '%ap dental%') AND code IS NULL AND NOT EXISTS (SELECT 1 FROM services WHERE code = 'AP');
+UPDATE services SET code = 'SURG' WHERE name ILIKE '%surgery%' AND code IS NULL AND NOT EXISTS (SELECT 1 FROM services WHERE code = 'SURG');
+UPDATE services SET code = 'IM' WHERE name ILIKE '%internal%' AND code IS NULL AND NOT EXISTS (SELECT 1 FROM services WHERE code = 'IM');
 
 -- Insert complete service list (upsert by code)
 INSERT INTO services (name, code, description, color, icon, requires_dvm, min_staff_count, sort_order) VALUES

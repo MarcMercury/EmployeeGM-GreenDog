@@ -110,6 +110,10 @@ const selectedSlot = ref<DraftSlot | null>(null)
 const availableEmployees = ref<AvailableEmployee[]>([])
 const isLoadingEmployees = ref(false)
 
+// Quick action states
+const isCopyingWeek = ref(false)
+const isAutoFilling = ref(false)
+
 // Day labels
 const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -395,6 +399,84 @@ async function clearSlot(slot: DraftSlot) {
     slot.employee = undefined
   } catch (err) {
     console.error('Failed to clear slot:', err)
+  }
+}
+
+// Copy from previous week
+async function copyPreviousWeek() {
+  if (!draftId.value) return
+  
+  isCopyingWeek.value = true
+  try {
+    const { data, error } = await supabase.rpc('copy_previous_week_schedule', {
+      p_draft_id: draftId.value
+    })
+    
+    if (error) throw error
+    
+    if (data?.success) {
+      await loadDraftSlots()
+      toast.success(`Copied ${data.slots_filled} assignments from previous week`)
+    } else {
+      toast.warning(data?.error || 'No assignments found to copy')
+    }
+  } catch (err) {
+    console.error('Failed to copy previous week:', err)
+    toast.error('Failed to copy from previous week')
+  } finally {
+    isCopyingWeek.value = false
+  }
+}
+
+// AI Auto-fill
+async function aiAutoFill() {
+  if (!draftId.value) return
+  
+  isAutoFilling.value = true
+  try {
+    const { data, error } = await supabase.rpc('ai_auto_fill_draft', {
+      p_draft_id: draftId.value,
+      p_respect_availability: true,
+      p_balance_hours: true
+    })
+    
+    if (error) throw error
+    
+    if (data?.success) {
+      await loadDraftSlots()
+      toast.success(`AI filled ${data.slots_filled} slots (${data.slots_skipped} skipped)`)
+    } else {
+      toast.warning(data?.error || 'No suitable employees found')
+    }
+  } catch (err) {
+    console.error('Failed to auto-fill:', err)
+    toast.error('Failed to auto-fill schedule')
+  } finally {
+    isAutoFilling.value = false
+  }
+}
+
+// Clear all assignments
+async function clearAllAssignments() {
+  if (!draftId.value) return
+  
+  if (!confirm('Are you sure you want to clear all assignments?')) return
+  
+  isLoading.value = true
+  try {
+    const { data, error } = await supabase.rpc('clear_draft_assignments', {
+      p_draft_id: draftId.value
+    })
+    
+    if (error) throw error
+    
+    await loadDraftSlots()
+    toast.info(`Cleared ${data?.slots_cleared || 0} assignments`)
+  } catch (err) {
+    console.error('Failed to clear assignments:', err)
+    toast.error('Failed to clear assignments')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -727,6 +809,47 @@ onMounted(async () => {
                 <v-icon end>mdi-check-circle</v-icon>
               </v-btn>
             </div>
+          </v-card-text>
+        </v-card>
+
+        <!-- Quick Actions Bar -->
+        <v-card variant="outlined" rounded="lg" class="mb-4">
+          <v-card-text class="d-flex align-center gap-2 py-2">
+            <span class="text-body-2 text-grey mr-2">Quick Actions:</span>
+            
+            <v-btn
+              variant="tonal"
+              color="secondary"
+              size="small"
+              :loading="isCopyingWeek"
+              @click="copyPreviousWeek"
+            >
+              <v-icon start>mdi-content-copy</v-icon>
+              Copy Previous Week
+            </v-btn>
+            
+            <v-btn
+              variant="tonal"
+              color="primary"
+              size="small"
+              :loading="isAutoFilling"
+              @click="aiAutoFill"
+            >
+              <v-icon start>mdi-auto-fix</v-icon>
+              AI Auto-Fill
+            </v-btn>
+            
+            <v-spacer />
+            
+            <v-btn
+              variant="text"
+              color="error"
+              size="small"
+              @click="clearAllAssignments"
+            >
+              <v-icon start>mdi-eraser</v-icon>
+              Clear All
+            </v-btn>
           </v-card-text>
         </v-card>
 
