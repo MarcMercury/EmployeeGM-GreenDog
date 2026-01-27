@@ -24,7 +24,7 @@ interface ContactEmployee {
   manager_first_name: string | null
   manager_last_name: string | null
   phone: string | null
-  status: string
+  employment_status: string
 }
 
 const employees = ref<ContactEmployee[]>([])
@@ -42,14 +42,14 @@ async function fetchEmployees() {
       id,
       first_name,
       last_name,
-      email,
-      phone,
-      status,
+      email_work,
+      phone_mobile,
+      employment_status,
       position:position_id(title),
       department:department_id(name),
-      manager:manager_id(first_name, last_name)
+      manager:manager_employee_id(first_name, last_name)
     `)
-    .eq('status', 'active')
+    .eq('employment_status', 'active')
     .order('last_name')
     .order('first_name')
   
@@ -60,9 +60,9 @@ async function fetchEmployees() {
       id: emp.id,
       first_name: emp.first_name,
       last_name: emp.last_name,
-      email: emp.email,
-      phone: emp.phone,
-      status: emp.status,
+      email: emp.email_work,
+      phone: emp.phone_mobile,
+      employment_status: emp.employment_status,
       position_title: emp.position?.title || null,
       department_name: emp.department?.name || null,
       manager_first_name: emp.manager?.first_name || null,
