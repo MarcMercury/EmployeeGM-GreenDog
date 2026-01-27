@@ -424,7 +424,8 @@ async function createDraftAndProceed() {
     
     if (error) throw error
     
-    draftId.value = data
+    // RPC returns { success: true, draft_id: "uuid" }
+    draftId.value = data?.draft_id || data
     
     // Load generated slots
     await loadDraftSlots()
