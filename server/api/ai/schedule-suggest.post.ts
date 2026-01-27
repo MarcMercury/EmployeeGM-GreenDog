@@ -234,6 +234,13 @@ async function getAvailableEmployees(client: any, departmentId?: string, locatio
  */
 async function getReliabilityScores(client: any, employeeIds: string[]): Promise<Record<string, number>> {
   const scores: Record<string, number> = {}
+  
+  // Filter out any undefined/null values and return early if empty
+  const validIds = employeeIds.filter(id => id != null && id !== 'undefined')
+  if (validIds.length === 0) {
+    return scores
+  }
+  
   const lookbackDays = 90
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - lookbackDays)
@@ -242,7 +249,7 @@ async function getReliabilityScores(client: any, employeeIds: string[]): Promise
   const { data: attendanceData } = await client
     .from('attendance')
     .select('employee_id, penalty_weight')
-    .in('employee_id', employeeIds)
+    .in('employee_id', validIds)
     .gte('shift_date', cutoffDate.toISOString().split('T')[0])
 
   if (attendanceData && attendanceData.length > 0) {
@@ -281,15 +288,21 @@ async function getShiftRequirements(client: any, weekStart: string, departmentId
 }
 
 async function getRecentScheduleData(client: any, employeeIds: string[]) {
+  const weekendCounts: Record<string, number> = {}
+  
+  // Filter out any undefined/null values and return early if empty
+  const validIds = employeeIds.filter(id => id != null && id !== 'undefined')
+  if (validIds.length === 0) {
+    return { weekendCounts }
+  }
+  
   // Get recent weekend shifts for fairness
   const { data } = await client
     .from('shifts')
     .select('employee_id, shift_date')
-    .in('employee_id', employeeIds)
+    .in('employee_id', validIds)
     .gte('shift_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
     .order('shift_date', { ascending: false })
-
-  const weekendCounts: Record<string, number> = {}
   
   for (const shift of data || []) {
     const dayOfWeek = new Date(shift.shift_date).getDay()
