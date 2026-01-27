@@ -7,7 +7,7 @@
  */
 
 definePageMeta({
-  middleware: ['auth', 'admin-only'],
+  middleware: ['auth', 'schedule-access'],
   layout: 'default'
 })
 

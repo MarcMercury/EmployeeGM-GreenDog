@@ -11,7 +11,7 @@
 import { format, addDays, startOfWeek, parseISO } from 'date-fns'
 
 definePageMeta({
-  middleware: ['auth', 'admin-only'],
+  middleware: ['auth', 'schedule-access'],
   layout: 'default'
 })
 

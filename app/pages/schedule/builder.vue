@@ -14,7 +14,7 @@
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 
 definePageMeta({
-  middleware: ['auth', 'admin-only'],
+  middleware: ['auth', 'schedule-access'],
   layout: 'default'
 })
 

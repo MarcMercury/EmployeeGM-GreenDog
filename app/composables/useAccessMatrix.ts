@@ -92,10 +92,17 @@ export function useAccessMatrix() {
       'My Workspace': 'mdi-account',
       'Management': 'mdi-account-group',
       'Med Ops': 'mdi-hospital-box',
+      'HR': 'mdi-briefcase',
       'Marketing': 'mdi-bullhorn',
       'CRM & Analytics': 'mdi-chart-box',
       'GDU': 'mdi-school',
-      'Admin Ops': 'mdi-cog'
+      'Admin Ops': 'mdi-cog',
+      'Recruiting': 'mdi-account-search',
+      'Dashboard & Profile': 'mdi-view-dashboard',
+      'Contact List': 'mdi-badge-account-horizontal',
+      'Operations': 'mdi-calendar',
+      'GDU (Education)': 'mdi-school',
+      'Admin & Settings': 'mdi-cog'
     }
     
     for (const page of pages.value) {

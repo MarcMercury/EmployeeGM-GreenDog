@@ -54,22 +54,22 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
  * NOTE: This controls sidebar visibility. Database page_access controls page-level access.
  */
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
-  // HR Section (employee profiles, skills, reviews)
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
+  // HR Section (employee profiles, skills, reviews, scheduling)
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin'],
   
   // Recruiting Section (candidates, pipelines)
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin'],
   
   // Marketing Section (CRM, campaigns, leads)
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
   // GDU/Education Section
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
   
-  // Schedule Management (create/edit)
-  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
+  // Schedule Management (create/edit) - same as HR
+  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin'],
   
-  // Schedule View (read-only)
+  // Schedule View (read-only) - personal schedule only for regular users
   schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
   // Admin Settings

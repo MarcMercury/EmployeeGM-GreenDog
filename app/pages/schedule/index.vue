@@ -466,7 +466,7 @@ import { format, startOfWeek, addDays, parseISO, isToday as checkIsToday } from 
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'schedule-access']
 })
 
 // Types
