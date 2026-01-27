@@ -122,7 +122,7 @@ BEGIN
             INSERT INTO draft_slots (
               draft_id, service_id, staffing_requirement_id,
               role_category, role_label, is_required, priority,
-              slot_date, start_time, end_time, sort_order
+              slot_date, start_time, end_time
             ) VALUES (
               v_draft_id, v_service.service_id, v_req.id,
               v_req.role_category, 
@@ -131,8 +131,7 @@ BEGIN
               v_req.priority,
               v_slot_date, 
               COALESCE(v_req.default_start_time, '09:00'::TIME),
-              COALESCE(v_req.default_end_time, '17:30'::TIME),
-              v_req.sort_order
+              COALESCE(v_req.default_end_time, '17:30'::TIME)
             );
           END IF;
         END LOOP;
