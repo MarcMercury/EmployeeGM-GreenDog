@@ -278,11 +278,13 @@ export function usePermissions() {
    * - 'view' access: can only view own profile
    * - 'none' access: cannot view any profiles
    */
-  function canViewProfile(profileId: string): boolean {
+  function canViewProfile(employeeOrProfileId: string): boolean {
+    const userStore = useUserStore()
     const ownProfileId = authStore.profile?.id
+    const ownEmployeeId = userStore.employee?.id
     
-    // Always allow viewing own profile
-    if (profileId === ownProfileId) {
+    // Always allow viewing own profile (check both profile ID and employee ID)
+    if (employeeOrProfileId === ownProfileId || employeeOrProfileId === ownEmployeeId) {
       return true
     }
     

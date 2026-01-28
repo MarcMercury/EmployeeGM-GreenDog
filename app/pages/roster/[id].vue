@@ -1747,7 +1747,8 @@ const employeeId = computed(() => route.params.id as string)
 const currentYear = new Date().getFullYear()
 
 // Access control - check if user can view this profile
-const isOwnProfile = computed(() => employeeId.value === authStore.profile?.id)
+// Note: employeeId is the employee table ID, NOT the profile ID
+const isOwnProfile = computed(() => employeeId.value === userStore.employee?.id)
 const hasProfileAccess = computed(() => {
   // Always allow viewing own profile
   if (isOwnProfile.value) return true

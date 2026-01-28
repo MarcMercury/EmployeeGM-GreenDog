@@ -24,8 +24,8 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
   
-  if (!profile || !['admin', 'super_admin', 'manager'].includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Manager or admin access required' })
+  if (!profile || !['admin', 'super_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Manager, marketing admin, or admin access required' })
   }
 
   const query = getQuery(event)
