@@ -55,19 +55,19 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
  */
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // HR Section (employee profiles, skills, reviews, scheduling)
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
-  // Recruiting Section (candidates, pipelines)
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  // Recruiting Section (candidates, pipelines) - includes sup_admin (Supervisor)
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
   // Marketing Section (CRM, campaigns, leads)
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
   // GDU/Education Section
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
   
-  // Schedule Management (create/edit) - same as HR
-  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  // Schedule Management (create/edit)
+  schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
   
   // Schedule View (read-only) - personal schedule only for regular users
   schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
