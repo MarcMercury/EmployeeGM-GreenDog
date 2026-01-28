@@ -1,7 +1,7 @@
 # Access Control Comprehensive Audit Report
 
-**Date:** June 2025  
-**Migrations Applied:** 180, 181, 182  
+**Date:** January 2026  
+**Migrations Applied:** 180, 181, 182, 183  
 **Status:** ✅ Complete
 
 ---
@@ -159,16 +159,46 @@ Files:
 
 ---
 
+## Migration 183: Fix Broken Marketing RLS Policies
+
+**Problem:** Multiple marketing policies had critical bugs blocking marketing_admin users
+
+**Issues Fixed:**
+1. Policies using `p.id = auth.uid()` instead of `p.auth_user_id = auth.uid()`
+2. Policies only allowing 'admin' role, not marketing_admin
+3. Conflicting duplicate policies (old + new both existing)
+
+**Policies Dropped:**
+- `Admins can manage marketing campaigns` (only admin)
+- `Admins can manage marketing influencers` (broken check)
+- `Admins can manage marketing inventory` (broken check)
+- `Admins can manage marketing spending` (broken check)
+- `Admins can manage marketing_resources` (only admin)
+- `Admin/HR can manage marketing supplies` (broken check)
+- `Marketing partners role access` (deprecated)
+- `Marketing leads role access` (deprecated)
+- `admin_delete_marketing_leads` (broken check)
+- `admin_update_marketing_leads` (broken check)
+
+**Additional Frontend Fixes:**
+- `growth/leads.vue`: Changed from `admin-only` to `marketing-admin`
+- `growth/partners.vue`: Changed from `admin` to `marketing-admin`
+
+---
+
 ## Verification Checklist
 
 ✅ Marketing admin can create/edit marketing events  
 ✅ Marketing admin can manage GDU content  
+✅ Marketing admin can access Event Leads page  
+✅ Marketing admin can access Growth Partners page  
 ✅ HR admin can manage employees, candidates, training  
 ✅ Sup/Office admin can manage schedules  
 ✅ All recruiting pages accessible to management roles  
 ✅ Academy management accessible to GDU roles  
 ✅ Tables with RLS have appropriate policies  
 ✅ Role checks use centralized helper functions  
+✅ All users can view their own profile (auth only required)
 
 ---
 
@@ -177,6 +207,7 @@ Files:
 1. `692e1ba` - Migration 180: Fix marketing admin RLS
 2. `2ab49c4` - Migration 181: Comprehensive RLS audit
 3. `a771742` - Migration 182: Complete RLS remediation + middleware fixes
+4. `4c9f5c0` - Migration 183: Fix broken marketing policies + growth pages
 
 ---
 
