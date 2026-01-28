@@ -8,8 +8,8 @@
             <span>🎪</span>
             <span>{{ eventData.name }}</span>
           </div>
-          <h1 class="text-3xl font-bold text-white mb-2">Welcome!</h1>
-          <p class="text-slate-400">Fill out the form below and we'll be in touch.</p>
+          <h1 class="text-3xl font-bold text-white mb-2">Welcome to Green Dog!</h1>
+          <p class="text-slate-400">Fill out the form below to claim your prize.</p>
         </div>
 
         <!-- Loading State -->
@@ -29,7 +29,7 @@
         <div v-if="submitted" class="bg-slate-800/50 backdrop-blur border border-emerald-500/30 rounded-2xl p-8 text-center">
           <div class="text-6xl mb-4">🎉</div>
           <h2 class="text-2xl font-bold text-white mb-2">Thank You!</h2>
-          <p class="text-slate-400 mb-6">We've received your information and will reach out soon.</p>
+          <p class="text-slate-400 mb-6">Congratulations on your prize! We've received your information.</p>
           <div class="text-sm text-slate-500">You can close this page now.</div>
         </div>
 
@@ -67,6 +67,40 @@
             />
           </div>
 
+          <!-- Pet Name -->
+          <div class="mb-5">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Pet Name <span class="text-red-400">*</span>
+            </label>
+            <input 
+              v-model="form.pet_name"
+              type="text"
+              required
+              placeholder="Your pet's name"
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition"
+            />
+          </div>
+
+          <!-- Species -->
+          <div class="mb-5">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Species <span class="text-red-400">*</span>
+            </label>
+            <select 
+              v-model="form.species"
+              required
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
+            >
+              <option value="" disabled>Select species...</option>
+              <option value="Dog">Dog</option>
+              <option value="Cat">Cat</option>
+              <option value="Bird">Bird</option>
+              <option value="Reptile">Reptile</option>
+              <option value="Rabbit">Rabbit</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
           <!-- Email -->
           <div class="mb-5">
             <label class="block text-slate-300 text-sm font-medium mb-2">
@@ -94,80 +128,42 @@
             />
           </div>
 
-          <!-- Pet Name -->
+          <!-- Current Client of Greendog (Optional) -->
           <div class="mb-5">
-            <label class="block text-slate-300 text-sm font-medium mb-2">
-              Pet Name <span class="text-slate-500">(optional)</span>
+            <label class="flex items-center gap-3 cursor-pointer">
+              <input 
+                v-model="form.is_current_client"
+                type="checkbox"
+                class="w-5 h-5 rounded border-white/20 bg-slate-900/50 text-emerald-500 focus:ring-emerald-500/50 focus:ring-offset-0"
+              />
+              <span class="text-slate-300 text-sm font-medium">
+                I'm a current client of Green Dog <span class="text-slate-500">(optional)</span>
+              </span>
             </label>
-            <input 
-              v-model="form.pet_name"
-              type="text"
-              placeholder="Your pet's name"
-              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition"
-            />
           </div>
 
-          <!-- Interested In (Service) -->
-          <div class="mb-5">
-            <label class="block text-slate-300 text-sm font-medium mb-2">
-              Interested In
-            </label>
-            <select 
-              v-model="form.interested_in"
-              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
-            >
-              <option value="">Select a service...</option>
-              <option value="wellness_exam">Wellness Exam</option>
-              <option value="vaccinations">Vaccinations</option>
-              <option value="dental_care">Dental Care</option>
-              <option value="surgery">Surgery</option>
-              <option value="grooming">Grooming</option>
-              <option value="boarding">Boarding</option>
-              <option value="emergency_care">Emergency Care</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          <!-- Company (Optional) -->
-          <div class="mb-5">
-            <label class="block text-slate-300 text-sm font-medium mb-2">
-              Company <span class="text-slate-500">(optional)</span>
-            </label>
-            <input 
-              v-model="form.company"
-              type="text"
-              placeholder="Your company name"
-              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition"
-            />
-          </div>
-
-          <!-- Interest Level -->
-          <div class="mb-5">
-            <label class="block text-slate-300 text-sm font-medium mb-2">
-              Interest Level
-            </label>
-            <select 
-              v-model="form.interest_level"
-              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
-            >
-              <option value="just_curious">Just Curious</option>
-              <option value="learning_more">Learning More</option>
-              <option value="very_interested">Very Interested</option>
-              <option value="ready_to_buy">Ready to Start</option>
-            </select>
-          </div>
-
-          <!-- Notes -->
+          <!-- What did you win? -->
           <div class="mb-6">
             <label class="block text-slate-300 text-sm font-medium mb-2">
-              Anything else you'd like us to know?
+              What did you win? <span class="text-red-400">*</span>
             </label>
-            <textarea 
-              v-model="form.notes"
-              rows="3"
-              placeholder="Tell us more..."
-              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition resize-none"
-            ></textarea>
+            <select 
+              v-model="form.prize_won"
+              required
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
+            >
+              <option value="" disabled>Select your prize...</option>
+              <option value="$20 off">$20 off</option>
+              <option value="20% off NAD">20% off NAD</option>
+              <option value="Free exam">Free exam</option>
+              <option value="Pill Holder">Pill Holder</option>
+              <option value="Tote Bag">Tote Bag</option>
+              <option value="Bandana">Bandana</option>
+              <option value="Med Kits">Med Kits</option>
+              <option value="Flashlight">Flashlight</option>
+              <option value="Poo Bag holder">Poo Bag holder</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
 
           <!-- Error Message -->
@@ -188,7 +184,7 @@
               </svg>
               Submitting...
             </span>
-            <span v-else>Submit</span>
+            <span v-else>Claim My Prize!</span>
           </button>
 
           <!-- Privacy note -->
@@ -219,13 +215,12 @@ const eventData = ref<any>(null)
 const form = ref({
   first_name: '',
   last_name: '',
+  pet_name: '',
+  species: '',
   email: '',
   phone: '',
-  pet_name: '',
-  interested_in: '',
-  company: '',
-  interest_level: 'learning_more',
-  notes: ''
+  is_current_client: false,
+  prize_won: ''
 })
 
 // Get event ID from URL
@@ -265,11 +260,12 @@ async function submitForm() {
     // Create full name from first + last
     const leadName = `${form.value.first_name} ${form.value.last_name}`.trim()
     
-    // Build notes with pet name and interested in service
+    // Build notes with pet info and prize
     const noteParts = []
     if (form.value.pet_name) noteParts.push(`Pet: ${form.value.pet_name}`)
-    if (form.value.interested_in) noteParts.push(`Interested In: ${form.value.interested_in.replace(/_/g, ' ')}`)
-    if (form.value.notes) noteParts.push(form.value.notes)
+    if (form.value.species) noteParts.push(`Species: ${form.value.species}`)
+    if (form.value.is_current_client) noteParts.push('Current Client: Yes')
+    if (form.value.prize_won) noteParts.push(`Prize Won: ${form.value.prize_won}`)
     const combinedNotes = noteParts.join(' | ') || null
     
     const { error } = await supabase
@@ -280,13 +276,12 @@ async function submitForm() {
         last_name: form.value.last_name,
         email: form.value.email,
         phone: form.value.phone || null,
-        company: form.value.company || null,
-        interest_level: form.value.interest_level,
         notes: combinedNotes,
         source_event_id: eventId.value,
         event_id: eventId.value, // Also set event_id for backwards compat
         source: 'event_qr',
-        status: 'new'
+        status: 'new',
+        interest_level: form.value.is_current_client ? 'current_client' : 'new_prospect'
       } as any) // Use 'as any' to bypass strict type checking for new columns
 
     if (error) throw error
