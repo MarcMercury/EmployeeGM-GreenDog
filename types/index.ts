@@ -54,25 +54,31 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
  * NOTE: This controls sidebar visibility. Database page_access controls page-level access.
  */
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
-  // HR Section (employee profiles, skills, reviews, scheduling)
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  // HR/Management: Full access for most management roles, view for marketing_admin and user
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
-  // Recruiting Section (candidates, pipelines)
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  // Recruiting: HR-focused roles only - NOT marketing_admin or user
+  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
-  // Marketing Section (CRM, campaigns, leads)
-  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  // Marketing: Marketing-focused roles. office_admin has limited view (calendar/resources), user has limited view
+  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin', 'office_admin', 'user'],
   
-  // GDU/Education Section
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  // Marketing Full: Only roles that can edit/manage marketing content
+  marketing_full: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
-  // Schedule Management (create/edit) - same as HR
-  schedules_manage: ['super_admin', 'admin', 'manager', 'hr_admin'],
+  // CRM & Analytics: Marketing analytics - NOT hr_admin, office_admin, or user
+  crm: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
-  // Schedule View (read-only) - personal schedule only for regular users
+  // GDU/Education: Education-focused roles - NOT office_admin or user
+  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
+  
+  // Schedule Management: Create/edit schedules
+  schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
+  
+  // Schedule View: All users can view schedules
   schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
-  // Admin Settings
+  // Admin Operations: Only admin roles
   admin: ['super_admin', 'admin'],
   
   // Med Ops (everyone has access)

@@ -10,11 +10,13 @@
  *   requiredSection: 'hr'  // or 'marketing', 'recruiting', etc.
  * })
  * 
- * Sections:
- * - hr: Employee profiles, skills, reviews
- * - recruiting: Candidates, pipelines, onboarding
- * - marketing: CRM, campaigns, leads, partners
- * - education: GDU, courses, CE events
+ * Sections (matching SECTION_ACCESS in types/index.ts):
+ * - hr: Employee profiles, skills, reviews (all roles have some access)
+ * - recruiting: Candidates, pipelines, onboarding (NOT marketing_admin or user)
+ * - marketing: CRM, campaigns, leads, partners (office_admin/user: view only)
+ * - marketing_full: Full marketing access (edit/manage)
+ * - crm: CRM & Analytics (NOT hr_admin, office_admin, user)
+ * - education: GDU, courses, CE events (NOT office_admin or user)
  * - schedules_manage: Create/edit schedules
  * - schedules_view: Read-only schedule access
  * - admin: System settings, integrations
@@ -22,6 +24,29 @@
 
 import { SECTION_ACCESS } from '~/types'
 import type { UserRole } from '~/types'
+
+// View-only paths for marketing section (office_admin and user can view these)
+const MARKETING_VIEW_ONLY_PATHS = ['/marketing/calendar', '/marketing/resources']
+
+// Full marketing access paths (require marketing_full access)
+const MARKETING_FULL_PATHS = [
+  '/marketing/command-center',
+  '/marketing/partners',
+  '/marketing/influencers',
+  '/marketing/inventory',
+  '/marketing/ezyvet-crm',
+  '/marketing/ezyvet-analytics',
+  '/marketing/partnerships',
+  '/marketing/list-hygiene'
+]
+
+// CRM & Analytics paths (require crm access)
+const CRM_PATHS = [
+  '/marketing/ezyvet-crm',
+  '/marketing/ezyvet-analytics',
+  '/marketing/partnerships',
+  '/growth/leads'
+]
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const supabase = useSupabaseClient()
@@ -69,14 +94,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
   
   // HR routes: /roster/*, /people/*, /employees/*
   if (path.startsWith('/roster/') || path.startsWith('/people/') || path.match(/^\/employees\/[^/]+/)) {
-    // View is allowed for most, edit requires HR access
-    if (to.query.edit === 'true' && !SECTION_ACCESS.hr.includes(userRole)) {
-      console.warn(`[RBAC] HR edit access denied for ${userRole}`)
-      return navigateTo('/')
+    // View is allowed for most, edit requires HR access with full permissions
+    // Marketing_admin and user have view-only access per the matrix
+    if (to.query.edit === 'true') {
+      const editRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+      if (!editRoles.includes(userRole)) {
+        console.warn(`[RBAC] HR edit access denied for ${userRole}`)
+        return navigateTo('/')
+      }
     }
   }
   
   // Recruiting routes: /recruiting/*
+  // Per Access Matrix: NOT marketing_admin or user
   if (path.startsWith('/recruiting')) {
     if (!SECTION_ACCESS.recruiting.includes(userRole)) {
       console.warn(`[RBAC] Recruiting access denied for ${userRole}`)
@@ -85,14 +115,38 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
   
   // Marketing routes: /marketing/*, /growth/*
+  // Nuanced access: office_admin and user only get view access to calendar/resources
   if (path.startsWith('/marketing') || path.startsWith('/growth')) {
-    if (!SECTION_ACCESS.marketing.includes(userRole)) {
+    // Check if this is a CRM path (more restricted)
+    if (CRM_PATHS.some(p => path.startsWith(p))) {
+      if (!SECTION_ACCESS.crm?.includes(userRole)) {
+        console.warn(`[RBAC] CRM access denied for ${userRole}`)
+        return navigateTo('/')
+      }
+    }
+    // Check if this is a full-access marketing path
+    else if (MARKETING_FULL_PATHS.some(p => path.startsWith(p))) {
+      if (!SECTION_ACCESS.marketing_full?.includes(userRole)) {
+        console.warn(`[RBAC] Marketing full access denied for ${userRole}`)
+        return navigateTo('/')
+      }
+    }
+    // Check if this is a view-only marketing path
+    else if (MARKETING_VIEW_ONLY_PATHS.some(p => path.startsWith(p))) {
+      if (!SECTION_ACCESS.marketing.includes(userRole)) {
+        console.warn(`[RBAC] Marketing view access denied for ${userRole}`)
+        return navigateTo('/')
+      }
+    }
+    // Default marketing access check
+    else if (!SECTION_ACCESS.marketing.includes(userRole)) {
       console.warn(`[RBAC] Marketing access denied for ${userRole}`)
       return navigateTo('/')
     }
   }
   
   // GDU/Education routes: /gdu/*, /academy/*
+  // Per Access Matrix: NOT office_admin or user
   if (path.startsWith('/gdu') || path.startsWith('/academy')) {
     if (!SECTION_ACCESS.education.includes(userRole)) {
       console.warn(`[RBAC] Education access denied for ${userRole}`)

@@ -384,7 +384,7 @@ import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'marketing-admin']
 })
 
 const supabase = useSupabaseClient()

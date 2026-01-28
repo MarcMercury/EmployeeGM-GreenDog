@@ -3,7 +3,8 @@
  * Allows: super_admin, admin, manager, hr_admin, sup_admin, marketing_admin
  * Use for: GDU Dashboard, Visitor CRM, CE Events, Education Content
  * 
- * Note: Both hr_admin (can create courses), sup_admin (supervisor), and marketing_admin (content management) have access
+ * Note: office_admin and user do NOT have GDU access per the Access Matrix
+ * hr_admin can create courses, marketing_admin handles content management
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const supabase = useSupabaseClient()
@@ -28,6 +29,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/auth/login')
   }
   
+  // Roles with GDU access - matches SECTION_ACCESS.education
+  // Note: office_admin and user are explicitly excluded
   const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin']
   
   if (!allowedRoles.includes(profile.role)) {

@@ -1447,9 +1447,15 @@ const accessMatrixRoles = ref<AccessMatrixRole[]>([
 
 const accessMatrixSections: AccessMatrixSection[] = [
   {
-    name: 'Global',
-    icon: 'mdi-earth',
+    name: 'My Workspace',
+    icon: 'mdi-account',
     pages: [
+      { 
+        name: 'Dashboard', 
+        path: '/', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      },
       { 
         name: 'Activity Hub', 
         path: '/activity', 
@@ -1459,15 +1465,9 @@ const accessMatrixSections: AccessMatrixSection[] = [
       { 
         name: 'Marketplace', 
         path: '/marketplace', 
-        icon: 'mdi-store',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
-      }
-    ]
-  },
-  {
-    name: 'My Workspace',
-    icon: 'mdi-account-circle',
-    pages: [
+        icon: 'mdi-bone',
+        access: { super_admin: 'full', admin: 'none', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
       { 
         name: 'My Profile', 
         path: '/profile', 
@@ -1483,7 +1483,7 @@ const accessMatrixSections: AccessMatrixSection[] = [
       { 
         name: 'My Skills', 
         path: '/people/my-skills', 
-        icon: 'mdi-lightbulb',
+        icon: 'mdi-star',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
@@ -1502,115 +1502,73 @@ const accessMatrixSections: AccessMatrixSection[] = [
   },
   {
     name: 'Management',
-    icon: 'mdi-clipboard-text',
+    icon: 'mdi-account-group',
     pages: [
       { 
-        name: 'Roster', 
+        name: 'Contact List', 
         path: '/roster', 
-        icon: 'mdi-account-group',
+        icon: 'mdi-badge-account-horizontal',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
       },
       { 
-        name: 'Skill Library', 
-        path: '/skills-library', 
-        icon: 'mdi-book-open-variant',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        name: 'Team Schedule', 
+        path: '/schedule/builder', 
+        icon: 'mdi-calendar-edit',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'full', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'Time Off Approvals', 
+        path: '/time-off', 
+        icon: 'mdi-calendar-check',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+      },
+      { 
+        name: 'Recruiting Pipeline', 
+        path: '/recruiting', 
+        icon: 'mdi-target',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
       },
       { 
         name: 'Skill Stats', 
         path: '/people/skill-stats', 
         icon: 'mdi-chart-bar',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
-      },
-      { 
-        name: 'Facilities Resources', 
-        path: '/med-ops/facilities', 
-        icon: 'mdi-office-building',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
-      },
-      { 
-        name: 'Course Manager', 
-        path: '/academy/course-manager', 
-        icon: 'mdi-book-education',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       }
     ]
   },
   {
     name: 'Med Ops',
-    icon: 'mdi-medical-bag',
+    icon: 'mdi-hospital-box',
     pages: [
-      { 
-        name: 'Wiki', 
-        path: '/med-ops/wiki', 
-        icon: 'mdi-book-open-page-variant',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
-      },
       { 
         name: 'Drug Calculators', 
         path: '/med-ops/calculators', 
-        icon: 'mdi-calculator',
+        icon: 'mdi-pill',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Medical Boards', 
         path: '/med-ops/boards', 
-        icon: 'mdi-clipboard-pulse',
+        icon: 'mdi-clipboard-list',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Med Ops Partners', 
         path: '/med-ops/partners', 
-        icon: 'mdi-handshake',
+        icon: 'mdi-factory',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
-      }
-    ]
-  },
-  {
-    name: 'HR',
-    icon: 'mdi-briefcase',
-    pages: [
-      { 
-        name: 'Schedule Overview', 
-        path: '/schedule', 
-        icon: 'mdi-calendar-clock',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
-        name: 'Schedule Wizard', 
-        path: '/schedule/wizard', 
-        icon: 'mdi-wizard-hat',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        name: 'Facilities Resources', 
+        path: '/med-ops/facilities', 
+        icon: 'mdi-wrench',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
-        name: 'Service Settings', 
-        path: '/schedule/services', 
-        icon: 'mdi-medical-bag',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
-      },
-      { 
-        name: 'Time Off Approvals', 
-        path: '/time-off', 
-        icon: 'mdi-calendar-remove',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
-      },
-      { 
-        name: 'Recruiting Pipeline', 
-        path: '/recruiting', 
-        icon: 'mdi-account-search',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
-      },
-      { 
-        name: 'Export Payroll', 
-        path: '/export-payroll', 
-        icon: 'mdi-cash-multiple',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
-      },
-      { 
-        name: 'Master Roster', 
-        path: '/admin/master-roster', 
-        icon: 'mdi-table-account',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        name: 'Wiki', 
+        path: '/med-ops/wiki', 
+        icon: 'mdi-book-open-variant',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       }
     ]
   },
@@ -1618,6 +1576,12 @@ const accessMatrixSections: AccessMatrixSection[] = [
     name: 'Marketing',
     icon: 'mdi-bullhorn',
     pages: [
+      { 
+        name: 'Command Center', 
+        path: '/marketing/command-center', 
+        icon: 'mdi-view-dashboard',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
       { 
         name: 'Calendar', 
         path: '/marketing/calendar', 
@@ -1628,12 +1592,6 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Events', 
         path: '/growth/events', 
         icon: 'mdi-calendar-star',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
-      },
-      { 
-        name: 'Event Leads', 
-        path: '/growth/leads', 
-        icon: 'mdi-account-star',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
@@ -1659,12 +1617,6 @@ const accessMatrixSections: AccessMatrixSection[] = [
         path: '/marketing/resources', 
         icon: 'mdi-folder-multiple',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', office_admin: 'view', marketing_admin: 'full', user: 'view' }
-      },
-      { 
-        name: 'Referral CRM', 
-        path: '/marketing/partnerships', 
-        icon: 'mdi-handshake-outline',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       }
     ]
   },
@@ -1685,6 +1637,18 @@ const accessMatrixSections: AccessMatrixSection[] = [
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
+        name: 'Event Leads', 
+        path: '/growth/leads', 
+        icon: 'mdi-fire',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
+        name: 'Referral CRM', 
+        path: '/marketing/partnerships', 
+        icon: 'mdi-handshake-outline',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+      },
+      { 
         name: 'List Hygiene', 
         path: '/marketing/list-hygiene', 
         icon: 'mdi-broom',
@@ -1699,7 +1663,7 @@ const accessMatrixSections: AccessMatrixSection[] = [
       { 
         name: 'GDU Dash', 
         path: '/gdu', 
-        icon: 'mdi-view-dashboard',
+        icon: 'mdi-home',
         access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
@@ -1727,6 +1691,12 @@ const accessMatrixSections: AccessMatrixSection[] = [
     icon: 'mdi-cog',
     pages: [
       { 
+        name: 'Global Settings', 
+        path: '/settings', 
+        icon: 'mdi-earth',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
         name: 'User Management', 
         path: '/admin/users', 
         icon: 'mdi-account-cog',
@@ -1735,7 +1705,7 @@ const accessMatrixSections: AccessMatrixSection[] = [
       { 
         name: 'Email Templates', 
         path: '/admin/email-templates', 
-        icon: 'mdi-email-edit',
+        icon: 'mdi-email',
         access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
@@ -1745,15 +1715,27 @@ const accessMatrixSections: AccessMatrixSection[] = [
         access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
-        name: 'System Health', 
-        path: '/admin/system-health', 
-        icon: 'mdi-heart-pulse',
+        name: 'Course Manager', 
+        path: '/academy/course-manager', 
+        icon: 'mdi-school',
         access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
-        name: 'Global Settings', 
-        path: '/settings', 
-        icon: 'mdi-tune',
+        name: 'Export Payroll', 
+        path: '/export-payroll', 
+        icon: 'mdi-cash',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'Master Roster', 
+        path: '/admin/master-roster', 
+        icon: 'mdi-clipboard-list',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+      },
+      { 
+        name: 'System Health', 
+        path: '/admin/system-health', 
+        icon: 'mdi-heart-pulse',
         access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       }
     ]
@@ -1988,7 +1970,7 @@ function getMatrixRolePageCount(roleKey: string): number {
 
 // Check if role is built-in
 function isBuiltInRoleCheck(roleKey: string): boolean {
-  return ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
+  return ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user'].includes(roleKey)
 }
 
 // Open edit role dialog

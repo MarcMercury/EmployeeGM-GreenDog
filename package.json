@@ -12,10 +12,7 @@
     "postinstall": "nuxt prepare",
     "seed:users": "npx tsx scripts/create_users.ts",
     "db:migrate": "npx tsx scripts/apply-migrations.mjs",
-    "db:types": "npx supabase gen types typescript --project-id <your-project-id> > types/database.types.ts",
-    "lint:unused": "knip",
-    "lint:deps": "depcheck",
-    "lint:all": "npm run lint:unused && npm run lint:deps"
+    "db:types": "npx supabase gen types typescript --project-id <your-project-id> > types/database.types.ts"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -29,6 +26,7 @@
     "date-fns": "^4.1.0",
     "marked": "^17.0.1",
     "nuxt": "^4.2.1",
+    "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.0",
     "pinia": "^2.3.1",
     "qrcode.vue": "^3.6.0",
@@ -48,9 +46,8 @@
     "@types/canvas-confetti": "^1.9.0",
     "autoprefixer": "^10.4.22",
     "csv-parse": "^6.1.0",
-    "depcheck": "^1.4.7",
     "dotenv": "^16.6.1",
-    "knip": "^5.82.1",
+    "dotenv-cli": "^11.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",
