@@ -601,20 +601,10 @@ async function fetchPersonalData() {
       myActiveGoals.value = []
     }
     
-    // Fetch training progress
-    try {
-      const { data: training } = await supabase
-        .from('course_enrollments')
-        .select('*, course:courses(*)')
-        .eq('user_id', userId)
-        .in('status', ['assigned', 'in_progress'])
-        .order('assigned_at', { ascending: false })
-        .limit(5)
-      
-      myTrainingProgress.value = training || []
-    } catch {
-      myTrainingProgress.value = []
-    }
+    // TODO: Enable when course_enrollments and courses tables are created
+    // Currently these tables from migration 037 are not in the database
+    // Skipping query to avoid 404 errors
+    myTrainingProgress.value = []
     
   } catch (err) {
     console.error('[ActivityHub] Error fetching personal data:', err)
