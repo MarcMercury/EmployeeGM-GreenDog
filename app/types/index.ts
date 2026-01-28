@@ -32,16 +32,53 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
   user: 'User'
 }
 
-// Section access matrix - defines which roles can access each section
-// NOTE: This controls sidebar visibility. Database page_access controls page-level access.
+// =====================================================
+// SECTION ACCESS MATRIX
+// =====================================================
+// This controls sidebar visibility. Database page_access controls page-level access.
+// SECTIONS ARE ORDERED TO MATCH THE NAVIGATION BAR:
+// 1. Activity Hub (always visible)
+// 2. Marketplace (always visible)
+// 3. My Workspace (always visible)
+// 4. Management (management section - some items conditional)
+// 5. Med Ops (med_ops section - everyone)
+// 6. HR (hr section - hr/manager access)
+// 7. Marketing (marketing section - marketing access)
+// 8. CRM & Analytics (crm_analytics section - marketing access)
+// 9. GDU (education section - education access)
+// 10. Admin Ops (admin section - admin only)
+
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
+  // === My Workspace === Always visible to all authenticated users
+  my_workspace: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
+  
+  // === Management === Roster, Skills Library, Facilities (everyone); Skill Stats (HR+); Course Manager (admin+)
+  management: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
+  
+  // === Med Ops === Wiki, Calculators, Boards, Partners - everyone has access
+  med_ops: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
+  
+  // === HR === Schedule, Time Off, Recruiting, Payroll, Master Roster
   hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
+  
+  // === Recruiting === Recruiting Pipeline (sub-item of HR section)
   recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
+  
+  // === Marketing === Calendar, Events, Leads, Partners, Influencers, Inventory, Resources, Referral CRM
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  
+  // === CRM & Analytics === EzyVet CRM, EzyVet Analytics, List Hygiene
+  crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  
+  // === GDU (Education) === GDU Dash, Student CRM, Visitor CRM, CE Events
   education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
+  
+  // === Admin Ops === User Management, Email Templates, Skills Management, System Settings
+  admin: ['super_admin', 'admin'],
+  
+  // === Schedule Permissions (granular) ===
   schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
-  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  admin: ['super_admin', 'admin']
+  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user']
 }
 
 // Permission structure for each section
