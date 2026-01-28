@@ -316,7 +316,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'marketing-admin']
 })
 
 interface Lead {

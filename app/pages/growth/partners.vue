@@ -601,7 +601,7 @@ import type { ReferralPartner, ReferralTier } from '~/types'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth', 'marketing-admin']
 })
 
 const client = useSupabaseClient()
