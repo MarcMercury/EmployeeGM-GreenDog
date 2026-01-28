@@ -158,6 +158,22 @@ SET access_level = CASE
 FROM public.page_definitions pd
 WHERE pa.page_id = pd.id AND pa.role_key = 'sup_admin';
 
+-- Also ensure sup_admin has 'full' access for all HR-related sections
+UPDATE public.page_access pa
+SET access_level = 'full'
+FROM public.page_definitions pd
+WHERE pa.page_id = pd.id 
+  AND pa.role_key = 'sup_admin' 
+  AND pd.section IN ('Global', 'My Workspace', 'Management', 'Med Ops', 'HR', 'GDU');
+
+-- And ensure sup_admin has 'none' access for Marketing, CRM & Analytics, Admin Ops
+UPDATE public.page_access pa
+SET access_level = 'none'
+FROM public.page_definitions pd
+WHERE pa.page_id = pd.id 
+  AND pa.role_key = 'sup_admin' 
+  AND pd.section IN ('Marketing', 'CRM & Analytics', 'Admin Ops');
+
 -- =====================================================
 -- 4. DEACTIVATE OLD/UNUSED PAGES
 -- =====================================================
