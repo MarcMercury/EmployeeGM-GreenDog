@@ -53,11 +53,11 @@ const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSupe
 const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
 // Section access checks
-// Note: sup_admin (Supervisor) has management access similar to office_admin
-const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'].includes(userRole.value))
-const hasHrAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin'].includes(userRole.value))
-const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'marketing_admin'].includes(userRole.value))
-const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'].includes(userRole.value))
+// Updated to match database page_access table exactly
+const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(userRole.value))
+const hasHrAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin'].includes(userRole.value))
+const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'].includes(userRole.value))
+const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin', 'office_admin'].includes(userRole.value))
 const hasAdminOpsAccess = computed(() => ['super_admin', 'admin'].includes(userRole.value))
 
 // Display helpers
@@ -369,12 +369,10 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-sky-500/20">🏖️</div>
                   Time Off Approvals
                 </NuxtLink>
-                <template v-if="isAdmin">
-                  <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
-                    <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
-                    Recruiting Pipeline
-                  </NuxtLink>
-                </template>
+                <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
+                  Recruiting Pipeline
+                </NuxtLink>
                 <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
