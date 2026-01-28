@@ -107,9 +107,9 @@
         <v-list-item v-if="hasPageAccess('/med-ops/boards')" to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/partners')" to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasSectionAccess('Med Ops')" to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== HR Group - Database-driven Access ===== -->
+      <!-- ===== HR Group - Visible to: super_admin, admin, manager, hr_admin, sup_admin, office_admin ===== -->
       <v-list-group v-if="hasHrAccess && !rail" value="hr">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -120,17 +120,17 @@
             class="nav-item"
           />
         </template>
-        <v-list-item v-if="hasPageAccess('/schedule')" to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/schedule/wizard')" to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/schedule/services')" to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/time-off')" to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/recruiting')" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/export-payroll')" to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/admin/master-roster')" to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== Marketing Group - Database-driven Access ===== -->
+      <!-- ===== Marketing Group - Visible to: super_admin, admin, manager, marketing_admin ===== -->
       <v-list-group v-if="hasMarketingAccess && !rail" value="marketing">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -264,17 +264,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import type { UserRole } from '~/types'
 
-interface PageAccessInfo {
-  id: string
-  path: string
-  name: string
-  section: string
-  sort_order: number
-  access_level: 'full' | 'view' | 'none'
-}
+// SIMPLE ROLE-BASED ACCESS - NO API CALLS
+// These match what's in page_access table for each role
+const HR_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'] as const
+const MARKETING_ROLES = ['super_admin', 'admin', 'manager', 'marketing_admin'] as const
+const ADMIN_ROLES = ['super_admin', 'admin'] as const
+const MANAGEMENT_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'] as const
 
 interface Props {
   modelValue: boolean
@@ -302,140 +300,50 @@ const isMobile = computed(() => props.temporary)
 const authStore = useAuthStore()
 const router = useRouter()
 
-// Page access from API - drives navigation visibility
-const pageAccessList = ref<PageAccessInfo[]>([])
-const accessLoading = ref(true)
-
-// Debug log immediately when script runs
-console.log('[Sidebar] Component script loaded, accessLoading initial:', true)
-
-// Load page access from the user-specific API endpoint
-async function loadPageAccess() {
-  console.log('[Sidebar] loadPageAccess() called')
-  accessLoading.value = true
-  try {
-    console.log('[Sidebar] Calling /api/user/page-access...')
-    const response = await $fetch('/api/user/page-access', { method: 'GET' })
-    console.log('[Sidebar] API response received:', response)
-    if (response.success && response.pages) {
-      pageAccessList.value = response.pages
-      console.log('[Sidebar] Loaded page access for role:', response.role, 'pages:', response.pages.length)
-      
-      // Debug: Log Marketing pages access
-      const marketingPages = response.pages.filter((p: PageAccessInfo) => p.section === 'Marketing')
-      console.log('[Sidebar] Marketing pages:', marketingPages.map((p: PageAccessInfo) => `${p.name}: ${p.access_level}`))
-      
-      // Debug: Log HR pages access
-      const hrPages = response.pages.filter((p: PageAccessInfo) => p.section === 'HR')
-      console.log('[Sidebar] HR pages:', hrPages.map((p: PageAccessInfo) => `${p.name}: ${p.access_level}`))
-    } else {
-      console.log('[Sidebar] API response missing success or pages:', response)
-    }
-  } catch (err) {
-    console.error('[Sidebar] Failed to load page access:', err)
-    // On error, default to empty - will hide sections that require access
-    pageAccessList.value = []
-  } finally {
-    accessLoading.value = false
-    console.log('[Sidebar] accessLoading set to false, pageAccessList length:', pageAccessList.value.length)
-  }
-}
-
-// Load access on mount
-onMounted(async () => {
-  console.log('[Sidebar] onMounted triggered')
-  await loadPageAccess()
-})
-
 const profile = computed(() => authStore.profile)
 const userRole = computed<UserRole>(() => authStore.userRole || 'user')
 const fullName = computed(() => authStore.fullName)
 const initials = computed(() => authStore.initials)
 
-// Helper to check if user has access to a specific page path
-function hasPageAccess(path: string): boolean {
-  const role = userRole.value
-  // Super admin always has access
-  if (role === 'super_admin') return true
-  
-  // Still loading - show nothing yet
-  if (accessLoading.value) return false
-  
-  const pageInfo = pageAccessList.value.find(p => p.path === path)
-  if (!pageInfo) return false
-  
-  return pageInfo.access_level === 'full' || pageInfo.access_level === 'view'
+// SIMPLE ROLE-BASED ACCESS CHECKS
+// All pages in a section are shown if user has section access
+function hasPageAccess(_path: string): boolean {
+  return true // All pages shown if section is visible
 }
 
-// Helper to check if user has access to ANY page in a section
 function hasSectionAccess(sectionName: string): boolean {
   const role = userRole.value
-  // Super admin always has access
-  if (role === 'super_admin') return true
+  if (!role) return false
   
-  // Still loading - show nothing yet
-  if (accessLoading.value) return false
-  
-  // Get all pages in this section
-  const sectionPages = pageAccessList.value.filter(p => p.section === sectionName)
-  
-  // If no pages in this section, hide it
-  if (sectionPages.length === 0) return false
-  
-  // Check if user has access to any page in this section
-  return sectionPages.some(p => p.access_level === 'full' || p.access_level === 'view')
+  switch (sectionName) {
+    case 'My Workspace':
+      return true // Everyone gets My Workspace
+    case 'Management':
+      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
+    case 'Med Ops':
+      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
+    case 'HR':
+      return HR_ROLES.includes(role as typeof HR_ROLES[number])
+    case 'Marketing':
+      return MARKETING_ROLES.includes(role as typeof MARKETING_ROLES[number])
+    case 'GDU':
+      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
+    case 'Admin Ops':
+      return ADMIN_ROLES.includes(role as typeof ADMIN_ROLES[number])
+    default:
+      return false
+  }
 }
 
-// Section access computed properties - MUST directly access reactive refs for proper reactivity
+// Section access computed properties
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-
-// These computed properties DIRECTLY access the refs for proper Vue reactivity
-const hasHrAccess = computed(() => {
-  const role = userRole.value
-  if (role === 'super_admin') return true
-  if (accessLoading.value) return false
-  const pages = pageAccessList.value.filter(p => p.section === 'HR')
-  if (pages.length === 0) return false
-  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
-})
-
-const hasRecruitingAccess = computed(() => {
-  const role = userRole.value
-  if (role === 'super_admin') return true
-  if (accessLoading.value) return false
-  const page = pageAccessList.value.find(p => p.path === '/recruiting')
-  if (!page) return false
-  return page.access_level === 'full' || page.access_level === 'view'
-})
-
-const hasMarketingAccess = computed(() => {
-  const role = userRole.value
-  if (role === 'super_admin') return true
-  if (accessLoading.value) return false
-  const pages = pageAccessList.value.filter(p => p.section === 'Marketing')
-  if (pages.length === 0) return false
-  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
-})
-
-const hasEducationAccess = computed(() => {
-  const role = userRole.value
-  if (role === 'super_admin') return true
-  if (accessLoading.value) return false
-  const pages = pageAccessList.value.filter(p => p.section === 'GDU')
-  if (pages.length === 0) return false
-  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
-})
-
-const hasAdminAccess = computed(() => {
-  const role = userRole.value
-  if (role === 'super_admin') return true
-  if (accessLoading.value) return false
-  const pages = pageAccessList.value.filter(p => p.section === 'Admin Ops')
-  if (pages.length === 0) return false
-  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
-})
+const hasMedOpsAccess = computed(() => MANAGEMENT_ROLES.includes(userRole.value as typeof MANAGEMENT_ROLES[number]))
+const hasHrAccess = computed(() => HR_ROLES.includes(userRole.value as typeof HR_ROLES[number]))
+const hasMarketingAccess = computed(() => MARKETING_ROLES.includes(userRole.value as typeof MARKETING_ROLES[number]))
+const hasEducationAccess = computed(() => MANAGEMENT_ROLES.includes(userRole.value as typeof MANAGEMENT_ROLES[number]))
+const hasAdminAccess = computed(() => ADMIN_ROLES.includes(userRole.value as typeof ADMIN_ROLES[number]))
 
 async function handleSignOut() {
   await authStore.signOut()
