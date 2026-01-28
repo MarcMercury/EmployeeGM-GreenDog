@@ -31,3 +31,5 @@ logs
 *.backup
 *.orig
 data/marketing/parsed/resources_passwords.csv
+.vercel
+.env*.local
