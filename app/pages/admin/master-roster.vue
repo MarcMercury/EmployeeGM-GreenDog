@@ -1398,7 +1398,50 @@ const saveChanges = async () => {
         }, { onConflict: 'employee_id,time_off_type_id,period_year' })
     }
 
-    // 5. Log all changes
+    // 5. Check for deactivation - sync both status and profile, and send notifications
+    const wasTerminated = originalFormData.value?.employment_status !== 'terminated' && editForm.employment_status === 'terminated'
+    const wasDeactivated = originalFormData.value?.profile_is_active !== false && editForm.profile_is_active === false
+    
+    if (wasTerminated || wasDeactivated) {
+      // Sync both fields - if one is set, set the other
+      if (wasTerminated && editingEmployee.value.profile_id && editForm.profile_is_active !== false) {
+        // Status changed to terminated, also deactivate profile
+        await supabase
+          .from('profiles')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('id', editingEmployee.value.profile_id)
+      }
+      
+      if (wasDeactivated && editForm.employment_status !== 'terminated') {
+        // Profile deactivated, also set status to terminated
+        await supabase
+          .from('employees')
+          .update({ employment_status: 'terminated', termination_date: editForm.termination_date || new Date().toISOString().split('T')[0] })
+          .eq('id', editingEmployee.value.id)
+      }
+
+      // Send notifications via server endpoint
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          await $fetch('/api/admin/deactivate-employee', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${session.access_token}` },
+            body: {
+              employeeId: editingEmployee.value.id,
+              reason: wasTerminated ? 'Employment terminated' : 'Profile deactivated',
+              terminationDate: editForm.termination_date || new Date().toISOString().split('T')[0],
+              skipPasswordLock: false // Will lock password too
+            }
+          }).catch(e => console.log('Deactivation notification sent or skipped:', e))
+        }
+      } catch (e) {
+        // Notifications are secondary - don't fail the save
+        console.log('Deactivation notification error:', e)
+      }
+    }
+
+    // 6. Log all changes
     if (allChanges.length > 0) {
       await logChanges(
         editingEmployee.value.id,

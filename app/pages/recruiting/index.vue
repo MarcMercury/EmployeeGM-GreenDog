@@ -8,14 +8,30 @@
           Traffic control for your hiring process
         </p>
       </div>
-      <v-btn
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="navigateTo('/recruiting/candidates')"
-      >
-        Add Candidate
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn
+          color="secondary"
+          variant="outlined"
+          prepend-icon="mdi-upload"
+          @click="showUploadWizard = true"
+        >
+          Upload Candidates
+        </v-btn>
+        <v-btn
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="navigateTo('/recruiting/candidates')"
+        >
+          Add Candidate
+        </v-btn>
+      </div>
     </div>
+
+    <!-- Upload Wizard Dialog -->
+    <RecruitingCandidateUploadWizard
+      v-model="showUploadWizard"
+      @uploaded="fetchCandidates"
+    />
 
     <!-- Skeleton Loading State -->
     <template v-if="loading">
@@ -265,6 +281,7 @@ const selectedPosition = ref<string | null>(null)
 const selectedLocation = ref<string | null>(null)
 const selectedDepartment = ref<string | null>(null)
 const quickFilter = ref('all')
+const showUploadWizard = ref(false)
 
 // Filter Options
 const positionOptions = computed(() => {

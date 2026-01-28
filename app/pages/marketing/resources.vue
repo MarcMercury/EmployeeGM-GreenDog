@@ -10,9 +10,21 @@
       </div>
       <div v-if="isAdmin" class="d-flex gap-2">
         <!-- Library Actions -->
-        <v-btn variant="outlined" prepend-icon="mdi-folder-plus" @click="showAddFolderDialog = true">
-          New Folder
-        </v-btn>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn variant="outlined" prepend-icon="mdi-plus" v-bind="props">
+              Add New
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-folder-plus" @click="showAddFolderDialog = true">
+              <v-list-item-title>New Folder</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-link-plus" @click="openAddExternalDialog">
+              <v-list-item-title>External Link</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
         <v-btn color="primary" prepend-icon="mdi-upload" @click="showUploadDialog = true">
           Upload
         </v-btn>
@@ -84,111 +96,51 @@
           </v-card-text>
         </v-card>
 
-        <!-- External Resources (Top Level) -->
-        <div v-if="currentPath === ''" class="mb-6">
-          <h3 class="text-subtitle-2 text-grey mb-3">External Resources</h3>
+        <!-- External Resources (Top Level) - Dynamic from Database -->
+        <div v-if="currentPath === '' && externalResources.length > 0" class="mb-6">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <h3 class="text-subtitle-2 text-grey">External Resources</h3>
+            <v-btn v-if="isAdmin" variant="text" size="x-small" prepend-icon="mdi-plus" @click="openAddExternalDialog">
+              Add
+            </v-btn>
+          </div>
           <v-row>
-            <v-col cols="12" sm="6" md="3">
+            <v-col v-for="resource in externalResources" :key="resource.id" cols="12" sm="6" md="3">
               <v-card 
                 rounded="lg" 
                 class="folder-card h-100"
-                href="https://www.dropbox.com/scl/fo/465hik7yxbdej26k3xwe5/AEqcQ-cpxxU8OjzFrFQbNdY?rlkey=dvmv0cvj504n7gkvt7kf82eld&e=1&st=z1s68eaf&dl=0"
-                target="_blank"
-                rel="noopener noreferrer"
+                :href="resource.folder_type === 'link' ? resource.external_url : undefined"
+                :to="resource.folder_type === 'internal_route' ? resource.internal_route : undefined"
+                :target="resource.folder_type === 'link' ? '_blank' : undefined"
+                :rel="resource.folder_type === 'link' ? 'noopener noreferrer' : undefined"
               >
                 <v-card-text class="text-center py-6">
-                  <v-avatar size="64" color="blue" class="mb-3">
-                    <v-icon size="32" color="white">mdi-dropbox</v-icon>
+                  <v-avatar size="64" :color="resource.color || 'grey'" class="mb-3">
+                    <v-icon size="32" color="white">{{ resource.icon || 'mdi-link' }}</v-icon>
                   </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">Company Assets</h3>
-                  <p class="text-caption text-grey mb-2">Dropbox folder for company assets</p>
-                  <v-chip size="x-small" color="blue" variant="tonal">
-                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
-                    External Link
+                  <h3 class="text-subtitle-1 font-weight-bold">{{ resource.name }}</h3>
+                  <p class="text-caption text-grey mb-2">{{ resource.description }}</p>
+                  <v-chip size="x-small" :color="resource.color || 'grey'" variant="tonal">
+                    <v-icon start size="x-small">{{ resource.folder_type === 'link' ? 'mdi-open-in-new' : 'mdi-arrow-right' }}</v-icon>
+                    {{ resource.folder_type === 'link' ? 'External Link' : 'View' }}
                   </v-chip>
                 </v-card-text>
-              </v-card>
-            </v-col>
-            <v-col cols="12" sm="6" md="3">
-              <v-card 
-                rounded="lg" 
-                class="folder-card h-100"
-                href="https://www.dropbox.com/scl/fo/s36wdlct6q8rgznvsi8py/AJgaoCVe15pIUGjHdlX4omo?rlkey=cwwum11xdjslh36c2wddux1kg&e=1&st=udfnbd9u&dl=0"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" color="purple" class="mb-3">
-                    <v-icon size="32" color="white">mdi-dropbox</v-icon>
-                  </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">Media Drop Box</h3>
-                  <p class="text-caption text-grey mb-2">Dropbox folder for media files</p>
-                  <v-chip size="x-small" color="purple" variant="tonal">
-                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
-                    External Link
-                  </v-chip>
-                </v-card-text>
-              </v-card>
-            </v-col>
-            <v-col cols="12" sm="6" md="3">
-              <v-card 
-                rounded="lg" 
-                class="folder-card h-100"
-                href="https://www.canva.com/login/?redirect=%2Fdesign%2FDAGZrjtoYzw%2FF_LmUEwIEto-N96GAg6idw%2Fedit"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" color="teal" class="mb-3">
-                    <v-icon size="32" color="white">mdi-palette</v-icon>
-                  </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">Canva</h3>
-                  <p class="text-caption text-grey mb-2">Design platform for graphics</p>
-                  <v-chip size="x-small" color="teal" variant="tonal">
-                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
-                    External Link
-                  </v-chip>
-                </v-card-text>
-              </v-card>
-            </v-col>
-            <v-col cols="12" sm="6" md="3">
-              <v-card 
-                rounded="lg" 
-                class="folder-card h-100"
-                href="https://docs.google.com/spreadsheets/d/1hZvC3hqKfotbMU7qkzOce2Ya4xovNabHVwGc2z2PI6Y/edit?gid=303049314#gid=303049314"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" color="green" class="mb-3">
-                    <v-icon size="32" color="white">mdi-account-key</v-icon>
-                  </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">User Accounts</h3>
-                  <p class="text-caption text-grey mb-2">Account credentials spreadsheet</p>
-                  <v-chip size="x-small" color="green" variant="tonal">
-                    <v-icon start size="x-small">mdi-open-in-new</v-icon>
-                    External Link
-                  </v-chip>
-                </v-card-text>
-              </v-card>
-            </v-col>
-            <v-col v-if="isAdmin" cols="12" sm="6" md="3">
-              <v-card 
-                rounded="lg" 
-                class="folder-card h-100"
-                :to="'/marketing/inventory'"
-              >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" color="amber" class="mb-3">
-                    <v-icon size="32" color="white">mdi-package-variant-closed</v-icon>
-                  </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">Inventory</h3>
-                  <p class="text-caption text-grey mb-2">Marketing supplies & materials</p>
-                  <v-chip size="x-small" color="amber" variant="tonal">
-                    <v-icon start size="x-small">mdi-arrow-right</v-icon>
-                    View Inventory
-                  </v-chip>
-                </v-card-text>
+                <!-- Admin actions overlay -->
+                <div v-if="isAdmin" class="position-absolute" style="top: 8px; right: 8px;">
+                  <v-menu>
+                    <template #activator="{ props }">
+                      <v-btn icon="mdi-dots-vertical" size="x-small" variant="text" v-bind="props" @click.prevent.stop />
+                    </template>
+                    <v-list density="compact">
+                      <v-list-item prepend-icon="mdi-pencil" @click.prevent.stop="editExternalResource(resource)">
+                        <v-list-item-title>Edit</v-list-item-title>
+                      </v-list-item>
+                      <v-list-item prepend-icon="mdi-delete" class="text-error" @click.prevent.stop="deleteExternalResource(resource)">
+                        <v-list-item-title>Delete</v-list-item-title>
+                      </v-list-item>
+                    </v-list>
+                  </v-menu>
+                </div>
               </v-card>
             </v-col>
           </v-row>
@@ -393,6 +345,127 @@
       </v-card>
     </v-dialog>
 
+    <!-- Add/Edit External Resource Dialog -->
+    <v-dialog v-model="showAddExternalDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          {{ editingExternalResource ? 'Edit External Resource' : 'Add External Resource' }}
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pt-4">
+          <v-text-field
+            v-model="externalForm.name"
+            label="Name *"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-model="externalForm.description"
+            label="Description"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-select
+            v-model="externalForm.folder_type"
+            :items="[
+              { title: 'External Link (opens in new tab)', value: 'link' },
+              { title: 'Internal Page (navigates within app)', value: 'internal_route' }
+            ]"
+            item-title="title"
+            item-value="value"
+            label="Resource Type"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-if="externalForm.folder_type === 'link'"
+            v-model="externalForm.external_url"
+            label="URL *"
+            placeholder="https://..."
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-text-field
+            v-if="externalForm.folder_type === 'internal_route'"
+            v-model="externalForm.internal_route"
+            label="Route Path *"
+            placeholder="/marketing/inventory"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-select
+            v-model="externalForm.icon"
+            :items="[
+              { title: 'Link', value: 'mdi-link' },
+              { title: 'Dropbox', value: 'mdi-dropbox' },
+              { title: 'Cloud', value: 'mdi-cloud' },
+              { title: 'Palette (Design)', value: 'mdi-palette' },
+              { title: 'Account Circle', value: 'mdi-account-circle' },
+              { title: 'Package (Inventory)', value: 'mdi-package-variant-closed' },
+              { title: 'Folder', value: 'mdi-folder' },
+              { title: 'File Document', value: 'mdi-file-document' },
+              { title: 'Image', value: 'mdi-image' },
+              { title: 'Video', value: 'mdi-video' },
+              { title: 'Download', value: 'mdi-download' },
+              { title: 'Google Drive', value: 'mdi-google-drive' },
+              { title: 'Book', value: 'mdi-book' },
+              { title: 'School', value: 'mdi-school' }
+            ]"
+            item-title="title"
+            item-value="value"
+            label="Icon"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          >
+            <template #prepend-inner>
+              <v-icon :icon="externalForm.icon" :color="externalForm.color" size="small" />
+            </template>
+          </v-select>
+          <v-select
+            v-model="externalForm.color"
+            :items="[
+              { title: 'Blue (Primary)', value: 'primary' },
+              { title: 'Green (Success)', value: 'success' },
+              { title: 'Purple', value: 'purple' },
+              { title: 'Pink', value: 'pink' },
+              { title: 'Orange', value: 'orange' },
+              { title: 'Teal', value: 'teal' },
+              { title: 'Indigo', value: 'indigo' },
+              { title: 'Grey', value: 'grey' }
+            ]"
+            item-title="title"
+            item-value="value"
+            label="Color"
+            variant="outlined"
+            density="compact"
+          >
+            <template #prepend-inner>
+              <v-icon icon="mdi-circle" :color="externalForm.color" size="small" />
+            </template>
+          </v-select>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showAddExternalDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="savingExternal" 
+            :disabled="!externalForm.name || (externalForm.folder_type === 'link' && !externalForm.external_url) || (externalForm.folder_type === 'internal_route' && !externalForm.internal_route)"
+            @click="saveExternalResource"
+          >
+            {{ editingExternalResource ? 'Update' : 'Create' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -442,6 +515,20 @@ const newFolderAdminOnly = ref(false)
 // Database-backed data
 const dbFolders = ref<any[]>([])
 const dbFiles = ref<any[]>([])
+
+// External Resources state
+const showAddExternalDialog = ref(false)
+const editingExternalResource = ref<any>(null)
+const savingExternal = ref(false)
+const externalForm = reactive({
+  name: '',
+  description: '',
+  icon: 'mdi-link',
+  color: 'primary',
+  folder_type: 'link' as 'link' | 'internal_route',
+  external_url: '',
+  internal_route: ''
+})
 
 const snackbar = reactive({
   show: false,
@@ -560,6 +647,23 @@ const fileCategories = computed(() => {
 
 const visibleCategories = computed(() => {
   return fileCategories.value.filter(cat => !cat.adminOnly || isAdmin.value)
+})
+
+// External resources (links and internal routes)
+const externalResources = computed(() => {
+  return dbFolders.value
+    .filter(f => f.is_external === true)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+    .map(f => ({
+      id: f.id,
+      name: f.name,
+      description: f.description || '',
+      icon: f.icon || 'mdi-link',
+      color: f.color || 'primary',
+      folder_type: f.folder_type || 'link',
+      external_url: f.external_url || '',
+      internal_route: f.internal_route || ''
+    }))
 })
 
 const breadcrumbs = computed(() => {
@@ -852,6 +956,118 @@ async function createFolder() {
     await loadFolders()
   } catch (err: any) {
     showError('Failed to create folder: ' + err.message)
+  }
+}
+
+// ============================================
+// EXTERNAL RESOURCES CRUD
+// ============================================
+function openAddExternalDialog() {
+  editingExternalResource.value = null
+  externalForm.name = ''
+  externalForm.description = ''
+  externalForm.icon = 'mdi-link'
+  externalForm.color = 'primary'
+  externalForm.folder_type = 'link'
+  externalForm.external_url = ''
+  externalForm.internal_route = ''
+  showAddExternalDialog.value = true
+}
+
+function editExternalResource(resource: any) {
+  editingExternalResource.value = resource
+  externalForm.name = resource.name
+  externalForm.description = resource.description || ''
+  externalForm.icon = resource.icon || 'mdi-link'
+  externalForm.color = resource.color || 'primary'
+  externalForm.folder_type = resource.folder_type || 'link'
+  externalForm.external_url = resource.external_url || ''
+  externalForm.internal_route = resource.internal_route || ''
+  showAddExternalDialog.value = true
+}
+
+async function saveExternalResource() {
+  if (!externalForm.name) {
+    showError('Name is required')
+    return
+  }
+  
+  if (externalForm.folder_type === 'link' && !externalForm.external_url) {
+    showError('URL is required for external links')
+    return
+  }
+  
+  if (externalForm.folder_type === 'internal_route' && !externalForm.internal_route) {
+    showError('Route path is required for internal routes')
+    return
+  }
+  
+  savingExternal.value = true
+  try {
+    const resourceData = {
+      name: externalForm.name,
+      description: externalForm.description,
+      icon: externalForm.icon,
+      color: externalForm.color,
+      folder_type: externalForm.folder_type,
+      external_url: externalForm.folder_type === 'link' ? externalForm.external_url : null,
+      internal_route: externalForm.folder_type === 'internal_route' ? externalForm.internal_route : null,
+      is_external: true,
+      path: `external-${externalForm.name.toLowerCase().replace(/\s+/g, '-')}`
+    }
+    
+    if (editingExternalResource.value) {
+      // Update existing
+      const { error } = await supabase
+        .from('marketing_folders')
+        .update(resourceData)
+        .eq('id', editingExternalResource.value.id)
+      
+      if (error) throw error
+      showSuccess('External resource updated')
+    } else {
+      // Create new
+      const { error } = await supabase
+        .from('marketing_folders')
+        .insert(resourceData)
+      
+      if (error) throw error
+      showSuccess('External resource created')
+    }
+    
+    showAddExternalDialog.value = false
+    await loadFolders()
+  } catch (err: any) {
+    showError('Failed to save external resource: ' + err.message)
+  } finally {
+    savingExternal.value = false
+  }
+}
+
+async function deleteExternalResource(resource: any) {
+  if (!confirm(`Are you sure you want to delete "${resource.name}"?`)) {
+    return
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('marketing_folders')
+      .delete()
+      .eq('id', resource.id)
+    
+    if (error) throw error
+    showSuccess('External resource deleted')
+    await loadFolders()
+  } catch (err: any) {
+    showError('Failed to delete: ' + err.message)
+  }
+}
+
+function openExternalResource(resource: any) {
+  if (resource.folder_type === 'link' && resource.external_url) {
+    window.open(resource.external_url, '_blank')
+  } else if (resource.folder_type === 'internal_route' && resource.internal_route) {
+    navigateTo(resource.internal_route)
   }
 }
 </script>
