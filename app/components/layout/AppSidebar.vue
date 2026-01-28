@@ -109,7 +109,7 @@
       </v-list-group>
       <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== HR Group - Visible to: super_admin, admin, manager, hr_admin, sup_admin, office_admin ===== -->
+      <!-- ===== HR Group - Page-level access control ===== -->
       <v-list-group v-if="hasHrAccess && !rail" value="hr">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -120,13 +120,13 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule')" to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule/wizard')" to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule/services')" to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/time-off')" to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/recruiting')" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/export-payroll')" to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/master-roster')" to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
@@ -267,15 +267,74 @@
 import { computed, ref } from 'vue'
 import type { UserRole } from '~/types'
 
-// ROLE-BASED ACCESS - Matches page_access table in database exactly
-// Query: SELECT DISTINCT role_key, section FROM page_access JOIN page_definitions ON page_id=id WHERE access_level IN ('full','view')
-const MY_WORKSPACE_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
-const MANAGEMENT_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
-const MED_OPS_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
-const HR_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'] as const
-const MARKETING_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'] as const
-const GDU_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'] as const
-const ADMIN_OPS_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'] as const
+// PAGE-LEVEL ACCESS - Extracted directly from database page_access table
+// Each path maps to the roles that have 'full' or 'view' access
+const PAGE_ACCESS: Record<string, readonly string[]> = {
+  // Global
+  '/': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/activity': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/marketplace': ['super_admin', 'sup_admin'],
+  
+  // My Workspace
+  '/profile': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/contact-list': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/my-schedule': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/people/my-skills': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/development': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/academy/my-training': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  
+  // Management
+  '/roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
+  '/skills-library': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/people/skill-stats': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'sup_admin'],
+  '/med-ops/facilities': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/academy/course-manager': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  
+  // Med Ops
+  '/med-ops/wiki': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/calculators': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/boards': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/partners': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  
+  // HR
+  '/schedule': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/wizard': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/builder': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/services': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/time-off': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/recruiting': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/export-payroll': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/admin/master-roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  
+  // Marketing
+  '/marketing/calendar': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
+  '/marketing/resources': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
+  '/marketing/inventory': ['super_admin', 'admin', 'manager', 'marketing_admin', 'user'],
+  '/marketing/partners': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/marketing/influencers': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  '/marketing/partnerships': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/marketing/command-center': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/growth/events': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/growth/leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  
+  // CRM & Analytics
+  '/marketing/ezyvet-crm': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  
+  // GDU
+  '/gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/students': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/visitors': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/events': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  
+  // Admin Ops
+  '/admin/users': ['super_admin', 'admin'],
+  '/admin/email-templates': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/skills-management': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/system-health': ['super_admin', 'admin'],
+  '/settings': ['super_admin', 'admin'],
+}
 
 interface Props {
   modelValue: boolean
@@ -308,45 +367,48 @@ const userRole = computed<UserRole>(() => authStore.userRole || 'user')
 const fullName = computed(() => authStore.fullName)
 const initials = computed(() => authStore.initials)
 
-// SIMPLE ROLE-BASED ACCESS CHECKS
-// All pages in a section are shown if user has section access
-function hasPageAccess(_path: string): boolean {
-  return true // All pages shown if section is visible
+// PAGE-LEVEL ACCESS CHECK - checks specific page path
+function hasPageAccess(path: string): boolean {
+  const role = userRole.value
+  if (!role) return false
+  const allowedRoles = PAGE_ACCESS[path]
+  if (!allowedRoles) return false
+  return allowedRoles.includes(role)
 }
 
+// SECTION ACCESS - true if user has access to ANY page in that section
 function hasSectionAccess(sectionName: string): boolean {
   const role = userRole.value
   if (!role) return false
   
-  switch (sectionName) {
-    case 'My Workspace':
-      return MY_WORKSPACE_ROLES.includes(role as typeof MY_WORKSPACE_ROLES[number])
-    case 'Management':
-      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
-    case 'Med Ops':
-      return MED_OPS_ROLES.includes(role as typeof MED_OPS_ROLES[number])
-    case 'HR':
-      return HR_ROLES.includes(role as typeof HR_ROLES[number])
-    case 'Marketing':
-      return MARKETING_ROLES.includes(role as typeof MARKETING_ROLES[number])
-    case 'GDU':
-      return GDU_ROLES.includes(role as typeof GDU_ROLES[number])
-    case 'Admin Ops':
-      return ADMIN_OPS_ROLES.includes(role as typeof ADMIN_OPS_ROLES[number])
-    default:
-      return false
+  // Map sections to their pages
+  const sectionPages: Record<string, string[]> = {
+    'My Workspace': ['/profile', '/contact-list', '/my-schedule', '/people/my-skills', '/development', '/academy/my-training'],
+    'Management': ['/roster', '/skills-library', '/people/skill-stats', '/med-ops/facilities', '/academy/course-manager'],
+    'Med Ops': ['/med-ops/wiki', '/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
+    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster'],
+    'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
+    'CRM & Analytics': ['/marketing/ezyvet-crm', '/marketing/ezyvet-analytics', '/marketing/list-hygiene'],
+    'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
+    'Admin Ops': ['/admin/users', '/admin/email-templates', '/admin/skills-management', '/admin/system-health', '/settings'],
   }
+  
+  const pages = sectionPages[sectionName]
+  if (!pages) return false
+  
+  // User has section access if they have access to at least one page in that section
+  return pages.some(page => hasPageAccess(page))
 }
 
 // Section access computed properties
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-const hasMedOpsAccess = computed(() => MED_OPS_ROLES.includes(userRole.value as typeof MED_OPS_ROLES[number]))
-const hasHrAccess = computed(() => HR_ROLES.includes(userRole.value as typeof HR_ROLES[number]))
-const hasMarketingAccess = computed(() => MARKETING_ROLES.includes(userRole.value as typeof MARKETING_ROLES[number]))
-const hasEducationAccess = computed(() => GDU_ROLES.includes(userRole.value as typeof GDU_ROLES[number]))
-const hasAdminAccess = computed(() => ADMIN_OPS_ROLES.includes(userRole.value as typeof ADMIN_OPS_ROLES[number]))
+const hasMedOpsAccess = computed(() => hasSectionAccess('Med Ops'))
+const hasHrAccess = computed(() => hasSectionAccess('HR'))
+const hasMarketingAccess = computed(() => hasSectionAccess('Marketing'))
+const hasEducationAccess = computed(() => hasSectionAccess('GDU'))
+const hasAdminAccess = computed(() => hasSectionAccess('Admin Ops'))
 
 async function handleSignOut() {
   await authStore.signOut()
