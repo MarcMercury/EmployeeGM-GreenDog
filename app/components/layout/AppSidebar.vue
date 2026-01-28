@@ -266,7 +266,15 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import type { UserRole } from '~/types'
-import { useAccessMatrix, type AccessLevel } from '~/composables/useAccessMatrix'
+
+interface PageAccessInfo {
+  id: string
+  path: string
+  name: string
+  section: string
+  sort_order: number
+  access_level: 'full' | 'view' | 'none'
+}
 
 interface Props {
   modelValue: boolean
@@ -294,12 +302,31 @@ const isMobile = computed(() => props.temporary)
 const authStore = useAuthStore()
 const router = useRouter()
 
-// Use the Access Matrix composable for database-driven page access
-const { pages, accessRecords, loadAccessMatrix, getAccessByPath } = useAccessMatrix()
+// Page access from API - drives navigation visibility
+const pageAccessList = ref<PageAccessInfo[]>([])
+const accessLoading = ref(true)
 
-// Load access matrix on mount
+// Load page access from the user-specific API endpoint
+async function loadPageAccess() {
+  accessLoading.value = true
+  try {
+    const response = await $fetch('/api/user/page-access', { method: 'GET' })
+    if (response.success && response.pages) {
+      pageAccessList.value = response.pages
+      console.log('[Sidebar] Loaded page access for role:', response.role, 'pages:', response.pages.length)
+    }
+  } catch (err) {
+    console.error('[Sidebar] Failed to load page access:', err)
+    // On error, default to empty - will hide sections that require access
+    pageAccessList.value = []
+  } finally {
+    accessLoading.value = false
+  }
+}
+
+// Load access on mount
 onMounted(async () => {
-  await loadAccessMatrix()
+  await loadPageAccess()
 })
 
 const profile = computed(() => authStore.profile)
@@ -313,8 +340,13 @@ function hasPageAccess(path: string): boolean {
   // Super admin always has access
   if (role === 'super_admin') return true
   
-  const access = getAccessByPath(path, role)
-  return access === 'full' || access === 'view'
+  // Still loading - show nothing yet
+  if (accessLoading.value) return false
+  
+  const pageInfo = pageAccessList.value.find(p => p.path === path)
+  if (!pageInfo) return false
+  
+  return pageInfo.access_level === 'full' || pageInfo.access_level === 'view'
 }
 
 // Helper to check if user has access to ANY page in a section
@@ -323,17 +355,17 @@ function hasSectionAccess(sectionName: string): boolean {
   // Super admin always has access
   if (role === 'super_admin') return true
   
-  // Get all pages in this section
-  const sectionPages = pages.value.filter(p => p.section === sectionName)
+  // Still loading - show nothing yet
+  if (accessLoading.value) return false
   
-  // If no pages loaded yet, fall back to showing the section
-  if (sectionPages.length === 0 && pages.value.length === 0) return true
+  // Get all pages in this section
+  const sectionPages = pageAccessList.value.filter(p => p.section === sectionName)
+  
+  // If no pages in this section, hide it
+  if (sectionPages.length === 0) return false
   
   // Check if user has access to any page in this section
-  return sectionPages.some(page => {
-    const access = getAccessByPath(page.path, role)
-    return access === 'full' || access === 'view'
-  })
+  return sectionPages.some(p => p.access_level === 'full' || p.access_level === 'view')
 }
 
 // Section access computed properties - driven by database
