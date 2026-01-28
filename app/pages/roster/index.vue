@@ -123,8 +123,8 @@
         :items-per-page-options="[10, 25, 50, 100]"
         hover
         density="comfortable"
-        :class="['roster-table', 'roster-table--clickable']"
-        @click:row="(_, { item }) => viewEmployee(item.id)"
+        :class="['roster-table', canClickProfiles ? 'roster-table--clickable' : '']"
+        @click:row="(_, { item }) => handleRowClick(item.id)"
       >
         <!-- Employee Name + Avatar -->
         <template #item.name="{ item }">
@@ -180,15 +180,19 @@
 
         <!-- Actions -->
         <template #item.actions="{ item }">
-          <div v-if="isAdmin" class="d-flex justify-end">
+          <div class="d-flex justify-end">
+            <!-- View Profile - show for users with full access OR if it's their own profile -->
             <v-btn
+              v-if="canClickProfiles || item.id === ownProfileId"
               icon="mdi-eye"
               size="x-small"
               variant="text"
               @click.stop="viewEmployee(item.id)"
               title="View Profile"
             />
+            <!-- Edit - admin only -->
             <v-btn
+              v-if="isAdmin"
               icon="mdi-pencil"
               size="x-small"
               variant="text"
@@ -213,8 +217,8 @@
         <v-card 
           rounded="lg" 
           elevation="2" 
-          class="employee-card h-100 employee-card--clickable cursor-pointer"
-          @click="viewEmployee(emp.id)"
+          :class="['employee-card h-100', canClickProfiles ? 'employee-card--clickable cursor-pointer' : '']"
+          @click="handleRowClick(emp.id)"
         >
           <v-card-text class="text-center pb-2">
             <v-avatar size="72" :color="emp.avatar_url ? undefined : 'primary'" class="mb-3">
@@ -498,8 +502,37 @@ const { employees, departments: departmentsList, positions: positionsList, loadi
 const authStore = useAuthStore()
 const router = useRouter()
 const uiStore = useUIStore()
+const { canViewProfile } = usePermissions()
 
 const isAdmin = computed(() => authStore.isAdmin)
+
+// Get own profile ID for access control
+const ownProfileId = computed(() => authStore.profile?.id)
+
+// Check if user can click on profiles (full access to roster)
+// Uses the 'manage:roster' permission which maps to full access
+const canClickProfiles = computed(() => {
+  // Admin roles always have access
+  if (['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'].includes(authStore.userRole)) {
+    return true
+  }
+  return false
+})
+
+// Handle row click - only navigate if user has access
+function handleRowClick(id: string) {
+  // Always allow clicking own profile
+  if (id === ownProfileId.value) {
+    router.push(`/roster/${id}`)
+    return
+  }
+  
+  // Check if user has full access
+  if (canClickProfiles.value) {
+    router.push(`/roster/${id}`)
+  }
+  // If view-only access, do nothing on click
+}
 
 // Local state
 const searchQuery = ref('')

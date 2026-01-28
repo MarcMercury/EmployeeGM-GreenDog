@@ -308,7 +308,7 @@ import { ref, computed, onMounted } from 'vue'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'marketing-admin']
+  middleware: ['auth']
 })
 
 // State

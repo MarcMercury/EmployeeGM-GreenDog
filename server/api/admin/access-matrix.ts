@@ -213,7 +213,7 @@ export default defineEventHandler(async (event) => {
       }
 
       // Protect built-in roles
-      const protectedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'user']
+      const protectedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user']
       if (protectedRoles.includes(role_key)) {
         throw createError({ statusCode: 400, message: 'Cannot delete built-in roles' })
       }

@@ -1,10 +1,9 @@
 /**
  * Marketing Admin Access Middleware
  * Allows: super_admin, admin, manager, marketing_admin
- * For FULL marketing access (edit/manage features, Events, Leads, Inventory)
+ * Use for: Marketing edit features, Events, Leads, Inventory management
  * 
- * Note: office_admin and user have VIEW access to calendar/resources only
- * Use 'marketing-view' middleware for those pages
+ * Note: manager role has full access to marketing (supervisor with HR + Marketing access)
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const supabase = useSupabaseClient()
@@ -29,23 +28,10 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/auth/login')
   }
   
-  // Roles with FULL marketing access (can edit/manage)
-  const fullAccessRoles = ['super_admin', 'admin', 'manager', 'marketing_admin']
+  const allowedRoles = ['super_admin', 'admin', 'manager', 'marketing_admin']
   
-  // Roles with VIEW access to specific marketing pages (calendar, resources)
-  const viewAccessRoles = ['office_admin', 'user']
-  const viewOnlyPaths = ['/marketing/calendar', '/marketing/resources']
-  
-  // Check if user has full access
-  if (fullAccessRoles.includes(profile.role)) {
-    return // Allow access
+  if (!allowedRoles.includes(profile.role)) {
+    console.warn('[Middleware] User without marketing access attempted:', to.path)
+    return navigateTo('/')
   }
-  
-  // Check if user has view access to specific pages
-  if (viewAccessRoles.includes(profile.role) && viewOnlyPaths.includes(to.path)) {
-    return // Allow view access
-  }
-  
-  console.warn('[Middleware] User without marketing access attempted:', to.path)
-  return navigateTo('/')
 })

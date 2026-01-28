@@ -258,7 +258,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'management']
+  middleware: ['auth', 'admin']
 })
 
 interface SkillRating {

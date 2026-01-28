@@ -903,7 +903,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'super-admin-only'] // Super admin only for now
+  middleware: ['super-admin-only'] // Super admin only for now
 })
 
 const { showSuccess, showError } = useToast()

@@ -652,7 +652,7 @@ const draggable = defineAsyncComponent(() => import('vuedraggable'))
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth', 'gdu']
 })
 
 useHead({

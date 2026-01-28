@@ -34,33 +34,13 @@ export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
 
 // Section access matrix - defines which roles can access each section
 // NOTE: This controls sidebar visibility. Database page_access controls page-level access.
-// IMPORTANT: Must match the Access Matrix documented in docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md
 export const SECTION_ACCESS: Record<string, UserRole[]> = {
-  // HR/Management: Full access for most management roles, view for marketing_admin and user
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  
-  // Recruiting: HR-focused roles only - NOT marketing_admin or user
+  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
-  
-  // Marketing: Marketing-focused roles. office_admin has limited view (calendar/resources), user has limited view
-  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin', 'office_admin', 'user'],
-  
-  // Marketing Full: Only roles that can edit/manage marketing content
-  marketing_full: ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  
-  // CRM & Analytics: Marketing analytics - NOT hr_admin, office_admin, or user
-  crm: ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  
-  // GDU/Education: Education-focused roles - NOT office_admin or user
+  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
   education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
-  
-  // Schedule Management: Create/edit schedules
   schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
-  
-  // Schedule View: All users can view schedules
   schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  
-  // Admin Operations: Only admin roles
   admin: ['super_admin', 'admin']
 }
 
