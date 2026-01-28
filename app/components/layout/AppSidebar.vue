@@ -306,11 +306,17 @@ const router = useRouter()
 const pageAccessList = ref<PageAccessInfo[]>([])
 const accessLoading = ref(true)
 
+// Debug log immediately when script runs
+console.log('[Sidebar] Component script loaded, accessLoading initial:', true)
+
 // Load page access from the user-specific API endpoint
 async function loadPageAccess() {
+  console.log('[Sidebar] loadPageAccess() called')
   accessLoading.value = true
   try {
+    console.log('[Sidebar] Calling /api/user/page-access...')
     const response = await $fetch('/api/user/page-access', { method: 'GET' })
+    console.log('[Sidebar] API response received:', response)
     if (response.success && response.pages) {
       pageAccessList.value = response.pages
       console.log('[Sidebar] Loaded page access for role:', response.role, 'pages:', response.pages.length)
@@ -322,6 +328,8 @@ async function loadPageAccess() {
       // Debug: Log HR pages access
       const hrPages = response.pages.filter((p: PageAccessInfo) => p.section === 'HR')
       console.log('[Sidebar] HR pages:', hrPages.map((p: PageAccessInfo) => `${p.name}: ${p.access_level}`))
+    } else {
+      console.log('[Sidebar] API response missing success or pages:', response)
     }
   } catch (err) {
     console.error('[Sidebar] Failed to load page access:', err)
@@ -329,11 +337,13 @@ async function loadPageAccess() {
     pageAccessList.value = []
   } finally {
     accessLoading.value = false
+    console.log('[Sidebar] accessLoading set to false, pageAccessList length:', pageAccessList.value.length)
   }
 }
 
 // Load access on mount
 onMounted(async () => {
+  console.log('[Sidebar] onMounted triggered')
   await loadPageAccess()
 })
 
