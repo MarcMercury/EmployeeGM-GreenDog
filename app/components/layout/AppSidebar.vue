@@ -267,12 +267,15 @@
 import { computed, ref } from 'vue'
 import type { UserRole } from '~/types'
 
-// SIMPLE ROLE-BASED ACCESS - NO API CALLS
-// These match what's in page_access table for each role
-const HR_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'] as const
-const MARKETING_ROLES = ['super_admin', 'admin', 'manager', 'marketing_admin'] as const
-const ADMIN_ROLES = ['super_admin', 'admin'] as const
-const MANAGEMENT_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'] as const
+// ROLE-BASED ACCESS - Matches page_access table in database exactly
+// Query: SELECT DISTINCT role_key, section FROM page_access JOIN page_definitions ON page_id=id WHERE access_level IN ('full','view')
+const MY_WORKSPACE_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
+const MANAGEMENT_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
+const MED_OPS_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'] as const
+const HR_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'] as const
+const MARKETING_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'] as const
+const GDU_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'] as const
+const ADMIN_OPS_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'] as const
 
 interface Props {
   modelValue: boolean
@@ -317,19 +320,19 @@ function hasSectionAccess(sectionName: string): boolean {
   
   switch (sectionName) {
     case 'My Workspace':
-      return true // Everyone gets My Workspace
+      return MY_WORKSPACE_ROLES.includes(role as typeof MY_WORKSPACE_ROLES[number])
     case 'Management':
       return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
     case 'Med Ops':
-      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
+      return MED_OPS_ROLES.includes(role as typeof MED_OPS_ROLES[number])
     case 'HR':
       return HR_ROLES.includes(role as typeof HR_ROLES[number])
     case 'Marketing':
       return MARKETING_ROLES.includes(role as typeof MARKETING_ROLES[number])
     case 'GDU':
-      return MANAGEMENT_ROLES.includes(role as typeof MANAGEMENT_ROLES[number])
+      return GDU_ROLES.includes(role as typeof GDU_ROLES[number])
     case 'Admin Ops':
-      return ADMIN_ROLES.includes(role as typeof ADMIN_ROLES[number])
+      return ADMIN_OPS_ROLES.includes(role as typeof ADMIN_OPS_ROLES[number])
     default:
       return false
   }
@@ -339,11 +342,11 @@ function hasSectionAccess(sectionName: string): boolean {
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-const hasMedOpsAccess = computed(() => MANAGEMENT_ROLES.includes(userRole.value as typeof MANAGEMENT_ROLES[number]))
+const hasMedOpsAccess = computed(() => MED_OPS_ROLES.includes(userRole.value as typeof MED_OPS_ROLES[number]))
 const hasHrAccess = computed(() => HR_ROLES.includes(userRole.value as typeof HR_ROLES[number]))
 const hasMarketingAccess = computed(() => MARKETING_ROLES.includes(userRole.value as typeof MARKETING_ROLES[number]))
-const hasEducationAccess = computed(() => MANAGEMENT_ROLES.includes(userRole.value as typeof MANAGEMENT_ROLES[number]))
-const hasAdminAccess = computed(() => ADMIN_ROLES.includes(userRole.value as typeof ADMIN_ROLES[number]))
+const hasEducationAccess = computed(() => GDU_ROLES.includes(userRole.value as typeof GDU_ROLES[number]))
+const hasAdminAccess = computed(() => ADMIN_OPS_ROLES.includes(userRole.value as typeof ADMIN_OPS_ROLES[number]))
 
 async function handleSignOut() {
   await authStore.signOut()
