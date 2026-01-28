@@ -35,8 +35,22 @@ interface SyncResult {
   }>
 }
 
-// Parse PDF buffer to text using pdf2json
-async function parsePdfToText(buffer: Buffer): Promise<string> {
+// Parse PDF buffer and extract structured data using pdf2json
+// Returns: { visits: [{date, clinicName, vetName}], amounts: [number] }
+interface VisitEntry {
+  date: string
+  clinicName: string
+  vetName: string
+}
+
+interface ExtractedPdfData {
+  visits: VisitEntry[]
+  amounts: number[]
+  dateRangeStart?: string
+  dateRangeEnd?: string
+}
+
+async function parsePdfToStructuredData(buffer: Buffer): Promise<ExtractedPdfData> {
   return new Promise((resolve, reject) => {
     const pdfParser = new PDFParser()
     
@@ -47,25 +61,260 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
     
     pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
       try {
-        // Extract all text items with their positions
-        const items: {text: string, y: number, x: number}[] = []
+        const result: ExtractedPdfData = {
+          visits: [],
+          amounts: []
+        }
         
-        if (pdfData.Pages) {
-          for (const page of pdfData.Pages) {
-            if (page.Texts) {
-              for (const textItem of page.Texts) {
-                if (textItem.R) {
-                  for (const run of textItem.R) {
-                    if (run.T) {
-                      const decoded = decodeURIComponent(run.T).trim()
-                      if (decoded) {
-                        items.push({ 
-                          text: decoded, 
-                          y: textItem.y,
-                          x: textItem.x || 0
-                        })
-                      }
-                    }
+        // Process each page
+        let inAmountsSection = false
+        let currentClinicName = ''
+        let currentClinicParts: string[] = []
+        let lastY = -1
+        
+        for (const page of pdfData.Pages || []) {
+          // Extract all text items with positions for this page
+          const pageItems: {text: string, y: number, x: number}[] = []
+          
+          for (const textItem of page.Texts || []) {
+            for (const run of textItem.R || []) {
+              if (run.T) {
+                const decoded = decodeURIComponent(run.T).trim()
+                if (decoded) {
+                  pageItems.push({ 
+                    text: decoded, 
+                    y: textItem.y,
+                    x: textItem.x || 0
+                  })
+                }
+              }
+            }
+          }
+          
+          // Sort by Y position, then X position
+          pageItems.sort((a, b) => a.y - b.y || a.x - b.x)
+          
+          // Group items by Y position (same line)
+          const lines: {y: number, items: {text: string, x: number}[]}[] = []
+          for (const item of pageItems) {
+            const lastLine = lines[lines.length - 1]
+            if (lastLine && Math.abs(lastLine.y - item.y) < 1.5) {
+              lastLine.items.push({ text: item.text, x: item.x })
+            } else {
+              lines.push({ y: item.y, items: [{ text: item.text, x: item.x }] })
+            }
+          }
+          
+          // Process each line
+          for (const line of lines) {
+            // Sort items on the line by X position
+            line.items.sort((a, b) => a.x - b.x)
+            const lineText = line.items.map(i => i.text).join(' ')
+            const lineLower = lineText.toLowerCase()
+            
+            // Check for Report End Date header (for date range)
+            if (lineLower.includes('report end date')) {
+              const dateMatch = lineText.match(/(\d{2}-\d{2}-\d{4})/)
+              if (dateMatch) {
+                result.dateRangeEnd = dateMatch[1]
+              }
+            }
+            
+            // Check for "Amount" header which signals start of amounts section
+            if (lineText.trim() === 'Amount' || 
+                (line.items.length === 1 && line.items[0].text === 'Amount')) {
+              inAmountsSection = true
+              continue
+            }
+            
+            // If in amounts section, look for numbers
+            if (inAmountsSection) {
+              for (const item of line.items) {
+                const numMatch = item.text.match(/^-?(\d+(?:\.\d{1,2})?)$/)
+                if (numMatch) {
+                  const val = parseFloat(numMatch[1])
+                  if (!isNaN(val)) {
+                    result.amounts.push(val)
+                  }
+                }
+              }
+              continue
+            }
+            
+            // Check for date/time pattern at start of line (MM-DD-YYYY H:MMam/pm)
+            const dateTimeMatch = lineText.match(/^(\d{2}-\d{2}-\d{4})\s+\d{1,2}:\d{2}[ap]m\s+(.*)$/)
+            if (dateTimeMatch) {
+              const date = dateTimeMatch[1]
+              const rest = dateTimeMatch[2]
+              
+              // The rest contains clinic name and vet name
+              // Format: "ClinicName VetName" where VetName is often "Unknown Vet" or clinic name repeated
+              // We need to extract the clinic name
+              
+              // Check if this is Unknown Clinic
+              if (rest.toLowerCase().includes('unknown clinic')) {
+                continue // Skip unknown clinics
+              }
+              
+              // Extract clinic name - it's before "Unknown Vet" or at the end
+              let clinicName = rest
+              const unknownVetIdx = rest.toLowerCase().indexOf('unknown vet')
+              if (unknownVetIdx > 0) {
+                clinicName = rest.substring(0, unknownVetIdx).trim()
+              } else {
+                // Vet name might be the clinic name repeated at the end
+                // Try to find where the vet name starts
+                const words = rest.split(/\s+/)
+                if (words.length > 3) {
+                  // Take first half as clinic name as a heuristic
+                  clinicName = words.slice(0, Math.ceil(words.length / 2)).join(' ')
+                }
+              }
+              
+              if (clinicName && clinicName.length > 2) {
+                result.visits.push({
+                  date,
+                  clinicName: clinicName.trim(),
+                  vetName: 'Unknown'
+                })
+              }
+              continue
+            }
+            
+            // Check for standalone clinic name (header row before visits)
+            // These appear as clinic name on its own line, followed by visit rows
+            const isClinicHeader = (
+              lineLower.includes('veterinary') ||
+              lineLower.includes('animal hospital') ||
+              lineLower.includes('animal clinic') ||
+              lineLower.includes('pet hospital') ||
+              lineLower.includes('pet clinic') ||
+              lineLower.includes('pet medical') ||
+              lineLower.includes('pet care') ||
+              lineLower.includes('pet doctors') ||
+              /\bvca\b/.test(lineLower) ||
+              lineLower.includes('southpaw') ||
+              lineLower.includes('modern animal')
+            ) && !lineLower.includes('unknown clinic')
+            
+            if (isClinicHeader && !dateTimeMatch) {
+              // This is a clinic name header - save for following visit rows
+              currentClinicName = lineText.trim()
+            }
+          }
+        }
+        
+        console.log('[parse-referrals] Extracted:', result.visits.length, 'visits,', result.amounts.length, 'amounts')
+        resolve(result)
+      } catch (err) {
+        reject(err)
+      }
+    })
+    
+    pdfParser.parseBuffer(buffer)
+  })
+}
+
+// Legacy function for backward compatibility  
+async function parsePdfToText(buffer: Buffer): Promise<string> {
+  const data = await parsePdfToStructuredData(buffer)
+  // Convert to text format for legacy parsers
+  const lines: string[] = []
+  for (const visit of data.visits) {
+    lines.push(`${visit.date} ${visit.clinicName} ${visit.vetName}`)
+  }
+  lines.push('Amount')
+  for (const amount of data.amounts) {
+    lines.push(amount.toString())
+  }
+  return lines.join('\n')
+}
+
+// NEW: Parse EzyVet Referrer Revenue PDF using position-based approach
+// The PDF has:
+// - Date/time items at x~4.8
+// - Clinic name items at x~10.6 (on same y as date)
+// - Vet name items at x~17.7 (on same y as date)
+// - "Amount" header marks start of amounts section
+// - Amount values at x~10-12 in amounts section
+async function parseEzyVetPdfStructured(buffer: Buffer): Promise<ParsedReferral[]> {
+  return new Promise((resolve, reject) => {
+    const pdfParser = new PDFParser()
+    
+    pdfParser.on('pdfParser_dataError', (errData: any) => {
+      reject(new Error(errData.parserError || 'PDF parsing failed'))
+    })
+    
+    pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+      try {
+        const visits: {date: string, clinicName: string}[] = []
+        const amounts: number[] = []
+        let inAmountsSection = false
+        let unknownClinicCount = 0
+        
+        for (const page of pdfData.Pages || []) {
+          // Extract all text items with positions
+          const pageItems: {text: string, y: number, x: number}[] = []
+          
+          for (const textItem of page.Texts || []) {
+            for (const run of textItem.R || []) {
+              if (run.T) {
+                const decoded = decodeURIComponent(run.T).trim()
+                if (decoded) {
+                  pageItems.push({ 
+                    text: decoded, 
+                    y: textItem.y,
+                    x: textItem.x || 0
+                  })
+                }
+              }
+            }
+          }
+          
+          // Check if "Amount" header appears on this page (marks amounts section)
+          for (const item of pageItems) {
+            if (item.text === 'Amount' && item.x < 6) {
+              inAmountsSection = true
+              break
+            }
+          }
+          
+          if (inAmountsSection) {
+            // In amounts section: extract numbers at x > 10
+            for (const item of pageItems) {
+              if (item.x > 10 && item.x < 15) {
+                const val = parseFloat(item.text)
+                if (!isNaN(val) && val > 0) {
+                  amounts.push(val)
+                }
+              }
+            }
+          } else {
+            // In visits section: look for date items at x < 6
+            for (const item of pageItems) {
+              // Check if this is a date/time item (at left side, x < 6)
+              const dateMatch = item.text.match(/^(\d{2}-\d{2}-\d{4})\s+\d{1,2}:\d{2}[ap]m$/)
+              if (dateMatch && item.x < 6) {
+                const date = dateMatch[1]
+                const y = item.y
+                
+                // Find clinic name on same line (x between 9 and 16)
+                const clinicItems = pageItems.filter(i => 
+                  Math.abs(i.y - y) < 0.5 && i.x > 9 && i.x < 16
+                )
+                
+                if (clinicItems.length > 0) {
+                  clinicItems.sort((a, b) => a.x - b.x)
+                  const clinicName = clinicItems[0].text
+                  
+                  // Skip if it's "Unknown Clinic"
+                  if (clinicName && clinicName.toLowerCase().includes('unknown clinic')) {
+                    unknownClinicCount++
+                  } else if (clinicName && clinicName.length > 2) {
+                    visits.push({ 
+                      date, 
+                      clinicName: cleanClinicName(clinicName) 
+                    })
                   }
                 }
               }
@@ -73,82 +322,80 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
           }
         }
         
-        // Process items to join split clinic names
-        // Pattern: "Centinela Animal" followed by "Hospital" at similar Y position
-        // Or: "Centinela" followed by "Animal Hospital"
-        const processedLines: string[] = []
-        let i = 0
+        const totalVisits = visits.length + unknownClinicCount
+        const totalRevenue = amounts.reduce((sum, a) => sum + a, 0)
         
-        while (i < items.length) {
-          let currentText = items[i].text
-          const currentY = items[i].y
-          
-          // Check if this looks like a partial clinic name that needs joining
-          // Pattern 1: "Something Animal" needs "Hospital/Clinic" from next item
-          const hasAnimal = currentText.includes('Animal') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic')
-          const hasVet = currentText.includes('Veterinary') && !currentText.toLowerCase().includes('center') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic')
-          const hasPet = currentText.includes('Pet') && !currentText.toLowerCase().includes('hospital') && !currentText.toLowerCase().includes('clinic') && !currentText.toLowerCase().includes('care')
-          
-          // Pattern 2: Single clinic name (e.g., "Centinela") needs "Animal Hospital" from next items
-          const knownClinics = ['centinela', 'encino', 'tarzana', 'valley', 'westside', 'pasadena', 'burbank', 'glendale']
-          const isKnownClinicStart = knownClinics.some(c => currentText.toLowerCase() === c)
-          
-          // Try to join for multi-part clinic names
-          if (isKnownClinicStart && i + 1 < items.length) {
-            const next1 = items[i + 1]
-            
-            // Pattern 2a: Next item is "Animal Hospital" or "Animal Clinic" (combined)
-            if (next1.text.toLowerCase().includes('animal hospital') || next1.text.toLowerCase().includes('animal clinic')) {
-              currentText = currentText + ' ' + next1.text
-              i++ // Skip the joined item
-              processedLines.push(currentText)
-              i++
-              continue
-            }
-            
-            // Pattern 2b: Next items are "Animal" + "Hospital" (separate)
-            if (i + 2 < items.length && next1.text.toLowerCase() === 'animal') {
-              const next2 = items[i + 2]
-              if (next2.text.toLowerCase().includes('hospital') || next2.text.toLowerCase().includes('clinic')) {
-                currentText = currentText + ' ' + next1.text + ' ' + next2.text
-                i += 2 // Skip both joined items
-                processedLines.push(currentText)
-                i++
-                continue
-              }
-            }
-          }
-          
-          const needsJoin = hasAnimal || hasVet || hasPet
-          
-          // Look ahead for continuation
-          if (needsJoin && i + 1 < items.length) {
-            const nextText = items[i + 1].text
-            const nextY = items[i + 1].y
-            
-            // Join if Y is close (within 2 units) and next item completes the clinic name
-            const clinicSuffixes = ['hospital', 'clinic', 'center', 'care', 'group', 'medical', 'wellness']
-            const hasClinicSuffix = clinicSuffixes.some(s => nextText.toLowerCase().includes(s))
-            
-            if (Math.abs(nextY - currentY) < 2 && hasClinicSuffix) {
-              currentText = currentText + ' ' + nextText
-              i++ // Skip the joined item
-            }
-          }
-          
-          processedLines.push(currentText)
-          i++
+        console.log('[parseEzyVetPdfStructured] Known clinic visits:', visits.length)
+        console.log('[parseEzyVetPdfStructured] Unknown clinic visits:', unknownClinicCount)
+        console.log('[parseEzyVetPdfStructured] Total visits:', totalVisits)
+        console.log('[parseEzyVetPdfStructured] Amount entries:', amounts.length)
+        console.log('[parseEzyVetPdfStructured] Total revenue: $' + totalRevenue.toLocaleString())
+        
+        const referrals: ParsedReferral[] = []
+        
+        // Aggregate visits by clinic (case-insensitive)
+        const visitCounts = new Map<string, {count: number, dates: string[], displayName: string}>()
+        for (const visit of visits) {
+          const key = visit.clinicName.toLowerCase()
+          const existing = visitCounts.get(key) || {count: 0, dates: [], displayName: visit.clinicName}
+          existing.count++
+          existing.dates.push(visit.date)
+          visitCounts.set(key, existing)
         }
         
-        resolve(processedLines.join('\n'))
+        // Calculate average revenue per visit based on ALL visits (known + unknown)
+        // This gives a fair estimate of revenue per referral
+        const avgRevenuePerVisit = totalVisits > 0 ? totalRevenue / totalVisits : 0
+        
+        console.log('[parseEzyVetPdfStructured] Average revenue per visit: $' + avgRevenuePerVisit.toFixed(2))
+        console.log('[parseEzyVetPdfStructured] Unique clinics:', visitCounts.size)
+        
+        // Create referral entries for each known clinic visit
+        for (const [_, data] of visitCounts.entries()) {
+          for (let i = 0; i < data.count; i++) {
+            referrals.push({
+              clinicName: data.displayName,
+              amount: avgRevenuePerVisit,
+              date: data.dates[i] || new Date().toISOString().split('T')[0]
+            })
+          }
+        }
+        
+        console.log('[parseEzyVetPdfStructured] Created', referrals.length, 'referral entries')
+        resolve(referrals)
       } catch (err) {
         reject(err)
       }
     })
     
-    // Parse the buffer
     pdfParser.parseBuffer(buffer)
   })
+}
+
+// Helper to extract clinic name from a string that may have repeated vet name at end
+function extractClinicName(str: string): string {
+  // Common patterns:
+  // "San Fernando Pet Hospital Unknown Vet" -> "San Fernando Pet Hospital"
+  // "Van Nuys Veterinary Clinic Van Nuys Veterinary Clinic" -> "Van Nuys Veterinary Clinic"
+  
+  const words = str.split(/\s+/)
+  if (words.length <= 3) return str
+  
+  // Check for "Unknown Vet" at end
+  if (words.slice(-2).join(' ').toLowerCase() === 'unknown vet') {
+    return words.slice(0, -2).join(' ')
+  }
+  
+  // Check for repeated clinic name (vet = clinic)
+  const halfLen = Math.ceil(words.length / 2)
+  const firstHalf = words.slice(0, halfLen).join(' ').toLowerCase()
+  const secondHalf = words.slice(halfLen).join(' ').toLowerCase()
+  
+  if (firstHalf === secondHalf || firstHalf.includes(secondHalf) || secondHalf.includes(firstHalf)) {
+    return words.slice(0, halfLen).join(' ')
+  }
+  
+  return str
 }
 
 // Known LA-area locations that may prefix clinic names in PDFs
@@ -648,12 +895,37 @@ export default defineEventHandler(async (event) => {
     
     console.log('[parse-referrals] File received, size:', file.data.length, 'bytes')
     
-    // Parse PDF to text using pdf2json
-    let text: string
+    // Parse PDF using the new structured EzyVet parser
+    let referrals: ParsedReferral[]
+    let text: string = ''
+    
     try {
-      console.log('[parse-referrals] Parsing PDF with pdf2json...')
-      text = await parsePdfToText(Buffer.from(file.data))
-      console.log('[parse-referrals] PDF parsed successfully, text length:', text.length)
+      console.log('[parse-referrals] Parsing PDF with structured EzyVet parser...')
+      const pdfBuffer = Buffer.from(file.data)
+      
+      // Try the new structured parser first
+      referrals = await parseEzyVetPdfStructured(pdfBuffer)
+      console.log('[parse-referrals] Structured parser found:', referrals.length, 'referrals')
+      
+      // Also get text for date range extraction
+      text = await parsePdfToText(pdfBuffer)
+      
+      // If structured parser didn't find much, fall back to legacy parsers
+      if (referrals.length < 10) {
+        console.log('[parse-referrals] Structured parser found few results, trying legacy methods...')
+        const referrals1 = parsePdfContent(text)
+        const referrals2 = parsePdfContentV2(text)
+        
+        console.log('[parse-referrals] Legacy Method 1 found:', referrals1.length, 'entries')
+        console.log('[parse-referrals] Legacy Method 2 found:', referrals2.length, 'entries')
+        
+        // Use whichever method found the most
+        if (referrals1.length > referrals.length || referrals2.length > referrals.length) {
+          referrals = referrals1.length >= referrals2.length ? referrals1 : referrals2
+          console.log('[parse-referrals] Using legacy parser with', referrals.length, 'results')
+        }
+      }
+      
     } catch (pdfError: any) {
       console.error('[parse-referrals] PDF parsing error:', pdfError)
       throw createError({ 
@@ -662,11 +934,15 @@ export default defineEventHandler(async (event) => {
       })
     }
     
+    console.log('[parse-referrals] Final referrals count:', referrals.length)
+    
     // Extract date range from header
     const startMatch = text.match(/START\s+(\d{2}-\d{2}-\d{4})/)
-    const endMatch = text.match(/END\s+(\d{2}-\d{2}-\d{4})/)
+    const endMatch = text.match(/END\s+(\d{2}-\d{2}-\d{4})|Report\s+End\s+Date\s+(\d{2}-\d{2}-\d{4})/)
     
-    console.log('[parse-referrals] Date range:', startMatch?.[1], 'to', endMatch?.[1])
+    // Handle different date range formats
+    const endDateStr = endMatch?.[1] || endMatch?.[2]
+    console.log('[parse-referrals] Date range:', startMatch?.[1], 'to', endDateStr)
     
     // Parse dates for comparison
     let parsedStartDate: string | null = null
@@ -676,8 +952,8 @@ export default defineEventHandler(async (event) => {
       const [month, day, year] = startMatch[1].split('-')
       parsedStartDate = `${year}-${month}-${day}`
     }
-    if (endMatch?.[1]) {
-      const [month, day, year] = endMatch[1].split('-')
+    if (endDateStr) {
+      const [month, day, year] = endDateStr.split('-')
       parsedEndDate = `${year}-${month}-${day}`
     }
     
@@ -695,21 +971,10 @@ export default defineEventHandler(async (event) => {
         console.log('[parse-referrals] Duplicate date range detected, already uploaded on:', uploadedAt)
         throw createError({
           statusCode: 409,
-          message: `This report (${startMatch[1]} to ${endMatch[1]}) was already uploaded on ${uploadedAt}. Duplicate uploads are prevented to avoid double-counting data.`
+          message: `This report (${startMatch?.[1] || 'N/A'} to ${endDateStr || 'N/A'}) was already uploaded on ${uploadedAt}. Duplicate uploads are prevented to avoid double-counting data.`
         })
       }
     }
-    
-    // Parse referrals using both methods
-    const referrals1 = parsePdfContent(text)
-    const referrals2 = parsePdfContentV2(text)
-    
-    console.log('[parse-referrals] Method 1 found:', referrals1.length, 'entries (individual visits)')
-    console.log('[parse-referrals] Method 2 found:', referrals2.length, 'entries (individual visits)')
-    
-    // Use the method that found more records
-    const referrals = referrals1.length >= referrals2.length ? referrals1 : referrals2
-    console.log('[parse-referrals] Using method', referrals1.length >= referrals2.length ? '1' : '2', 'with', referrals.length, 'total visits')
     
     // Aggregate by clinic - sum up visits and revenue per clinic
     const aggregated = aggregateByClinic(referrals)
