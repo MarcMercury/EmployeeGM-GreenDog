@@ -62,6 +62,7 @@
           />
         </template>
         <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/my-schedule" title="My Schedule" prepend-icon="mdi-calendar-account" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
