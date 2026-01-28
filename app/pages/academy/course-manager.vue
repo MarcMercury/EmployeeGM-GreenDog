@@ -326,7 +326,7 @@ import type { TrainingCourse } from '~/types/database.types'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'gdu']
 })
 
 // Extended course type with skill linking fields

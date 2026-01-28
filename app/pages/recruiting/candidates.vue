@@ -693,7 +693,8 @@
 
 <script setup lang="ts">
 definePageMeta({
-  middleware: ['auth']
+  layout: 'default',
+  middleware: ['auth', 'management']
 })
 
 interface Candidate {

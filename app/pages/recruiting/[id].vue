@@ -993,7 +993,7 @@ import type { Candidate, CandidateSkill, CandidateDocument, CandidateNote } from
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin']
+  middleware: ['auth', 'management']
 })
 
 const route = useRoute()
