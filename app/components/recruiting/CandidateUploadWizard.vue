@@ -95,24 +95,17 @@
                     label="Select CSV file"
                     prepend-icon="mdi-file-delimited"
                     variant="outlined"
-                    :loading="parsing"
                     :disabled="parsing"
                     show-size
-                    @update:model-value="handleCsvUpload"
                   />
 
                   <v-alert v-if="parseError" type="error" class="mt-4" closable @click:close="parseError = null">
                     {{ parseError }}
                   </v-alert>
 
-                  <div v-if="parsedCandidates.length > 0" class="mt-4">
-                    <v-alert type="success" variant="tonal" class="mb-4">
-                      <strong>{{ parsedCandidates.length }}</strong> candidates found in CSV file.
-                      <span v-if="duplicateEmails.length > 0" class="text-warning">
-                        ({{ duplicateEmails.length }} duplicates detected)
-                      </span>
-                    </v-alert>
-                  </div>
+                  <v-alert v-if="csvFile" type="info" variant="tonal" class="mt-4">
+                    <strong>{{ csvFile?.name }}</strong> selected. Click "Import Candidates" to parse the file and review.
+                  </v-alert>
                 </div>
 
                 <div v-else>
@@ -127,14 +120,16 @@
                     label="Select resume file"
                     prepend-icon="mdi-file-document-outline"
                     variant="outlined"
-                    :loading="parsing"
                     :disabled="parsing"
                     show-size
-                    @update:model-value="handleResumeUpload"
                   />
 
                   <v-alert v-if="parseError" type="error" class="mt-4" closable @click:close="parseError = null">
                     {{ parseError }}
+                  </v-alert>
+
+                  <v-alert v-if="resumeFile && !parsedResume" type="info" variant="tonal" class="mt-4">
+                    <strong>{{ resumeFile?.name }}</strong> selected. Click "Import Candidates" to parse the resume.
                   </v-alert>
 
                   <div v-if="parsedResume" class="mt-4">
@@ -167,15 +162,60 @@
               </div>
             </v-stepper-window-item>
 
-            <!-- Step 3: Review -->
+            <!-- Step 3: Review & Duplicates -->
             <v-stepper-window-item :value="3">
               <div class="pa-6">
                 <div v-if="uploadType === 'bulk'">
-                  <h3 class="text-h6 mb-4">Review Candidates ({{ parsedCandidates.length }} total)</h3>
+                  <!-- Duplicates Section - Show First if Any -->
+                  <div v-if="duplicateEmails.length > 0" class="mb-6">
+                    <v-alert type="warning" variant="tonal" class="mb-4">
+                      <div class="d-flex align-center">
+                        <v-icon start size="large">mdi-account-multiple-check</v-icon>
+                        <div>
+                          <div class="font-weight-bold text-h6">{{ duplicateEmails.length }} Duplicate Candidates Found</div>
+                          <div class="text-body-2">These emails already exist in your CRM. Existing data will NOT be overwritten - only empty fields will be filled.</div>
+                        </div>
+                      </div>
+                    </v-alert>
+                    
+                    <v-card variant="outlined" class="mb-4">
+                      <v-card-title class="text-subtitle-1 bg-warning-lighten-5">
+                        <v-icon start color="warning">mdi-account-off</v-icon>
+                        Skipped / Merge-Only Candidates
+                      </v-card-title>
+                      <v-card-text class="pa-0">
+                        <v-list density="compact">
+                          <v-list-item v-for="email in duplicateEmails.slice(0, 10)" :key="email">
+                            <template #prepend>
+                              <v-icon color="warning" size="small">mdi-email</v-icon>
+                            </template>
+                            <v-list-item-title>{{ email }}</v-list-item-title>
+                            <template #append>
+                              <v-chip size="x-small" color="warning" variant="tonal">Merge Only</v-chip>
+                            </template>
+                          </v-list-item>
+                          <v-list-item v-if="duplicateEmails.length > 10">
+                            <v-list-item-title class="text-grey">...and {{ duplicateEmails.length - 10 }} more duplicates</v-list-item-title>
+                          </v-list-item>
+                        </v-list>
+                      </v-card-text>
+                    </v-card>
+                  </div>
+
+                  <!-- New Candidates Section -->
+                  <div class="d-flex align-center mb-3">
+                    <h3 class="text-h6">New Candidates to Add</h3>
+                    <v-chip class="ml-3" color="success" variant="tonal">
+                      {{ newCandidatesCount }} new
+                    </v-chip>
+                    <v-chip v-if="duplicateEmails.length > 0" class="ml-2" color="warning" variant="tonal">
+                      {{ duplicateEmails.length }} will merge
+                    </v-chip>
+                  </div>
                   
                   <v-data-table
                     :headers="previewHeaders"
-                    :items="parsedCandidates.slice(0, 50)"
+                    :items="newCandidatesPreview"
                     :items-per-page="10"
                     density="compact"
                     class="elevation-0 border rounded"
@@ -192,20 +232,11 @@
                       {{ item.city }}<template v-if="item.state">, {{ item.state }}</template>
                     </template>
                     <template #bottom>
-                      <div v-if="parsedCandidates.length > 50" class="text-center pa-2 text-grey">
-                        Showing first 50 of {{ parsedCandidates.length }} candidates
+                      <div v-if="newCandidatesCount > 50" class="text-center pa-2 text-grey">
+                        Showing first 50 of {{ newCandidatesCount }} new candidates
                       </div>
                     </template>
                   </v-data-table>
-
-                  <v-alert v-if="duplicateEmails.length > 0" type="info" variant="tonal" class="mt-4">
-                    <v-icon start>mdi-merge</v-icon>
-                    <strong>{{ duplicateEmails.length }} candidates</strong> have email addresses that already exist. Empty fields will be filled with data from the upload (existing data will not be overwritten).
-                    <ul class="mt-2 mb-0">
-                      <li v-for="email in duplicateEmails.slice(0, 5)" :key="email">{{ email }}</li>
-                      <li v-if="duplicateEmails.length > 5">...and {{ duplicateEmails.length - 5 }} more</li>
-                    </ul>
-                  </v-alert>
                 </div>
 
                 <div v-else-if="parsedResume">
@@ -338,18 +369,21 @@
         <v-btn
           v-else-if="step === 2"
           color="primary"
-          :disabled="!canProceedToReview"
-          @click="step = 3"
+          :disabled="!canImport"
+          :loading="parsing"
+          @click="importCandidates"
         >
-          Review
+          <v-icon start>mdi-file-import</v-icon>
+          Import Candidates
         </v-btn>
         <v-btn
           v-else-if="step === 3"
-          color="primary"
+          color="success"
           :loading="uploading"
           @click="submitUpload"
         >
-          {{ uploadType === 'bulk' ? `Import ${parsedCandidates.length} Candidates` : 'Add Candidate' }}
+          <v-icon start>mdi-cloud-upload</v-icon>
+          {{ uploadType === 'bulk' ? `Upload ${parsedCandidates.length} to CRM` : 'Upload to CRM' }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -426,6 +460,33 @@ const previewHeaders = [
   { title: 'Source', key: 'source', width: '120px' }
 ]
 
+// Check if file is selected (for Import button)
+const canImport = computed(() => {
+  if (uploadType.value === 'bulk') {
+    return csvFile.value !== null
+  } else {
+    return resumeFile.value !== null
+  }
+})
+
+// Count of new candidates (not duplicates)
+const newCandidatesCount = computed(() => {
+  return parsedCandidates.value.filter(c => {
+    const email = c.email?.toLowerCase()
+    return !email || !duplicateEmails.value.includes(email)
+  }).length
+})
+
+// New candidates only (for preview table)
+const newCandidatesPreview = computed(() => {
+  return parsedCandidates.value
+    .filter(c => {
+      const email = c.email?.toLowerCase()
+      return !email || !duplicateEmails.value.includes(email)
+    })
+    .slice(0, 50)
+})
+
 const canProceedToReview = computed(() => {
   if (uploadType.value === 'bulk') {
     return parsedCandidates.value.length > 0
@@ -444,6 +505,21 @@ function getStatusColor(status: string | null | undefined): string {
     rejected: 'red'
   }
   return colors[status || ''] || 'grey'
+}
+
+// Import Candidates button - parses file and advances to step 3
+async function importCandidates() {
+  if (uploadType.value === 'bulk') {
+    await handleCsvUpload(csvFile.value)
+    if (parsedCandidates.value.length > 0) {
+      step.value = 3
+    }
+  } else {
+    await handleResumeUpload(resumeFile.value)
+    if (parsedResume.value) {
+      step.value = 3
+    }
+  }
 }
 
 // Parse CSV from Indeed export
