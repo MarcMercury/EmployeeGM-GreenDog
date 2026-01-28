@@ -314,6 +314,14 @@ async function loadPageAccess() {
     if (response.success && response.pages) {
       pageAccessList.value = response.pages
       console.log('[Sidebar] Loaded page access for role:', response.role, 'pages:', response.pages.length)
+      
+      // Debug: Log Marketing pages access
+      const marketingPages = response.pages.filter((p: PageAccessInfo) => p.section === 'Marketing')
+      console.log('[Sidebar] Marketing pages:', marketingPages.map((p: PageAccessInfo) => `${p.name}: ${p.access_level}`))
+      
+      // Debug: Log HR pages access
+      const hrPages = response.pages.filter((p: PageAccessInfo) => p.section === 'HR')
+      console.log('[Sidebar] HR pages:', hrPages.map((p: PageAccessInfo) => `${p.name}: ${p.access_level}`))
     }
   } catch (err) {
     console.error('[Sidebar] Failed to load page access:', err)
@@ -368,15 +376,56 @@ function hasSectionAccess(sectionName: string): boolean {
   return sectionPages.some(p => p.access_level === 'full' || p.access_level === 'view')
 }
 
-// Section access computed properties - driven by database
+// Section access computed properties - MUST directly access reactive refs for proper reactivity
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-const hasHrAccess = computed(() => hasSectionAccess('HR'))
-const hasRecruitingAccess = computed(() => hasPageAccess('/recruiting'))
-const hasMarketingAccess = computed(() => hasSectionAccess('Marketing'))
-const hasEducationAccess = computed(() => hasSectionAccess('GDU'))
-const hasAdminAccess = computed(() => hasSectionAccess('Admin Ops'))
+
+// These computed properties DIRECTLY access the refs for proper Vue reactivity
+const hasHrAccess = computed(() => {
+  const role = userRole.value
+  if (role === 'super_admin') return true
+  if (accessLoading.value) return false
+  const pages = pageAccessList.value.filter(p => p.section === 'HR')
+  if (pages.length === 0) return false
+  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
+})
+
+const hasRecruitingAccess = computed(() => {
+  const role = userRole.value
+  if (role === 'super_admin') return true
+  if (accessLoading.value) return false
+  const page = pageAccessList.value.find(p => p.path === '/recruiting')
+  if (!page) return false
+  return page.access_level === 'full' || page.access_level === 'view'
+})
+
+const hasMarketingAccess = computed(() => {
+  const role = userRole.value
+  if (role === 'super_admin') return true
+  if (accessLoading.value) return false
+  const pages = pageAccessList.value.filter(p => p.section === 'Marketing')
+  if (pages.length === 0) return false
+  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
+})
+
+const hasEducationAccess = computed(() => {
+  const role = userRole.value
+  if (role === 'super_admin') return true
+  if (accessLoading.value) return false
+  const pages = pageAccessList.value.filter(p => p.section === 'GDU')
+  if (pages.length === 0) return false
+  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
+})
+
+const hasAdminAccess = computed(() => {
+  const role = userRole.value
+  if (role === 'super_admin') return true
+  if (accessLoading.value) return false
+  const pages = pageAccessList.value.filter(p => p.section === 'Admin Ops')
+  if (pages.length === 0) return false
+  return pages.some(p => p.access_level === 'full' || p.access_level === 'view')
+})
 
 async function handleSignOut() {
   await authStore.signOut()
