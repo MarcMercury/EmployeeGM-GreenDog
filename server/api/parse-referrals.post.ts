@@ -941,7 +941,7 @@ export default defineEventHandler(async (event) => {
       code: profileError?.code 
     })
     
-    const allowedRoles = ['admin', 'marketing_admin']
+    const allowedRoles = ['super_admin', 'admin', 'marketing_admin']
     if (profileError) {
       console.log('[parse-referrals] Profile lookup error:', profileError)
       throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
