@@ -9,6 +9,7 @@ const { showSuccess, showError } = useToast()
 
 // Export dialog
 const showExportDialog = ref(false)
+const showUploadWizard = ref(false)
 const exportColumns = [
   { key: 'first_name', title: 'First Name' },
   { key: 'last_name', title: 'Last Name' },
@@ -747,6 +748,13 @@ function formatStatus(status: string): string {
         </p>
       </div>
       <div class="d-flex gap-2">
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-file-import-outline"
+          @click="showUploadWizard = true"
+        >
+          Import
+        </v-btn>
         <v-btn
           variant="outlined"
           prepend-icon="mdi-file-export-outline"
@@ -1815,6 +1823,12 @@ function formatStatus(status: string): string {
       :columns="exportColumns"
       default-file-name="students-export"
       title="Student Contacts Export"
+    />
+
+    <!-- Import Wizard -->
+    <GduStudentUploadWizard
+      v-model="showUploadWizard"
+      @uploaded="loadStudents"
     />
   </div>
 </template>

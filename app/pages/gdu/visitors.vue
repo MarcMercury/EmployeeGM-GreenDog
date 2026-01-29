@@ -10,6 +10,7 @@ const { showSuccess, showError } = useToast()
 
 // Export dialog
 const showExportDialog = ref(false)
+const showUploadWizard = ref(false)
 const exportColumns = [
   { key: 'first_name', title: 'First Name' },
   { key: 'last_name', title: 'Last Name' },
@@ -557,6 +558,14 @@ async function postVisitorToSlack() {
       <v-spacer />
       <v-btn
         variant="outlined"
+        prepend-icon="mdi-file-import-outline"
+        class="mr-2"
+        @click="showUploadWizard = true"
+      >
+        Import
+      </v-btn>
+      <v-btn
+        variant="outlined"
         prepend-icon="mdi-file-export-outline"
         class="mr-2"
         @click="showExportDialog = true"
@@ -1078,6 +1087,12 @@ async function postVisitorToSlack() {
       :columns="exportColumns"
       default-file-name="ce-visitors-export"
       title="CE Course Contacts Export"
+    />
+
+    <!-- Import Wizard -->
+    <GduVisitorUploadWizard
+      v-model="showUploadWizard"
+      @uploaded="refresh"
     />
   </div>
 </template>
