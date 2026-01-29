@@ -21,11 +21,9 @@
             <v-divider />
             <v-stepper-item :value="2" :complete="step > 2" title="Upload File" />
             <v-divider />
-            <v-stepper-item :value="3" :complete="step > 3" title="Duplicates" />
+            <v-stepper-item :value="3" :complete="step > 3" title="Review" />
             <v-divider />
-            <v-stepper-item :value="4" :complete="step > 4" title="Review" />
-            <v-divider />
-            <v-stepper-item :value="5" title="Upload to CRM" />
+            <v-stepper-item :value="4" title="Complete" />
           </v-stepper-header>
 
           <v-stepper-window>
@@ -164,15 +162,15 @@
               </div>
             </v-stepper-window-item>
 
-            <!-- Step 3: Duplicates Check -->
+            <!-- Step 3: Review & Duplicates -->
             <v-stepper-window-item :value="3">
               <div class="pa-6">
-                <div v-if="uploadType === 'bulk'">
-                  <h3 class="text-h6 mb-4">Duplicate Check Results</h3>
-                  <p class="text-body-2 text-grey-darken-1 mb-4">
-                    We've compared your upload against existing candidates in the recruiting pipeline.
-                  </p>
+                <!-- Upload Error Alert -->
+                <v-alert v-if="uploadError" type="error" class="mb-4" closable @click:close="uploadError = null">
+                  {{ uploadError }}
+                </v-alert>
 
+                <div v-if="uploadType === 'bulk'">
                   <!-- Skipped (No Email) Section -->
                   <v-alert v-if="skippedNoEmailCount > 0" type="info" variant="tonal" class="mb-4">
                     <div class="d-flex align-center">
@@ -183,81 +181,41 @@
                     </div>
                   </v-alert>
 
-                  <!-- Summary Stats -->
-                  <v-row class="mb-4">
-                    <v-col cols="12" md="4">
-                      <v-card variant="tonal" color="success" class="pa-4 text-center">
-                        <v-icon size="32" class="mb-2">mdi-account-plus</v-icon>
-                        <div class="text-h4 font-weight-bold">{{ newCandidatesCount }}</div>
-                        <div class="text-body-2">New Candidates</div>
-                      </v-card>
-                    </v-col>
-                    <v-col cols="12" md="4">
-                      <v-card variant="tonal" color="warning" class="pa-4 text-center">
-                        <v-icon size="32" class="mb-2">mdi-account-multiple-check</v-icon>
-                        <div class="text-h4 font-weight-bold">{{ duplicateEmails.length }}</div>
-                        <div class="text-body-2">Duplicates Found</div>
-                      </v-card>
-                    </v-col>
-                    <v-col cols="12" md="4">
-                      <v-card variant="tonal" color="grey" class="pa-4 text-center">
-                        <v-icon size="32" class="mb-2">mdi-account-off</v-icon>
-                        <div class="text-h4 font-weight-bold">{{ skippedNoEmailCount }}</div>
-                        <div class="text-body-2">Skipped (No Email)</div>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-
-                  <!-- Duplicates Detail Section -->
-                  <div v-if="duplicateEmails.length > 0" class="mb-4">
+                  <!-- Duplicates Section - Show First if Any -->
+                  <div v-if="duplicateEmails.length > 0" class="mb-6">
                     <v-alert type="warning" variant="tonal" class="mb-4">
                       <div class="d-flex align-center">
                         <v-icon start size="large">mdi-account-multiple-check</v-icon>
                         <div>
-                          <div class="font-weight-bold">{{ duplicateEmails.length }} Duplicate Candidates Found</div>
-                          <div class="text-body-2">These emails already exist in your recruiting pipeline. They will be skipped during upload.</div>
+                          <div class="font-weight-bold text-h6">{{ duplicateEmails.length }} Duplicate Candidates Found</div>
+                          <div class="text-body-2">These emails already exist in your CRM. Existing data will NOT be overwritten - only empty fields will be filled.</div>
                         </div>
                       </div>
                     </v-alert>
                     
-                    <v-card variant="outlined">
+                    <v-card variant="outlined" class="mb-4">
                       <v-card-title class="text-subtitle-1 bg-warning-lighten-5">
-                        <v-icon start color="warning">mdi-email-multiple</v-icon>
-                        Duplicate Email Addresses
+                        <v-icon start color="warning">mdi-account-off</v-icon>
+                        Skipped / Merge-Only Candidates
                       </v-card-title>
                       <v-card-text class="pa-0">
                         <v-list density="compact">
-                          <v-list-item v-for="dup in duplicateCandidatesDetails.slice(0, 15)" :key="dup.email">
+                          <v-list-item v-for="email in duplicateEmails.slice(0, 10)" :key="email">
                             <template #prepend>
-                              <v-icon color="warning" size="small">mdi-account</v-icon>
+                              <v-icon color="warning" size="small">mdi-email</v-icon>
                             </template>
-                            <v-list-item-title>
-                              <span class="font-weight-medium">{{ dup.name }}</span>
-                              <span class="text-grey-darken-1 ml-2">({{ dup.email }})</span>
-                            </v-list-item-title>
+                            <v-list-item-title>{{ email }}</v-list-item-title>
                             <template #append>
-                              <v-chip size="x-small" color="warning" variant="tonal">Already Exists</v-chip>
+                              <v-chip size="x-small" color="warning" variant="tonal">Merge Only</v-chip>
                             </template>
                           </v-list-item>
-                          <v-list-item v-if="duplicateEmails.length > 15">
-                            <v-list-item-title class="text-grey text-center">
-                              ...and {{ duplicateEmails.length - 15 }} more duplicates
-                            </v-list-item-title>
+                          <v-list-item v-if="duplicateEmails.length > 10">
+                            <v-list-item-title class="text-grey">...and {{ duplicateEmails.length - 10 }} more duplicates</v-list-item-title>
                           </v-list-item>
                         </v-list>
                       </v-card-text>
                     </v-card>
                   </div>
-
-                  <!-- No Duplicates Message -->
-                  <v-alert v-else type="success" variant="tonal" class="mb-4">
-                    <div class="d-flex align-center">
-                      <v-icon start>mdi-check-circle</v-icon>
-                      <div>
-                        <strong>No duplicates found!</strong> All candidates are new and will be added to the pipeline.
-                      </div>
-                    </div>
-                  </v-alert>
 
                   <!-- No Valid Candidates Warning -->
                   <v-alert v-if="newCandidatesCount === 0 && duplicateEmails.length === 0" type="error" class="mb-4">
@@ -268,41 +226,18 @@
                       </div>
                     </div>
                   </v-alert>
-                </div>
 
-                <!-- For single resume - skip directly to review (step 4) -->
-                <div v-else-if="parsedResume">
-                  <v-alert type="info" variant="tonal">
-                    <v-icon start>mdi-information</v-icon>
-                    Single resume uploads skip the duplicates step. Click Next to review the candidate.
-                  </v-alert>
-                </div>
-              </div>
-            </v-stepper-window-item>
-
-            <!-- Step 4: Review -->
-            <v-stepper-window-item :value="4">
-              <div class="pa-6">
-                <!-- Upload Error Alert -->
-                <v-alert v-if="uploadError" type="error" class="mb-4" closable @click:close="uploadError = null">
-                  {{ uploadError }}
-                </v-alert>
-
-                <div v-if="uploadType === 'bulk'">
-                  <h3 class="text-h6 mb-2">New Candidates to Upload</h3>
-                  <p class="text-body-2 text-grey-darken-1 mb-4">
-                    Review the candidates below before uploading to your CRM.
-                  </p>
-
-                  <!-- Summary chips -->
-                  <div class="d-flex align-center mb-4">
-                    <v-chip class="mr-2" color="success" variant="tonal">
-                      <v-icon start size="small">mdi-account-plus</v-icon>
-                      {{ newCandidatesCount }} new candidates to add
+                  <!-- New Candidates Section -->
+                  <div class="d-flex align-center mb-3">
+                    <h3 class="text-h6">New Candidates to Add</h3>
+                    <v-chip class="ml-3" color="success" variant="tonal">
+                      {{ newCandidatesCount }} new
                     </v-chip>
-                    <v-chip v-if="duplicateEmails.length > 0" color="warning" variant="tonal">
-                      <v-icon start size="small">mdi-account-multiple-check</v-icon>
-                      {{ duplicateEmails.length }} duplicates skipped
+                    <v-chip v-if="duplicateEmails.length > 0" class="ml-2" color="warning" variant="tonal">
+                      {{ duplicateEmails.length }} will merge
+                    </v-chip>
+                    <v-chip v-if="skippedNoEmailCount > 0" class="ml-2" color="grey" variant="tonal">
+                      {{ skippedNoEmailCount }} skipped
                     </v-chip>
                   </div>
                   
@@ -332,10 +267,10 @@
                     </template>
                   </v-data-table>
 
-                  <v-card v-else variant="outlined" class="pa-4 text-center">
-                    <v-icon color="warning" size="40" class="mb-2">mdi-alert</v-icon>
+                  <v-card v-else-if="duplicateEmails.length > 0" variant="outlined" class="pa-4 text-center">
+                    <v-icon color="info" size="40" class="mb-2">mdi-information</v-icon>
                     <p class="text-body-2 text-grey-darken-1 mb-0">
-                      No new candidates to upload. All records are duplicates or missing required fields.
+                      All candidates in this file already exist. Click "Upload" to update their empty fields with new data.
                     </p>
                   </v-card>
                 </div>
@@ -417,16 +352,16 @@
               </div>
             </v-stepper-window-item>
 
-            <!-- Step 5: Complete -->
-            <v-stepper-window-item :value="5">
+            <!-- Step 4: Complete -->
+            <v-stepper-window-item :value="4">
               <div class="pa-6 text-center">
                 <v-icon color="success" size="80" class="mb-4">mdi-check-circle</v-icon>
                 <h3 class="text-h5 mb-2">Upload Complete!</h3>
                 <p class="text-body-1 text-grey-darken-1 mb-4">
                   <template v-if="uploadType === 'bulk'">
-                    <strong>{{ uploadedCount }}</strong> new candidates added to the recruiting pipeline.
-                    <span v-if="duplicateEmails.length > 0">
-                      <br><span class="text-warning">{{ duplicateEmails.length }} duplicates were skipped.</span>
+                    <strong>{{ uploadedCount }}</strong> new candidates added.
+                    <span v-if="mergedCount > 0">
+                      <br><strong>{{ mergedCount }}</strong> existing candidates updated with new data.
                     </span>
                   </template>
                   <template v-else>
@@ -450,11 +385,11 @@
       <v-divider />
 
       <!-- Footer Actions -->
-      <v-card-actions class="pa-4" v-if="step < 5">
+      <v-card-actions class="pa-4" v-if="step < 4">
         <v-btn
           v-if="step > 1"
           variant="text"
-          @click="goBack"
+          @click="step--"
           :disabled="uploading"
         >
           Back
@@ -483,19 +418,10 @@
           @click="importCandidates"
         >
           <v-icon start>mdi-file-import</v-icon>
-          Import & Check Duplicates
+          Import Candidates
         </v-btn>
         <v-btn
           v-else-if="step === 3"
-          color="primary"
-          :disabled="!canProceedFromDuplicates"
-          @click="proceedToReview"
-        >
-          <v-icon start>mdi-arrow-right</v-icon>
-          Review Candidates
-        </v-btn>
-        <v-btn
-          v-else-if="step === 4"
           color="success"
           :loading="uploading"
           :disabled="!canUpload"
@@ -619,31 +545,12 @@ const validCandidatesForUpload = computed(() => {
 // Check if upload button should be enabled
 const canUpload = computed(() => {
   if (uploadType.value === 'bulk') {
-    // Only allow upload if there are new candidates
-    return newCandidatesCount.value > 0
+    // Allow upload if there are new candidates OR duplicates to merge
+    return newCandidatesCount.value > 0 || duplicateEmails.value.length > 0
   } else {
     // For single resume, require email and first name
     return parsedResume.value?.email && parsedResume.value?.firstName
   }
-})
-
-// Can proceed from duplicates step
-const canProceedFromDuplicates = computed(() => {
-  if (uploadType.value === 'bulk') {
-    // Allow proceeding if there are new candidates or if we have any parsed candidates
-    return newCandidatesCount.value > 0 || parsedCandidates.value.length > 0
-  }
-  return parsedResume.value !== null
-})
-
-// Get details about duplicate candidates for display
-const duplicateCandidatesDetails = computed(() => {
-  return parsedCandidates.value
-    .filter(c => c.email && duplicateEmails.value.includes(c.email.toLowerCase()))
-    .map(c => ({
-      email: c.email,
-      name: `${c.first_name} ${c.last_name || ''}`.trim()
-    }))
 })
 
 // Dynamic upload button text
@@ -681,27 +588,6 @@ function getStatusColor(status: string | null | undefined): string {
     rejected: 'red'
   }
   return colors[status || ''] || 'grey'
-}
-
-// Navigate back in the wizard
-function goBack() {
-  if (uploadType.value === 'single' && step.value === 4) {
-    // For single resume, skip duplicates step when going back
-    step.value = 2
-  } else {
-    step.value--
-  }
-}
-
-// Proceed from duplicates step to review
-function proceedToReview() {
-  if (uploadType.value === 'single') {
-    // For single resume, just advance to step 4
-    step.value = 4
-  } else {
-    // For bulk, advance to review step
-    step.value = 4
-  }
 }
 
 // Import Candidates button - parses file and advances to step 3
@@ -742,7 +628,6 @@ async function handleCsvUpload(file: File | File[] | null) {
     // Parse header to find column indices
     const headerLine = lines[0]
     const headers = parseCSVLine(headerLine).map(h => h.toLowerCase().trim())
-    const emails: string[] = [] // Collect emails for duplicate checking
     
     // Map expected columns
     const colMap = {
@@ -1035,16 +920,32 @@ async function submitUpload() {
 
   try {
     if (uploadType.value === 'bulk') {
-      // Only process NEW candidates (skip duplicates)
-      // Filter to candidates with valid required fields AND not in duplicate list
-      const candidatesToInsert = parsedCandidates.value.filter(c => {
-        const hasRequiredFields = c.email && c.first_name && c.last_name
-        const isDuplicate = c.email && duplicateEmails.value.includes(c.email.toLowerCase())
-        return hasRequiredFields && !isDuplicate
-      })
+      // Only process candidates with valid required fields (email, first_name, last_name)
+      const validCandidates = parsedCandidates.value.filter(c => 
+        c.email && c.first_name && c.last_name
+      )
 
-      if (candidatesToInsert.length === 0) {
-        throw new Error('No valid candidates to upload. All candidates are either duplicates or missing required fields (email, first name, or last name).')
+      if (validCandidates.length === 0) {
+        throw new Error('No valid candidates to upload. All candidates are missing required fields (email, first name, or last name).')
+      }
+
+      // Separate new candidates from ones that need merging
+      const candidatesToInsert: CandidateInsert[] = []
+      const candidatesToMerge: { id: string; updates: Partial<CandidateInsert> }[] = []
+
+      for (const candidate of validCandidates) {
+        const emailKey = candidate.email?.toLowerCase()
+        if (emailKey && existingCandidatesMap.value.has(emailKey)) {
+          // Existing candidate - merge only into empty fields
+          const existing = existingCandidatesMap.value.get(emailKey)!
+          const updates = mergeIntoEmptyFields(existing, candidate)
+          if (Object.keys(updates).length > 0) {
+            candidatesToMerge.push({ id: existing.id, updates })
+          }
+        } else if (candidate.email) {
+          // New candidate - only insert if has valid email
+          candidatesToInsert.push(candidate)
+        }
       }
 
       // Insert new candidates in chunks
@@ -1065,8 +966,24 @@ async function submitUpload() {
         }
       }
 
+      // Update existing candidates with merged data
+      let merged = 0
+      for (const { id, updates } of candidatesToMerge) {
+        const { error } = await supabase
+          .from('candidates')
+          .update(updates)
+          .eq('id', id)
+        
+        if (error) {
+          console.error('Merge update error:', error)
+          // Continue with other updates, don't fail entirely
+        } else {
+          merged++
+        }
+      }
+
       uploadedCount.value = inserted
-      mergedCount.value = 0 // No merging - duplicates are skipped
+      mergedCount.value = merged
 
       // Show partial error if some batches failed
       if (insertErrors.length > 0 && inserted > 0) {
@@ -1146,7 +1063,7 @@ async function submitUpload() {
       }
     }
 
-    step.value = 5
+    step.value = 4
   } catch (err: any) {
     uploadError.value = err.message || 'Upload failed'
     console.error('Upload error:', err)
