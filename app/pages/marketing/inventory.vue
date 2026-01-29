@@ -868,9 +868,16 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 /* Sticky header styles for inventory table */
 .inventory-table-container {
   position: relative;
-  max-height: 70vh;
-  overflow-y: auto;
-  overflow-x: auto;
+  max-height: calc(100vh - 300px);
+  overflow: auto !important;
+}
+
+.inventory-table-container :deep(.v-table) {
+  overflow: visible !important;
+}
+
+.inventory-table-container :deep(.v-table__wrapper) {
+  overflow: visible !important;
 }
 
 .inventory-table-container :deep(table) {
@@ -879,39 +886,47 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 }
 
 .inventory-table-container :deep(thead) {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
 }
 
-.inventory-table-container :deep(thead th) {
-  position: sticky;
-  top: 0;
+.inventory-table-container :deep(thead tr) {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+}
+
+.inventory-table-container :deep(thead th),
+.inventory-table-container :deep(.sticky-header th),
+.inventory-table-container :deep(.sticky-cell) {
+  position: sticky !important;
+  top: 0 !important;
   background: #f5f5f5 !important;
   border-bottom: 2px solid #e0e0e0 !important;
-  font-weight: 600;
-  z-index: 10;
+  font-weight: 600 !important;
+  z-index: 10 !important;
 }
 
 .inventory-table .sticky-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
 }
 
 .inventory-table .sticky-header th {
-  position: sticky;
-  top: 0;
+  position: sticky !important;
+  top: 0 !important;
   background: #f5f5f5 !important;
-  border-bottom: 2px solid #e0e0e0;
-  font-weight: 600;
-  z-index: 10;
+  border-bottom: 2px solid #e0e0e0 !important;
+  font-weight: 600 !important;
+  z-index: 10 !important;
 }
 
 .inventory-table .sticky-cell {
   background: #f5f5f5 !important;
-  border-bottom: 2px solid #e0e0e0;
-  font-weight: 600;
+  border-bottom: 2px solid #e0e0e0 !important;
+  font-weight: 600 !important;
 }
 
 .category-header {
