@@ -6,6 +6,7 @@ definePageMeta({
 
 const route = useRoute()
 const supabase = useSupabaseClient()
+const { showSuccess, showError } = useToast()
 const eventId = route.params.id as string
 
 // Tabs
@@ -202,7 +203,11 @@ async function saveEdit() {
     })
     .eq('id', eventId)
   
-  if (!error) {
+  if (error) {
+    console.error('Failed to save event:', error)
+    showError('Failed to save changes. Please try again.')
+  } else {
+    showSuccess('Event updated successfully')
     editing.value = false
     await refreshEvent()
   }

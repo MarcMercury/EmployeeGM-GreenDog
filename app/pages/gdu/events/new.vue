@@ -6,6 +6,7 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const router = useRouter()
+const { showSuccess, showError } = useToast()
 
 // Wizard step
 const currentStep = ref(1)
@@ -252,7 +253,6 @@ async function createMarketingEvent(ceEventId: string): Promise<string | null> {
       console.error('Failed to create marketing event:', error)
       return null
     } else {
-      console.log('Marketing event created for CE event:', ceEventId)
       return data?.id || null
     }
   } catch (e) {
@@ -332,14 +332,13 @@ async function saveEvent() {
     const marketingEventId = await createMarketingEvent(data.id)
     
     // Deduct inventory items if any were selected
-    // Use the marketing event ID for tracking (if created) or just deduct without linking
+    // Deduct regardless of whether marketing event was created - CE event is the primary record
     if (selectedInventoryItems.value.length > 0) {
-      const eventIdForInventory = marketingEventId || null
       for (const item of selectedInventoryItems.value) {
-        if (item.inventory_item_id && item.quantity_used > 0 && eventIdForInventory) {
+        if (item.inventory_item_id && item.quantity_used > 0) {
           try {
             await supabase.rpc('deduct_inventory_for_event', {
-              p_event_id: eventIdForInventory,
+              p_event_id: marketingEventId, // May be null, which is OK
               p_inventory_item_id: item.inventory_item_id,
               p_quantity: item.quantity_used,
               p_location: item.location,
@@ -377,7 +376,7 @@ async function saveEvent() {
     router.push(`/gdu/events/${data.id}`)
   } catch (e) {
     console.error('Error saving event:', e)
-    alert('Error saving event. Please try again.')
+    showError('Error saving event. Please try again.')
   } finally {
     saving.value = false
   }

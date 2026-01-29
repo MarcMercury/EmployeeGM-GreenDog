@@ -491,7 +491,7 @@ async function confirmConvertToCandidate() {
     if (error) {
       // Fallback to direct insert if function doesn't exist yet
       if (error.code === 'PGRST202') {
-        console.log('Using fallback conversion method')
+        // Fallback conversion method
         const { error: candidateError } = await supabase
           .from('candidates')
           .insert({
@@ -1828,7 +1828,7 @@ function formatStatus(status: string): string {
     <!-- Import Wizard -->
     <GduStudentUploadWizard
       v-model="showUploadWizard"
-      @uploaded="loadStudents"
+      @uploaded="fetchStudents"
     />
   </div>
 </template>
