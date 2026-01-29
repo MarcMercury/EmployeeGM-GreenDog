@@ -4,7 +4,13 @@ const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData, initialize
 const supabase = useSupabaseClient()
 
 // Connection state for offline resilience
-const { isOnline, connectionQuality, queuedActions, isStale, staleDuration } = useConnectionState()
+const { isOnline, connectionQuality, queuedActions } = useConnectionState()
+
+// Stale data warning
+const { isStale, staleDuration, staleMessage } = useStaleDataWarning()
+
+// Method to reload page (can't use window directly in template)
+const reloadPage = () => window.location.reload()
 
 // Sidebar collapsed state
 const sidebarCollapsed = ref(false)
@@ -53,11 +59,11 @@ const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSupe
 const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
 // Section access checks
-// Updated to match database page_access table exactly
-const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(userRole.value))
-const hasHrAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin'].includes(userRole.value))
-const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'].includes(userRole.value))
-const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin', 'office_admin'].includes(userRole.value))
+// Note: sup_admin (Supervisor) has management access similar to office_admin
+const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'].includes(userRole.value))
+const hasHrAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin'].includes(userRole.value))
+const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'marketing_admin'].includes(userRole.value))
+const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'].includes(userRole.value))
 const hasAdminOpsAccess = computed(() => ['super_admin', 'admin'].includes(userRole.value))
 
 // Display helpers
@@ -369,10 +375,12 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-sky-500/20">🏖️</div>
                   Time Off Approvals
                 </NuxtLink>
-                <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
-                  Recruiting Pipeline
-                </NuxtLink>
+                <template v-if="isAdmin">
+                  <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
+                    <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
+                    Recruiting Pipeline
+                  </NuxtLink>
+                </template>
                 <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
@@ -593,8 +601,8 @@ const closeMobileMenu = () => {
             </div>
             <div v-if="!sidebarCollapsed" class="text-sm flex-1">
               <div class="font-medium text-white">{{ firstName }}</div>
-              <div class="text-xs" :class="roleDisplay.class">
-                {{ roleDisplay.label }}
+              <div class="text-xs" :class="roleDisplay?.class || 'text-slate-400'">
+                {{ roleDisplay?.label || 'Team Member' }}
               </div>
             </div>
           </NuxtLink>
@@ -656,7 +664,7 @@ const closeMobileMenu = () => {
           <div 
             v-if="isStale && isOnline" 
             class="bg-blue-500 text-white px-4 py-1.5 text-center text-xs font-medium cursor-pointer hover:bg-blue-600 transition-colors"
-            @click="window.location.reload()"
+            @click="reloadPage()"
           >
             <span class="inline-flex items-center gap-1.5">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

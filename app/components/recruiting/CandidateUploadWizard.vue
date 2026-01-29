@@ -443,7 +443,6 @@ onMounted(async () => {
   const { data } = await supabase
     .from('job_positions')
     .select('id, title')
-    .eq('status', 'open')
     .order('title')
   
   if (data) {
@@ -604,6 +603,10 @@ async function handleCsvUpload(file: File | File[] | null) {
         status = 'offer'
       } else if (indeedStatus.includes('hired')) {
         status = 'hired'
+      } else if (indeedStatus.includes('awaiting') || indeedStatus.includes('new')) {
+        status = 'new'
+      } else if (indeedStatus.includes('review') || indeedStatus.includes('screen') || indeedStatus.includes('phone')) {
+        status = 'screening'
       }
       
       // Parse applied date
@@ -723,17 +726,49 @@ async function handleResumeUpload(file: File | File[] | null) {
         email: string | null
         phone: string | null
       }
-      experience: Array<{ title: string; company: string }>
+      experience: Array<{ 
+        title: string
+        company: string
+        startDate: string | null
+        endDate: string | null 
+      }>
       summary: string | null
     }>('/api/ai/parse-document', {
       method: 'POST',
       body: formData
     })
 
-    // Calculate experience years from work history
+    // Calculate experience years from work history dates
     let experienceYears = 0
     if (response.experience && response.experience.length > 0) {
-      experienceYears = response.experience.length // rough estimate
+      let totalMonths = 0
+      const currentYear = new Date().getFullYear()
+      const currentMonth = new Date().getMonth() + 1
+      
+      for (const job of response.experience) {
+        if (job.startDate) {
+          // Parse YYYY-MM format
+          const [startYear, startMonth] = job.startDate.split('-').map(Number)
+          let endYear = currentYear
+          let endMonth = currentMonth
+          
+          if (job.endDate && job.endDate.toLowerCase() !== 'present') {
+            const [ey, em] = job.endDate.split('-').map(Number)
+            if (ey && em) {
+              endYear = ey
+              endMonth = em
+            }
+          }
+          
+          if (startYear && startMonth) {
+            const months = (endYear - startYear) * 12 + (endMonth - startMonth)
+            if (months > 0) totalMonths += months
+          }
+        }
+      }
+      
+      // Convert months to years, fallback to job count if parsing fails
+      experienceYears = totalMonths > 0 ? Math.round(totalMonths / 12) : response.experience.length
     }
 
     parsedResume.value = {

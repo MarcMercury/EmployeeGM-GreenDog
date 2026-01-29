@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -12,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -4225,6 +4199,75 @@ export type Database = {
           },
         ]
       }
+      event_inventory_usage: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          event_id: string
+          id: string
+          inventory_item_id: string
+          location_deducted_from: string
+          notes: string | null
+          quantity_used: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          event_id: string
+          id?: string
+          inventory_item_id: string
+          location_deducted_from: string
+          notes?: string | null
+          quantity_used?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          inventory_item_id?: string
+          location_deducted_from?: string
+          notes?: string | null
+          quantity_used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_inventory_usage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "pending_user_accounts"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "event_inventory_usage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_usage_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_role_info"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_usage_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_inventory_usage_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_inventory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_supplies: {
         Row: {
           created_at: string | null
@@ -6091,8 +6134,12 @@ export type Database = {
           color: string | null
           created_at: string
           description: string | null
+          external_url: string | null
+          folder_type: string | null
           icon: string | null
           id: string
+          internal_route: string | null
+          is_external: boolean | null
           name: string
           parent_id: string | null
           path: string
@@ -6104,8 +6151,12 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          external_url?: string | null
+          folder_type?: string | null
           icon?: string | null
           id?: string
+          internal_route?: string | null
+          is_external?: boolean | null
           name: string
           parent_id?: string | null
           path?: string
@@ -6117,8 +6168,12 @@ export type Database = {
           color?: string | null
           created_at?: string
           description?: string | null
+          external_url?: string | null
+          folder_type?: string | null
           icon?: string | null
           id?: string
+          internal_route?: string | null
+          is_external?: boolean | null
           name?: string
           parent_id?: string | null
           path?: string
@@ -6388,6 +6443,8 @@ export type Database = {
           last_ordered: string | null
           notes: string | null
           order_quantity: number | null
+          quantity_mpmv: number
+          quantity_offsite: number
           quantity_sherman_oaks: number | null
           quantity_valley: number | null
           quantity_venice: number | null
@@ -6410,6 +6467,8 @@ export type Database = {
           last_ordered?: string | null
           notes?: string | null
           order_quantity?: number | null
+          quantity_mpmv?: number
+          quantity_offsite?: number
           quantity_sherman_oaks?: number | null
           quantity_valley?: number | null
           quantity_venice?: number | null
@@ -6432,6 +6491,8 @@ export type Database = {
           last_ordered?: string | null
           notes?: string | null
           order_quantity?: number | null
+          quantity_mpmv?: number
+          quantity_offsite?: number
           quantity_sherman_oaks?: number | null
           quantity_valley?: number | null
           quantity_venice?: number | null
@@ -10588,6 +10649,51 @@ export type Database = {
           },
         ]
       }
+      position_required_skills: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_core: boolean | null
+          position_id: string
+          required_level: number | null
+          skill_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_core?: boolean | null
+          position_id: string
+          required_level?: number | null
+          skill_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_core?: boolean | null
+          position_id?: string
+          required_level?: number | null
+          skill_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "position_required_skills_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "job_positions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "position_required_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skill_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_roles: {
         Row: {
           created_at: string
@@ -11521,6 +11627,7 @@ export type Database = {
           published_at: string | null
           published_by: string | null
           selected_service_ids: string[]
+          service_days_matrix: Json | null
           status: string | null
           updated_at: string | null
           validated_at: string | null
@@ -11540,6 +11647,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           selected_service_ids?: string[]
+          service_days_matrix?: Json | null
           status?: string | null
           updated_at?: string | null
           validated_at?: string | null
@@ -11559,6 +11667,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           selected_service_ids?: string[]
+          service_days_matrix?: Json | null
           status?: string | null
           updated_at?: string | null
           validated_at?: string | null
@@ -15937,18 +16046,39 @@ export type Database = {
           token: string
         }[]
       }
-      create_schedule_draft: {
-        Args: {
-          p_location_id: string
-          p_operational_days: number[]
-          p_service_ids: string[]
-          p_week_start: string
-        }
-        Returns: string
-      }
+      create_schedule_draft:
+        | {
+            Args: {
+              p_location_id: string
+              p_operational_days: number[]
+              p_service_ids: string[]
+              p_week_start: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_location_id: string
+              p_operational_days: number[]
+              p_service_days_matrix?: Json
+              p_service_ids: string[]
+              p_week_start: string
+            }
+            Returns: Json
+          }
       current_employee_id: { Args: never; Returns: string }
       current_profile_id: { Args: never; Returns: string }
       deduct_event_supplies: { Args: { p_event_id: string }; Returns: boolean }
+      deduct_inventory_for_event: {
+        Args: {
+          p_event_id: string
+          p_inventory_item_id: string
+          p_location: string
+          p_notes?: string
+          p_quantity: number
+        }
+        Returns: string
+      }
       delete_schedule_template: {
         Args: { p_template_id: string }
         Returns: boolean
@@ -16232,8 +16362,11 @@ export type Database = {
         }[]
       }
       is_admin: { Args: never; Returns: boolean }
+      is_gdu_admin: { Args: never; Returns: boolean }
       is_hr_admin: { Args: never; Returns: boolean }
       is_marketing_admin: { Args: never; Returns: boolean }
+      is_recruiting_admin: { Args: never; Returns: boolean }
+      is_schedule_admin: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       list_schedule_templates: {
         Args: { p_location_id?: string }
@@ -16524,6 +16657,11 @@ export type Database = {
         | "signage"
         | "supplies"
         | "other"
+        | "print"
+        | "prize"
+        | "product"
+        | "supply"
+        | "emp_apparel"
       marketing_partner_status:
         | "active"
         | "pending"
@@ -16698,9 +16836,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       ce_event_format: ["live", "webinar", "hybrid", "recorded"],
@@ -16755,6 +16890,11 @@ export const Constants = {
         "signage",
         "supplies",
         "other",
+        "print",
+        "prize",
+        "product",
+        "supply",
+        "emp_apparel",
       ],
       marketing_partner_status: [
         "active",
