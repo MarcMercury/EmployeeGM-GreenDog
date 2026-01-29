@@ -230,13 +230,12 @@ async function parsePdfToText(buffer: Buffer): Promise<string> {
   return lines.join('\n')
 }
 
-// NEW: Parse EzyVet Referrer Revenue PDF using position-based approach
-// The PDF has:
-// - Date/time items at x~4.8
-// - Clinic name items at x~10.6 (on same y as date)
-// - Vet name items at x~17.7 (on same y as date)
-// - "Amount" header marks start of amounts section
-// - Amount values at x~10-12 in amounts section
+// NEW: Parse EzyVet Referrer Revenue PDF using position-based column detection
+// The PDF structure has 3 columns in the visit section:
+// - Date/Time column (x ~ 4.77)
+// - Clinic name column (x ~ 10.60)
+// - Vet name column (x ~ 17.74)
+// After the visit section, there's an Amount column with revenue values
 async function parseEzyVetPdfStructured(buffer: Buffer): Promise<ParsedReferral[]> {
   return new Promise((resolve, reject) => {
     const pdfParser = new PDFParser()
@@ -247,15 +246,23 @@ async function parseEzyVetPdfStructured(buffer: Buffer): Promise<ParsedReferral[
     
     pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
       try {
-        const visits: {date: string, clinicName: string}[] = []
+        const visits: {date: string, clinicName: string, isUnknown: boolean}[] = []
         const amounts: number[] = []
-        let inAmountsSection = false
-        let unknownClinicCount = 0
+        let foundAmountHeader = false
         
-        for (const page of pdfData.Pages || []) {
-          // Extract all text items with positions
-          const pageItems: {text: string, y: number, x: number}[] = []
+        // Column X position thresholds (based on observed PDF structure)
+        const DATE_COL_MIN = 3
+        const DATE_COL_MAX = 7
+        const CLINIC_COL_MIN = 9
+        const CLINIC_COL_MAX = 15
+        
+        // Process each page
+        for (let pageIdx = 0; pageIdx < (pdfData.Pages || []).length; pageIdx++) {
+          const page = pdfData.Pages[pageIdx]
+          const pageNum = pageIdx + 1
           
+          // Extract all text items from this page
+          const pageItems: {text: string, y: number, x: number}[] = []
           for (const textItem of page.Texts || []) {
             for (const run of textItem.R || []) {
               if (run.T) {
@@ -271,97 +278,162 @@ async function parseEzyVetPdfStructured(buffer: Buffer): Promise<ParsedReferral[
             }
           }
           
-          // Check if "Amount" header appears on this page (marks amounts section)
-          for (const item of pageItems) {
-            if (item.text === 'Amount' && item.x < 6) {
-              inAmountsSection = true
-              break
-            }
+          // Check if this page has "Amount" header (marks start of amounts section)
+          const hasAmountHeader = pageItems.some(item => item.text === 'Amount')
+          if (hasAmountHeader) {
+            foundAmountHeader = true
+            console.log('[parseEzyVetPdfStructured] Found Amount header on page', pageNum)
           }
           
-          if (inAmountsSection) {
-            // In amounts section: extract numbers at x > 10
+          if (foundAmountHeader) {
+            // In amounts section - extract all numbers
             for (const item of pageItems) {
-              if (item.x > 10 && item.x < 15) {
+              const numMatch = item.text.match(/^-?\d+(?:\.\d{1,2})?$/)
+              if (numMatch) {
                 const val = parseFloat(item.text)
-                if (!isNaN(val) && val > 0) {
+                if (!isNaN(val)) {
                   amounts.push(val)
                 }
               }
             }
           } else {
-            // In visits section: look for date items at x < 6
+            // In visits section - look for date entries and match with clinic names
+            // Group items by Y position (same row)
+            const rowMap = new Map<number, {text: string, x: number}[]>()
             for (const item of pageItems) {
-              // Check if this is a date/time item (at left side, x < 6)
-              const dateMatch = item.text.match(/^(\d{2}-\d{2}-\d{4})\s+\d{1,2}:\d{2}[ap]m$/)
-              if (dateMatch && item.x < 6) {
-                const date = dateMatch[1]
-                const y = item.y
-                
-                // Find clinic name on same line (x between 9 and 16)
-                const clinicItems = pageItems.filter(i => 
-                  Math.abs(i.y - y) < 0.5 && i.x > 9 && i.x < 16
+              // Round Y to group nearby items
+              const yKey = Math.round(item.y * 10)
+              const row = rowMap.get(yKey) || []
+              row.push({ text: item.text, x: item.x })
+              rowMap.set(yKey, row)
+            }
+            
+            // Column position constants for the third column (Vet)
+            const VET_COL_MIN = 16
+            const VET_COL_MAX = 22
+            
+            // Process each row
+            for (const [, rowItems] of rowMap) {
+              // Sort by X position
+              rowItems.sort((a, b) => a.x - b.x)
+              
+              // Look for date/time in the left column (x ~ 4.77)
+              const dateItem = rowItems.find(item => 
+                item.x >= DATE_COL_MIN && item.x <= DATE_COL_MAX &&
+                /^\d{2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}[ap]m$/i.test(item.text)
+              )
+              
+              if (dateItem) {
+                // Found a date entry - now find the clinic name in the middle column
+                const clinicItem = rowItems.find(item =>
+                  item.x >= CLINIC_COL_MIN && item.x <= CLINIC_COL_MAX &&
+                  item.text.length > 3 &&
+                  !item.text.match(/^\d{2}-\d{2}-\d{4}/) // Not a date
                 )
                 
-                if (clinicItems.length > 0) {
-                  clinicItems.sort((a, b) => a.x - b.x)
-                  const clinicName = clinicItems[0].text
+                // Also find vet column item (x ~ 17.74) - may contain actual clinic name
+                const vetItem = rowItems.find(item =>
+                  item.x >= VET_COL_MIN && item.x <= VET_COL_MAX &&
+                  item.text.length > 3 &&
+                  !item.text.match(/^\d{2}-\d{2}-\d{4}/) // Not a date
+                )
+                
+                if (clinicItem) {
+                  const dateMatch = dateItem.text.match(/^(\d{2}-\d{2}-\d{4})/)
+                  const date = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0]
+                  let clinicName = clinicItem.text.trim()
+                  let isUnknown = clinicName.toLowerCase().includes('unknown clinic') ||
+                                  clinicName.toLowerCase() === 'unknown'
                   
-                  // Skip if it's "Unknown Clinic"
-                  if (clinicName && clinicName.toLowerCase().includes('unknown clinic')) {
-                    unknownClinicCount++
-                  } else if (clinicName && clinicName.length > 2) {
-                    visits.push({ 
-                      date, 
-                      clinicName: cleanClinicName(clinicName) 
-                    })
+                  // FALLBACK: If the referring clinic is "Unknown Clinic" but the vet column
+                  // has a real clinic name (not "Unknown Vet"), use that instead
+                  if (isUnknown && vetItem) {
+                    const vetText = vetItem.text.trim().toLowerCase()
+                    const isVetUnknown = vetText === 'unknown vet' || vetText === 'unknown' ||
+                                         vetText.includes('unknown vet')
+                    
+                    if (!isVetUnknown) {
+                      // The vet column has an actual clinic/vet name - use it
+                      clinicName = vetItem.text.trim()
+                      isUnknown = false
+                    }
                   }
+                  
+                  visits.push({
+                    date,
+                    clinicName: cleanClinicName(clinicName),
+                    isUnknown
+                  })
                 }
               }
             }
           }
         }
         
-        const totalVisits = visits.length + unknownClinicCount
+        // Filter out unknown clinic visits
+        const knownVisits = visits.filter(v => !v.isUnknown)
+        const unknownCount = visits.filter(v => v.isUnknown).length
+        
+        // Remove the grand total from amounts (usually the last, largest value)
+        if (amounts.length > 1) {
+          const sortedAmounts = [...amounts].sort((a, b) => b - a)
+          const maxAmount = sortedAmounts[0]
+          const secondMax = sortedAmounts[1] || 0
+          if (maxAmount > secondMax * 10 && maxAmount > 100000) {
+            const totalIdx = amounts.indexOf(maxAmount)
+            if (totalIdx !== -1) {
+              console.log('[parseEzyVetPdfStructured] Removing grand total:', maxAmount)
+              amounts.splice(totalIdx, 1)
+            }
+          }
+        }
+        
         const totalRevenue = amounts.reduce((sum, a) => sum + a, 0)
         
-        console.log('[parseEzyVetPdfStructured] Known clinic visits:', visits.length)
-        console.log('[parseEzyVetPdfStructured] Unknown clinic visits:', unknownClinicCount)
-        console.log('[parseEzyVetPdfStructured] Total visits:', totalVisits)
+        console.log('[parseEzyVetPdfStructured] Known clinic visits:', knownVisits.length)
+        console.log('[parseEzyVetPdfStructured] Unknown clinic visits:', unknownCount)
+        console.log('[parseEzyVetPdfStructured] Total visits:', visits.length)
         console.log('[parseEzyVetPdfStructured] Amount entries:', amounts.length)
         console.log('[parseEzyVetPdfStructured] Total revenue: $' + totalRevenue.toLocaleString())
         
+        // Create referrals by matching visits to amounts
         const referrals: ParsedReferral[] = []
         
-        // Aggregate visits by clinic (case-insensitive)
-        const visitCounts = new Map<string, {count: number, dates: string[], displayName: string}>()
-        for (const visit of visits) {
-          const key = visit.clinicName.toLowerCase()
-          const existing = visitCounts.get(key) || {count: 0, dates: [], displayName: visit.clinicName}
-          existing.count++
-          existing.dates.push(visit.date)
-          visitCounts.set(key, existing)
-        }
-        
-        // Calculate average revenue per visit based on ALL visits (known + unknown)
-        // This gives a fair estimate of revenue per referral
-        const avgRevenuePerVisit = totalVisits > 0 ? totalRevenue / totalVisits : 0
-        
-        console.log('[parseEzyVetPdfStructured] Average revenue per visit: $' + avgRevenuePerVisit.toFixed(2))
-        console.log('[parseEzyVetPdfStructured] Unique clinics:', visitCounts.size)
-        
-        // Create referral entries for each known clinic visit
-        for (const [_, data] of visitCounts.entries()) {
-          for (let i = 0; i < data.count; i++) {
-            referrals.push({
-              clinicName: data.displayName,
-              amount: avgRevenuePerVisit,
-              date: data.dates[i] || new Date().toISOString().split('T')[0]
-            })
+        // Check if we can do 1:1 matching (counts should be close)
+        if (amounts.length >= visits.length * 0.8 && amounts.length <= visits.length * 1.2) {
+          console.log('[parseEzyVetPdfStructured] Using 1:1 visit-to-amount matching')
+          for (let i = 0; i < visits.length; i++) {
+            const visit = visits[i]
+            const amount = amounts[i] || 0
+            
+            if (!visit.isUnknown) {
+              referrals.push({
+                clinicName: visit.clinicName,
+                amount,
+                date: visit.date
+              })
+            }
+          }
+        } else {
+          // Use average revenue approach
+          console.log('[parseEzyVetPdfStructured] Using average revenue approach')
+          const avgRevenue = visits.length > 0 ? totalRevenue / visits.length : 0
+          
+          for (const visit of visits) {
+            if (!visit.isUnknown) {
+              referrals.push({
+                clinicName: visit.clinicName,
+                amount: avgRevenue,
+                date: visit.date
+              })
+            }
           }
         }
         
         console.log('[parseEzyVetPdfStructured] Created', referrals.length, 'referral entries')
+        if (referrals.length > 0) {
+          console.log('[parseEzyVetPdfStructured] Sample entries:', referrals.slice(0, 3))
+        }
         resolve(referrals)
       } catch (err) {
         reject(err)
