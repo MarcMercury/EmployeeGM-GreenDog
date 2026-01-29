@@ -86,9 +86,27 @@ export default defineEventHandler(async (event) => {
 
     if (empError) throw empError
 
-    // Get all auth users
-    const { data: { users: authUsers }, error: authFetchError } = await supabaseAdmin.auth.admin.listUsers()
-    if (authFetchError) throw authFetchError
+    // Get all auth users with pagination
+    // listUsers() only returns 50 users by default, so we need to paginate
+    let allAuthUsers: any[] = []
+    let page = 1
+    const perPage = 100
+
+    while (true) {
+      const { data: { users: pageUsers }, error: authFetchError } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage
+      })
+
+      if (authFetchError) throw authFetchError
+
+      if (!pageUsers || pageUsers.length === 0) break
+
+      allAuthUsers = [...allAuthUsers, ...pageUsers]
+
+      if (pageUsers.length < perPage) break
+      page++
+    }
 
     // Get all profiles with auth_user_id
     const { data: linkedProfiles } = await supabaseAdmin
@@ -96,7 +114,7 @@ export default defineEventHandler(async (event) => {
       .select('id, auth_user_id, email, first_name, last_name')
       .not('auth_user_id', 'is', null)
 
-    const authUserMap = new Map(authUsers?.map(u => [u.email?.toLowerCase(), u]) || [])
+    const authUserMap = new Map(allAuthUsers.map(u => [u.email?.toLowerCase(), u]))
     const authUserIdToProfile = new Map(linkedProfiles?.map(p => [p.auth_user_id, p]) || [])
 
     const results: Array<{

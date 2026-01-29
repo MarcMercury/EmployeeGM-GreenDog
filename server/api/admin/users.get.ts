@@ -99,16 +99,33 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Get auth user details for login status info
-  const { data: { users: authUsers }, error: authFetchError } = await supabaseAdmin.auth.admin.listUsers()
+  // Get auth user details for login status info with pagination
+  // listUsers() only returns 50 users by default, so we need to paginate
+  let allAuthUsers: any[] = []
+  let page = 1
+  const perPage = 100
 
-  if (authFetchError) {
-    console.error('Error fetching auth users:', authFetchError)
-    // Continue without auth details rather than failing
+  while (true) {
+    const { data: { users: pageUsers }, error: authFetchError } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage
+    })
+
+    if (authFetchError) {
+      console.error('Error fetching auth users:', authFetchError)
+      break
+    }
+
+    if (!pageUsers || pageUsers.length === 0) break
+
+    allAuthUsers = [...allAuthUsers, ...pageUsers]
+
+    if (pageUsers.length < perPage) break
+    page++
   }
 
   // Create a map of auth users for quick lookup
-  const authUserMap = new Map(authUsers?.map(u => [u.id, u]) || [])
+  const authUserMap = new Map(allAuthUsers.map(u => [u.id, u]))
 
   // Merge profile and auth user data
   const usersWithDetails = profiles?.map(profile => {
