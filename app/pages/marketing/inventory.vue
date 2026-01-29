@@ -419,7 +419,7 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
     <v-card>
       <v-progress-linear v-if="pending" indeterminate color="warning" />
       
-      <div v-if="filteredInventory.length > 0" class="inventory-table-container" style="max-height: 70vh; overflow-y: auto;">
+      <div v-if="filteredInventory.length > 0" class="inventory-table-container">
         <v-table hover class="inventory-table">
           <thead class="sticky-header">
             <tr>
@@ -868,7 +868,29 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 /* Sticky header styles for inventory table */
 .inventory-table-container {
   position: relative;
+  max-height: 70vh;
   overflow-y: auto;
+  overflow-x: auto;
+}
+
+.inventory-table-container :deep(table) {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.inventory-table-container :deep(thead) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inventory-table-container :deep(thead th) {
+  position: sticky;
+  top: 0;
+  background: #f5f5f5 !important;
+  border-bottom: 2px solid #e0e0e0 !important;
+  font-weight: 600;
+  z-index: 10;
 }
 
 .inventory-table .sticky-header {
