@@ -868,16 +868,26 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 /* Sticky header styles for inventory table */
 .inventory-table-container {
   position: relative;
+  overflow-y: auto;
 }
 
 .inventory-table .sticky-header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
+}
+
+.inventory-table .sticky-header th {
+  position: sticky;
+  top: 0;
+  background: #f5f5f5 !important;
+  border-bottom: 2px solid #e0e0e0;
+  font-weight: 600;
+  z-index: 10;
 }
 
 .inventory-table .sticky-cell {
-  background: #f5f5f5;
+  background: #f5f5f5 !important;
   border-bottom: 2px solid #e0e0e0;
   font-weight: 600;
 }

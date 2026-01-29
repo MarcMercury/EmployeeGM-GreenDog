@@ -32,8 +32,9 @@
       density="compact" 
       class="px-2 mt-2"
     >
-      <!-- ===== Activity Hub - Always visible ===== -->
+      <!-- ===== Activity Hub - Global Access ===== -->
       <v-list-item
+        v-if="hasPageAccess('/activity')"
         to="/activity"
         prepend-icon="mdi-bell"
         title="Activity Hub"
@@ -41,8 +42,9 @@
         class="nav-item mb-1"
       />
 
-      <!-- ===== Marketplace - Always visible ===== -->
+      <!-- ===== Marketplace - Global Access ===== -->
       <v-list-item
+        v-if="hasPageAccess('/marketplace')"
         to="/marketplace"
         prepend-icon="mdi-store"
         title="Marketplace"
@@ -50,8 +52,8 @@
         class="nav-item mb-2"
       />
 
-      <!-- ===== My Workspace Group ===== -->
-      <v-list-group v-if="!rail" value="my-workspace">
+      <!-- ===== My Workspace Group - Database-driven Access ===== -->
+      <v-list-group v-if="hasSectionAccess('My Workspace') && !rail" value="my-workspace">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -61,16 +63,17 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/my-schedule" title="My Schedule" prepend-icon="mdi-calendar-account" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/academy/my-training" title="My Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/profile')" to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/my-schedule')" to="/my-schedule" title="My Schedule" prepend-icon="mdi-calendar-account" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/people/my-skills')" to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/development')" to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/academy/my-training')" to="/academy/my-training" title="My Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/profile" prepend-icon="mdi-account-circle" title="My" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasSectionAccess('My Workspace')" to="/profile" prepend-icon="mdi-account-circle" title="My" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== Management Group ===== -->
-      <v-list-group v-if="!rail" value="management">
+      <v-list-group v-if="hasSectionAccess('Management') && !rail" value="management">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -80,16 +83,16 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/roster" title="Roster" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasHrAccess" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasAdminAccess" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/roster')" to="/roster" title="Roster" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/skills-library')" to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/people/skill-stats')" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/academy/course-manager')" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasSectionAccess('Management')" to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== Med Ops Group ===== -->
-      <v-list-group v-if="!rail" value="med-ops">
+      <v-list-group v-if="hasSectionAccess('Med Ops') && !rail" value="med-ops">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -99,14 +102,14 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/med-ops/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/wiki')" to="/med-ops/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/calculators')" to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/boards')" to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/partners')" to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== HR Group - HR/Manager Access ===== -->
+      <!-- ===== HR Group - Page-level access control ===== -->
       <v-list-group v-if="hasHrAccess && !rail" value="hr">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -117,17 +120,17 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasRecruitingAccess" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule')" to="/schedule" title="Schedule Overview" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule/wizard')" to="/schedule/wizard" title="Schedule Wizard" prepend-icon="mdi-wizard-hat" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/schedule/services')" to="/schedule/services" title="Service Settings" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/time-off')" to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/recruiting')" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/export-payroll')" to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/master-roster')" to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== Marketing Group - Marketing Access ===== -->
+      <!-- ===== Marketing Group - Visible to: super_admin, admin, manager, marketing_admin ===== -->
       <v-list-group v-if="hasMarketingAccess && !rail" value="marketing">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -138,19 +141,19 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/growth/leads" title="Event Leads" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/partnerships" title="Referral CRM" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/calendar')" to="/marketing/calendar" title="Calendar" prepend-icon="mdi-calendar-month" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/growth/events')" to="/growth/events" title="Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/growth/leads')" to="/growth/leads" title="Event Leads" prepend-icon="mdi-account-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/partners')" to="/marketing/partners" title="Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/influencers')" to="/marketing/influencers" title="Influencers" prepend-icon="mdi-account-star-outline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/inventory')" to="/marketing/inventory" title="Inventory" prepend-icon="mdi-package-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/resources')" to="/marketing/resources" title="Resources" prepend-icon="mdi-folder-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/partnerships')" to="/marketing/partnerships" title="Referral CRM" prepend-icon="mdi-handshake-outline" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasMarketingAccess" to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== CRM & Analytics Group - Marketing Access ===== -->
-      <v-list-group v-if="hasMarketingAccess && !rail" value="crm-analytics">
+      <!-- ===== CRM & Analytics Group - Database-driven Access ===== -->
+      <v-list-group v-if="hasSectionAccess('CRM & Analytics') && !rail" value="crm-analytics">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -160,12 +163,12 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/ezyvet-crm')" to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/ezyvet-analytics')" to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
 
-      <!-- ===== GDU (Education) Group - Education Access ===== -->
+      <!-- ===== GDU (Education) Group - Database-driven Access ===== -->
       <v-list-group v-if="hasEducationAccess && !rail" value="gdu">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -176,14 +179,14 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/gdu" title="GDU Dash" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/gdu/students" title="Student CRM" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/gdu/visitors" title="Visitor CRM" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/gdu')" to="/gdu" title="GDU Dash" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/gdu/students')" to="/gdu/students" title="Student CRM" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/gdu/visitors')" to="/gdu/visitors" title="Visitor CRM" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/gdu/events')" to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasEducationAccess" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== Admin Ops Group - Admin Access ===== -->
+      <!-- ===== Admin Ops Group - Database-driven Access ===== -->
       <v-list-group v-if="hasAdminAccess && !rail" value="admin-ops">
         <template #activator="{ props: activatorProps }">
           <v-list-item
@@ -194,10 +197,10 @@
             class="nav-item"
           />
         </template>
-        <v-list-item to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item to="/admin/system-health" title="System Settings" prepend-icon="mdi-cog" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/users')" to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/email-templates')" to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/skills-management')" to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/system-health')" to="/admin/system-health" title="System Settings" prepend-icon="mdi-cog" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasAdminAccess" to="/admin/system-health" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
     </v-list>
@@ -262,8 +265,76 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { SECTION_ACCESS } from '~/types'
 import type { UserRole } from '~/types'
+
+// PAGE-LEVEL ACCESS - Extracted directly from database page_access table
+// Each path maps to the roles that have 'full' or 'view' access
+const PAGE_ACCESS: Record<string, readonly string[]> = {
+  // Global
+  '/': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/activity': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/marketplace': ['super_admin', 'sup_admin'],
+  
+  // My Workspace
+  '/profile': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/contact-list': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/my-schedule': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/people/my-skills': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/development': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/academy/my-training': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  
+  // Management
+  '/roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin'],
+  '/skills-library': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/people/skill-stats': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'sup_admin'],
+  '/med-ops/facilities': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/academy/course-manager': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  
+  // Med Ops
+  '/med-ops/wiki': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/calculators': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/boards': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/med-ops/partners': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  
+  // HR
+  '/schedule': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/wizard': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/builder': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/schedule/services': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/time-off': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/recruiting': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/export-payroll': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  '/admin/master-roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+  
+  // Marketing
+  '/marketing/calendar': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
+  '/marketing/resources': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
+  '/marketing/inventory': ['super_admin', 'admin', 'manager', 'marketing_admin', 'user'],
+  '/marketing/partners': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/marketing/influencers': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
+  '/marketing/partnerships': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/marketing/command-center': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/growth/events': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/growth/leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  
+  // CRM & Analytics
+  '/marketing/ezyvet-crm': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  
+  // GDU
+  '/gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/students': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/visitors': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/gdu/events': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  
+  // Admin Ops
+  '/admin/users': ['super_admin', 'admin'],
+  '/admin/email-templates': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/skills-management': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/system-health': ['super_admin', 'admin'],
+  '/settings': ['super_admin', 'admin'],
+}
 
 interface Props {
   modelValue: boolean
@@ -296,15 +367,48 @@ const userRole = computed<UserRole>(() => authStore.userRole || 'user')
 const fullName = computed(() => authStore.fullName)
 const initials = computed(() => authStore.initials)
 
-// Role-based access helpers using the centralized SECTION_ACCESS matrix
+// PAGE-LEVEL ACCESS CHECK - checks specific page path
+function hasPageAccess(path: string): boolean {
+  const role = userRole.value
+  if (!role) return false
+  const allowedRoles = PAGE_ACCESS[path]
+  if (!allowedRoles) return false
+  return allowedRoles.includes(role)
+}
+
+// SECTION ACCESS - true if user has access to ANY page in that section
+function hasSectionAccess(sectionName: string): boolean {
+  const role = userRole.value
+  if (!role) return false
+  
+  // Map sections to their pages
+  const sectionPages: Record<string, string[]> = {
+    'My Workspace': ['/profile', '/contact-list', '/my-schedule', '/people/my-skills', '/development', '/academy/my-training'],
+    'Management': ['/roster', '/skills-library', '/people/skill-stats', '/med-ops/facilities', '/academy/course-manager'],
+    'Med Ops': ['/med-ops/wiki', '/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
+    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster'],
+    'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
+    'CRM & Analytics': ['/marketing/ezyvet-crm', '/marketing/ezyvet-analytics', '/marketing/list-hygiene'],
+    'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
+    'Admin Ops': ['/admin/users', '/admin/email-templates', '/admin/skills-management', '/admin/system-health', '/settings'],
+  }
+  
+  const pages = sectionPages[sectionName]
+  if (!pages) return false
+  
+  // User has section access if they have access to at least one page in that section
+  return pages.some(page => hasPageAccess(page))
+}
+
+// Section access computed properties
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-const hasHrAccess = computed(() => SECTION_ACCESS.hr?.includes(userRole.value) ?? false)
-const hasRecruitingAccess = computed(() => SECTION_ACCESS.recruiting?.includes(userRole.value) ?? false)
-const hasMarketingAccess = computed(() => SECTION_ACCESS.marketing?.includes(userRole.value) ?? false)
-const hasEducationAccess = computed(() => SECTION_ACCESS.education?.includes(userRole.value) ?? false)
-const hasAdminAccess = computed(() => SECTION_ACCESS.admin?.includes(userRole.value) ?? false)
+const hasMedOpsAccess = computed(() => hasSectionAccess('Med Ops'))
+const hasHrAccess = computed(() => hasSectionAccess('HR'))
+const hasMarketingAccess = computed(() => hasSectionAccess('Marketing'))
+const hasEducationAccess = computed(() => hasSectionAccess('GDU'))
+const hasAdminAccess = computed(() => hasSectionAccess('Admin Ops'))
 
 async function handleSignOut() {
   await authStore.signOut()

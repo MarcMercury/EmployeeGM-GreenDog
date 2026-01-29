@@ -18,13 +18,6 @@
           View Analytics
         </v-btn>
         <v-btn
-          variant="outlined"
-          prepend-icon="mdi-file-export"
-          @click="showExportDialog = true"
-        >
-          Export
-        </v-btn>
-        <v-btn
           color="primary"
           prepend-icon="mdi-upload"
           @click="showUploadDialog = true"
@@ -33,15 +26,6 @@
         </v-btn>
       </div>
     </div>
-
-    <!-- Export Dialog -->
-    <SharedCrmExportDialog
-      v-model="showExportDialog"
-      entity-label="EzyVet Contacts"
-      :columns="ezyvetExportColumns"
-      :data="filteredContacts"
-      filename="ezyvet_contacts_export"
-    />
 
     <!-- Stats Cards -->
     <v-row class="mb-6">
@@ -412,26 +396,7 @@ const contacts = ref<any[]>([])
 const syncHistory = ref<any[]>([])
 const search = ref('')
 const showUploadDialog = ref(false)
-const showExportDialog = ref(false)
 const uploadFile = ref<File | null>(null)
-
-// Export columns
-const ezyvetExportColumns = [
-  { key: 'first_name', title: 'First Name' },
-  { key: 'last_name', title: 'Last Name' },
-  { key: 'email', title: 'Email' },
-  { key: 'phone', title: 'Phone' },
-  { key: 'division', title: 'Division' },
-  { key: 'last_visit', title: 'Last Visit' },
-  { key: 'visit_count', title: 'Visit Count' },
-  { key: 'total_revenue', title: 'Total Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
-  { key: 'pets', title: 'Pets' },
-  { key: 'address', title: 'Address' },
-  { key: 'city', title: 'City' },
-  { key: 'state', title: 'State' },
-  { key: 'zip', title: 'Zip' },
-  { key: 'created_at', title: 'Created At' }
-]
 
 // Filters
 const filters = ref({

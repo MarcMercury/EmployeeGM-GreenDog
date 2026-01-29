@@ -84,11 +84,26 @@ async function fetchData() {
       timeOffRequests.value = []
     }
     
-    // TODO: Enable when course_enrollments and courses tables are created
-    // Currently these tables from migration 037 are not in the database
-    // Skipping query to avoid 404 errors
-    trainingProgress.value = []
-    stats.value.coursesInProgress = 0
+    // Fetch training progress - use user_id and correct status enum values
+    try {
+      const { data: enrollments } = await client
+        .from('course_enrollments')
+        .select('*, course:courses(id, title, category, est_minutes)')
+        .eq('user_id', userId)
+        .in('status', ['assigned', 'in_progress'])
+        .order('assigned_at', { ascending: false })
+        .limit(3)
+      
+      trainingProgress.value = (enrollments || []).map(e => ({
+        ...e,
+        progress: e.progress_percent || 0
+      }))
+      stats.value.coursesInProgress = enrollments?.length || 0
+    } catch {
+      // course_enrollments table may not exist
+      trainingProgress.value = []
+      stats.value.coursesInProgress = 0
+    }
     
     // Get PTO balance from profile if available
     stats.value.ptoBalance = authStore.profile?.pto_balance || 0

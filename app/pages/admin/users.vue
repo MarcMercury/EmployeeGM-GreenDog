@@ -1434,17 +1434,20 @@ interface AccessMatrixSection {
   pages: AccessMatrixPage[]
 }
 
-// Dynamically loaded roles for access matrix
+// Dynamically loaded roles for access matrix - ordered by hierarchy (highest to lowest)
 const accessMatrixRoles = ref<AccessMatrixRole[]>([
   { key: 'super_admin', name: 'Super Admin', shortName: 'SA', description: 'Full system access to all features', icon: 'mdi-shield-crown', color: 'error' },
   { key: 'admin', name: 'Admin', shortName: 'Admin', description: 'System administrator with full access', icon: 'mdi-shield-account', color: 'warning' },
   { key: 'manager', name: 'Manager', shortName: 'Mgr', description: 'Team manager with broad access', icon: 'mdi-account-tie', color: 'purple' },
   { key: 'hr_admin', name: 'HR Admin', shortName: 'HR', description: 'HR functions and recruiting', icon: 'mdi-account-group', color: 'info' },
+  { key: 'sup_admin', name: 'Supervisor', shortName: 'Sup', description: 'Team supervisor with HR and recruiting access', icon: 'mdi-account-supervisor', color: 'cyan' },
   { key: 'office_admin', name: 'Office Admin', shortName: 'Office', description: 'Office operations and scheduling', icon: 'mdi-office-building', color: 'teal' },
   { key: 'marketing_admin', name: 'Marketing Admin', shortName: 'Mktg', description: 'Marketing and GDU access', icon: 'mdi-bullhorn', color: 'green' },
   { key: 'user', name: 'User', shortName: 'User', description: 'Standard employee access', icon: 'mdi-account', color: 'grey' }
 ])
 
+// ACCESS MATRIX SECTIONS - ORDERED TO MATCH NAVIGATION BAR
+// Sections: Global → My Workspace → Management → Med Ops → HR → Marketing → CRM & Analytics → GDU → Admin Ops
 const accessMatrixSections: AccessMatrixSection[] = [
   {
     name: 'Global',
@@ -1454,13 +1457,13 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Activity Hub', 
         path: '/activity', 
         icon: 'mdi-bell',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Marketplace', 
         path: '/marketplace', 
         icon: 'mdi-store',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       }
     ]
   },
@@ -1472,31 +1475,37 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'My Profile', 
         path: '/profile', 
         icon: 'mdi-account-card',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+      },
+      { 
+        name: 'Contact List', 
+        path: '/contact-list', 
+        icon: 'mdi-contacts',
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'My Schedule', 
         path: '/my-schedule', 
         icon: 'mdi-calendar-account',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'My Skills', 
         path: '/people/my-skills', 
         icon: 'mdi-lightbulb',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'My Growth', 
         path: '/development', 
         icon: 'mdi-chart-line',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'My Training', 
         path: '/academy/my-training', 
         icon: 'mdi-school',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       }
     ]
   },
@@ -1508,31 +1517,31 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Roster', 
         path: '/roster', 
         icon: 'mdi-account-group',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
       },
       { 
         name: 'Skill Library', 
         path: '/skills-library', 
         icon: 'mdi-book-open-variant',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Skill Stats', 
         path: '/people/skill-stats', 
         icon: 'mdi-chart-bar',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Facilities Resources', 
         path: '/med-ops/facilities', 
         icon: 'mdi-office-building',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Course Manager', 
         path: '/academy/course-manager', 
         icon: 'mdi-book-education',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       }
     ]
   },
@@ -1544,25 +1553,25 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Wiki', 
         path: '/med-ops/wiki', 
         icon: 'mdi-book-open-page-variant',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Drug Calculators', 
         path: '/med-ops/calculators', 
         icon: 'mdi-calculator',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Medical Boards', 
         path: '/med-ops/boards', 
         icon: 'mdi-clipboard-pulse',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       },
       { 
         name: 'Med Ops Partners', 
         path: '/med-ops/partners', 
         icon: 'mdi-handshake',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'full', user: 'full' }
       }
     ]
   },
@@ -1574,43 +1583,43 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Schedule Overview', 
         path: '/schedule', 
         icon: 'mdi-calendar-clock',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Schedule Wizard', 
         path: '/schedule/wizard', 
         icon: 'mdi-wizard-hat',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Service Settings', 
         path: '/schedule/services', 
         icon: 'mdi-medical-bag',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Time Off Approvals', 
         path: '/time-off', 
         icon: 'mdi-calendar-remove',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'view' }
       },
       { 
         name: 'Recruiting Pipeline', 
         path: '/recruiting', 
         icon: 'mdi-account-search',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'full', marketing_admin: 'view', user: 'none' }
       },
       { 
         name: 'Export Payroll', 
         path: '/export-payroll', 
         icon: 'mdi-cash-multiple',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Master Roster', 
         path: '/admin/master-roster', 
         icon: 'mdi-table-account',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       }
     ]
   },
@@ -1622,49 +1631,49 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'Calendar', 
         path: '/marketing/calendar', 
         icon: 'mdi-calendar-month',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', office_admin: 'view', marketing_admin: 'full', user: 'view' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', sup_admin: 'view', office_admin: 'view', marketing_admin: 'full', user: 'view' }
       },
       { 
         name: 'Events', 
         path: '/growth/events', 
         icon: 'mdi-calendar-star',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Event Leads', 
         path: '/growth/leads', 
         icon: 'mdi-account-star',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Partners', 
         path: '/marketing/partners', 
         icon: 'mdi-handshake',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Influencers', 
         path: '/marketing/influencers', 
         icon: 'mdi-account-star-outline',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Inventory', 
         path: '/marketing/inventory', 
         icon: 'mdi-package-variant',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Resources', 
         path: '/marketing/resources', 
         icon: 'mdi-folder-multiple',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', office_admin: 'view', marketing_admin: 'full', user: 'view' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'view', sup_admin: 'view', office_admin: 'view', marketing_admin: 'full', user: 'view' }
       },
       { 
         name: 'Referral CRM', 
         path: '/marketing/partnerships', 
         icon: 'mdi-handshake-outline',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       }
     ]
   },
@@ -1676,19 +1685,19 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'EzyVet CRM', 
         path: '/marketing/ezyvet-crm', 
         icon: 'mdi-database-import',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'EzyVet Analytics', 
         path: '/marketing/ezyvet-analytics', 
         icon: 'mdi-chart-areaspline',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'List Hygiene', 
         path: '/marketing/list-hygiene', 
         icon: 'mdi-broom',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       }
     ]
   },
@@ -1700,25 +1709,25 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'GDU Dash', 
         path: '/gdu', 
         icon: 'mdi-view-dashboard',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Student CRM', 
         path: '/gdu/students', 
         icon: 'mdi-account-school',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'Visitor CRM', 
         path: '/gdu/visitors', 
         icon: 'mdi-account-group',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'CE Events', 
         path: '/gdu/events', 
         icon: 'mdi-calendar-star',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'full', sup_admin: 'full', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       }
     ]
   },
@@ -1730,31 +1739,25 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'User Management', 
         path: '/admin/users', 
         icon: 'mdi-account-cog',
-        access: { super_admin: 'full', admin: 'none', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Email Templates', 
         path: '/admin/email-templates', 
         icon: 'mdi-email-edit',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
         name: 'Skills Management', 
         path: '/admin/skills-management', 
         icon: 'mdi-bookshelf',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       },
       { 
-        name: 'System Health', 
+        name: 'System Settings', 
         path: '/admin/system-health', 
-        icon: 'mdi-heart-pulse',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
-      },
-      { 
-        name: 'Global Settings', 
-        path: '/settings', 
-        icon: 'mdi-tune',
-        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
+        icon: 'mdi-cog',
+        access: { super_admin: 'full', admin: 'full', manager: 'none', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'none', user: 'none' }
       }
     ]
   }
@@ -2132,7 +2135,7 @@ function showNotification(message: string, color = 'success') {
 function getInitials(user: UserAccount): string {
   const first = user.first_name?.[0] || ''
   const last = user.last_name?.[0] || ''
-  return (first + last).toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'
+  return (first + last).toUpperCase() || user.email[0].toUpperCase()
 }
 
 function getFullName(user: UserAccount): string {
@@ -2354,7 +2357,7 @@ async function fetchUsers(): Promise<void> {
       headers: {
         Authorization: `Bearer ${session.session.access_token}`
       }
-    }) as { success: boolean; users: UserAccount[] }
+    })
 
     if (response.success) {
       users.value = response.users
@@ -2400,11 +2403,10 @@ async function runAudit(): Promise<void> {
 async function fetchPendingEmployees(): Promise<void> {
   pendingLoading.value = true
   try {
-    // pending_user_accounts is a VIEW - use type assertion
-    let { data, error } = await (supabase
-      .from('pending_user_accounts' as any)
+    let { data, error } = await supabase
+      .from('pending_user_accounts')
       .select('*')
-      .order('hire_date', { ascending: false }) as unknown as Promise<{ data: PendingEmployee[] | null; error: any }>)
+      .order('hire_date', { ascending: false })
     
     if (error) {
       console.log('View not available, using fallback query')
@@ -2455,7 +2457,7 @@ async function fetchPendingEmployees(): Promise<void> {
           position_title: e.job_positions?.title,
           department_name: e.departments?.name,
           location_name: e.locations?.name
-        })) as PendingEmployee[]
+        }))
     }
     
     pendingEmployees.value = data || []
@@ -2477,21 +2479,12 @@ async function fetchLocations(): Promise<void> {
 }
 
 // Fetch roles from role_definitions table
-interface RoleDefinitionRow {
-  role_key: string
-  display_name: string
-  description: string | null
-  icon: string | null
-  color: string | null
-  tier: number
-}
-
 async function fetchRoles(): Promise<void> {
   try {
-    const { data, error } = await (supabase
-      .from('role_definitions' as any)
+    const { data, error } = await supabase
+      .from('role_definitions')
       .select('role_key, display_name, description, icon, color, tier')
-      .order('tier', { ascending: false }) as unknown as Promise<{ data: RoleDefinitionRow[] | null; error: any }>)
+      .order('tier', { ascending: false })
     
     if (error) {
       console.error('Error fetching role definitions:', error)
@@ -2547,7 +2540,7 @@ async function saveUser(): Promise<void> {
         Authorization: `Bearer ${session.session.access_token}`
       },
       body: editFormData.value
-    }) as { success: boolean }
+    })
 
     if (response.success) {
       showNotification('User updated successfully')
