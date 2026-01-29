@@ -152,6 +152,56 @@ const addDialogOpen = ref(false)
 const profileDialogOpen = ref(false)
 const saving = ref(false)
 const loadingProfile = ref(false)
+const showImportWizard = ref(false)
+const showExportDialog = ref(false)
+
+// Import/Export field definitions
+const influencerImportFields = [
+  { key: 'contact_name', label: 'Contact Name', required: true },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'pet_name', label: 'Pet Name' },
+  { key: 'instagram_handle', label: 'Instagram Handle' },
+  { key: 'tiktok_handle', label: 'TikTok Handle' },
+  { key: 'instagram_followers', label: 'Instagram Followers' },
+  { key: 'tiktok_followers', label: 'TikTok Followers' },
+  { key: 'youtube_subscribers', label: 'YouTube Subscribers' },
+  { key: 'tier', label: 'Tier' },
+  { key: 'status', label: 'Status' },
+  { key: 'content_niche', label: 'Content Niche' },
+  { key: 'location', label: 'Location' },
+  { key: 'promo_code', label: 'Promo Code' },
+  { key: 'collaboration_type', label: 'Collaboration Type' },
+  { key: 'compensation_type', label: 'Compensation Type' },
+  { key: 'notes', label: 'Notes' }
+]
+
+const influencerExportColumns = [
+  { key: 'contact_name', title: 'Contact Name' },
+  { key: 'email', title: 'Email' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'pet_name', title: 'Pet Name' },
+  { key: 'status', title: 'Status' },
+  { key: 'tier', title: 'Tier' },
+  { key: 'instagram_handle', title: 'Instagram Handle' },
+  { key: 'instagram_followers', title: 'Instagram Followers', format: (v: number) => v?.toLocaleString() || '' },
+  { key: 'tiktok_handle', title: 'TikTok Handle' },
+  { key: 'tiktok_followers', title: 'TikTok Followers', format: (v: number) => v?.toLocaleString() || '' },
+  { key: 'youtube_subscribers', title: 'YouTube Subscribers', format: (v: number) => v?.toLocaleString() || '' },
+  { key: 'engagement_rate', title: 'Engagement Rate', format: (v: number) => v ? `${v}%` : '' },
+  { key: 'content_niche', title: 'Content Niche' },
+  { key: 'location', title: 'Location' },
+  { key: 'promo_code', title: 'Promo Code' },
+  { key: 'collaboration_type', title: 'Collaboration Type' },
+  { key: 'compensation_type', title: 'Compensation Type' },
+  { key: 'compensation_rate', title: 'Compensation Rate', format: (v: number) => v ? `$${v}` : '' },
+  { key: 'relationship_status', title: 'Relationship Status' },
+  { key: 'relationship_score', title: 'Relationship Score' },
+  { key: 'last_contact_date', title: 'Last Contact Date' },
+  { key: 'next_followup_date', title: 'Next Follow-up Date' },
+  { key: 'notes', title: 'Notes' },
+  { key: 'created_at', title: 'Created At' }
+]
 
 // Selected data
 const selectedInfluencer = ref<Influencer | null>(null)
@@ -854,11 +904,36 @@ async function updateInfluencerField(field: string, value: any) {
         </p>
       </div>
       <div class="d-flex gap-2">
+        <v-btn variant="outlined" prepend-icon="mdi-file-import" size="small" @click="showImportWizard = true">
+          Import
+        </v-btn>
+        <v-btn variant="outlined" prepend-icon="mdi-file-export" size="small" @click="showExportDialog = true">
+          Export
+        </v-btn>
         <v-btn color="secondary" prepend-icon="mdi-plus" @click="openAddDialog">
           Add Influencer
         </v-btn>
       </div>
     </div>
+
+    <!-- Import Wizard -->
+    <SharedCrmImportWizard
+      v-model="showImportWizard"
+      entity-label="Influencers"
+      table-name="marketing_influencers"
+      duplicate-check-field="email"
+      :entity-fields="influencerImportFields"
+      @imported="refresh"
+    />
+
+    <!-- Export Dialog -->
+    <SharedCrmExportDialog
+      v-model="showExportDialog"
+      entity-label="Influencers"
+      :columns="influencerExportColumns"
+      :data="filteredInfluencers"
+      filename="influencers_export"
+    />
 
     <!-- Stats Row -->
     <v-row class="mb-4">

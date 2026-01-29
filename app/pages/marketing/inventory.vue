@@ -48,15 +48,46 @@ onMounted(() => {
 
 const categoryOptions = [
   { title: 'All Categories', value: null },
-  { title: 'Brochures', value: 'brochures' },
-  { title: 'Flyers', value: 'flyers' },
-  { title: 'Business Cards', value: 'business_cards' },
-  { title: 'Promotional Items', value: 'promotional_items' },
   { title: 'Apparel', value: 'apparel' },
-  { title: 'Signage', value: 'signage' },
-  { title: 'Supplies', value: 'supplies' },
+  { title: 'EMP Apparel', value: 'emp_apparel' },
+  { title: 'Print', value: 'print' },
+  { title: 'Prize', value: 'prize' },
+  { title: 'Product', value: 'product' },
+  { title: 'Supply', value: 'supply' },
   { title: 'Other', value: 'other' }
 ]
+
+// Group inventory by category
+const inventoryByCategory = computed(() => {
+  const groups: Record<string, InventoryItem[]> = {}
+  const items = filteredInventory.value || []
+  
+  // Define category order
+  const categoryOrder = ['apparel', 'emp_apparel', 'print', 'prize', 'product', 'supply', 'other']
+  
+  items.forEach(item => {
+    const cat = item.category || 'other'
+    if (!groups[cat]) groups[cat] = []
+    groups[cat].push(item)
+  })
+  
+  // Sort by defined order
+  const sorted: { category: string; items: InventoryItem[] }[] = []
+  categoryOrder.forEach(cat => {
+    if (groups[cat]?.length) {
+      sorted.push({ category: cat, items: groups[cat] })
+    }
+  })
+  
+  // Add any remaining categories not in predefined order
+  Object.keys(groups).forEach(cat => {
+    if (!categoryOrder.includes(cat) && groups[cat]?.length) {
+      sorted.push({ category: cat, items: groups[cat] })
+    }
+  })
+  
+  return sorted
+})
 
 // Fetch inventory
 const { data: inventory, pending, refresh } = await useAsyncData('inventory', async () => {
@@ -233,13 +264,12 @@ async function updateQuantity(item: InventoryItem, location: 'venice' | 'sherman
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
-    brochures: 'blue',
-    flyers: 'cyan',
-    business_cards: 'indigo',
-    promotional_items: 'purple',
     apparel: 'pink',
-    signage: 'orange',
-    supplies: 'teal',
+    emp_apparel: 'deep-purple',
+    print: 'blue',
+    prize: 'amber',
+    product: 'green',
+    supply: 'teal',
     other: 'grey'
   }
   return colors[category] || 'grey'
@@ -247,16 +277,28 @@ function getCategoryColor(category: string): string {
 
 function getCategoryIcon(category: string): string {
   const icons: Record<string, string> = {
-    brochures: 'mdi-book-open-page-variant',
-    flyers: 'mdi-file-document',
-    business_cards: 'mdi-card-account-details',
-    promotional_items: 'mdi-gift',
     apparel: 'mdi-tshirt-crew',
-    signage: 'mdi-sign-real-estate',
-    supplies: 'mdi-package-variant',
+    emp_apparel: 'mdi-account-hard-hat',
+    print: 'mdi-file-document-multiple',
+    prize: 'mdi-gift',
+    product: 'mdi-package-variant-closed',
+    supply: 'mdi-package-variant',
     other: 'mdi-dots-horizontal'
   }
   return icons[category] || 'mdi-package-variant'
+}
+
+function getCategoryLabel(category: string): string {
+  const labels: Record<string, string> = {
+    apparel: 'Apparel',
+    emp_apparel: 'Employee Apparel',
+    print: 'Print Materials',
+    prize: 'Prize Items',
+    product: 'Products',
+    supply: 'Supplies',
+    other: 'Other'
+  }
+  return labels[category] || category
 }
 
 function getStockLevel(item: InventoryItem): { color: string; text: string } {
@@ -373,49 +415,56 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
       </v-card-text>
     </v-card>
 
-    <!-- Inventory Table -->
+    <!-- Inventory Table with Sticky Headers and Category Groups -->
     <v-card>
       <v-progress-linear v-if="pending" indeterminate color="warning" />
       
-      <v-table v-if="filteredInventory.length > 0" hover>
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th class="text-center">Venice</th>
-            <th class="text-center">Sherman Oaks</th>
-            <th class="text-center">Valley</th>
-            <th class="text-center">MPMV</th>
-            <th class="text-center">Off-Site</th>
-            <th class="text-center">Total</th>
-            <th class="text-center">Reorder Point</th>
-            <th class="text-center">Status</th>
-            <th class="text-center">Last Ordered</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="item in filteredInventory"
-            :key="item.id"
-            :class="{ 'bg-error-lighten-5': item.is_low_stock }"
-            style="cursor: pointer;"
-            @click="openEditDialog(item)"
-          >
-            <td>
-              <div class="d-flex align-center py-2">
-                <v-avatar :color="getCategoryColor(item.category)" size="32" class="mr-3">
-                  <v-icon size="small" color="white">{{ getCategoryIcon(item.category) }}</v-icon>
-                </v-avatar>
-                <div>
-                  <div class="font-weight-medium">{{ item.item_name }}</div>
-                  <div class="text-caption text-medium-emphasis">
-                    {{ item.category.replace(/_/g, ' ') }}
+      <div v-if="filteredInventory.length > 0" class="inventory-table-container" style="max-height: 70vh; overflow-y: auto;">
+        <v-table hover class="inventory-table">
+          <thead class="sticky-header">
+            <tr>
+              <th class="sticky-cell bg-grey-lighten-4">Item</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Venice</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Sherman Oaks</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Valley</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">MPMV</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Off-Site</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Total</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Reorder</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Status</th>
+              <th class="text-center sticky-cell bg-grey-lighten-4">Ordered</th>
+              <th class="sticky-cell bg-grey-lighten-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="group in inventoryByCategory" :key="group.category">
+              <!-- Category Header Row -->
+              <tr class="category-header">
+                <td colspan="11" class="py-2 px-4 bg-grey-lighten-3">
+                  <div class="d-flex align-center">
+                    <v-avatar :color="getCategoryColor(group.category)" size="28" class="mr-3">
+                      <v-icon size="16" color="white">{{ getCategoryIcon(group.category) }}</v-icon>
+                    </v-avatar>
+                    <span class="text-subtitle-1 font-weight-bold">{{ getCategoryLabel(group.category) }}</span>
+                    <v-chip size="x-small" class="ml-2" variant="tonal">{{ group.items.length }}</v-chip>
                   </div>
-                </div>
-              </div>
-            </td>
-            
-            <!-- Venice -->
+                </td>
+              </tr>
+              <!-- Items in this category -->
+              <tr
+                v-for="item in group.items"
+                :key="item.id"
+                :class="{ 'bg-error-lighten-5': item.is_low_stock }"
+                style="cursor: pointer;"
+                @click="openEditDialog(item)"
+              >
+                <td>
+                  <div class="d-flex align-center py-2 pl-6">
+                    <div>
+                      <div class="font-weight-medium">{{ item.item_name }}</div>
+                    </div>
+                  </div>
+                </td>
             <td class="text-center">
               <div class="d-flex align-center justify-center">
                 <v-btn
@@ -587,8 +636,10 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
               </v-btn>
             </td>
           </tr>
+            </template>
         </tbody>
       </v-table>
+      </div>
 
       <!-- Empty State -->
       <div v-else class="text-center py-12">
@@ -812,5 +863,31 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 
 .bg-error-lighten-5 {
   background-color: rgba(var(--v-theme-error), 0.05) !important;
+}
+
+/* Sticky header styles for inventory table */
+.inventory-table-container {
+  position: relative;
+}
+
+.inventory-table .sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.inventory-table .sticky-cell {
+  background: #f5f5f5;
+  border-bottom: 2px solid #e0e0e0;
+  font-weight: 600;
+}
+
+.category-header {
+  background: #eeeeee;
+}
+
+.category-header td {
+  font-weight: bold;
+  border-top: 2px solid #bdbdbd;
 }
 </style>

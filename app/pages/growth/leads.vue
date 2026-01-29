@@ -11,17 +11,44 @@
       <div class="d-flex gap-2">
         <v-btn
           variant="outlined"
-          prepend-icon="mdi-download"
+          prepend-icon="mdi-file-import"
           size="small"
-          @click="exportCSV"
+          @click="showImportWizard = true"
         >
-          Export CSV
+          Import
+        </v-btn>
+        <v-btn
+          variant="outlined"
+          prepend-icon="mdi-file-export"
+          size="small"
+          @click="showExportDialog = true"
+        >
+          Export
         </v-btn>
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
           Add Lead
         </v-btn>
       </div>
     </div>
+
+    <!-- Import Wizard -->
+    <SharedCrmImportWizard
+      v-model="showImportWizard"
+      entity-label="Leads"
+      table-name="marketing_leads"
+      duplicate-check-field="email"
+      :entity-fields="leadImportFields"
+      @imported="fetchLeads"
+    />
+
+    <!-- Export Dialog -->
+    <SharedCrmExportDialog
+      v-model="showExportDialog"
+      entity-label="Leads"
+      :columns="leadExportColumns"
+      :data="filteredLeads"
+      filename="leads_export"
+    />
 
     <!-- Stats Row -->
     <UiStatsRow
@@ -351,6 +378,28 @@ const eventFilter = ref<string | null>(null)
 const statusFilter = ref<string | null>(null)
 const quickFilter = ref('all')
 const leadDialog = ref(false)
+const showImportWizard = ref(false)
+const showExportDialog = ref(false)
+
+// Import/Export field definitions
+const leadImportFields = [
+  { key: 'lead_name', label: 'Lead Name', required: true },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'source', label: 'Source' },
+  { key: 'status', label: 'Status' },
+  { key: 'notes', label: 'Notes' }
+]
+
+const leadExportColumns = [
+  { key: 'lead_name', title: 'Lead Name' },
+  { key: 'email', title: 'Email' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'source', title: 'Source' },
+  { key: 'status', title: 'Status' },
+  { key: 'notes', title: 'Notes' },
+  { key: 'created_at', title: 'Created At' }
+]
 const deleteDialog = ref(false)
 const editMode = ref(false)
 const formValid = ref(false)

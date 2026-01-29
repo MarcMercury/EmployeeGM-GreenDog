@@ -8,10 +8,37 @@
           Plan and manage your marketing events
         </p>
       </div>
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
-        Create Event
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn variant="outlined" prepend-icon="mdi-file-import" size="small" @click="showImportWizard = true">
+          Import
+        </v-btn>
+        <v-btn variant="outlined" prepend-icon="mdi-file-export" size="small" @click="showExportDialog = true">
+          Export
+        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">
+          Create Event
+        </v-btn>
+      </div>
     </div>
+
+    <!-- Import Wizard -->
+    <SharedCrmImportWizard
+      v-model="showImportWizard"
+      entity-label="Events"
+      table-name="marketing_events"
+      duplicate-check-field="name"
+      :entity-fields="eventImportFields"
+      @imported="fetchEvents"
+    />
+
+    <!-- Export Dialog -->
+    <SharedCrmExportDialog
+      v-model="showExportDialog"
+      entity-label="Events"
+      :columns="eventExportColumns"
+      :data="filteredEvents"
+      filename="events_export"
+    />
 
     <!-- Stats -->
     <UiStatsRow
@@ -791,6 +818,79 @@
               </v-col>
             </v-row>
 
+            <!-- Inventory Items Section -->
+            <v-divider class="my-4" />
+            <p class="text-overline text-grey mb-2">INVENTORY ITEMS TO USE</p>
+            <v-row>
+              <v-col cols="12">
+                <v-alert v-if="inventoryItems.length === 0" type="info" variant="tonal" density="compact" class="mb-3">
+                  Select inventory items to bring to this event. Quantities will be deducted from stock when the event is saved.
+                </v-alert>
+                
+                <!-- List of selected inventory items -->
+                <v-card v-for="(item, idx) in selectedInventoryItems" :key="idx" variant="outlined" class="mb-2 pa-3">
+                  <v-row dense align="center">
+                    <v-col cols="12" sm="5">
+                      <v-autocomplete
+                        v-model="item.inventory_item_id"
+                        :items="inventoryItems"
+                        item-title="item_name"
+                        item-value="id"
+                        label="Inventory Item"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        @update:model-value="(val) => updateSelectedItemName(idx, val)"
+                      >
+                        <template #item="{ item: invItem, props }">
+                          <v-list-item v-bind="props">
+                            <template #prepend>
+                              <v-avatar size="24" :color="getCategoryColorForInventory(invItem.raw.category)">
+                                <v-icon size="14" color="white">mdi-package-variant</v-icon>
+                              </v-avatar>
+                            </template>
+                            <template #subtitle>
+                              <span class="text-caption">{{ invItem.raw.category }} • Total: {{ invItem.raw.total_quantity }}</span>
+                            </template>
+                          </v-list-item>
+                        </template>
+                      </v-autocomplete>
+                    </v-col>
+                    <v-col cols="6" sm="2">
+                      <v-text-field
+                        v-model.number="item.quantity_used"
+                        label="Qty"
+                        type="number"
+                        min="1"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="6" sm="3">
+                      <v-select
+                        v-model="item.location"
+                        :items="locationOptions"
+                        label="From Location"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                      />
+                    </v-col>
+                    <v-col cols="12" sm="2" class="d-flex justify-center">
+                      <v-btn icon variant="text" size="small" color="error" @click="removeSelectedInventoryItem(idx)">
+                        <v-icon>mdi-delete</v-icon>
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-card>
+                
+                <v-btn variant="tonal" color="warning" size="small" prepend-icon="mdi-plus" @click="addInventoryItemLine">
+                  Add Inventory Item
+                </v-btn>
+              </v-col>
+            </v-row>
+
             <!-- Notes Section -->
             <v-divider class="my-4" />
             <p class="text-overline text-grey mb-2">NOTES & INSTRUCTIONS</p>
@@ -1032,6 +1132,27 @@ interface InventoryUsedItem {
   quantity_used: number
 }
 
+// Inventory item type for selection
+interface InventoryItem {
+  id: string
+  item_name: string
+  category: string
+  total_quantity: number
+  quantity_venice: number
+  quantity_sherman_oaks: number
+  quantity_valley: number
+  quantity_mpmv: number
+  quantity_offsite: number
+}
+
+// Selected inventory item for event
+interface SelectedInventoryItem {
+  inventory_item_id: string
+  item_name: string
+  quantity_used: number
+  location: string
+}
+
 interface EventAttachment {
   name: string
   url: string
@@ -1071,6 +1192,104 @@ const editMode = ref(false)
 const formValid = ref(false)
 const leadFormValid = ref(false)
 const eventProfileTab = ref('details')
+const showImportWizard = ref(false)
+const showExportDialog = ref(false)
+
+// Inventory selection state
+const inventoryItems = ref<InventoryItem[]>([])
+const selectedInventoryItems = ref<SelectedInventoryItem[]>([])
+
+// Location options for inventory deduction
+const locationOptions = [
+  { title: 'Venice', value: 'venice' },
+  { title: 'Sherman Oaks', value: 'sherman_oaks' },
+  { title: 'Valley', value: 'valley' },
+  { title: 'MPMV (Mobile)', value: 'mpmv' },
+  { title: 'Off-Site', value: 'offsite' }
+]
+
+// Fetch inventory items for selection
+const fetchInventoryItems = async () => {
+  const { data, error } = await client
+    .from('marketing_inventory')
+    .select('id, item_name, category, total_quantity, quantity_venice, quantity_sherman_oaks, quantity_valley, quantity_mpmv, quantity_offsite')
+    .order('item_name')
+  
+  if (!error && data) {
+    inventoryItems.value = data
+  }
+}
+
+// Add a new inventory line item
+const addInventoryItemLine = () => {
+  selectedInventoryItems.value.push({
+    inventory_item_id: '',
+    item_name: '',
+    quantity_used: 1,
+    location: 'venice'
+  })
+}
+
+// Remove an inventory line item
+const removeSelectedInventoryItem = (index: number) => {
+  selectedInventoryItems.value.splice(index, 1)
+}
+
+// Update item name when selected from dropdown
+const updateSelectedItemName = (index: number, itemId: string) => {
+  const item = inventoryItems.value.find(i => i.id === itemId)
+  if (item) {
+    selectedInventoryItems.value[index].item_name = item.item_name
+  }
+}
+
+// Get category color for inventory display
+const getCategoryColorForInventory = (category: string): string => {
+  const colors: Record<string, string> = {
+    apparel: 'pink',
+    emp_apparel: 'deep-purple',
+    print: 'blue',
+    prize: 'amber',
+    product: 'green',
+    supply: 'teal',
+    other: 'grey'
+  }
+  return colors[category] || 'grey'
+}
+
+// Import/Export field definitions
+const eventImportFields = [
+  { key: 'name', label: 'Event Name', required: true },
+  { key: 'event_type', label: 'Event Type' },
+  { key: 'event_date', label: 'Event Date' },
+  { key: 'start_time', label: 'Start Time' },
+  { key: 'end_time', label: 'End Time' },
+  { key: 'location', label: 'Location' },
+  { key: 'address', label: 'Address' },
+  { key: 'status', label: 'Status' },
+  { key: 'budget', label: 'Budget' },
+  { key: 'expected_attendees', label: 'Expected Attendees' },
+  { key: 'description', label: 'Description' },
+  { key: 'notes', label: 'Notes' }
+]
+
+const eventExportColumns = [
+  { key: 'name', title: 'Event Name' },
+  { key: 'event_type', title: 'Event Type' },
+  { key: 'event_date', title: 'Event Date' },
+  { key: 'start_time', title: 'Start Time' },
+  { key: 'end_time', title: 'End Time' },
+  { key: 'location', title: 'Location' },
+  { key: 'address', title: 'Address' },
+  { key: 'status', title: 'Status' },
+  { key: 'budget', title: 'Budget', format: (v: number) => v ? `$${v}` : '' },
+  { key: 'expected_attendees', title: 'Expected Attendees' },
+  { key: 'actual_attendees', title: 'Actual Attendees' },
+  { key: 'leads_captured', title: 'Leads Captured' },
+  { key: 'description', title: 'Description' },
+  { key: 'notes', title: 'Notes' },
+  { key: 'created_at', title: 'Created At' }
+]
 
 // Filters
 const searchQuery = ref('')
@@ -1375,6 +1594,7 @@ const openDrawer = (event: MarketingEvent) => {
 const openCreateDialog = () => {
   editMode.value = false
   newAttachments.value = []
+  selectedInventoryItems.value = []
   Object.assign(eventFormData, {
     name: '',
     description: '',
@@ -1618,17 +1838,43 @@ const saveEvent = async () => {
       if (error) throw error
       showNotification('Event updated successfully')
     } else {
-      const { error } = await client
+      // Create new event
+      const { data: newEvent, error } = await client
         .from('marketing_events')
         .insert(eventPayload)
+        .select()
+        .single()
 
       if (error) throw error
+      
+      // Deduct inventory items if any were selected
+      if (newEvent && selectedInventoryItems.value.length > 0) {
+        for (const item of selectedInventoryItems.value) {
+          if (item.inventory_item_id && item.quantity_used > 0) {
+            try {
+              // Use the RPC function to deduct inventory
+              await client.rpc('deduct_inventory_for_event', {
+                p_event_id: newEvent.id,
+                p_inventory_item_id: item.inventory_item_id,
+                p_quantity: item.quantity_used,
+                p_location: item.location,
+                p_notes: `Used at event: ${eventFormData.name}`
+              })
+            } catch (invError) {
+              console.error('Inventory deduction error:', invError)
+              showNotification(`Warning: Could not deduct ${item.item_name} from inventory`, 'warning')
+            }
+          }
+        }
+      }
+      
       showNotification('Event created successfully')
     }
 
     eventDialog.value = false
     drawer.value = false
     newAttachments.value = []
+    selectedInventoryItems.value = []
     await fetchData()
   } catch (error) {
     console.error('Error saving event:', error)
@@ -1678,6 +1924,9 @@ const fetchData = async () => {
 
     events.value = eventsRes.data || []
     leads.value = leadsRes.data || []
+    
+    // Also fetch inventory items for the dropdown
+    await fetchInventoryItems()
   } catch (error) {
     console.error('Error fetching data:', error)
   } finally {

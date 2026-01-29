@@ -8,10 +8,37 @@
           Manage relationships with referring hospitals
         </p>
       </div>
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
-        Add Partner
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn variant="outlined" prepend-icon="mdi-file-import" size="small" @click="showImportWizard = true">
+          Import
+        </v-btn>
+        <v-btn variant="outlined" prepend-icon="mdi-file-export" size="small" @click="showExportDialog = true">
+          Export
+        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
+          Add Partner
+        </v-btn>
+      </div>
     </div>
+
+    <!-- Import Wizard -->
+    <SharedCrmImportWizard
+      v-model="showImportWizard"
+      entity-label="Referral Partners"
+      table-name="referral_partners"
+      duplicate-check-field="hospital_name"
+      :entity-fields="partnerImportFields"
+      @imported="fetchPartners"
+    />
+
+    <!-- Export Dialog -->
+    <SharedCrmExportDialog
+      v-model="showExportDialog"
+      entity-label="Referral Partners"
+      :columns="partnerExportColumns"
+      :data="partners"
+      filename="referral_partners_export"
+    />
 
     <!-- Stats Row -->
     <UiStatsRow
@@ -626,6 +653,33 @@ const selectedPartner = ref<ReferralPartner | null>(null)
 const partnerToDelete = ref<ReferralPartner | null>(null)
 const editNotes = ref('')
 const detailsTab = ref('overview')
+const showImportWizard = ref(false)
+const showExportDialog = ref(false)
+
+// Import/Export field definitions
+const partnerImportFields = [
+  { key: 'hospital_name', label: 'Hospital Name', required: true },
+  { key: 'contact_person', label: 'Contact Person' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'address', label: 'Address' },
+  { key: 'tier', label: 'Tier' },
+  { key: 'notes', label: 'Notes' }
+]
+
+const partnerExportColumns = [
+  { key: 'hospital_name', title: 'Hospital Name' },
+  { key: 'contact_person', title: 'Contact Person' },
+  { key: 'email', title: 'Email' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'address', title: 'Address' },
+  { key: 'tier', title: 'Tier' },
+  { key: 'total_referrals', title: 'Total Referrals' },
+  { key: 'total_revenue', title: 'Total Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
+  { key: 'is_active', title: 'Active', format: (v: boolean) => v ? 'Yes' : 'No' },
+  { key: 'notes', title: 'Notes' },
+  { key: 'created_at', title: 'Created At' }
+]
 
 // Snackbar
 const snackbar = ref(false)

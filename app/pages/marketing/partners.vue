@@ -11,6 +11,7 @@ const { showSuccess, showError } = useToast()
 
 // Export dialog
 const showExportDialog = ref(false)
+const showImportWizard = ref(false)
 const exportColumns = [
   { key: 'name', title: 'Name' },
   { key: 'partner_type', title: 'Type', format: (v: string) => v?.replace(/_/g, ' ')?.replace(/\b\w/g, l => l.toUpperCase()) || '' },
@@ -25,6 +26,26 @@ const exportColumns = [
   { key: 'membership_fee', title: 'Annual Fee', format: (v: number) => v ? `$${v}` : '' },
   { key: 'notes', title: 'Notes' },
   { key: 'created_at', title: 'Created' }
+]
+
+// Import field definitions
+const partnerImportFields = [
+  { key: 'name', label: 'Business Name', required: true },
+  { key: 'partner_type', label: 'Partner Type' },
+  { key: 'status', label: 'Status' },
+  { key: 'contact_name', label: 'Contact Name' },
+  { key: 'contact_phone', label: 'Phone' },
+  { key: 'contact_email', label: 'Email' },
+  { key: 'website', label: 'Website' },
+  { key: 'address', label: 'Address' },
+  { key: 'services_provided', label: 'Services Provided' },
+  { key: 'instagram_handle', label: 'Instagram Handle' },
+  { key: 'facebook_url', label: 'Facebook URL' },
+  { key: 'tiktok_handle', label: 'TikTok Handle' },
+  { key: 'membership_level', label: 'Membership Level' },
+  { key: 'membership_fee', label: 'Membership Fee' },
+  { key: 'membership_end', label: 'Membership End Date' },
+  { key: 'notes', label: 'Notes' }
 ]
 
 // Type definitions
@@ -1157,6 +1178,14 @@ function getPriorityColor(priority: string | null | undefined): string {
       <div class="d-flex gap-2">
         <v-btn
           variant="outlined"
+          prepend-icon="mdi-file-import-outline"
+          size="small"
+          @click="showImportWizard = true"
+        >
+          Import
+        </v-btn>
+        <v-btn
+          variant="outlined"
           prepend-icon="mdi-file-export-outline"
           size="small"
           @click="showExportDialog = true"
@@ -1181,6 +1210,16 @@ function getPriorityColor(priority: string | null | undefined): string {
         </v-btn>
       </div>
     </div>
+
+    <!-- Import Wizard -->
+    <SharedCrmImportWizard
+      v-model="showImportWizard"
+      entity-label="Partners"
+      table-name="marketing_partners"
+      duplicate-check-field="contact_email"
+      :entity-fields="partnerImportFields"
+      @imported="refresh"
+    />
 
     <!-- Stats Row -->
     <UiStatsRow
@@ -2444,12 +2483,12 @@ function getPriorityColor(priority: string | null | undefined): string {
     </v-dialog>
 
     <!-- Export Dialog -->
-    <UiExportDialog
+    <SharedCrmExportDialog
       v-model="showExportDialog"
+      entity-label="Partners"
       :data="filteredPartners"
       :columns="exportColumns"
-      default-file-name="partners-export"
-      title="Partners Export"
+      filename="partners_export"
     />
   </div>
 </template>
