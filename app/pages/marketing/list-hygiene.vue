@@ -40,6 +40,7 @@ interface MappingCandidate {
 }
 
 type OperationType = 'find_new' | 'master_merge' | 'common_ground'
+type MatchField = 'email' | 'phone'
 
 // Standard schema fields
 const STANDARD_FIELDS = ['email', 'first_name', 'last_name', 'phone', 'company', 'notes', 'source'] as const
@@ -58,6 +59,7 @@ const activeDropzone = ref<'target' | 'suppression' | null>(null)
 
 // Operation Mode
 const operationType = ref<OperationType>('master_merge')
+const matchField = ref<MatchField>('email')  // Toggle between email and phone matching
 
 // Processing State
 const isProcessing = ref(false)
@@ -109,7 +111,7 @@ const operationOptions = [
   {
     value: 'find_new',
     title: 'Find New Leads (A minus B)',
-    subtitle: 'Return emails in Target but NOT in Suppression list',
+    subtitle: 'Return records in Target but NOT in Suppression list',
     icon: 'mdi-set-left',
     color: 'primary'
   },
@@ -123,13 +125,29 @@ const operationOptions = [
   {
     value: 'common_ground',
     title: 'Common Ground (Intersection)',
-    subtitle: 'Return only emails that appear in ALL files',
+    subtitle: 'Return only records that appear in ALL files',
     icon: 'mdi-set-center',
     color: 'info'
   }
 ] as const
 
 const showSuppressionZone = computed(() => operationType.value === 'find_new')
+
+// Match field options for Find New Leads
+const matchFieldOptions = [
+  {
+    value: 'email',
+    title: 'Match by Email',
+    icon: 'mdi-email',
+    description: 'Compare and exclude based on email addresses'
+  },
+  {
+    value: 'phone',
+    title: 'Match by Phone',
+    icon: 'mdi-phone',
+    description: 'Compare and exclude based on phone numbers'
+  }
+] as const
 
 // ============================================
 // FILE PARSING & HEADER MAPPING
@@ -224,7 +242,13 @@ function mapHeaders(headers: string[]): { mapped: Record<string, string>, candid
     email: [/e-?mail/i, /email.?addr/i, /e.?mail/i, /correo/i, /email\s*address/i, /e-mail\s*address/i, /^email$/i],
     first_name: [/first.?name/i, /f.?name/i, /given.?name/i, /nombre/i, /fname/i, /^first$/i],
     last_name: [/last.?name/i, /l.?name/i, /surname/i, /family.?name/i, /apellido/i, /lname/i, /^last$/i],
-    phone: [/phone/i, /tel/i, /mobile/i, /cell/i, /telefono/i],
+    phone: [
+      /phone/i, /tel/i, /mobile/i, /cell/i, /telefono/i,
+      /phone\s*#/i, /phone\s*number/i, /telephone/i, /fax/i,
+      /contact\s*number/i, /work\s*phone/i, /home\s*phone/i, /cell\s*phone/i,
+      /mobile\s*phone/i, /primary\s*phone/i, /main\s*phone/i, /business\s*phone/i,
+      /daytime\s*phone/i, /evening\s*phone/i, /^#$/i, /ph\.?/i
+    ],
     company: [/company/i, /org/i, /business/i, /employer/i, /empresa/i, /clinic/i, /hospital/i],
     notes: [/notes?/i, /comment/i, /remark/i, /notas/i, /description/i],
     source: [/source/i, /origin/i, /channel/i, /fuente/i, /how.?heard/i, /referr/i]
@@ -402,12 +426,88 @@ function extractEmails(emailString: string): string[] {
 }
 
 /**
+ * Normalize a phone number to digits only for consistent matching
+ * Strips all non-digit characters, handles various formats:
+ * - (310) 555-1234 -> 3105551234
+ * - 310-555-1234 -> 3105551234
+ * - 310.555.1234 -> 3105551234
+ * - +1 310 555 1234 -> 13105551234
+ * - 3105551234 -> 3105551234
+ */
+function normalizePhone(phone: string): string {
+  if (!phone || typeof phone !== 'string') return ''
+  
+  // Remove all non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '')
+  
+  // Handle US numbers - if 11 digits starting with 1, keep as-is
+  // If 10 digits, that's the standard format
+  // If less than 10 or more than 11, might be invalid or international
+  return digitsOnly
+}
+
+/**
+ * Extract all valid phone numbers from a potentially multi-phone string
+ * Handles various separators and formats
+ */
+function extractPhones(phoneString: string): string[] {
+  if (!phoneString || typeof phoneString !== 'string') return []
+  
+  // First, try to split by obvious delimiters that separate multiple phones
+  // Common separators: comma, semicolon, slash, "or", newline
+  const parts = phoneString.split(/[,;\/]|\bor\b|\n/i).filter(s => s.trim())
+  
+  const validPhones: string[] = []
+  
+  for (const part of parts) {
+    const normalized = normalizePhone(part)
+    
+    // Consider valid if 10 digits (US) or 11 digits (US with country code)
+    // Also accept 7 digits (local) though less common
+    if (normalized.length >= 7 && normalized.length <= 15) {
+      // Avoid duplicates
+      if (!validPhones.includes(normalized)) {
+        validPhones.push(normalized)
+      }
+    }
+  }
+  
+  return validPhones
+}
+
+/**
+ * Get the match value (email or phone) from a normalized row based on matchField setting
+ */
+function getMatchValue(row: Record<string, any>): string | null {
+  if (matchField.value === 'email') {
+    return getEmail(row)
+  } else {
+    return getPhone(row)
+  }
+}
+
+/**
+ * Get phone from normalized row (normalized to digits only)
+ */
+function getPhone(row: Record<string, any>): string | null {
+  const phone = row.phone
+  if (!phone || typeof phone !== 'string') return null
+  
+  const normalized = normalizePhone(phone)
+  
+  // Valid if 7-15 digits
+  return normalized.length >= 7 && normalized.length <= 15 ? normalized : null
+}
+
+/**
  * Normalize row to standard schema using mapped headers
- * Returns an ARRAY of rows (in case email cell contains multiple emails)
+ * Returns an ARRAY of rows (in case email/phone cell contains multiple values)
+ * The expansion is based on the current matchField setting
  */
 function normalizeRow(row: Record<string, any>, mappedHeaders: Record<string, string>): Record<string, any>[] {
   const baseNormalized: Record<string, any> = {}
   let rawEmailValue = ''
+  let rawPhoneValue = ''
   
   for (const [original, mapped] of Object.entries(mappedHeaders)) {
     const value = row[original]
@@ -415,6 +515,9 @@ function normalizeRow(row: Record<string, any>, mappedHeaders: Record<string, st
       if (mapped === 'email') {
         // Store raw email for multi-email extraction
         rawEmailValue = value.trim()
+      } else if (mapped === 'phone') {
+        // Store raw phone for multi-phone extraction
+        rawPhoneValue = value.trim()
       } else {
         // If we already have this field, check if new value is better
         if (baseNormalized[mapped]) {
@@ -429,22 +532,50 @@ function normalizeRow(row: Record<string, any>, mappedHeaders: Record<string, st
     }
   }
 
-  // Extract all emails from the email field
-  const emails = extractEmails(rawEmailValue)
-  
-  if (emails.length === 0) {
-    // No valid emails - return empty array
-    return []
+  // Handle based on match field
+  if (matchField.value === 'phone') {
+    // Extract phones for phone-based matching
+    const phones = extractPhones(rawPhoneValue)
+    
+    // Also extract email if present (for the record, not for matching)
+    const emails = extractEmails(rawEmailValue)
+    if (emails.length > 0) {
+      baseNormalized.email = emails[0]
+    }
+    
+    if (phones.length === 0) {
+      // No valid phones - return empty array
+      return []
+    }
+    
+    if (phones.length === 1) {
+      return [{ ...baseNormalized, phone: phones[0] }]
+    }
+    
+    // Multiple phones - create a separate row for each
+    return phones.map(phone => ({ ...baseNormalized, phone }))
+  } else {
+    // Extract emails for email-based matching (default)
+    const emails = extractEmails(rawEmailValue)
+    
+    // Also extract phone if present (for the record, not for matching)
+    const phones = extractPhones(rawPhoneValue)
+    if (phones.length > 0) {
+      baseNormalized.phone = phones[0]
+    }
+    
+    if (emails.length === 0) {
+      // No valid emails - return empty array
+      return []
+    }
+    
+    if (emails.length === 1) {
+      return [{ ...baseNormalized, email: emails[0] }]
+    }
+    
+    // Multiple emails - create a separate row for each
+    return emails.map(email => ({ ...baseNormalized, email }))
   }
-  
-  if (emails.length === 1) {
-    // Single email - normal case
-    return [{ ...baseNormalized, email: emails[0] }]
-  }
-  
-  // Multiple emails - create a separate row for each email
-  // Each row inherits all other fields from the original
-  return emails.map(email => ({ ...baseNormalized, email }))
 }
 
 /**
@@ -553,14 +684,17 @@ async function processLists() {
 
 /**
  * Find New Leads (A minus B)
- * Return emails in target that are NOT in suppression list
+ * Return records in target that are NOT in suppression list
+ * Matching is based on matchField setting (email or phone)
  */
 async function processFindNew(targetRows: Record<string, any>[]): Promise<Record<string, any>[]> {
+  const fieldName = matchField.value
   console.log('[List Hygiene] processFindNew started with', targetRows.length, 'target rows')
+  console.log('[List Hygiene] Match field:', fieldName)
   console.log('[List Hygiene] Suppression files count:', suppressionFiles.value.length)
   
-  // Build suppression set (also handles multi-email cells in suppression files)
-  const suppressionEmails = new Set<string>()
+  // Build suppression set based on match field
+  const suppressionValues = new Set<string>()
   
   for (const file of suppressionFiles.value) {
     console.log('[List Hygiene] Processing suppression file:', file.name, 'with', file.data.length, 'rows')
@@ -569,125 +703,128 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
     for (const row of file.data) {
       const normalizedRows = normalizeRow(row, file.mappedHeaders)
       for (const normalized of normalizedRows) {
-        const email = getEmail(normalized)
-        if (email) {
-          suppressionEmails.add(email)
+        const value = getMatchValue(normalized)
+        if (value) {
+          suppressionValues.add(value)
         }
       }
     }
   }
   
-  console.log('[List Hygiene] Suppression set built with', suppressionEmails.size, 'unique emails')
+  console.log('[List Hygiene] Suppression set built with', suppressionValues.size, 'unique', fieldName + 's')
   
   // Log a sample of targetRows for debugging
   if (targetRows.length > 0) {
     console.log('[List Hygiene] Sample target row:', targetRows[0])
   }
 
-  // Filter target rows, keeping most populated per email
-  const emailMap = new Map<string, Record<string, any>>()
-  let noEmailCount = 0
+  // Filter target rows, keeping most populated per match value
+  const valueMap = new Map<string, Record<string, any>>()
+  let noValueCount = 0
   let suppressedCount = 0
   
   for (const row of targetRows) {
-    const email = getEmail(row)
-    if (!email) {
-      noEmailCount++
+    const value = getMatchValue(row)
+    if (!value) {
+      noValueCount++
       continue
     }
-    if (suppressionEmails.has(email)) {
+    if (suppressionValues.has(value)) {
       suppressedCount++
       continue
     }
 
-    const existing = emailMap.get(email)
+    const existing = valueMap.get(value)
     if (!existing || countPopulatedFields(row) > countPopulatedFields(existing)) {
-      emailMap.set(email, row)
+      valueMap.set(value, row)
     }
   }
 
   console.log('[List Hygiene] processFindNew results:', {
+    matchField: fieldName,
     targetRowsProcessed: targetRows.length,
-    noEmailCount,
+    noValueCount,
     suppressedCount,
-    uniqueNewLeads: emailMap.size
+    uniqueNewLeads: valueMap.size
   })
 
-  return Array.from(emailMap.values())
+  return Array.from(valueMap.values())
 }
 
 /**
  * Master Merge (Union)
  * Combine all files, remove duplicates, keep most populated
+ * Deduplication is based on matchField setting (email or phone)
  */
 async function processMasterMerge(targetRows: Record<string, any>[]): Promise<Record<string, any>[]> {
-  const emailMap = new Map<string, Record<string, any>>()
+  const valueMap = new Map<string, Record<string, any>>()
   
   for (const row of targetRows) {
-    const email = getEmail(row)
-    if (!email) continue
+    const value = getMatchValue(row)
+    if (!value) continue
 
-    const existing = emailMap.get(email)
+    const existing = valueMap.get(value)
     if (!existing) {
-      emailMap.set(email, row)
+      valueMap.set(value, row)
     } else {
       // Merge: keep the most populated fields from both
       const merged = { ...existing }
-      for (const [key, value] of Object.entries(row)) {
-        if (value && (!merged[key] || String(value).length > String(merged[key]).length)) {
-          merged[key] = value
+      for (const [key, val] of Object.entries(row)) {
+        if (val && (!merged[key] || String(val).length > String(merged[key]).length)) {
+          merged[key] = val
         }
       }
-      emailMap.set(email, merged)
+      valueMap.set(value, merged)
     }
   }
 
-  return Array.from(emailMap.values())
+  return Array.from(valueMap.values())
 }
 
 /**
  * Common Ground (Intersection)
- * Return only emails that appear in ALL uploaded files
+ * Return only records that appear in ALL uploaded files
+ * Matching is based on matchField setting (email or phone)
  */
 async function processCommonGround(): Promise<Record<string, any>[]> {
   if (targetFiles.value.length === 0) return []
   if (targetFiles.value.length === 1) {
-    // Single file - just dedupe (also handles multi-email cells)
+    // Single file - just dedupe
     const file = targetFiles.value[0]
-    const emailMap = new Map<string, Record<string, any>>()
+    const valueMap = new Map<string, Record<string, any>>()
     
     for (const row of file.data) {
       const normalizedRows = normalizeRow(row, file.mappedHeaders)
       for (const normalized of normalizedRows) {
-        const email = getEmail(normalized)
-        if (email && !emailMap.has(email)) {
-          emailMap.set(email, normalized)
+        const value = getMatchValue(normalized)
+        if (value && !valueMap.has(value)) {
+          valueMap.set(value, normalized)
         }
       }
     }
     
-    return Array.from(emailMap.values())
+    return Array.from(valueMap.values())
   }
 
-  // Build email sets for each file (handles multi-email cells)
+  // Build value sets for each file
   const fileSets: Set<string>[] = targetFiles.value.map(file => {
-    const emailSet = new Set<string>()
+    const valueSet = new Set<string>()
     for (const row of file.data) {
       const normalizedRows = normalizeRow(row, file.mappedHeaders)
       for (const normalized of normalizedRows) {
-        const email = getEmail(normalized)
-        if (email) emailSet.add(email)
+        const value = getMatchValue(normalized)
+        if (value) valueSet.add(value)
       }
     }
-    return emailSet
+    return valueSet
   })
 
   // Find intersection
-  const intersectionEmails = fileSets.reduce((acc, set) => {
-    return new Set([...acc].filter(email => set.has(email)))
+  const intersectionValues = fileSets.reduce((acc, set) => {
+    return new Set([...acc].filter(value => set.has(value)))
   })
 
-  // Get full data for intersection emails (from first file that has it)
+  // Get full data for intersection values (from first file that has it)
   const result: Record<string, any>[] = []
   const added = new Set<string>()
 
@@ -695,10 +832,10 @@ async function processCommonGround(): Promise<Record<string, any>[]> {
     for (const row of file.data) {
       const normalizedRows = normalizeRow(row, file.mappedHeaders)
       for (const normalized of normalizedRows) {
-        const email = getEmail(normalized)
-        if (email && intersectionEmails.has(email) && !added.has(email)) {
+        const value = getMatchValue(normalized)
+        if (value && intersectionValues.has(value) && !added.has(value)) {
           result.push(normalized)
-          added.add(email)
+          added.add(value)
         }
       }
     }
@@ -944,6 +1081,30 @@ const previewHeaders = computed(() => {
             </template>
           </v-radio>
         </v-radio-group>
+        
+        <!-- Match Field Toggle - Only show for Find New Leads -->
+        <v-expand-transition>
+          <div v-if="showSuppressionZone" class="mt-4 pt-4" style="border-top: 1px solid rgba(0,0,0,0.1);">
+            <div class="text-subtitle-2 mb-2 d-flex align-center">
+              <v-icon size="18" class="mr-2">mdi-filter-check</v-icon>
+              Match & Exclude By
+            </div>
+            <v-btn-toggle v-model="matchField" mandatory color="primary" variant="outlined" density="compact">
+              <v-btn 
+                v-for="opt in matchFieldOptions" 
+                :key="opt.value" 
+                :value="opt.value"
+                size="small"
+              >
+                <v-icon start size="18">{{ opt.icon }}</v-icon>
+                {{ opt.title }}
+              </v-btn>
+            </v-btn-toggle>
+            <div class="text-caption text-grey mt-1">
+              {{ matchFieldOptions.find(o => o.value === matchField)?.description }}
+            </div>
+          </div>
+        </v-expand-transition>
       </v-card-text>
     </v-card>
 
