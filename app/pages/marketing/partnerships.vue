@@ -1968,13 +1968,33 @@ const filteredPartners = computed(() => {
 })
 
 const overduePartners = computed(() => {
-  return partners.value.filter(p => p.visit_overdue)
+  return partners.value
+    .filter(p => p.visit_overdue)
+    .sort((a, b) => {
+      // First sort by zone (alphabetically, null zones last)
+      const zoneA = a.zone || 'zzz'
+      const zoneB = b.zone || 'zzz'
+      if (zoneA !== zoneB) return zoneA.localeCompare(zoneB)
+      // Then by relationship_score (highest first, null last)
+      const scoreA = a.relationship_score ?? -1
+      const scoreB = b.relationship_score ?? -1
+      return scoreB - scoreA
+    })
 })
 
 const weeklyTargets = computed(() => {
   return partners.value
     .filter(p => p.status === 'active' && (p.visit_frequency === 'weekly' || p.needs_followup))
-    .sort((a, b) => (a.priority === 'high' ? -1 : 1))
+    .sort((a, b) => {
+      // First sort by zone (alphabetically, null zones last)
+      const zoneA = a.zone || 'zzz'
+      const zoneB = b.zone || 'zzz'
+      if (zoneA !== zoneB) return zoneA.localeCompare(zoneB)
+      // Then by relationship_score (highest first, null last)
+      const scoreA = a.relationship_score ?? -1
+      const scoreB = b.relationship_score ?? -1
+      return scoreB - scoreA
+    })
     .slice(0, 10)
 })
 
