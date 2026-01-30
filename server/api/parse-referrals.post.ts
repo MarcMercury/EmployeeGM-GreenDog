@@ -452,8 +452,9 @@ export default defineEventHandler(async (event) => {
             last_sync_date: new Date().toISOString()
           }
           
-          // Update last_contact_date with the last referral date from the report
+          // Update both last_visit_date and last_contact_date with the last referral date from the report
           if (entry.lastReferralDate) {
+            updateData.last_visit_date = entry.lastReferralDate
             updateData.last_contact_date = entry.lastReferralDate
           }
           
