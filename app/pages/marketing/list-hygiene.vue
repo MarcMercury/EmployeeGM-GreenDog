@@ -1074,26 +1074,29 @@ const canProcess = computed(() => {
 
 const hasProcessedData = computed(() => processedData.value.length > 0)
 
-// Required fields that must always appear in output
-const REQUIRED_OUTPUT_FIELDS = ['email', 'first_name', 'last_name'] as const
+// Core fields that should appear in output when available (but not strictly required)
+// Email or phone is the key identifier - names are nice to have but not mandatory
+const CORE_OUTPUT_FIELDS = ['email', 'phone', 'first_name', 'last_name'] as const
 
-// Count of records missing required name fields
-const recordsMissingNames = computed(() => {
-  return processedData.value.filter(row => !row.first_name || !row.last_name).length
+// Count of records missing both email and phone (truly incomplete records)
+const recordsMissingIdentifiers = computed(() => {
+  return processedData.value.filter(row => !row.email && !row.phone).length
 })
 
-// Preview table headers - always show required fields first, then populated optional fields
+// Preview table headers - show core fields first (if they have data), then other populated fields
 const previewHeaders = computed(() => {
-  // Always include required fields
-  const requiredHeaders = REQUIRED_OUTPUT_FIELDS.map(f => ({
-    key: f,
-    title: f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-    required: true
-  }))
+  // Include core fields that have data in any row
+  const coreHeaders = CORE_OUTPUT_FIELDS
+    .filter(f => processedData.value.some(row => row[f]))
+    .map(f => ({
+      key: f,
+      title: f.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      required: f === 'email' || f === 'phone' // Only email/phone are truly required identifiers
+    }))
   
-  // Add optional fields that have data
+  // Add other optional fields that have data
   const optionalFields = STANDARD_FIELDS.filter(f => 
-    !REQUIRED_OUTPUT_FIELDS.includes(f as any) && 
+    !CORE_OUTPUT_FIELDS.includes(f as any) && 
     processedData.value.some(row => row[f])
   )
   const optionalHeaders = optionalFields.map(f => ({
@@ -1102,7 +1105,7 @@ const previewHeaders = computed(() => {
     required: false
   }))
   
-  return [...requiredHeaders, ...optionalHeaders]
+  return [...coreHeaders, ...optionalHeaders]
 })
 </script>
 
@@ -1381,17 +1384,17 @@ const previewHeaders = computed(() => {
 
         <v-divider />
 
-        <!-- Warning for missing names -->
+        <!-- Warning for missing identifiers (email AND phone both missing) -->
         <v-alert
-          v-if="recordsMissingNames > 0"
-          type="warning"
+          v-if="recordsMissingIdentifiers > 0"
+          type="error"
           variant="tonal"
           density="compact"
           class="mx-4 mt-4"
           icon="mdi-alert"
         >
-          <strong>{{ recordsMissingNames }}</strong> of {{ processedData.length }} records are missing first name or last name.
-          Consider mapping name columns in your source files.
+          <strong>{{ recordsMissingIdentifiers }}</strong> of {{ processedData.length }} records are missing both email and phone.
+          These records cannot be matched and will be excluded.
         </v-alert>
 
         <!-- Preview Table -->
