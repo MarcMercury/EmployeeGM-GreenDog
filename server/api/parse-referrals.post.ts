@@ -508,6 +508,15 @@ export default defineEventHandler(async (event) => {
       }
     })
     
+    // Recalculate all partner metrics (Tier, Priority, Relationship Health, Overdue)
+    console.log('[parse-referrals] Recalculating partner metrics...')
+    const { error: recalcError } = await supabase.rpc('recalculate_partner_metrics')
+    if (recalcError) {
+      console.warn('[parse-referrals] Warning: Failed to recalculate metrics:', recalcError.message)
+    } else {
+      console.log('[parse-referrals] Partner metrics recalculated successfully')
+    }
+    
     console.log('[parse-referrals] Sync complete:', result.updated, 'updated,', result.notMatched, 'not matched')
     
     return {

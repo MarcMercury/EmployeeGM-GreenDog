@@ -15,6 +15,15 @@
         <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
           Upload EzyVet Report
         </v-btn>
+        <v-btn 
+          variant="outlined" 
+          prepend-icon="mdi-refresh" 
+          size="small" 
+          :loading="recalculating"
+          @click="recalculateMetrics"
+        >
+          Recalculate Metrics
+        </v-btn>
         <v-btn variant="outlined" prepend-icon="mdi-file-export-outline" size="small" @click="showExportDialog = true">
           Export
         </v-btn>
@@ -143,8 +152,22 @@
 
             <template #item.priority="{ item }">
               <v-chip :color="getPriorityColor(item.priority)" size="x-small" variant="flat">
-                {{ item.priority || 'medium' }}
+                {{ item.priority || 'Medium' }}
               </v-chip>
+            </template>
+
+            <template #item.relationship_health="{ item }">
+              <div v-if="item.relationship_health !== null" class="d-flex align-center" style="min-width: 80px;">
+                <v-progress-linear 
+                  :model-value="item.relationship_health" 
+                  :color="getRelationshipHealthColor(item.relationship_health)"
+                  height="8"
+                  rounded
+                  style="width: 60px;"
+                />
+                <span class="text-caption ml-2">{{ item.relationship_health }}%</span>
+              </div>
+              <span v-else class="text-grey">—</span>
             </template>
 
             <template #item.status="{ item }">
@@ -515,18 +538,48 @@
                     </h4>
                     <div class="d-flex flex-wrap gap-2 mb-2">
                       <v-chip size="small" :color="getTierColor(selectedPartner.tier)" variant="elevated">
-                        {{ getTierLabel(selectedPartner.tier) }} - {{ selectedPartner.tier || 'bronze' }}
+                        {{ getTierLabel(selectedPartner.tier) }} - {{ selectedPartner.tier || 'Bronze' }}
                       </v-chip>
                       <v-chip size="small" :color="getPriorityColor(selectedPartner.priority)" variant="flat">
-                        {{ selectedPartner.priority || 'medium' }} priority
+                        {{ selectedPartner.priority || 'Medium' }} priority
+                      </v-chip>
+                      <v-chip v-if="selectedPartner.visit_tier" size="small" variant="outlined" color="teal">
+                        {{ selectedPartner.visit_tier }} frequency
                       </v-chip>
                       <v-chip size="small" variant="outlined">{{ getZoneDisplay(selectedPartner.zone) }}</v-chip>
                     </div>
-                    <div class="text-body-2">
+                    
+                    <!-- Relationship Health Slider -->
+                    <div class="mt-3" v-if="selectedPartner.relationship_health !== null">
+                      <div class="d-flex align-center justify-space-between mb-1">
+                        <span class="text-caption">Relationship Health</span>
+                        <v-chip size="x-small" :color="getRelationshipStatusColor(selectedPartner.relationship_status)">
+                          {{ selectedPartner.relationship_status || 'Unknown' }}
+                        </v-chip>
+                      </div>
+                      <v-progress-linear 
+                        :model-value="selectedPartner.relationship_health" 
+                        :color="getRelationshipHealthColor(selectedPartner.relationship_health)"
+                        height="10"
+                        rounded
+                      >
+                        <template #default>
+                          <span class="text-caption font-weight-bold">{{ selectedPartner.relationship_health }}%</span>
+                        </template>
+                      </v-progress-linear>
+                    </div>
+                    
+                    <div class="text-body-2 mt-3">
                       <div class="mb-1"><strong>Clinic Type:</strong> {{ selectedPartner.clinic_type || 'general' }}</div>
                       <div class="mb-1"><strong>Size:</strong> {{ selectedPartner.size || 'Not set' }}</div>
                       <div class="mb-1"><strong>Organization:</strong> {{ selectedPartner.organization_type || 'Not set' }}</div>
                       <div v-if="selectedPartner.employee_count"><strong>Employees:</strong> {{ selectedPartner.employee_count }}</div>
+                      <div v-if="selectedPartner.expected_visit_frequency_days">
+                        <strong>Expected Visit Every:</strong> {{ selectedPartner.expected_visit_frequency_days }} days
+                        <span v-if="selectedPartner.days_since_last_visit" class="text-grey-darken-1">
+                          ({{ selectedPartner.days_since_last_visit }} days ago)
+                        </span>
+                      </div>
                     </div>
                   </v-card>
                 </v-col>
@@ -1493,6 +1546,7 @@ const exportColumns = [
 // State
 const loading = ref(false)
 const saving = ref(false)
+const recalculating = ref(false)
 const mainTab = ref('list')
 const detailTab = ref('overview')
 const formTab = ref('basic')
@@ -1622,8 +1676,8 @@ const participationRoles = [
 ]
 
 // Options
-const tierOptions = ['platinum', 'gold', 'silver', 'bronze', 'prospect']
-const priorityOptions = ['high', 'medium', 'low']
+const tierOptions = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Coal']
+const priorityOptions = ['Very High', 'High', 'Medium', 'Low']
 const clinicTypeOptions = ['general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent']
 const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually', 'as_needed']
 const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
@@ -1706,6 +1760,7 @@ const goalForm = reactive({
 const tableHeaders = [
   { title: 'Partner', key: 'name', sortable: true },
   { title: 'Priority', key: 'priority', sortable: true },
+  { title: 'Health', key: 'relationship_health', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Referrals', key: 'total_referrals_all_time', sortable: true },
   { title: 'Revenue', key: 'total_revenue_all_time', sortable: true },
@@ -1717,7 +1772,7 @@ const tableHeaders = [
 // Computed
 const activeCount = computed(() => partners.value.filter(p => p.status === 'active').length)
 const needsFollowupCount = computed(() => partners.value.filter(p => p.needs_followup).length)
-const overdueCount = computed(() => overduePartners.value.length)
+const overdueCount = computed(() => partners.value.filter(p => p.visit_overdue).length)
 const totalReferrals = computed(() => partners.value.reduce((sum, p) => sum + (p.total_referrals_all_time || 0), 0))
 const totalRevenue = computed(() => partners.value.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0))
 
@@ -1782,12 +1837,12 @@ const filteredPartners = computed(() => {
   if (filterZone.value) result = result.filter(p => p.zone === filterZone.value)
   if (filterPriority.value) result = result.filter(p => p.priority === filterPriority.value)
   if (filterFollowup.value === 'followup') result = result.filter(p => p.needs_followup)
-  if (filterFollowup.value === 'overdue') result = result.filter(p => isOverdue(p))
+  if (filterFollowup.value === 'overdue') result = result.filter(p => p.visit_overdue)
   return result
 })
 
 const overduePartners = computed(() => {
-  return partners.value.filter(p => isOverdue(p))
+  return partners.value.filter(p => p.visit_overdue)
 })
 
 const weeklyTargets = computed(() => {
@@ -1822,18 +1877,71 @@ function formatDateTime(date: string): string {
 }
 
 function getTierColor(tier: string): string {
-  const colors: Record<string, string> = { platinum: '#E5E4E2', gold: '#FFD700', silver: '#C0C0C0', bronze: '#CD7F32', prospect: '#9E9E9E' }
+  const colors: Record<string, string> = { 
+    Platinum: '#E5E4E2', 
+    Gold: '#FFD700', 
+    Silver: '#C0C0C0', 
+    Bronze: '#CD7F32', 
+    Coal: '#36454F',
+    // Legacy lowercase support
+    platinum: '#E5E4E2', 
+    gold: '#FFD700', 
+    silver: '#C0C0C0', 
+    bronze: '#CD7F32', 
+    prospect: '#9E9E9E' 
+  }
   return colors[tier] || '#9E9E9E'
 }
 
 function getTierLabel(tier: string): string {
-  const labels: Record<string, string> = { platinum: 'P', gold: 'G', silver: 'S', bronze: 'B', prospect: '?' }
+  const labels: Record<string, string> = { 
+    Platinum: 'P', 
+    Gold: 'G', 
+    Silver: 'S', 
+    Bronze: 'B', 
+    Coal: 'C',
+    // Legacy lowercase support
+    platinum: 'P', 
+    gold: 'G', 
+    silver: 'S', 
+    bronze: 'B', 
+    prospect: '?' 
+  }
   return labels[tier] || '?'
 }
 
 function getPriorityColor(priority: string): string {
-  const colors: Record<string, string> = { high: 'error', medium: 'warning', low: 'info' }
+  const colors: Record<string, string> = { 
+    'Very High': 'deep-purple',
+    'High': 'error', 
+    'Medium': 'warning', 
+    'Low': 'info',
+    // Legacy lowercase support
+    high: 'error', 
+    medium: 'warning', 
+    low: 'info' 
+  }
   return colors[priority] || 'grey'
+}
+
+function getRelationshipHealthColor(health: number | null): string {
+  if (health === null) return 'grey'
+  if (health >= 80) return 'success'
+  if (health >= 60) return 'light-green'
+  if (health >= 40) return 'warning'
+  if (health >= 20) return 'orange'
+  return 'error'
+}
+
+function getRelationshipStatusColor(status: string | null): string {
+  const colors: Record<string, string> = {
+    'Excellent': 'success',
+    'Good': 'light-green',
+    'Fair': 'warning',
+    'Needs Attention': 'orange',
+    'At Risk': 'error'
+  }
+  return colors[status || ''] || 'grey'
 }
 
 function getVisitTypeColor(type: string): string {
@@ -1844,6 +1952,30 @@ function getVisitTypeColor(type: string): string {
 function getZoneCount(zone: string): number {
   if (zone === 'Unassigned') return partners.value.filter(p => !p.zone).length
   return partners.value.filter(p => p.zone === zone).length
+}
+
+// Recalculate partner metrics (Tier, Priority, Relationship Health, Overdue)
+async function recalculateMetrics() {
+  recalculating.value = true
+  try {
+    const response = await $fetch('/api/recalculate-partner-metrics', { method: 'POST' })
+    if (response.success) {
+      snackbar.message = `Metrics recalculated for ${response.summary?.recordsUpdated || 0} partners`
+      snackbar.color = 'success'
+      snackbar.show = true
+      // Reload partners to show updated values
+      await loadPartners()
+    } else {
+      throw new Error(response.error || 'Failed to recalculate metrics')
+    }
+  } catch (e: any) {
+    console.error('Error recalculating metrics:', e)
+    snackbar.message = 'Error recalculating metrics: ' + e.message
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    recalculating.value = false
+  }
 }
 
 // Data loading
