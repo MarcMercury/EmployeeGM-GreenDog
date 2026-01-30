@@ -1,44 +1,35 @@
 /**
  * Scheduled Cron Job: Force logout all users
- * Runs daily at 3:00 AM PST (11:00 UTC)
+ * Called by Vercel Cron daily at 3:00 AM PST (11:00 UTC)
  * 
  * This invalidates all refresh tokens, forcing users to re-authenticate
- * on their next app access. Good for:
- * - Security hygiene (stolen tokens expire)
- * - Employee terminations take effect overnight
- * - Clean session state daily
+ * on their next app access.
  */
 
 import { createClient } from '@supabase/supabase-js'
 
-export const config = {
-  // Run at 3:00 AM PST = 11:00 UTC
-  // Vercel Cron uses UTC timezone
-  schedule: '0 11 * * *'
-}
-
-export default async function handler(req: Request) {
-  // Verify this is a cron request (Vercel adds this header)
-  const authHeader = req.headers.get('authorization')
+export default defineEventHandler(async (event) => {
+  // Verify this is a cron request
   const cronSecret = process.env.CRON_SECRET
+  const authHeader = getHeader(event, 'authorization')
+  const isVercelCron = getHeader(event, 'x-vercel-cron') === '1'
   
-  // Allow both Vercel's internal cron calls and manual calls with secret
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    // Check if it's Vercel's internal cron call
-    const isVercelCron = req.headers.get('x-vercel-cron') === '1'
-    if (!isVercelCron) {
-      return new Response('Unauthorized', { status: 401 })
-    }
+  // Allow Vercel's internal cron calls or manual calls with secret
+  if (!isVercelCron && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    throw createError({
+      statusCode: 401,
+      message: 'Unauthorized'
+    })
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const config = useRuntimeConfig()
+  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL
+  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Cron] Missing Supabase credentials')
-    return new Response(JSON.stringify({ error: 'Server configuration error' }), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    throw createError({
+      statusCode: 500,
+      message: 'Server configuration error'
     })
   }
 
@@ -82,7 +73,6 @@ export default async function handler(req: Request) {
 
     for (const user of allUsers) {
       try {
-        // signOut with scope 'global' invalidates all sessions for this user
         const { error } = await supabaseAdmin.auth.admin.signOut(user.id, 'global')
         if (error) {
           console.warn(`[Cron] Failed to sign out ${user.email}:`, error.message)
@@ -95,22 +85,9 @@ export default async function handler(req: Request) {
       }
     }
 
-    // Log the reset event
-    await supabaseAdmin.from('system_logs').insert({
-      event_type: 'session_reset',
-      event_data: {
-        total_users: allUsers.length,
-        signed_out: signedOut,
-        errors: errors,
-        triggered_at: new Date().toISOString()
-      }
-    }).catch(() => {
-      // system_logs table may not exist, that's ok
-    })
-
     console.log(`[Cron] Session reset complete: ${signedOut} signed out, ${errors} errors`)
 
-    return new Response(JSON.stringify({
+    return {
       success: true,
       message: `Daily session reset complete`,
       stats: {
@@ -119,19 +96,13 @@ export default async function handler(req: Request) {
         errors: errors,
         timestamp: new Date().toISOString()
       }
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    })
+    }
 
   } catch (error: any) {
     console.error('[Cron] Session reset failed:', error)
-    return new Response(JSON.stringify({ 
-      error: 'Session reset failed', 
-      message: error.message 
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
+    throw createError({
+      statusCode: 500,
+      message: error.message || 'Session reset failed'
     })
   }
-}
+})
