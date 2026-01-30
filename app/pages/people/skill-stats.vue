@@ -156,8 +156,22 @@
             <div class="d-flex align-center justify-space-between mb-3">
               <div class="text-subtitle-1 font-weight-medium">
                 Skills for {{ selectedEmployeeName }}
+                <span v-if="filteredEmployeeSkills.length !== employeeSkillRatings.length" class="text-caption text-grey ml-2">
+                  ({{ filteredEmployeeSkills.length }} of {{ employeeSkillRatings.length }})
+                </span>
               </div>
               <div class="d-flex align-center gap-2">
+                <v-select
+                  v-model="selectedCategory"
+                  :items="availableCategories"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  clearable
+                  style="min-width: 180px"
+                  prepend-inner-icon="mdi-filter-variant"
+                />
                 <v-text-field
                   v-model="skillSearchQuery"
                   prepend-inner-icon="mdi-magnify"
@@ -286,6 +300,7 @@ const employees = ref<any[]>([])
 // Employee Skills Editor State
 const selectedEmployeeId = ref<string | null>(null)
 const skillSearchQuery = ref('')
+const selectedCategory = ref<string | null>(null)
 const employeeSkillRatings = ref<SkillRating[]>([])
 const savingAll = ref(false)
 
@@ -371,13 +386,29 @@ const selectedEmployeeName = computed(() => {
   return emp?.full_name || ''
 })
 
+const availableCategories = computed(() => {
+  const categories = new Set(employeeSkillRatings.value.map(s => s.category))
+  return Array.from(categories).sort()
+})
+
 const filteredEmployeeSkills = computed(() => {
-  if (!skillSearchQuery.value) return employeeSkillRatings.value
-  const search = skillSearchQuery.value.toLowerCase()
-  return employeeSkillRatings.value.filter(s => 
-    s.skill_name.toLowerCase().includes(search) ||
-    s.category.toLowerCase().includes(search)
-  )
+  let filtered = employeeSkillRatings.value
+  
+  // Filter by category if selected
+  if (selectedCategory.value) {
+    filtered = filtered.filter(s => s.category === selectedCategory.value)
+  }
+  
+  // Filter by search query
+  if (skillSearchQuery.value) {
+    const search = skillSearchQuery.value.toLowerCase()
+    filtered = filtered.filter(s => 
+      s.skill_name.toLowerCase().includes(search) ||
+      s.category.toLowerCase().includes(search)
+    )
+  }
+  
+  return filtered
 })
 
 const hasUnsavedChanges = computed(() => {
