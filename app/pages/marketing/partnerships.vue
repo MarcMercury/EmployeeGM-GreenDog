@@ -1167,16 +1167,32 @@
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 text-grey-darken-1 mb-4">
-            Upload a "Referrer Revenue" PDF from EzyVet to automatically update partner referral stats.
+            Upload a "Referrer Revenue" CSV from EzyVet to automatically update partner referral stats.
             Clinics will be matched by name and their visit counts and revenue totals will be updated.
+          </p>
+          
+          <!-- Clear Stats Button -->
+          <v-btn
+            color="warning"
+            variant="outlined"
+            size="small"
+            class="mb-4"
+            :loading="clearingStats"
+            @click="clearReferralStats"
+          >
+            <v-icon start>mdi-delete-sweep</v-icon>
+            Clear All Stats First
+          </v-btn>
+          <p class="text-caption text-grey mb-4">
+            Use this to reset all visit/revenue totals before re-importing data.
           </p>
           
           <v-file-input
             v-model="uploadFile"
-            accept=".pdf"
-            label="Select PDF Report"
+            accept=".csv"
+            label="Select CSV Report"
             variant="outlined"
-            prepend-icon="mdi-file-pdf-box"
+            prepend-icon="mdi-file-delimited"
             :disabled="uploadProcessing"
             show-size
           />
@@ -1184,7 +1200,7 @@
           <!-- Processing indicator -->
           <div v-if="uploadProcessing" class="text-center my-4">
             <v-progress-circular indeterminate color="primary" size="48" class="mb-2" />
-            <div class="text-body-2">Processing PDF... This may take a moment.</div>
+            <div class="text-body-2">Processing CSV... This may take a moment.</div>
           </div>
 
           <!-- Results -->
@@ -1477,6 +1493,7 @@ const filterFollowup = ref('all')
 
 // Upload EzyVet Report state
 const showUploadDialog = ref(false)
+const clearingStats = ref(false)
 const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
@@ -2279,13 +2296,50 @@ async function processUpload() {
     console.error('Upload error:', error)
     uploadResult.value = {
       success: false,
-      message: error.data?.message || error.message || 'Failed to process PDF'
+      message: error.data?.message || error.message || 'Failed to process CSV'
     }
-    snackbar.message = 'Failed to process PDF'
+    snackbar.message = 'Failed to process CSV'
     snackbar.color = 'error'
     snackbar.show = true
   } finally {
     uploadProcessing.value = false
+  }
+}
+
+// Clear all referral stats before re-importing
+async function clearReferralStats() {
+  if (!confirm('This will reset ALL visit counts and revenue totals to 0. Continue?')) {
+    return
+  }
+  
+  clearingStats.value = true
+  
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session - please log in again')
+    }
+    
+    const response = await $fetch<any>('/api/clear-referral-stats', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    })
+    
+    if (response.success) {
+      await loadPartners()
+      snackbar.message = `Cleared stats from ${response.cleared.partnersAffected} partners`
+      snackbar.color = 'success'
+      snackbar.show = true
+    }
+  } catch (error: any) {
+    console.error('Clear stats error:', error)
+    snackbar.message = error.data?.message || error.message || 'Failed to clear stats'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    clearingStats.value = false
   }
 }
 

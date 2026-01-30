@@ -1,12 +1,9 @@
 /**
- * Referral Stats PDF Parser API
- * Parses EzyVet "Referrer Revenue" PDF reports and updates referral_partners stats
- * Uses pdf2json for reliable Node.js PDF parsing
+ * Referral Stats CSV Parser API
+ * Parses EzyVet "Referrer Revenue" CSV reports and updates referral_partners stats
  */
-import { createError, defineEventHandler, readMultipartFormData, getHeader } from 'h3'
-import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
-import { createClient } from '@supabase/supabase-js'
-import PDFParser from 'pdf2json'
+import { createError, defineEventHandler, readMultipartFormData } from 'h3'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 interface ParsedReferral {
   clinicName: string
@@ -35,830 +32,100 @@ interface SyncResult {
   }>
 }
 
-// Parse PDF buffer and extract structured data using pdf2json
-// Returns: { visits: [{date, clinicName, vetName}], amounts: [number] }
-interface VisitEntry {
-  date: string
-  clinicName: string
-  vetName: string
-}
-
-interface ExtractedPdfData {
-  visits: VisitEntry[]
-  amounts: number[]
-  dateRangeStart?: string
-  dateRangeEnd?: string
-}
-
-async function parsePdfToStructuredData(buffer: Buffer): Promise<ExtractedPdfData> {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser()
-    
-    pdfParser.on('pdfParser_dataError', (errData: any) => {
-      console.error('[parse-referrals] pdf2json error:', errData.parserError)
-      reject(new Error(errData.parserError || 'PDF parsing failed'))
-    })
-    
-    pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
-      try {
-        const result: ExtractedPdfData = {
-          visits: [],
-          amounts: []
-        }
-        
-        // Process each page
-        let inAmountsSection = false
-        let currentClinicName = ''
-        let currentClinicParts: string[] = []
-        let lastY = -1
-        
-        for (const page of pdfData.Pages || []) {
-          // Extract all text items with positions for this page
-          const pageItems: {text: string, y: number, x: number}[] = []
-          
-          for (const textItem of page.Texts || []) {
-            for (const run of textItem.R || []) {
-              if (run.T) {
-                const decoded = decodeURIComponent(run.T).trim()
-                if (decoded) {
-                  pageItems.push({ 
-                    text: decoded, 
-                    y: textItem.y,
-                    x: textItem.x || 0
-                  })
-                }
-              }
-            }
-          }
-          
-          // Sort by Y position, then X position
-          pageItems.sort((a, b) => a.y - b.y || a.x - b.x)
-          
-          // Group items by Y position (same line)
-          const lines: {y: number, items: {text: string, x: number}[]}[] = []
-          for (const item of pageItems) {
-            const lastLine = lines[lines.length - 1]
-            if (lastLine && Math.abs(lastLine.y - item.y) < 1.5) {
-              lastLine.items.push({ text: item.text, x: item.x })
-            } else {
-              lines.push({ y: item.y, items: [{ text: item.text, x: item.x }] })
-            }
-          }
-          
-          // Process each line
-          for (const line of lines) {
-            // Sort items on the line by X position
-            line.items.sort((a, b) => a.x - b.x)
-            const lineText = line.items.map(i => i.text).join(' ')
-            const lineLower = lineText.toLowerCase()
-            
-            // Check for Report End Date header (for date range)
-            if (lineLower.includes('report end date')) {
-              const dateMatch = lineText.match(/(\d{2}-\d{2}-\d{4})/)
-              if (dateMatch) {
-                result.dateRangeEnd = dateMatch[1]
-              }
-            }
-            
-            // Check for "Amount" header which signals start of amounts section
-            if (lineText.trim() === 'Amount' || 
-                (line.items.length === 1 && line.items[0].text === 'Amount')) {
-              inAmountsSection = true
-              continue
-            }
-            
-            // If in amounts section, look for numbers
-            if (inAmountsSection) {
-              for (const item of line.items) {
-                const numMatch = item.text.match(/^-?(\d+(?:\.\d{1,2})?)$/)
-                if (numMatch) {
-                  const val = parseFloat(numMatch[1])
-                  if (!isNaN(val)) {
-                    result.amounts.push(val)
-                  }
-                }
-              }
-              continue
-            }
-            
-            // Check for date/time pattern at start of line (MM-DD-YYYY H:MMam/pm)
-            const dateTimeMatch = lineText.match(/^(\d{2}-\d{2}-\d{4})\s+\d{1,2}:\d{2}[ap]m\s+(.*)$/)
-            if (dateTimeMatch) {
-              const date = dateTimeMatch[1]
-              const rest = dateTimeMatch[2]
-              
-              // The rest contains clinic name and vet name
-              // Format: "ClinicName VetName" where VetName is often "Unknown Vet" or clinic name repeated
-              // We need to extract the clinic name
-              
-              // Check if this is Unknown Clinic
-              if (rest.toLowerCase().includes('unknown clinic')) {
-                continue // Skip unknown clinics
-              }
-              
-              // Extract clinic name - it's before "Unknown Vet" or at the end
-              let clinicName = rest
-              const unknownVetIdx = rest.toLowerCase().indexOf('unknown vet')
-              if (unknownVetIdx > 0) {
-                clinicName = rest.substring(0, unknownVetIdx).trim()
-              } else {
-                // Vet name might be the clinic name repeated at the end
-                // Try to find where the vet name starts
-                const words = rest.split(/\s+/)
-                if (words.length > 3) {
-                  // Take first half as clinic name as a heuristic
-                  clinicName = words.slice(0, Math.ceil(words.length / 2)).join(' ')
-                }
-              }
-              
-              if (clinicName && clinicName.length > 2) {
-                result.visits.push({
-                  date,
-                  clinicName: clinicName.trim(),
-                  vetName: 'Unknown'
-                })
-              }
-              continue
-            }
-            
-            // Check for standalone clinic name (header row before visits)
-            // These appear as clinic name on its own line, followed by visit rows
-            const isClinicHeader = (
-              lineLower.includes('veterinary') ||
-              lineLower.includes('animal hospital') ||
-              lineLower.includes('animal clinic') ||
-              lineLower.includes('pet hospital') ||
-              lineLower.includes('pet clinic') ||
-              lineLower.includes('pet medical') ||
-              lineLower.includes('pet care') ||
-              lineLower.includes('pet doctors') ||
-              /\bvca\b/.test(lineLower) ||
-              lineLower.includes('southpaw') ||
-              lineLower.includes('modern animal')
-            ) && !lineLower.includes('unknown clinic')
-            
-            if (isClinicHeader && !dateTimeMatch) {
-              // This is a clinic name header - save for following visit rows
-              currentClinicName = lineText.trim()
-            }
-          }
-        }
-        
-        console.log('[parse-referrals] Extracted:', result.visits.length, 'visits,', result.amounts.length, 'amounts')
-        resolve(result)
-      } catch (err) {
-        reject(err)
-      }
-    })
-    
-    pdfParser.parseBuffer(buffer)
-  })
-}
-
-// Legacy function for backward compatibility  
-async function parsePdfToText(buffer: Buffer): Promise<string> {
-  const data = await parsePdfToStructuredData(buffer)
-  // Convert to text format for legacy parsers
-  const lines: string[] = []
-  for (const visit of data.visits) {
-    lines.push(`${visit.date} ${visit.clinicName} ${visit.vetName}`)
-  }
-  lines.push('Amount')
-  for (const amount of data.amounts) {
-    lines.push(amount.toString())
-  }
-  return lines.join('\n')
-}
-
-// NEW: Parse EzyVet Referrer Revenue PDF using position-based column detection
-// The PDF structure has 3 columns in the visit section:
-// - Date/Time column (x ~ 4.77)
-// - Clinic name column (x ~ 10.60)
-// - Vet name column (x ~ 17.74)
-// After the visit section, there's an Amount column with revenue values
-async function parseEzyVetPdfStructured(buffer: Buffer): Promise<ParsedReferral[]> {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser()
-    
-    pdfParser.on('pdfParser_dataError', (errData: any) => {
-      reject(new Error(errData.parserError || 'PDF parsing failed'))
-    })
-    
-    pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
-      try {
-        const visits: {date: string, clinicName: string, isUnknown: boolean}[] = []
-        const amounts: number[] = []
-        let foundAmountHeader = false
-        
-        // Column X position thresholds (based on observed PDF structure)
-        const DATE_COL_MIN = 3
-        const DATE_COL_MAX = 7
-        const CLINIC_COL_MIN = 9
-        const CLINIC_COL_MAX = 15
-        
-        // Process each page
-        for (let pageIdx = 0; pageIdx < (pdfData.Pages || []).length; pageIdx++) {
-          const page = pdfData.Pages[pageIdx]
-          const pageNum = pageIdx + 1
-          
-          // Extract all text items from this page
-          const pageItems: {text: string, y: number, x: number}[] = []
-          for (const textItem of page.Texts || []) {
-            for (const run of textItem.R || []) {
-              if (run.T) {
-                const decoded = decodeURIComponent(run.T).trim()
-                if (decoded) {
-                  pageItems.push({ 
-                    text: decoded, 
-                    y: textItem.y,
-                    x: textItem.x || 0
-                  })
-                }
-              }
-            }
-          }
-          
-          // Check if this page has "Amount" header (marks start of amounts section)
-          const hasAmountHeader = pageItems.some(item => item.text === 'Amount')
-          if (hasAmountHeader) {
-            foundAmountHeader = true
-            console.log('[parseEzyVetPdfStructured] Found Amount header on page', pageNum)
-          }
-          
-          if (foundAmountHeader) {
-            // In amounts section - extract all numbers
-            for (const item of pageItems) {
-              const numMatch = item.text.match(/^-?\d+(?:\.\d{1,2})?$/)
-              if (numMatch) {
-                const val = parseFloat(item.text)
-                if (!isNaN(val)) {
-                  amounts.push(val)
-                }
-              }
-            }
-          } else {
-            // In visits section - look for date entries and match with clinic names
-            // Group items by Y position (same row)
-            const rowMap = new Map<number, {text: string, x: number}[]>()
-            for (const item of pageItems) {
-              // Round Y to group nearby items
-              const yKey = Math.round(item.y * 10)
-              const row = rowMap.get(yKey) || []
-              row.push({ text: item.text, x: item.x })
-              rowMap.set(yKey, row)
-            }
-            
-            // Column position constants for the third column (Vet)
-            const VET_COL_MIN = 16
-            const VET_COL_MAX = 22
-            
-            // Process each row
-            for (const [, rowItems] of rowMap) {
-              // Sort by X position
-              rowItems.sort((a, b) => a.x - b.x)
-              
-              // Look for date/time in the left column (x ~ 4.77)
-              const dateItem = rowItems.find(item => 
-                item.x >= DATE_COL_MIN && item.x <= DATE_COL_MAX &&
-                /^\d{2}-\d{2}-\d{4}\s+\d{1,2}:\d{2}[ap]m$/i.test(item.text)
-              )
-              
-              if (dateItem) {
-                // Found a date entry - now find the clinic name in the middle column
-                const clinicItem = rowItems.find(item =>
-                  item.x >= CLINIC_COL_MIN && item.x <= CLINIC_COL_MAX &&
-                  item.text.length > 3 &&
-                  !item.text.match(/^\d{2}-\d{2}-\d{4}/) // Not a date
-                )
-                
-                // Also find vet column item (x ~ 17.74) - may contain actual clinic name
-                const vetItem = rowItems.find(item =>
-                  item.x >= VET_COL_MIN && item.x <= VET_COL_MAX &&
-                  item.text.length > 3 &&
-                  !item.text.match(/^\d{2}-\d{2}-\d{4}/) // Not a date
-                )
-                
-                if (clinicItem) {
-                  const dateMatch = dateItem.text.match(/^(\d{2}-\d{2}-\d{4})/)
-                  const date = dateMatch ? dateMatch[1] : new Date().toISOString().split('T')[0]
-                  let clinicName = clinicItem.text.trim()
-                  let isUnknown = clinicName.toLowerCase().includes('unknown clinic') ||
-                                  clinicName.toLowerCase() === 'unknown'
-                  
-                  // FALLBACK: If the referring clinic is "Unknown Clinic" but the vet column
-                  // has a real clinic name (not "Unknown Vet"), use that instead
-                  if (isUnknown && vetItem) {
-                    const vetText = vetItem.text.trim().toLowerCase()
-                    const isVetUnknown = vetText === 'unknown vet' || vetText === 'unknown' ||
-                                         vetText.includes('unknown vet')
-                    
-                    if (!isVetUnknown) {
-                      // The vet column has an actual clinic/vet name - use it
-                      clinicName = vetItem.text.trim()
-                      isUnknown = false
-                    }
-                  }
-                  
-                  visits.push({
-                    date,
-                    clinicName: cleanClinicName(clinicName),
-                    isUnknown
-                  })
-                }
-              }
-            }
-          }
-        }
-        
-        // Filter out unknown clinic visits
-        const knownVisits = visits.filter(v => !v.isUnknown)
-        const unknownCount = visits.filter(v => v.isUnknown).length
-        
-        // Remove the grand total from amounts (usually the last, largest value)
-        if (amounts.length > 1) {
-          const sortedAmounts = [...amounts].sort((a, b) => b - a)
-          const maxAmount = sortedAmounts[0]
-          const secondMax = sortedAmounts[1] || 0
-          if (maxAmount > secondMax * 10 && maxAmount > 100000) {
-            const totalIdx = amounts.indexOf(maxAmount)
-            if (totalIdx !== -1) {
-              console.log('[parseEzyVetPdfStructured] Removing grand total:', maxAmount)
-              amounts.splice(totalIdx, 1)
-            }
-          }
-        }
-        
-        const totalRevenue = amounts.reduce((sum, a) => sum + a, 0)
-        
-        console.log('[parseEzyVetPdfStructured] Known clinic visits:', knownVisits.length)
-        console.log('[parseEzyVetPdfStructured] Unknown clinic visits:', unknownCount)
-        console.log('[parseEzyVetPdfStructured] Total visits:', visits.length)
-        console.log('[parseEzyVetPdfStructured] Amount entries:', amounts.length)
-        console.log('[parseEzyVetPdfStructured] Total revenue: $' + totalRevenue.toLocaleString())
-        
-        // Create referrals by matching visits to amounts
-        const referrals: ParsedReferral[] = []
-        
-        // Check if we can do 1:1 matching (counts should be close)
-        if (amounts.length >= visits.length * 0.8 && amounts.length <= visits.length * 1.2) {
-          console.log('[parseEzyVetPdfStructured] Using 1:1 visit-to-amount matching')
-          for (let i = 0; i < visits.length; i++) {
-            const visit = visits[i]
-            const amount = amounts[i] || 0
-            
-            if (!visit.isUnknown) {
-              referrals.push({
-                clinicName: visit.clinicName,
-                amount,
-                date: visit.date
-              })
-            }
-          }
-        } else {
-          // Use average revenue approach
-          console.log('[parseEzyVetPdfStructured] Using average revenue approach')
-          const avgRevenue = visits.length > 0 ? totalRevenue / visits.length : 0
-          
-          for (const visit of visits) {
-            if (!visit.isUnknown) {
-              referrals.push({
-                clinicName: visit.clinicName,
-                amount: avgRevenue,
-                date: visit.date
-              })
-            }
-          }
-        }
-        
-        console.log('[parseEzyVetPdfStructured] Created', referrals.length, 'referral entries')
-        if (referrals.length > 0) {
-          console.log('[parseEzyVetPdfStructured] Sample entries:', referrals.slice(0, 3))
-        }
-        resolve(referrals)
-      } catch (err) {
-        reject(err)
-      }
-    })
-    
-    pdfParser.parseBuffer(buffer)
-  })
-}
-
-// Helper to extract clinic name from a string that may have repeated vet name at end
-function extractClinicName(str: string): string {
-  // Common patterns:
-  // "San Fernando Pet Hospital Unknown Vet" -> "San Fernando Pet Hospital"
-  // "Van Nuys Veterinary Clinic Van Nuys Veterinary Clinic" -> "Van Nuys Veterinary Clinic"
-  
-  const words = str.split(/\s+/)
-  if (words.length <= 3) return str
-  
-  // Check for "Unknown Vet" at end
-  if (words.slice(-2).join(' ').toLowerCase() === 'unknown vet') {
-    return words.slice(0, -2).join(' ')
-  }
-  
-  // Check for repeated clinic name (vet = clinic)
-  const halfLen = Math.ceil(words.length / 2)
-  const firstHalf = words.slice(0, halfLen).join(' ').toLowerCase()
-  const secondHalf = words.slice(halfLen).join(' ').toLowerCase()
-  
-  if (firstHalf === secondHalf || firstHalf.includes(secondHalf) || secondHalf.includes(firstHalf)) {
-    return words.slice(0, halfLen).join(' ')
-  }
-  
-  return str
-}
-
-// Known LA-area locations that may prefix clinic names in PDFs
-const KNOWN_LOCATIONS = [
-  'sherman oaks', 'studio city', 'encino', 'tarzana', 'woodland hills',
-  'van nuys', 'north hollywood', 'burbank', 'glendale', 'pasadena',
-  'los angeles', 'west hollywood', 'beverly hills', 'santa monica',
-  'culver city', 'mar vista', 'playa vista', 'venice', 'marina del rey',
-  'westchester', 'el segundo', 'manhattan beach', 'redondo beach',
-  'torrance', 'palos verdes', 'san pedro', 'long beach', 'lakewood',
-  'downey', 'whittier', 'la mirada', 'fullerton', 'anaheim', 'irvine',
-  'costa mesa', 'newport beach', 'huntington beach', 'orange', 'tustin',
-  'mission viejo', 'laguna', 'san clemente', 'oceanside', 'carlsbad',
-  'la jolla', 'san diego', 'chula vista', 'north hills', 'reseda',
-  'canoga park', 'chatsworth', 'northridge', 'granada hills', 'sylmar',
-  'sun valley', 'arleta', 'pacoima', 'panorama city', 'lake balboa',
-  'west hills', 'calabasas', 'agoura hills', 'thousand oaks', 'simi valley'
-]
-
-// Clean clinic name by removing location prefixes and stray numbers
-// PDF format appears to be: "Location NumericID ActualClinicName"
-function cleanClinicName(name: string): string {
-  let cleaned = name.toLowerCase().trim()
-  
-  // Remove leading numbers only (like "33" or "226")
-  cleaned = cleaned.replace(/^\d+\s+/, '')
-  
-  // Only strip location prefix if it's followed by a NUMBER
-  // This indicates the location is metadata, not part of the clinic name
-  // e.g., "Sherman Oaks 249 Glendale Hospital" → strip "Sherman Oaks 249"
-  // but "Sherman Oaks Veterinary Group" → keep as is (no number after location)
-  for (const location of KNOWN_LOCATIONS) {
-    // Check if it starts with "location <number>"
-    const pattern = new RegExp(`^${location}\\s+\\d+\\s+`, 'i')
-    if (pattern.test(cleaned)) {
-      cleaned = cleaned.replace(pattern, '').trim()
-      break
-    }
-  }
-  
-  // If the result still starts with a number, remove it
-  cleaned = cleaned.replace(/^\d+\s+/, '')
-  
-  // Title case the result
-  return cleaned
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-    .trim()
-}
-
-// Normalize words for better matching (e.g., "veterinarian" -> "vet")
-function normalizeWord(word: string): string {
-  const w = word.toLowerCase()
-  // Normalize veterinary variations
-  if (w.startsWith('veterinar') || w === 'vet') return 'vet'
-  if (w === 'hosp' || w === 'hospital') return 'hospital'
-  if (w === 'ctr' || w === 'center') return 'center'
-  if (w === 'anim' || w === 'animal') return 'animal'
-  return w
-}
-
-// Fuzzy match score - improved word overlap matching with normalization
-function fuzzyMatch(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase().trim()
-  const s2 = str2.toLowerCase().trim()
-  
-  // Exact match
-  if (s1 === s2) return 1.0
-  
-  // Contains match
-  if (s1.includes(s2) || s2.includes(s1)) return 0.9
-  
-  // Word overlap matching with normalization
-  const stopWords = ['the', 'and', 'of', 'for', 'in', 'at', 'llc', 'inc', 'corp', 'pc']
-  const words1 = s1.split(/\s+/)
-    .filter(w => w.length > 1 && !stopWords.includes(w))
-    .map(normalizeWord)
-  const words2 = s2.split(/\s+/)
-    .filter(w => w.length > 1 && !stopWords.includes(w))
-    .map(normalizeWord)
-  
-  let matchedWords = 0
-  for (const w1 of words1) {
-    for (const w2 of words2) {
-      // Check exact match, partial match, or normalized match
-      if (w1 === w2 || 
-          (w1.length > 3 && w2.length > 3 && (w1.includes(w2) || w2.includes(w1))) ||
-          (w1.length >= 3 && w2.length >= 3 && w1.substring(0, 3) === w2.substring(0, 3))) {
-        matchedWords++
-        break
-      }
-    }
-  }
-  
-  // Use the smaller word count as denominator for more lenient matching
-  const minWords = Math.min(words1.length, words2.length)
-  if (minWords === 0) return 0
-  
-  // Boost score if we matched most of the shorter name
-  const baseScore = matchedWords / minWords
-  
-  // Penalize slightly if word counts differ significantly
-  const lengthRatio = minWords / Math.max(words1.length, words2.length)
-  
-  return baseScore * (0.7 + 0.3 * lengthRatio)
-}
-
-// Find best matching partner from database
-// IMPROVED: Prioritizes exact and near-exact matches before fuzzy matching
-function findBestMatch(
-  clinicName: string, 
-  partners: Array<{ id: string; name: string }>
-): { id: string; name: string; score: number } | null {
-  const normalizedClinic = clinicName.toLowerCase().trim()
-  
-  // FIRST PASS: Check for exact match (case-insensitive)
-  for (const partner of partners) {
-    if (partner.name.toLowerCase().trim() === normalizedClinic) {
-      return { ...partner, score: 1.0 }
-    }
-  }
-  
-  // SECOND PASS: Check for contains match (one contains the other)
-  for (const partner of partners) {
-    const normalizedPartner = partner.name.toLowerCase().trim()
-    if (normalizedPartner.includes(normalizedClinic) || normalizedClinic.includes(normalizedPartner)) {
-      return { ...partner, score: 0.95 }
-    }
-  }
-  
-  // THIRD PASS: Check for exact first word match (more specific than prefix)
-  const clinicFirstWord = normalizedClinic.split(/\s+/)[0]
-  for (const partner of partners) {
-    const partnerFirstWord = partner.name.toLowerCase().trim().split(/\s+/)[0]
-    // Both first words must match exactly (not just prefix)
-    if (clinicFirstWord === partnerFirstWord && clinicFirstWord.length > 3) {
-      // Now do full fuzzy match for ordering
-      const score = fuzzyMatch(clinicName, partner.name)
-      if (score >= 0.7) {
-        return { ...partner, score }
-      }
-    }
-  }
-  
-  // FOURTH PASS: Fuzzy matching with higher threshold
-  let bestMatch = null
-  let bestScore = 0
-  const threshold = 0.7 // Increased from 0.6 for stricter matching
-  
-  for (const partner of partners) {
-    const score = fuzzyMatch(clinicName, partner.name)
-    if (score > bestScore && score >= threshold) {
-      bestScore = score
-      bestMatch = { ...partner, score }
-    }
-  }
-  
-  return bestMatch
-}
-
-// Common first/last name patterns that contain "Pet" but are NOT clinics
-// e.g., Peter, Peterson, Petunia, Pete, Petrov, etc.
-// This is a MODULE-LEVEL function used by both parsers
-const petNamePatterns = [
-  /^[A-Za-z]+,\s*Pet/i,        // "Smith, Peter" or "Abrahams, Peter"
-  /^Pete\s+[A-Z]/,              // "Pete Maul" (first name Pete)
-  /^Peter\s+[A-Z]/,             // "Peter Smith"
-  /^Petunia\s/i,                // First name Petunia
-  /^[A-Za-z]+\s+Pet[a-z]+$/i,   // "Sophia Petreca", "Murphy Petrella", "John Peterson"
-  /^Pet[a-z]+\s+[A-Z]/i,        // "Petey Karp", "Petty Vigil"
-  /Pet[a-z]+$/i,                // Ends with a Pet-like surname (Peterson, Petrov, Petrokubi, etc.)
-  /^[A-Za-z]+\s+Pet[a-z]*$/i,   // "FirstName Pet*" pattern (Chunky Petrosyan, Daisy Peterson)
-  /^Pet[a-z]+$/i,               // Single word starting with Pet (Petey, Peter, etc.)
-]
-
-// Check if a line looks like a person/pet name rather than a clinic name
-function isLikelyPersonName(line: string): boolean {
-  const trimmed = line.trim()
-  
-  // Check against known person name patterns
-  for (const pattern of petNamePatterns) {
-    if (pattern.test(trimmed)) return true
-  }
-  
-  // Check for "LastName, FirstName" pattern without clinic keywords
-  if (/^[A-Za-z]+,\s*[A-Za-z]+$/.test(trimmed)) {
-    const lower = trimmed.toLowerCase()
-    if (!lower.includes('vet') && !lower.includes('animal') && 
-        !lower.includes('hospital') && !lower.includes('clinic')) {
-      return true
-    }
-  }
-  
-  // Check for simple "FirstName LastName" pattern (2 words, both alphabetic only)
-  // that doesn't contain clinic keywords
-  const words = trimmed.split(/\s+/)
-  if (words.length === 2 && 
-      /^[A-Za-z]+$/.test(words[0]) && 
-      /^[A-Za-z]+$/.test(words[1])) {
-    const lower = trimmed.toLowerCase()
-    if (!lower.includes('vet') && !lower.includes('animal') && 
-        !lower.includes('hospital') && !lower.includes('clinic') &&
-        !lower.includes('care') && !lower.includes('center') &&
-        !lower.includes('medical') && !lower.includes('vca')) {
-      // This looks like "FirstName LastName" without any clinic keywords
-      return true
-    }
-  }
-  
-  return false
-}
-
-// Parse the PDF content and extract referral data
-// Each row in the PDF represents one appointment/visit
-// We need to count each row where the Partner (clinic) is NOT "Unknown"
-function parsePdfContent(text: string): ParsedReferral[] {
-  const referrals: ParsedReferral[] = []
-  const lines = text.split('\n').map(l => l.trim()).filter(l => l)
-  
-  // Pattern to match date: MM-DD-YYYY
-  const datePattern = /(\d{2}-\d{2}-\d{4})/
-  // Pattern to match amount (standalone number or with decimals)
-  const amountPattern = /^(\d+(?:\.\d{1,2})?)$/
-  
-  let currentDate = ''
-  let currentClinic = ''
-  let lastClinicLine = -1  // Track when we last saw a clinic name
-  
-  // Track all entries to help with debugging
-  let totalAmountLines = 0
-  let skippedUnknownClinic = 0
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    
-    // Skip page breaks and headers
-    if (line.includes('PAGE BREAK') ||
-        line.includes('REVENUE PER REFERRER') || 
-        line.includes('Sheet') ||
-        line.includes('Date/Time') ||
-        line.includes('Referring Vet Clinic') ||
-        line.includes('TOTAL ALL') ||
-        line.includes('START') ||
-        line.includes('END') ||
-        line.includes('PRINTED')) {
-      continue
-    }
-    
-    // Check if this is a date line
-    const dateMatch = line.match(datePattern)
-    if (dateMatch && line.startsWith(dateMatch[1])) {
-      currentDate = dateMatch[1]
-      continue
-    }
-    
-    // Check for "Unknown Clinic" in the Partner column
-    // This indicates the clinic/partner is unknown - skip these
-    // BUT: "Unknown Vet" (referring vet person) is OK to count
-    const lineLower = line.toLowerCase()
-    if (lineLower.includes('unknown clinic') || 
-        lineLower === 'unknown') {
-      // This is an unknown partner - skip and clear clinic
-      currentClinic = ''
-      skippedUnknownClinic++
-      continue
-    }
-    
-    // Skip lines that look like person names (not clinics)
-    if (isLikelyPersonName(line)) {
-      continue
-    }
-    
-    // Identify clinic names (Partner column)
-    // Must have veterinary/hospital keywords - "Pet" alone is not enough
-    const isClinicName = (
-      // Strong clinic indicators
-      line.includes('Veterinary') ||
-      line.includes('Vet ') ||  // "Vet " with space, not "Peter"
-      line.includes('Vets') ||  // "Southpaw Vets"
-      line.includes('Animal Hospital') ||
-      line.includes('Animal Clinic') ||
-      line.includes('Animal Center') ||
-      line.includes('Pet Hospital') ||
-      line.includes('Pet Clinic') ||
-      line.includes('Pet Medical') ||
-      line.includes('Pet Care') ||
-      line.includes('Pet Doctors') ||  // "The Pet Doctors of..."
-      /\bVCA\b/.test(line) ||  // VCA prefix
-      line.includes('Southpaw') ||
-      line.includes('Modern Animal') ||
-      // Looser matches that need to be combined with other keywords
-      (line.includes('Hospital') && (line.includes('Animal') || line.includes('Pet'))) ||
-      (line.includes('Clinic') && (line.includes('Animal') || line.includes('Pet') || line.includes('Vet'))) ||
-      (line.includes('Center') && (line.includes('Animal') || line.includes('Vet') || line.includes('Medical')))
-    ) && !lineLower.includes('unknown clinic')
-    
-    if (isClinicName) {
-      // Clean the clinic name to remove location prefixes and stray numbers
-      currentClinic = cleanClinicName(line.replace(/\s+/g, ' ').trim())
-      lastClinicLine = i
-    }
-    
-    // Check for amount (standalone number - this represents one appointment row)
-    // Each amount = 1 visit
-    const amountMatch = line.match(amountPattern)
-    if (amountMatch) {
-      totalAmountLines++
-      const amount = parseFloat(amountMatch[1])
-      
-      // Only count if we have a valid clinic (not Unknown)
-      if (!isNaN(amount) && amount > 0 && currentClinic) {
-        referrals.push({
-          clinicName: currentClinic,
-          amount,
-          date: currentDate || new Date().toISOString().split('T')[0]
-        })
-        // DON'T reset currentClinic - the next amount line may also belong to this clinic
-        // The clinic name appears once, followed by multiple appointment amounts
-      }
-    }
-  }
-  
-  console.log('[parse-referrals] Parsing stats: totalAmountLines=', totalAmountLines, 
-              'skippedUnknownClinic=', skippedUnknownClinic, 
-              'validReferrals=', referrals.length)
-  
-  return referrals
-}
-
-// Alternative parsing - regex based for robustness
-// This method scans for patterns where clinic names are followed by amounts
-function parsePdfContentV2(text: string): ParsedReferral[] {
+/**
+ * Parse CSV content into referral entries
+ * CSV Structure:
+ * - Header: Date/Time,Referring Vet Clinic,Referring Vet,Client,Animal,Division,Amount
+ * - Summary rows (empty Date/Time): clinic total summary - SKIP THESE
+ * - Detail rows (with Date/Time): individual visits - COUNT THESE
+ */
+function parseCSVContent(csvText: string): ParsedReferral[] {
+  // Normalize line endings (handle Windows CRLF)
+  const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalizedText.split('\n')
   const referrals: ParsedReferral[] = []
   
-  // Clean the text
-  const cleanText = text.replace(/\s+/g, ' ').trim()
-  
-  // Skip if this appears to be the Unknown Clinic
-  const unknownPattern = /unknown\s+clinic/gi
-  
-  // Known clinic name patterns with amounts following
-  // This captures: ClinicName Amount
-  // IMPORTANT: "Pet" alone is NOT enough - it must be followed by clinic keywords
-  // to avoid matching person names like "Pete Maul" or "Daisy Peterson"
-  // Pattern requires explicit clinic keywords: Veterinary, Vet, Animal, Hospital, Clinic, etc.
-  const clinicAmountPattern = /((?:VCA|Southpaw|Modern Animal|[\w\s]+(?:Vet(?:erinary)?|Animal\s+(?:Hospital|Clinic|Center|Care)|Pet\s+(?:Hospital|Clinic|Medical|Care|Doctors)|Hospital|Clinic|Care\s+Center|Medical\s+Center))[\w\s]*?)\s+(\d+(?:\.\d{1,2})?)\s/gi
-  
-  let match
-  
-  while ((match = clinicAmountPattern.exec(cleanText)) !== null) {
-    const rawClinicName = match[1].trim()
+  // Skip header row
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
     
-    // Skip Unknown Clinic entries (but NOT "Unknown Vet" which is just the vet person)
-    if (rawClinicName.toLowerCase().includes('unknown clinic') ||
-        rawClinicName.toLowerCase() === 'unknown') {
+    // Parse CSV line (handle quoted fields with commas)
+    const fields = parseCSVLine(line)
+    
+    if (fields.length < 7) continue
+    
+    const dateTime = fields[0].trim()
+    const clinicName = fields[1].trim()
+    const amountStr = fields[6].trim()
+    
+    // Only count rows WITH a date (skip summary rows that have empty date)
+    if (!dateTime) {
       continue
     }
     
-    // CRITICAL: Filter out person/pet names that may have slipped through
-    if (isLikelyPersonName(rawClinicName)) {
+    // Skip "Unknown Clinic" entries - we can't attribute these
+    if (clinicName.toLowerCase() === 'unknown clinic') {
       continue
     }
     
-    // Clean the clinic name to remove location prefixes
-    const clinicName = cleanClinicName(rawClinicName)
-    const amount = parseFloat(match[2])
-    
-    if (!isNaN(amount) && amount > 0 && clinicName.length > 3) {
-      referrals.push({
-        clinicName,
-        amount,
-        date: new Date().toISOString().split('T')[0]
-      })
+    // Skip empty clinic names
+    if (!clinicName) {
+      continue
     }
+    
+    // Parse amount
+    const amount = parseFloat(amountStr.replace(/[,$]/g, '')) || 0
+    if (amount <= 0) continue
+    
+    referrals.push({
+      clinicName,
+      amount,
+      date: dateTime
+    })
   }
   
   return referrals
 }
 
-// Aggregate referrals by clinic
+/**
+ * Parse a single CSV line, handling quoted fields with commas
+ */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = []
+  let current = ''
+  let inQuotes = false
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      fields.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  
+  // Push the last field
+  fields.push(current.trim())
+  
+  return fields
+}
+
+/**
+ * Aggregate referrals by clinic name
+ */
 function aggregateByClinic(referrals: ParsedReferral[]): AggregatedStats[] {
   const clinicMap = new Map<string, { visits: number; revenue: number }>()
   
   for (const ref of referrals) {
-    // Normalize clinic name for grouping
-    const normalizedName = ref.clinicName.trim()
-    const existing = clinicMap.get(normalizedName) || { visits: 0, revenue: 0 }
-    existing.visits++
+    const existing = clinicMap.get(ref.clinicName) || { visits: 0, revenue: 0 }
+    existing.visits += 1
     existing.revenue += ref.amount
-    clinicMap.set(normalizedName, existing)
+    clinicMap.set(ref.clinicName, existing)
   }
   
   return Array.from(clinicMap.entries()).map(([clinicName, stats]) => ({
@@ -868,87 +135,94 @@ function aggregateByClinic(referrals: ParsedReferral[]): AggregatedStats[] {
   }))
 }
 
+/**
+ * Normalize name for comparison
+ */
+function normalizeNameForComparison(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/veterinary|vet|clinic|hospital|animal|pet|center|medical/g, '')
+    .trim()
+}
+
+/**
+ * Find best matching partner for a clinic name
+ */
+function findBestMatch(clinicName: string, partners: any[]): any | null {
+  const normalizedInput = normalizeNameForComparison(clinicName)
+  
+  // Try exact match first (case-insensitive)
+  let match = partners.find(p => 
+    p.name.toLowerCase() === clinicName.toLowerCase()
+  )
+  if (match) return match
+  
+  // Try contains match
+  match = partners.find(p => {
+    const normalizedPartner = normalizeNameForComparison(p.name)
+    return normalizedInput.includes(normalizedPartner) || 
+           normalizedPartner.includes(normalizedInput)
+  })
+  if (match) return match
+  
+  // Try key word match (first 2 significant words)
+  const inputWords = clinicName.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !['the', 'and', 'for', 'vet', 'pet', 'animal', 'clinic', 'hospital', 'center', 'veterinary', 'medical'].includes(w))
+    .slice(0, 2)
+  
+  if (inputWords.length > 0) {
+    match = partners.find(p => {
+      const partnerWords = p.name.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter((w: string) => w.length > 2)
+      return inputWords.some(iw => partnerWords.some((pw: string) => pw.includes(iw) || iw.includes(pw)))
+    })
+  }
+  
+  return match || null
+}
+
 export default defineEventHandler(async (event) => {
   try {
-    console.log('[parse-referrals] Starting PDF parse request')
-    
-    // Get the Authorization header with Bearer token
-    const authHeader = getHeader(event, 'authorization')
-    const config = useRuntimeConfig()
-    
-    let userId: string | undefined
-    let userEmail: string | undefined
-    
-    // Try to get user from Authorization header first (more reliable)
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.replace('Bearer ', '')
-      console.log('[parse-referrals] Found Bearer token, verifying...')
-      
-      // Create a client with the user's token to get their info
-      const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL
-      const supabaseKey = config.public.supabaseKey || process.env.SUPABASE_KEY
-      
-      if (!supabaseUrl || !supabaseKey) {
-        throw createError({ statusCode: 500, message: 'Supabase configuration missing' })
-      }
-      
-      const userClient = createClient(supabaseUrl, supabaseKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      })
-      
-      const { data: { user }, error: userError } = await userClient.auth.getUser()
-      
-      if (userError || !user) {
-        console.log('[parse-referrals] Token verification failed:', userError?.message)
-        throw createError({ statusCode: 401, message: 'Invalid or expired token' })
-      }
-      
-      userId = user.id
-      userEmail = user.email
-      console.log('[parse-referrals] User verified from token:', { userId, userEmail })
-    } else {
-      // Fallback to serverSupabaseUser
-      const user = await serverSupabaseUser(event)
-      userId = user?.id
-      userEmail = user?.email
-      console.log('[parse-referrals] User from serverSupabaseUser:', { userId, userEmail })
-    }
-    
-    if (!userId) {
-      throw createError({ statusCode: 401, message: 'Unauthorized - no user session found' })
-    }
-    
-    // Get supabase clients
-    const supabase = await serverSupabaseClient(event)
+    // Get authenticated user
     const supabaseAdmin = await serverSupabaseServiceRole(event)
+    const authHeader = event.headers.get('authorization')
+    
+    if (!authHeader) {
+      throw createError({ statusCode: 401, message: 'No authorization header' })
+    }
+    
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      throw createError({ statusCode: 401, message: 'Invalid or expired session' })
+    }
+    
+    const userId = user.id
+    
+    // Get supabase client
+    const supabase = await serverSupabaseClient(event)
     
     console.log('[parse-referrals] Looking up profile for auth_user_id:', userId)
     
-    // Check if user is admin or marketing_admin using service role (bypasses RLS)
+    // Check if user has appropriate role
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, role, email, auth_user_id')
       .eq('auth_user_id', userId)
       .single()
     
-    console.log('[parse-referrals] Profile lookup result:', { 
-      profile, 
-      error: profileError?.message,
-      code: profileError?.code 
-    })
-    
     const allowedRoles = ['super_admin', 'admin', 'marketing_admin']
     if (profileError) {
-      console.log('[parse-referrals] Profile lookup error:', profileError)
       throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
     }
     
     if (!profile || !allowedRoles.includes(profile.role)) {
-      console.log('[parse-referrals] Access denied for role:', profile?.role)
       throw createError({ statusCode: 403, message: `Admin or Marketing Admin access required. Your role: ${profile?.role || 'unknown'}` })
     }
     
@@ -962,100 +236,49 @@ export default defineEventHandler(async (event) => {
     
     const file = formData.find(f => f.name === 'file')
     if (!file || !file.data) {
-      throw createError({ statusCode: 400, message: 'No PDF file found' })
+      throw createError({ statusCode: 400, message: 'No file found in upload' })
     }
     
-    console.log('[parse-referrals] File received, size:', file.data.length, 'bytes')
+    console.log('[parse-referrals] File received:', file.filename, 'size:', file.data.length, 'bytes')
     
-    // Parse PDF using the new structured EzyVet parser
-    let referrals: ParsedReferral[]
-    let text: string = ''
+    // Check file type - accept CSV
+    const filename = file.filename?.toLowerCase() || ''
+    if (!filename.endsWith('.csv')) {
+      throw createError({ statusCode: 400, message: 'Please upload a CSV file. PDF parsing is no longer supported.' })
+    }
     
-    try {
-      console.log('[parse-referrals] Parsing PDF with structured EzyVet parser...')
-      const pdfBuffer = Buffer.from(file.data)
-      
-      // Try the new structured parser first
-      referrals = await parseEzyVetPdfStructured(pdfBuffer)
-      console.log('[parse-referrals] Structured parser found:', referrals.length, 'referrals')
-      
-      // Also get text for date range extraction
-      text = await parsePdfToText(pdfBuffer)
-      
-      // If structured parser didn't find much, fall back to legacy parsers
-      if (referrals.length < 10) {
-        console.log('[parse-referrals] Structured parser found few results, trying legacy methods...')
-        const referrals1 = parsePdfContent(text)
-        const referrals2 = parsePdfContentV2(text)
-        
-        console.log('[parse-referrals] Legacy Method 1 found:', referrals1.length, 'entries')
-        console.log('[parse-referrals] Legacy Method 2 found:', referrals2.length, 'entries')
-        
-        // Use whichever method found the most
-        if (referrals1.length > referrals.length || referrals2.length > referrals.length) {
-          referrals = referrals1.length >= referrals2.length ? referrals1 : referrals2
-          console.log('[parse-referrals] Using legacy parser with', referrals.length, 'results')
-        }
-      }
-      
-    } catch (pdfError: any) {
-      console.error('[parse-referrals] PDF parsing error:', pdfError)
+    // Parse CSV content
+    const csvText = Buffer.from(file.data).toString('utf-8')
+    console.log('[parse-referrals] Parsing CSV, total chars:', csvText.length)
+    
+    const referrals = parseCSVContent(csvText)
+    console.log('[parse-referrals] Parsed', referrals.length, 'valid referral entries')
+    
+    if (referrals.length === 0) {
       throw createError({ 
-        statusCode: 500, 
-        message: `Failed to parse PDF: ${pdfError.message || 'Unknown error'}` 
+        statusCode: 400, 
+        message: 'No valid referral entries found in CSV. Make sure the file has the correct format with Date/Time, Referring Vet Clinic, and Amount columns.' 
       })
     }
     
-    console.log('[parse-referrals] Final referrals count:', referrals.length)
-    
-    // Extract date range from header
-    const startMatch = text.match(/START\s+(\d{2}-\d{2}-\d{4})/)
-    const endMatch = text.match(/END\s+(\d{2}-\d{2}-\d{4})|Report\s+End\s+Date\s+(\d{2}-\d{2}-\d{4})/)
-    
-    // Handle different date range formats
-    const endDateStr = endMatch?.[1] || endMatch?.[2]
-    console.log('[parse-referrals] Date range:', startMatch?.[1], 'to', endDateStr)
-    
-    // Parse dates for comparison
-    let parsedStartDate: string | null = null
-    let parsedEndDate: string | null = null
-    
-    if (startMatch?.[1]) {
-      const [month, day, year] = startMatch[1].split('-')
-      parsedStartDate = `${year}-${month}-${day}`
-    }
-    if (endDateStr) {
-      const [month, day, year] = endDateStr.split('-')
-      parsedEndDate = `${year}-${month}-${day}`
+    // Log some sample entries
+    for (const ref of referrals.slice(0, 5)) {
+      console.log(`  - ${ref.clinicName}: $${ref.amount} on ${ref.date}`)
     }
     
-    // Check if this date range has already been processed (prevent duplicate uploads)
-    if (parsedStartDate && parsedEndDate) {
-      const { data: existingSync } = await supabase
-        .from('referral_sync_history')
-        .select('id, created_at')
-        .eq('date_range_start', parsedStartDate)
-        .eq('date_range_end', parsedEndDate)
-        .limit(1)
-      
-      if (existingSync && existingSync.length > 0) {
-        const uploadedAt = new Date(existingSync[0].created_at).toLocaleDateString()
-        console.log('[parse-referrals] Duplicate date range detected, already uploaded on:', uploadedAt)
-        throw createError({
-          statusCode: 409,
-          message: `This report (${startMatch?.[1] || 'N/A'} to ${endDateStr || 'N/A'}) was already uploaded on ${uploadedAt}. Duplicate uploads are prevented to avoid double-counting data.`
-        })
-      }
-    }
-    
-    // Aggregate by clinic - sum up visits and revenue per clinic
+    // Aggregate by clinic
     const aggregated = aggregateByClinic(referrals)
     console.log('[parse-referrals] Aggregated to', aggregated.length, 'unique clinics')
     
-    // Log some sample aggregated data for debugging
-    for (const agg of aggregated.slice(0, 5)) {
+    // Log aggregated totals
+    for (const agg of aggregated.slice(0, 10)) {
       console.log(`  - ${agg.clinicName}: ${agg.totalVisits} visits, $${agg.totalRevenue}`)
     }
+    
+    // Calculate total from CSV for verification
+    const csvTotalVisits = aggregated.reduce((sum, a) => sum + a.totalVisits, 0)
+    const csvTotalRevenue = aggregated.reduce((sum, a) => sum + a.totalRevenue, 0)
+    console.log(`[parse-referrals] CSV Totals: ${csvTotalVisits} visits, $${csvTotalRevenue.toFixed(2)} revenue`)
     
     // Fetch all partners for matching
     const { data: partners } = await supabase
@@ -1082,16 +305,12 @@ export default defineEventHandler(async (event) => {
       const match = findBestMatch(agg.clinicName, partners)
       
       if (match) {
-        // Update partner stats
-        const existingPartner = partners.find(p => p.id === match.id)
-        const currentReferrals = existingPartner?.total_referrals_all_time || 0
-        const currentRevenue = existingPartner?.total_revenue_all_time || 0
-        
+        // REPLACE existing values (not add to them) since we cleared the data
         const { error } = await supabase
           .from('referral_partners')
           .update({
-            total_referrals_all_time: currentReferrals + agg.totalVisits,
-            total_revenue_all_time: Math.round((currentRevenue + agg.totalRevenue) * 100) / 100,
+            total_referrals_all_time: agg.totalVisits,
+            total_revenue_all_time: agg.totalRevenue,
             last_sync_date: new Date().toISOString()
           })
           .eq('id', match.id)
@@ -1107,6 +326,8 @@ export default defineEventHandler(async (event) => {
             visits: agg.totalVisits,
             revenue: agg.totalRevenue
           })
+        } else {
+          console.error('[parse-referrals] Update error for', match.name, ':', error.message)
         }
       } else {
         result.notMatched++
@@ -1119,39 +340,23 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Calculate skipped (Unknown Clinic entries - where Partner is Unknown)
-    // Count only "Unknown Clinic" patterns, NOT "Unknown Vet" (that's just the vet person name)
-    const unknownClinicMatches = text.match(/unknown\s+clinic/gi) || []
-    const unknownOnlyMatches = text.split('\n').filter(line => {
-      const trimmed = line.trim().toLowerCase()
-      // Count lines that are just "Unknown" (likely Partner column)
-      return trimmed === 'unknown'
-    })
-    result.skipped = unknownClinicMatches.length + unknownOnlyMatches.length
-    
-    // Log sync history (for audit trail and duplicate prevention)
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('auth_user_id', userId)
-      .single()
-    
+    // Log sync history
     await supabase.from('referral_sync_history').insert({
-      filename: file.filename || 'referrer-revenue.pdf',
-      date_range_start: parsedStartDate,
-      date_range_end: parsedEndDate,
+      filename: file.filename || 'referral-report.csv',
+      date_range_start: null,
+      date_range_end: null,
       total_rows_parsed: referrals.length,
       total_rows_matched: result.updated,
       total_rows_skipped: result.skipped,
       total_revenue_added: result.revenueAdded,
-      uploaded_by: profileData?.id,
+      uploaded_by: profile?.id,
       sync_details: {
         notMatched: result.notMatched,
         visitorsAdded: result.visitorsAdded,
         clinicDetails: result.details,
-        dateRangeRaw: {
-          start: startMatch?.[1],
-          end: endMatch?.[1]
+        csvTotals: {
+          visits: csvTotalVisits,
+          revenue: csvTotalRevenue
         }
       }
     })
@@ -1160,20 +365,24 @@ export default defineEventHandler(async (event) => {
     
     return {
       success: true,
-      message: `Processed ${aggregated.length} clinics from PDF`,
+      message: `Processed ${referrals.length} referral entries from ${aggregated.length} clinics`,
       updated: result.updated,
       skipped: result.skipped,
       notMatched: result.notMatched,
       revenueAdded: Math.round(result.revenueAdded * 100) / 100,
       visitorsAdded: result.visitorsAdded,
-      details: result.details
+      details: result.details,
+      totals: {
+        csvVisits: csvTotalVisits,
+        csvRevenue: Math.round(csvTotalRevenue * 100) / 100
+      }
     }
     
   } catch (error: any) {
     console.error('[parse-referrals] Error:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to parse PDF'
+      message: error.message || 'Failed to parse CSV'
     })
   }
 })
