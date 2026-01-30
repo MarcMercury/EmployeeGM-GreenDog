@@ -221,9 +221,9 @@ function mapHeaders(headers: string[]): { mapped: Record<string, string>, candid
 
   // Common variations for each field
   const fieldPatterns: Record<StandardField, RegExp[]> = {
-    email: [/e-?mail/i, /email.?addr/i, /e.?mail/i, /correo/i],
-    first_name: [/first.?name/i, /f.?name/i, /given.?name/i, /nombre/i, /fname/i],
-    last_name: [/last.?name/i, /l.?name/i, /surname/i, /family.?name/i, /apellido/i, /lname/i],
+    email: [/e-?mail/i, /email.?addr/i, /e.?mail/i, /correo/i, /email\s*address/i, /e-mail\s*address/i, /^email$/i],
+    first_name: [/first.?name/i, /f.?name/i, /given.?name/i, /nombre/i, /fname/i, /^first$/i],
+    last_name: [/last.?name/i, /l.?name/i, /surname/i, /family.?name/i, /apellido/i, /lname/i, /^last$/i],
     phone: [/phone/i, /tel/i, /mobile/i, /cell/i, /telefono/i],
     company: [/company/i, /org/i, /business/i, /employer/i, /empresa/i, /clinic/i, /hospital/i],
     notes: [/notes?/i, /comment/i, /remark/i, /notas/i, /description/i],
@@ -470,6 +470,11 @@ function countPopulatedFields(row: Record<string, any>): number {
  * Process files based on selected operation
  */
 async function processLists() {
+  console.log('[List Hygiene] processLists started')
+  console.log('[List Hygiene] Operation type:', operationType.value)
+  console.log('[List Hygiene] Target files:', targetFiles.value.length)
+  console.log('[List Hygiene] Suppression files:', suppressionFiles.value.length)
+  
   isProcessing.value = true
   processedData.value = []
   processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0, multiEmailSplit: 0 }
@@ -481,6 +486,16 @@ async function processLists() {
     let multiEmailCount = 0
     
     for (const file of targetFiles.value) {
+      console.log('[List Hygiene] Processing target file:', file.name)
+      console.log('[List Hygiene] Target file headers:', file.headers)
+      console.log('[List Hygiene] Target file mappedHeaders:', file.mappedHeaders)
+      console.log('[List Hygiene] Target file data rows:', file.data.length)
+      
+      // Log first row for debugging
+      if (file.data.length > 0) {
+        console.log('[List Hygiene] First raw row:', file.data[0])
+      }
+      
       for (const row of file.data) {
         const normalizedRows = normalizeRow(row, file.mappedHeaders)
         
@@ -495,6 +510,11 @@ async function processLists() {
           }
         }
       }
+    }
+    
+    console.log('[List Hygiene] Total normalized target rows with emails:', allTargetRows.length)
+    if (allTargetRows.length > 0) {
+      console.log('[List Hygiene] Sample normalized row:', allTargetRows[0])
     }
 
     processingStats.value.totalRows = allTargetRows.length
@@ -536,10 +556,16 @@ async function processLists() {
  * Return emails in target that are NOT in suppression list
  */
 async function processFindNew(targetRows: Record<string, any>[]): Promise<Record<string, any>[]> {
+  console.log('[List Hygiene] processFindNew started with', targetRows.length, 'target rows')
+  console.log('[List Hygiene] Suppression files count:', suppressionFiles.value.length)
+  
   // Build suppression set (also handles multi-email cells in suppression files)
   const suppressionEmails = new Set<string>()
   
   for (const file of suppressionFiles.value) {
+    console.log('[List Hygiene] Processing suppression file:', file.name, 'with', file.data.length, 'rows')
+    console.log('[List Hygiene] Suppression file mappedHeaders:', file.mappedHeaders)
+    
     for (const row of file.data) {
       const normalizedRows = normalizeRow(row, file.mappedHeaders)
       for (const normalized of normalizedRows) {
@@ -550,19 +576,42 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
       }
     }
   }
+  
+  console.log('[List Hygiene] Suppression set built with', suppressionEmails.size, 'unique emails')
+  
+  // Log a sample of targetRows for debugging
+  if (targetRows.length > 0) {
+    console.log('[List Hygiene] Sample target row:', targetRows[0])
+  }
 
   // Filter target rows, keeping most populated per email
   const emailMap = new Map<string, Record<string, any>>()
+  let noEmailCount = 0
+  let suppressedCount = 0
   
   for (const row of targetRows) {
     const email = getEmail(row)
-    if (!email || suppressionEmails.has(email)) continue
+    if (!email) {
+      noEmailCount++
+      continue
+    }
+    if (suppressionEmails.has(email)) {
+      suppressedCount++
+      continue
+    }
 
     const existing = emailMap.get(email)
     if (!existing || countPopulatedFields(row) > countPopulatedFields(existing)) {
       emailMap.set(email, row)
     }
   }
+
+  console.log('[List Hygiene] processFindNew results:', {
+    targetRowsProcessed: targetRows.length,
+    noEmailCount,
+    suppressedCount,
+    uniqueNewLeads: emailMap.size
+  })
 
   return Array.from(emailMap.values())
 }
