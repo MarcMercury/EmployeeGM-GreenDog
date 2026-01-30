@@ -20,6 +20,19 @@ export default defineNuxtPlugin({
       console.log('[AuthPlugin] Session found, loading profile...')
       await authStore.fetchProfile(session.user.id)
       await userStore.fetchUserData()
+      
+      // Update last_login_at in profiles to track "last seen" 
+      // (Supabase's last_sign_in_at only updates on actual authentication, not session restore)
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_login_at: new Date().toISOString() })
+          .eq('auth_user_id', session.user.id)
+        console.log('[AuthPlugin] Updated last_login_at')
+      } catch (err) {
+        // Non-critical - don't block auth flow
+        console.warn('[AuthPlugin] Failed to update last_login_at:', err)
+      }
     }
     
     authStore.initialized = true
