@@ -169,12 +169,57 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         await supabase.auth.signOut()
+        
+        // Reset all stores to prevent stale data on re-login
+        this.resetAllStores()
+        
         this.profile = null
         this.initialized = false
       } catch (err) {
         console.error('Error signing out:', err)
       } finally {
         this.isLoading = false
+      }
+    },
+
+    /**
+     * Reset all Pinia stores to their initial state
+     * This prevents stale data from persisting between user sessions
+     */
+    resetAllStores() {
+      try {
+        // Import and reset each store
+        // Using try-catch for each to prevent cascading failures
+        const stores = [
+          { name: 'employee', getter: () => useEmployeeStore() },
+          { name: 'dashboard', getter: () => useDashboardStore() },
+          { name: 'ui', getter: () => useUIStore() },
+          { name: 'schedule', getter: () => useScheduleStore() },
+          { name: 'scheduleBuilder', getter: () => useScheduleBuilderStore() },
+          { name: 'roster', getter: () => useRosterStore() },
+          { name: 'performance', getter: () => usePerformanceStore() },
+          { name: 'payroll', getter: () => usePayrollStore() },
+          { name: 'operations', getter: () => useOperationsStore() },
+          { name: 'integrations', getter: () => useIntegrationsStore() },
+          { name: 'academy', getter: () => useAcademyStore() },
+          { name: 'skillEngine', getter: () => useSkillEngineStore() },
+          { name: 'user', getter: () => useUserStore() },
+        ]
+
+        for (const { name, getter } of stores) {
+          try {
+            const store = getter()
+            if (store && typeof store.$reset === 'function') {
+              store.$reset()
+              console.log(`[AuthStore] Reset ${name} store`)
+            }
+          } catch (err) {
+            // Store might not be initialized yet, which is fine
+            console.debug(`[AuthStore] Could not reset ${name} store:`, err)
+          }
+        }
+      } catch (err) {
+        console.error('[AuthStore] Error resetting stores:', err)
       }
     },
 

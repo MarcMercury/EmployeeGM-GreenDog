@@ -1,4 +1,4 @@
-// Simple auth plugin - just loads profile data when there's a session
+// Auth plugin - loads profile data and handles session state changes
 export default defineNuxtPlugin({
   name: 'auth',
   dependsOn: ['supabase'],
@@ -36,5 +36,78 @@ export default defineNuxtPlugin({
     }
     
     authStore.initialized = true
+
+    // Set up auth state change listener for session refresh
+    // This handles token refresh, sign in/out events, and password recovery
+    supabase.auth.onAuthStateChange(async (event, newSession) => {
+      console.log('[AuthPlugin] Auth state changed:', event)
+      
+      switch (event) {
+        case 'SIGNED_IN':
+          // User signed in (includes initial sign in and token refresh)
+          if (newSession?.user && !authStore.profile) {
+            console.log('[AuthPlugin] Loading profile after sign in...')
+            await authStore.fetchProfile(newSession.user.id)
+            await userStore.fetchUserData()
+          }
+          break
+
+        case 'SIGNED_OUT':
+          // User signed out - stores are reset in authStore.signOut()
+          console.log('[AuthPlugin] User signed out')
+          break
+
+        case 'TOKEN_REFRESHED':
+          // Session token was refreshed - just log it
+          console.log('[AuthPlugin] Token refreshed successfully')
+          break
+
+        case 'USER_UPDATED':
+          // User profile was updated (email change, password change, etc.)
+          if (newSession?.user) {
+            console.log('[AuthPlugin] User updated, refreshing profile...')
+            await authStore.fetchProfile(newSession.user.id)
+          }
+          break
+
+        case 'PASSWORD_RECOVERY':
+          // Password recovery initiated
+          console.log('[AuthPlugin] Password recovery mode')
+          break
+
+        default:
+          // Handle any other events
+          console.log('[AuthPlugin] Unhandled auth event:', event)
+      }
+    })
+
+    // Periodic session check to detect expired sessions
+    // Runs every 5 minutes to proactively refresh if needed
+    if (typeof window !== 'undefined') {
+      const SESSION_CHECK_INTERVAL = 5 * 60 * 1000 // 5 minutes
+      
+      setInterval(async () => {
+        try {
+          const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+          
+          if (error) {
+            console.warn('[AuthPlugin] Session check error:', error.message)
+            return
+          }
+
+          if (!currentSession && authStore.profile) {
+            // Session expired but we still have profile data - force sign out
+            console.warn('[AuthPlugin] Session expired, signing out...')
+            await authStore.signOut()
+            
+            // Redirect to login
+            const router = useRouter()
+            router.push('/login')
+          }
+        } catch (err) {
+          console.error('[AuthPlugin] Session check failed:', err)
+        }
+      }, SESSION_CHECK_INTERVAL)
+    }
   }
 })

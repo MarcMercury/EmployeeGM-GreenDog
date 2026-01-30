@@ -6,6 +6,14 @@
     {
       "path": "/api/cron/session-reset",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/metrics-recalc",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/cleanup-stale",
+      "schedule": "0 4 * * 0"
     }
   ]
 }

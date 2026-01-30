@@ -57,11 +57,14 @@ export default defineNuxtConfig({
     openaiAdminKey: process.env.OPENAI_ADMIN_KEY,
     resendApiKey: process.env.RESEND_API_KEY,
     resendFromEmail: process.env.RESEND_FROM_EMAIL,
+    sentryDsn: process.env.SENTRY_DSN,
+    cronSecret: process.env.CRON_SECRET,
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseKey: process.env.SUPABASE_KEY,
-      appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL
+      appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL,
+      sentryDsn: process.env.SENTRY_DSN
     }
   },
 
