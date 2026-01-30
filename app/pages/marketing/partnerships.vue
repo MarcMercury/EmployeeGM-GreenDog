@@ -966,14 +966,15 @@
     </v-dialog>
 
     <!-- ADD/EDIT PARTNER DIALOG -->
-    <v-dialog v-model="showPartnerDialog" max-width="700">
+    <v-dialog v-model="showPartnerDialog" max-width="750">
       <v-card>
         <v-card-title>{{ editMode ? 'Edit Partner' : 'Add Partner' }}</v-card-title>
         <v-card-text>
           <v-tabs v-model="formTab" class="mb-4">
             <v-tab value="basic">Basic</v-tab>
-            <v-tab value="crm">CRM</v-tab>
-            <v-tab value="targeting">Targeting</v-tab>
+            <v-tab value="crm">Classification</v-tab>
+            <v-tab value="targeting">Visit Schedule</v-tab>
+            <v-tab value="agreements">Agreements</v-tab>
             <v-tab value="stats">Stats</v-tab>
           </v-tabs>
 
@@ -998,6 +999,43 @@
                 <v-col cols="12">
                   <v-text-field v-model="form.website" label="Website" variant="outlined" density="compact" />
                 </v-col>
+                
+                <!-- Social Media -->
+                <v-col cols="12" class="mt-2">
+                  <div class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-share-variant</v-icon>
+                    Social Media
+                  </div>
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field 
+                    v-model="form.instagram_handle" 
+                    label="Instagram" 
+                    variant="outlined" 
+                    density="compact"
+                    prepend-inner-icon="mdi-instagram"
+                    placeholder="@handle"
+                  />
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field 
+                    v-model="form.facebook_url" 
+                    label="Facebook URL" 
+                    variant="outlined" 
+                    density="compact"
+                    prepend-inner-icon="mdi-facebook"
+                  />
+                </v-col>
+                <v-col cols="4">
+                  <v-text-field 
+                    v-model="form.linkedin_url" 
+                    label="LinkedIn URL" 
+                    variant="outlined" 
+                    density="compact"
+                    prepend-inner-icon="mdi-linkedin"
+                  />
+                </v-col>
+                
                 <v-col cols="12">
                   <v-textarea v-model="form.notes" label="Notes" variant="outlined" density="compact" rows="2" />
                 </v-col>
@@ -1019,10 +1057,33 @@
                   <v-select v-model="form.clinic_type" :items="clinicTypeOptions" label="Clinic Type" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
-                  <v-text-field v-model="form.contact_name" label="Primary Contact" variant="outlined" density="compact" />
+                  <v-select v-model="form.size" :items="sizeOptions" label="Size" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.referral_agreement_type" :items="agreementOptions" label="Agreement" variant="outlined" density="compact" />
+                  <v-select v-model="form.organization_type" :items="organizationTypeOptions" label="Organization Type" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field v-model.number="form.employee_count" label="Employee Count" type="number" variant="outlined" density="compact" min="0" />
+                </v-col>
+                <v-col cols="6">
+                  <v-text-field v-model="form.contact_name" label="Primary Contact" variant="outlined" density="compact" />
+                </v-col>
+                
+                <!-- Relationship Health -->
+                <v-col cols="12" class="mt-2">
+                  <div class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-heart-pulse</v-icon>
+                    Relationship Health (0-100)
+                  </div>
+                  <v-slider
+                    v-model="form.relationship_health"
+                    :min="0"
+                    :max="100"
+                    :step="5"
+                    thumb-label="always"
+                    :color="getRelationshipHealthColor(form.relationship_health)"
+                    hide-details
+                  />
                 </v-col>
               </v-row>
             </v-window-item>
@@ -1033,6 +1094,9 @@
                   <v-select v-model="form.visit_frequency" :items="frequencyOptions" label="Visit Frequency" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
+                  <v-text-field v-model.number="form.expected_visit_frequency_days" label="Expected Days Between Visits" type="number" variant="outlined" density="compact" min="1" />
+                </v-col>
+                <v-col cols="6">
                   <v-select v-model="form.preferred_visit_day" :items="dayOptions" label="Preferred Day" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
@@ -1041,11 +1105,49 @@
                 <v-col cols="6">
                   <v-text-field v-model="form.best_contact_person" label="Best Contact Person" variant="outlined" density="compact" />
                 </v-col>
-                <v-col cols="12">
+                <v-col cols="6">
                   <v-text-field v-model="form.next_followup_date" label="Next Follow-up" type="date" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="12">
                   <v-switch v-model="form.needs_followup" label="Needs Follow-up" color="warning" hide-details />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <v-window-item value="agreements">
+              <v-row dense>
+                <v-col cols="12">
+                  <v-select v-model="form.referral_agreement_type" :items="agreementOptions" label="Referral Agreement Type" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" class="mt-2">
+                  <div class="text-subtitle-2 mb-3">Eligibility & Permissions</div>
+                </v-col>
+                <v-col cols="12">
+                  <v-switch 
+                    v-model="form.ce_event_host" 
+                    label="CE Event Host" 
+                    color="success" 
+                    hide-details
+                    hint="Can host Continuing Education events"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-switch 
+                    v-model="form.lunch_and_learn_eligible" 
+                    label="Lunch & Learn Eligible" 
+                    color="success" 
+                    hide-details
+                    hint="Eligible for lunch and learn sessions"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-switch 
+                    v-model="form.drop_off_materials" 
+                    label="Drop-off Materials" 
+                    color="success" 
+                    hide-details
+                    hint="Can receive drop-off marketing materials"
+                  />
                 </v-col>
               </v-row>
             </v-window-item>
@@ -1686,6 +1788,8 @@ const participationRoles = [
 const tierOptions = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Coal']
 const priorityOptions = ['Very High', 'High', 'Medium', 'Low']
 const clinicTypeOptions = ['general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent']
+const sizeOptions = ['small', 'medium', 'large', 'enterprise']
+const organizationTypeOptions = ['independent', 'corporate', 'franchise', 'nonprofit', 'university', 'government']
 const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually', 'as_needed']
 const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 const timeOptions = ['morning', 'midday', 'afternoon']
@@ -1743,7 +1847,22 @@ const form = reactive({
   next_followup_date: '',
   needs_followup: false,
   total_referrals_all_time: 0,
-  total_revenue_all_time: 0
+  total_revenue_all_time: 0,
+  // Social media
+  instagram_handle: '',
+  facebook_url: '',
+  linkedin_url: '',
+  // Size & organization
+  size: null as string | null,
+  organization_type: null as string | null,
+  employee_count: null as number | null,
+  expected_visit_frequency_days: null as number | null,
+  // Agreements
+  ce_event_host: false,
+  lunch_and_learn_eligible: true,
+  drop_off_materials: true,
+  // Relationship
+  relationship_health: null as number | null
 })
 
 const contactForm = reactive({
@@ -2090,7 +2209,22 @@ function openEditPartner(partner: any) {
     next_followup_date: partner.next_followup_date || '',
     needs_followup: partner.needs_followup || false,
     total_referrals_all_time: partner.total_referrals_all_time || 0,
-    total_revenue_all_time: partner.total_revenue_all_time || 0
+    total_revenue_all_time: partner.total_revenue_all_time || 0,
+    // Social media
+    instagram_handle: partner.instagram_handle || '',
+    facebook_url: partner.facebook_url || '',
+    linkedin_url: partner.linkedin_url || '',
+    // Size & organization
+    size: partner.size || null,
+    organization_type: partner.organization_type || null,
+    employee_count: partner.employee_count || null,
+    expected_visit_frequency_days: partner.expected_visit_frequency_days || null,
+    // Agreements
+    ce_event_host: partner.ce_event_host || false,
+    lunch_and_learn_eligible: partner.lunch_and_learn_eligible !== false,
+    drop_off_materials: partner.drop_off_materials !== false,
+    // Relationship
+    relationship_health: partner.relationship_health ?? null
   })
   formTab.value = 'basic'
   showPartnerDialog.value = true
@@ -2165,7 +2299,24 @@ function resetForm() {
     preferred_visit_time: null,
     best_contact_person: '',
     next_followup_date: '',
-    needs_followup: false
+    needs_followup: false,
+    total_referrals_all_time: 0,
+    total_revenue_all_time: 0,
+    // Social media
+    instagram_handle: '',
+    facebook_url: '',
+    linkedin_url: '',
+    // Size & organization
+    size: null,
+    organization_type: null,
+    employee_count: null,
+    expected_visit_frequency_days: null,
+    // Agreements
+    ce_event_host: false,
+    lunch_and_learn_eligible: true,
+    drop_off_materials: true,
+    // Relationship
+    relationship_health: null
   })
 }
 
@@ -2200,7 +2351,22 @@ async function savePartner() {
       next_followup_date: form.next_followup_date || null,
       needs_followup: form.needs_followup,
       total_referrals_all_time: form.total_referrals_all_time || 0,
-      total_revenue_all_time: form.total_revenue_all_time || 0
+      total_revenue_all_time: form.total_revenue_all_time || 0,
+      // Social media
+      instagram_handle: form.instagram_handle || null,
+      facebook_url: form.facebook_url || null,
+      linkedin_url: form.linkedin_url || null,
+      // Size & organization
+      size: form.size || null,
+      organization_type: form.organization_type || null,
+      employee_count: form.employee_count || null,
+      expected_visit_frequency_days: form.expected_visit_frequency_days || null,
+      // Agreements
+      ce_event_host: form.ce_event_host,
+      lunch_and_learn_eligible: form.lunch_and_learn_eligible,
+      drop_off_materials: form.drop_off_materials,
+      // Relationship
+      relationship_health: form.relationship_health
     }
     if (editMode.value) {
       const { error } = await supabase.from('referral_partners').update(payload).eq('id', form.id)
