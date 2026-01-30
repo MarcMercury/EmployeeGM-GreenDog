@@ -154,7 +154,56 @@ const matchFieldOptions = [
 // ============================================
 
 /**
+ * Detect which line contains the actual headers
+ * Looks for lines containing common header patterns like email, phone, name, etc.
+ */
+function detectHeaderRow(lines: string[]): number {
+  // Common header patterns to look for
+  const headerPatterns = [
+    /e-?mail/i,
+    /phone/i,
+    /tel/i,
+    /mobile/i,
+    /first.?name/i,
+    /last.?name/i,
+    /^name$/i,
+    /contact/i,
+    /address/i,
+    /city/i,
+    /state/i,
+    /zip/i,
+  ]
+  
+  // Check first 10 lines (or less if file is shorter)
+  const maxLinesToCheck = Math.min(10, lines.length)
+  
+  for (let i = 0; i < maxLinesToCheck; i++) {
+    const parsed = parseCSVLine(lines[i])
+    // Count how many cells match header patterns
+    let matchCount = 0
+    for (const cell of parsed) {
+      for (const pattern of headerPatterns) {
+        if (pattern.test(cell)) {
+          matchCount++
+          break
+        }
+      }
+    }
+    // If at least 2 cells look like headers, this is probably the header row
+    if (matchCount >= 2) {
+      console.log(`[List Hygiene] Detected header row at line ${i + 1}:`, parsed.slice(0, 5).join(', '))
+      return i
+    }
+  }
+  
+  // Default to first line if no header row detected
+  console.log('[List Hygiene] No header row detected, defaulting to line 1')
+  return 0
+}
+
+/**
  * Parse CSV content into rows
+ * Automatically detects header row (handles files with title rows)
  */
 function parseCSV(content: string): { headers: string[], data: Record<string, any>[] } {
   const lines = content.trim().split(/\r?\n/)
@@ -162,13 +211,40 @@ function parseCSV(content: string): { headers: string[], data: Record<string, an
     return { headers: [], data: [] }
   }
 
-  // Parse headers (first line)
-  const headers = parseCSVLine(lines[0])
+  // Auto-detect header row (handles files with title rows at the top)
+  const headerRowIndex = detectHeaderRow(lines)
+  const headers = parseCSVLine(lines[headerRowIndex])
   
-  // Parse data rows
-  const data = lines.slice(1)
+  console.log(`[List Hygiene] Using headers from line ${headerRowIndex + 1}:`, headers.slice(0, 5).join(', '))
+  
+  // Parse data rows (everything after the header row)
+  const data = lines.slice(headerRowIndex + 1)
     .map(line => parseCSVLine(line))
     .filter(row => row.some(cell => cell.trim()))
+    // Filter out rows that look like section headers or repeated header rows
+    .filter(row => {
+      const nonEmptyCells = row.filter(cell => cell.trim()).length
+      const firstCell = row[0]?.trim() || ''
+      const secondCell = row[1]?.trim() || ''
+      
+      // Skip rows that look like repeated header rows (contain "email", "phone" as values)
+      if (/^e-?mail$/i.test(secondCell) || /^phone$/i.test(secondCell) || 
+          /^new\s*clients?$/i.test(firstCell) || /^name$/i.test(firstCell)) {
+        console.log(`[List Hygiene] Skipping repeated header row: "${firstCell}, ${secondCell}"`)
+        return false
+      }
+      
+      // Skip rows with only 1-2 non-empty cells that look like section headers
+      if (nonEmptyCells <= 2) {
+        // Check if it looks like a date or section header (e.g., "6/14/25 Fluffology")
+        if (/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(firstCell) || 
+            /^(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(firstCell)) {
+          console.log(`[List Hygiene] Skipping section header: "${firstCell}"`)
+          return false
+        }
+      }
+      return true
+    })
     .map(row => {
       const obj: Record<string, any> = {}
       headers.forEach((header, idx) => {
@@ -177,6 +253,7 @@ function parseCSV(content: string): { headers: string[], data: Record<string, an
       return obj
     })
 
+  console.log(`[List Hygiene] Parsed ${data.length} data rows`)
   return { headers, data }
 }
 
@@ -239,9 +316,9 @@ function mapHeaders(headers: string[]): { mapped: Record<string, string>, candid
 
   // Common variations for each field
   const fieldPatterns: Record<StandardField, RegExp[]> = {
-    email: [/e-?mail/i, /email.?addr/i, /e.?mail/i, /correo/i, /email\s*address/i, /e-mail\s*address/i, /^email$/i],
-    first_name: [/first.?name/i, /f.?name/i, /given.?name/i, /nombre/i, /fname/i, /^first$/i],
-    last_name: [/last.?name/i, /l.?name/i, /surname/i, /family.?name/i, /apellido/i, /lname/i, /^last$/i],
+    email: [/e-?mail/i, /email.?addr/i, /e.?mail/i, /correo/i, /email\s*address/i, /e-mail\s*address/i, /^email$/i, /email\s*addresses/i],
+    first_name: [/first.?name/i, /f.?name/i, /given.?name/i, /nombre/i, /fname/i, /^first$/i, /contact\s*first\s*name/i, /new\s*clients?/i],
+    last_name: [/last.?name/i, /l.?name/i, /surname/i, /family.?name/i, /apellido/i, /lname/i, /^last$/i, /contact\s*last\s*name/i],
     phone: [
       /phone/i, /tel/i, /mobile/i, /cell/i, /telefono/i,
       /phone\s*#/i, /phone\s*number/i, /telephone/i, /fax/i,

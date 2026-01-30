@@ -127,15 +127,32 @@
                 />
               </v-col>
               <v-col cols="12" md="3">
-                <v-btn 
-                  color="primary" 
-                  variant="text" 
-                  prepend-icon="mdi-refresh"
-                  @click="fetchAllData"
-                  :loading="loading"
-                >
-                  Refresh
-                </v-btn>
+                <div class="d-flex align-center gap-2">
+                  <v-btn 
+                    color="primary" 
+                    variant="text" 
+                    prepend-icon="mdi-refresh"
+                    @click="fetchAllData"
+                    :loading="loading"
+                  >
+                    Refresh
+                  </v-btn>
+                  <v-tooltip text="Sync last login times from auth system" location="top">
+                    <template #activator="{ props }">
+                      <v-btn 
+                        v-bind="props"
+                        color="secondary" 
+                        variant="text" 
+                        prepend-icon="mdi-sync"
+                        @click="syncLoginTimes"
+                        :loading="syncingLoginTimes"
+                        size="small"
+                      >
+                        Sync Logins
+                      </v-btn>
+                    </template>
+                  </v-tooltip>
+                </div>
               </v-col>
             </v-row>
           </v-card-text>
@@ -178,8 +195,8 @@
             </template>
 
             <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_sign_in_at" class="text-body-2">
-                {{ formatRelativeDate(item.last_sign_in_at) }}
+              <span v-if="item.last_login_at || item.last_sign_in_at" class="text-body-2">
+                {{ formatRelativeDate(item.last_login_at || item.last_sign_in_at) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -373,8 +390,8 @@
             </template>
 
             <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_sign_in_at" class="text-body-2 text-grey">
-                {{ formatRelativeDate(item.last_sign_in_at) }}
+              <span v-if="item.last_login_at || item.last_sign_in_at" class="text-body-2 text-grey">
+                {{ formatRelativeDate(item.last_login_at || item.last_sign_in_at) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -1315,6 +1332,7 @@ const creating = ref(false)
 const resettingPassword = ref(false)
 const togglingActive = ref(false)
 const auditLoading = ref(false)
+const syncingLoginTimes = ref(false)
 const showAuditDialog = ref(false)
 const auditResults = ref<{
   summary: { total: number; clean: number; orphan: number; issues: number }
@@ -2367,6 +2385,34 @@ async function fetchUsers(): Promise<void> {
     showNotification(error.data?.message || 'Failed to load users', 'error')
   } finally {
     loading.value = false
+  }
+}
+
+async function syncLoginTimes(): Promise<void> {
+  syncingLoginTimes.value = true
+  try {
+    const { data: session } = await supabase.auth.getSession()
+    if (!session.session?.access_token) {
+      throw new Error('No session')
+    }
+
+    const response = await $fetch('/api/admin/sync-login-times', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.session.access_token}`
+      }
+    })
+
+    if (response.success) {
+      showNotification(`Synced login times for ${response.updated} users`, 'success')
+      // Refresh users to show updated data
+      await fetchUsers()
+    }
+  } catch (error: any) {
+    console.error('Error syncing login times:', error)
+    showNotification(error.data?.message || 'Failed to sync login times', 'error')
+  } finally {
+    syncingLoginTimes.value = false
   }
 }
 
