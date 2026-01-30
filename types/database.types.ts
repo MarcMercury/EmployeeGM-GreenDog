@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -10818,12 +10844,14 @@ export type Database = {
           created_at: string
           current_month_referrals: number | null
           current_quarter_revenue: number | null
+          days_since_last_visit: number | null
           deleted_at: string | null
           description: string | null
           drop_off_materials: boolean | null
           email: string | null
           employee_count: string | null
           events_attended: string[] | null
+          expected_visit_frequency_days: number | null
           facebook_url: string | null
           followup_reason: string | null
           hospital_name: string
@@ -10837,6 +10865,7 @@ export type Database = {
           key_decision_maker_phone: string | null
           key_decision_maker_title: string | null
           last_contact_date: string | null
+          last_referral_date: string | null
           last_sync_date: string | null
           last_visit_date: string | null
           linkedin_url: string | null
@@ -10861,6 +10890,7 @@ export type Database = {
           quarterly_revenue_goal: number | null
           referral_agreement_type: string | null
           referral_value_monthly: number | null
+          relationship_health: number | null
           relationship_score: number | null
           relationship_status: string | null
           revenue_last_year: number | null
@@ -10876,6 +10906,8 @@ export type Database = {
           total_revenue_all_time: number | null
           updated_at: string
           visit_frequency: string | null
+          visit_overdue: boolean | null
+          visit_tier: string | null
           website: string | null
           zone: string | null
         }
@@ -10895,12 +10927,14 @@ export type Database = {
           created_at?: string
           current_month_referrals?: number | null
           current_quarter_revenue?: number | null
+          days_since_last_visit?: number | null
           deleted_at?: string | null
           description?: string | null
           drop_off_materials?: boolean | null
           email?: string | null
           employee_count?: string | null
           events_attended?: string[] | null
+          expected_visit_frequency_days?: number | null
           facebook_url?: string | null
           followup_reason?: string | null
           hospital_name: string
@@ -10914,6 +10948,7 @@ export type Database = {
           key_decision_maker_phone?: string | null
           key_decision_maker_title?: string | null
           last_contact_date?: string | null
+          last_referral_date?: string | null
           last_sync_date?: string | null
           last_visit_date?: string | null
           linkedin_url?: string | null
@@ -10938,6 +10973,7 @@ export type Database = {
           quarterly_revenue_goal?: number | null
           referral_agreement_type?: string | null
           referral_value_monthly?: number | null
+          relationship_health?: number | null
           relationship_score?: number | null
           relationship_status?: string | null
           revenue_last_year?: number | null
@@ -10953,6 +10989,8 @@ export type Database = {
           total_revenue_all_time?: number | null
           updated_at?: string
           visit_frequency?: string | null
+          visit_overdue?: boolean | null
+          visit_tier?: string | null
           website?: string | null
           zone?: string | null
         }
@@ -10972,12 +11010,14 @@ export type Database = {
           created_at?: string
           current_month_referrals?: number | null
           current_quarter_revenue?: number | null
+          days_since_last_visit?: number | null
           deleted_at?: string | null
           description?: string | null
           drop_off_materials?: boolean | null
           email?: string | null
           employee_count?: string | null
           events_attended?: string[] | null
+          expected_visit_frequency_days?: number | null
           facebook_url?: string | null
           followup_reason?: string | null
           hospital_name?: string
@@ -10991,6 +11031,7 @@ export type Database = {
           key_decision_maker_phone?: string | null
           key_decision_maker_title?: string | null
           last_contact_date?: string | null
+          last_referral_date?: string | null
           last_sync_date?: string | null
           last_visit_date?: string | null
           linkedin_url?: string | null
@@ -11015,6 +11056,7 @@ export type Database = {
           quarterly_revenue_goal?: number | null
           referral_agreement_type?: string | null
           referral_value_monthly?: number | null
+          relationship_health?: number | null
           relationship_score?: number | null
           relationship_status?: string | null
           revenue_last_year?: number | null
@@ -11030,6 +11072,8 @@ export type Database = {
           total_revenue_all_time?: number | null
           updated_at?: string
           visit_frequency?: string | null
+          visit_overdue?: boolean | null
+          visit_tier?: string | null
           website?: string | null
           zone?: string | null
         }
@@ -15955,6 +15999,7 @@ export type Database = {
           total_hours: number
         }[]
       }
+      calculate_partner_metrics: { Args: never; Returns: undefined }
       calculate_reliability_score: {
         Args: { p_employee_id: string; p_lookback_days?: number }
         Returns: number
@@ -16045,6 +16090,19 @@ export type Database = {
           link_type: string
           token: string
         }[]
+      }
+      create_notification: {
+        Args: {
+          p_action_url?: string
+          p_body: string
+          p_category: string
+          p_data?: Json
+          p_profile_id: string
+          p_requires_action?: boolean
+          p_title: string
+          p_type: string
+        }
+        Returns: string
       }
       create_schedule_draft:
         | {
@@ -16475,6 +16533,7 @@ export type Database = {
         Args: { p_schedule_week_id: string }
         Returns: boolean
       }
+      recalculate_partner_metrics: { Args: never; Returns: undefined }
       revoke_person_access: {
         Args: { p_person_id: string; p_reason?: string }
         Returns: boolean
@@ -16836,6 +16895,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       ce_event_format: ["live", "webinar", "hybrid", "recorded"],
