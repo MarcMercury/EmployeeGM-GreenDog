@@ -1159,17 +1159,21 @@
     </v-dialog>
 
     <!-- UPLOAD EZYVET REPORT DIALOG -->
-    <v-dialog v-model="showUploadDialog" max-width="600">
+    <v-dialog v-model="showUploadDialog" max-width="650">
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-file-upload</v-icon>
-          Upload EzyVet Referrer Revenue Report
+          Upload EzyVet Referral Report
         </v-card-title>
         <v-card-text>
-          <p class="text-body-2 text-grey-darken-1 mb-4">
-            Upload a "Referrer Revenue" CSV from EzyVet to automatically update partner referral stats.
-            Clinics will be matched by name and their visit counts and revenue totals will be updated.
-          </p>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+            <strong>Supports two report types:</strong>
+            <ul class="mt-1 mb-0" style="padding-left: 20px;">
+              <li><strong>Referral Statistics</strong> - Updates visit counts &amp; last visit date</li>
+              <li><strong>Referrer Revenue</strong> - Updates revenue totals only</li>
+            </ul>
+            <div class="text-caption mt-1">The report type is auto-detected from the CSV header.</div>
+          </v-alert>
           
           <!-- Clear Stats Button -->
           <v-btn
@@ -1205,24 +1209,31 @@
 
           <!-- Results -->
           <v-alert v-if="uploadResult" :type="uploadResult.success ? 'success' : 'error'" class="mt-4">
-            <v-alert-title>{{ uploadResult.success ? 'Upload Successful' : 'Upload Failed' }}</v-alert-title>
+            <v-alert-title class="d-flex align-center gap-2">
+              {{ uploadResult.success ? 'Upload Successful' : 'Upload Failed' }}
+              <v-chip v-if="uploadResult.reportType" size="small" :color="uploadResult.reportType === 'statistics' ? 'primary' : 'success'" variant="flat">
+                {{ uploadResult.reportType === 'statistics' ? 'Statistics Report' : 'Revenue Report' }}
+              </v-chip>
+            </v-alert-title>
             <div v-if="uploadResult.success">
+              <div class="text-caption mb-2" v-if="uploadResult.reportType === 'statistics'">
+                Updated visit counts and last visit dates (revenue unchanged)
+              </div>
+              <div class="text-caption mb-2" v-else>
+                Updated revenue totals (visit counts unchanged)
+              </div>
               <div class="d-flex flex-wrap gap-4 my-2">
                 <div>
                   <div class="text-h6 font-weight-bold">{{ uploadResult.updated }}</div>
                   <div class="text-caption">Partners Updated</div>
                 </div>
-                <div>
-                  <div class="text-h6 font-weight-bold">{{ uploadResult.visitorsAdded }}</div>
-                  <div class="text-caption">Visits Added</div>
+                <div v-if="uploadResult.reportType === 'statistics'">
+                  <div class="text-h6 font-weight-bold">{{ uploadResult.visitorsAdded?.toLocaleString() }}</div>
+                  <div class="text-caption">Total Visits</div>
                 </div>
-                <div>
+                <div v-if="uploadResult.reportType === 'revenue'">
                   <div class="text-h6 font-weight-bold">${{ uploadResult.revenueAdded?.toLocaleString() }}</div>
                   <div class="text-caption">Revenue Added</div>
-                </div>
-                <div>
-                  <div class="text-h6 font-weight-bold text-warning">{{ uploadResult.skipped }}</div>
-                  <div class="text-caption">Unknown Clinics Skipped</div>
                 </div>
                 <div>
                   <div class="text-h6 font-weight-bold text-info">{{ uploadResult.notMatched }}</div>
