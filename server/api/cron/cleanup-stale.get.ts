@@ -13,7 +13,7 @@
  */
 
 import { serverSupabaseServiceRole } from '#supabase/server'
-import { logger } from '~/server/utils/logger'
+// logger is auto-imported from server/utils/logger.ts
 
 export default defineEventHandler(async (event) => {
   const startTime = Date.now()
