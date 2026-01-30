@@ -190,6 +190,13 @@
               <span v-else class="text-grey">—</span>
             </template>
 
+            <template #item.last_referral_date="{ item }">
+              <div v-if="item.last_referral_date">
+                {{ formatDate(item.last_referral_date) }}
+              </div>
+              <span v-else class="text-grey">Never</span>
+            </template>
+
             <template #item.last_visit_date="{ item }">
               <div v-if="item.last_visit_date">
                 {{ formatDate(item.last_visit_date) }}
@@ -198,13 +205,6 @@
                 </div>
               </div>
               <span v-else class="text-grey">Never</span>
-            </template>
-
-            <template #item.next_followup_date="{ item }">
-              <div v-if="item.next_followup_date" :class="isPastDue(item.next_followup_date) ? 'text-error' : ''">
-                {{ formatDate(item.next_followup_date) }}
-              </div>
-              <span v-else class="text-grey">—</span>
             </template>
 
             <template #item.actions="{ item }">
@@ -599,6 +599,9 @@
                         </span>
                         <v-chip v-if="isOverdue(selectedPartner)" size="x-small" color="error" class="ml-2">Overdue</v-chip>
                       </div>
+                      <div class="mb-1">
+                        <strong>Last Referral:</strong> {{ selectedPartner.last_referral_date ? formatDate(selectedPartner.last_referral_date) : 'Never' }}
+                      </div>
                       <div class="mb-1"><strong>Last Contact:</strong> {{ selectedPartner.last_contact_date ? formatDate(selectedPartner.last_contact_date) : 'Never' }}</div>
                       <div class="mb-1"><strong>Next Follow-up:</strong> {{ selectedPartner.next_followup_date ? formatDate(selectedPartner.next_followup_date) : 'Not set' }}</div>
                       <div class="mb-1"><strong>Visit Frequency:</strong> {{ selectedPartner.visit_frequency || 'monthly' }}</div>
@@ -677,6 +680,10 @@
                       <div class="mb-1">
                         <v-icon size="16" :color="selectedPartner.last_visit_date ? 'success' : 'grey'">mdi-check-circle</v-icon>
                         Last Visit: {{ selectedPartner.last_visit_date ? formatDate(selectedPartner.last_visit_date) : 'Never' }}
+                      </div>
+                      <div class="mb-1">
+                        <v-icon size="16" :color="selectedPartner.last_referral_date ? 'success' : 'grey'">mdi-check-circle</v-icon>
+                        Last Referral: {{ selectedPartner.last_referral_date ? formatDate(selectedPartner.last_referral_date) : 'Never' }}
                       </div>
                       <div class="mb-1">
                         <v-icon size="16" :color="selectedPartner.last_contact_date ? 'success' : 'grey'">mdi-check-circle</v-icon>
@@ -1222,7 +1229,7 @@
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
             <strong>Supports two report types:</strong>
             <ul class="mt-1 mb-0" style="padding-left: 20px;">
-              <li><strong>Referral Statistics</strong> - Updates visit counts &amp; last visit date</li>
+              <li><strong>Referral Statistics</strong> - Updates visit counts &amp; last referral date</li>
               <li><strong>Referrer Revenue</strong> - Updates revenue totals only</li>
             </ul>
             <div class="text-caption mt-1">The report type is auto-detected from the CSV header.</div>
@@ -1270,7 +1277,7 @@
             </v-alert-title>
             <div v-if="uploadResult.success">
               <div class="text-caption mb-2" v-if="uploadResult.reportType === 'statistics'">
-                Updated visit counts and last visit dates (revenue unchanged)
+                Updated visit counts and last referral dates (revenue unchanged)
               </div>
               <div class="text-caption mb-2" v-else>
                 Updated revenue totals (visit counts unchanged)
@@ -1538,8 +1545,8 @@ const exportColumns = [
   { key: 'clinic_type', title: 'Clinic Type' },
   { key: 'referral_count', title: 'Total Referrals' },
   { key: 'revenue', title: 'Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
+  { key: 'last_referral_date', title: 'Last Referral' },
   { key: 'last_visit_date', title: 'Last Visit' },
-  { key: 'next_followup_date', title: 'Next Follow-up' },
   { key: 'notes', title: 'Notes' }
 ]
 
@@ -1764,8 +1771,8 @@ const tableHeaders = [
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Referrals', key: 'total_referrals_all_time', sortable: true },
   { title: 'Revenue', key: 'total_revenue_all_time', sortable: true },
+  { title: 'Last Referral', key: 'last_referral_date', sortable: true },
   { title: 'Last Visit', key: 'last_visit_date', sortable: true },
-  { title: 'Next Follow-up', key: 'next_followup_date', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false }
 ]
 
@@ -2375,7 +2382,7 @@ async function addNote() {
 
 function exportPartners() {
   const csv = [
-    ['Name', 'Tier', 'Priority', 'Zone', 'Status', 'Phone', 'Email', 'Last Visit', 'Next Follow-up'].join(','),
+    ['Name', 'Tier', 'Priority', 'Zone', 'Status', 'Phone', 'Email', 'Last Referral', 'Last Visit'].join(','),
     ...filteredPartners.value.map(p => [
       `"${p.name || ''}"`,
       p.tier || '',
@@ -2384,8 +2391,8 @@ function exportPartners() {
       p.status || '',
       p.phone || '',
       p.email || '',
-      p.last_visit_date || '',
-      p.next_followup_date || ''
+      p.last_referral_date || '',
+      p.last_visit_date || ''
     ].join(','))
   ].join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })

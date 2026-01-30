@@ -452,9 +452,10 @@ export default defineEventHandler(async (event) => {
             last_sync_date: new Date().toISOString()
           }
           
-          // Update both last_visit_date and last_contact_date with the last referral date from the report
+          // Update last_referral_date (when their referred client visited us) from EzyVet report
+          // This is separate from last_visit_date which tracks when WE visited THEM
           if (entry.lastReferralDate) {
-            updateData.last_visit_date = entry.lastReferralDate
+            updateData.last_referral_date = entry.lastReferralDate
             updateData.last_contact_date = entry.lastReferralDate
           }
           
