@@ -2628,8 +2628,10 @@ async function saveQuickVisit() {
     return
   }
   
-  // Ensure we have a valid auth user
-  const userId = user.value?.id
+  // Get the current session to ensure we have a valid auth user
+  const { data: sessionData } = await supabase.auth.getSession()
+  const userId = sessionData?.session?.user?.id || user.value?.id
+  
   if (!userId) {
     snackbar.message = 'Session expired. Please refresh the page and try again.'
     snackbar.color = 'error'
