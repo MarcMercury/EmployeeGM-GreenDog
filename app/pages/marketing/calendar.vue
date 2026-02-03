@@ -582,18 +582,64 @@
 
           <v-divider class="my-4" />
 
-          <div v-if="isAdmin" class="text-center">
+          <div v-if="isAdmin" class="d-flex flex-column gap-2">
             <v-btn 
               color="primary" 
               :to="`/growth/events`"
               prepend-icon="mdi-arrow-right"
+              block
             >
               View Full Details
+            </v-btn>
+            <v-btn 
+              color="error" 
+              variant="outlined"
+              prepend-icon="mdi-delete"
+              :loading="deletingEvent"
+              block
+              @click="confirmDeleteEvent"
+            >
+              Delete Event
             </v-btn>
           </div>
         </div>
       </template>
     </v-navigation-drawer>
+
+    <!-- Delete Event Confirmation Dialog -->
+    <v-dialog v-model="deleteDialog" max-width="450">
+      <v-card>
+        <v-card-title class="text-h6 d-flex align-center">
+          <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+          Delete Event
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-3">
+            Are you sure you want to delete <strong>"{{ selectedEvent?.name }}"</strong>?
+          </p>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-0">
+            <template #text>
+              <p class="text-body-2 mb-0">
+                This will permanently remove the event from the calendar. 
+                Any inventory allocated to this event will be restored to its original location.
+              </p>
+            </template>
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn 
+            color="error" 
+            variant="flat"
+            :loading="deletingEvent"
+            @click="deleteEvent"
+          >
+            Delete Event
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Add/Edit Note Dialog -->
     <v-dialog v-model="noteDialog" max-width="500">
@@ -725,6 +771,10 @@ const currentDate = ref(new Date())
 const drawer = ref(false)
 const selectedEvent = ref<MarketingEvent | null>(null)
 const viewMode = ref<'month' | 'week'>('month')
+
+// Delete event state
+const deleteDialog = ref(false)
+const deletingEvent = ref(false)
 
 // Note dialog state
 const noteDialog = ref(false)
@@ -966,6 +1016,45 @@ const openEventDrawer = (event: MarketingEvent) => {
 
 const createEventRedirect = () => {
   router.push('/growth/events')
+}
+
+// Delete event functions
+const confirmDeleteEvent = () => {
+  deleteDialog.value = true
+}
+
+const deleteEvent = async () => {
+  if (!selectedEvent.value) return
+  
+  deletingEvent.value = true
+  try {
+    // Call the database function that handles inventory restoration
+    const { data, error } = await client.rpc('delete_marketing_event', {
+      p_event_id: selectedEvent.value.id
+    })
+    
+    if (error) throw error
+    
+    // Check the result
+    if (data && data.success) {
+      // Close dialogs
+      deleteDialog.value = false
+      drawer.value = false
+      selectedEvent.value = null
+      
+      // Refresh events
+      await fetchEvents()
+      
+      // Show success message (if using a notification system)
+      console.log(`Event deleted. ${data.inventory_items_restored} inventory items restored.`)
+    } else {
+      console.error('Delete failed:', data?.error || 'Unknown error')
+    }
+  } catch (err) {
+    console.error('Error deleting event:', err)
+  } finally {
+    deletingEvent.value = false
+  }
 }
 
 // Format date for menu display (e.g., "Feb 3")
