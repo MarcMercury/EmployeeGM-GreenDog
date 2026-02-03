@@ -137,12 +137,21 @@ export default defineEventHandler(async (event) => {
 
   try {
     // Extract text from document
-    const text = await extractTextFromDocument(fileField.data, mimeType)
+    let text: string
+    try {
+      text = await extractTextFromDocument(fileField.data, mimeType)
+    } catch (extractErr: any) {
+      console.error('[AI Parse] Text extraction error:', extractErr.message)
+      throw createError({
+        statusCode: 400,
+        message: 'Could not read document. Please ensure the file is not corrupted or password-protected.'
+      })
+    }
 
     if (!text || text.length < 50) {
       throw createError({ 
         statusCode: 400, 
-        message: 'Could not extract sufficient text from document. Please ensure the file is not image-only.' 
+        message: 'Could not extract sufficient text from document. Please ensure the file is not image-only or try a different format.' 
       })
     }
 
@@ -189,19 +198,19 @@ For veterinary-specific skills and certifications, use standard terminology.`
     // Add the raw text for reference
     result.rawText = text.substring(0, 2000) // Limit stored text
 
-    // Log usage
-    await logAIUsage(client, {
+    // Log usage (non-blocking, uses service role)
+    logAIUsage(supabaseAdmin, {
       userId: user.id,
       feature: 'document_parse',
       documentType: result.documentType,
       model: 'gpt-4-turbo-preview',
       confidence: result.confidence
-    })
+    }).catch(err => console.error('[AI Parse] Audit log failed:', err))
 
     return result
 
   } catch (err: any) {
-    console.error('[AI Parse] Error:', err)
+    console.error('[AI Parse] Error:', err.message || err)
     
     if (err.statusCode) {
       throw err
@@ -209,7 +218,7 @@ For veterinary-specific skills and certifications, use standard terminology.`
     
     throw createError({ 
       statusCode: 500, 
-      message: 'Failed to parse document' 
+      message: err.message || 'Failed to parse document' 
     })
   }
 })
