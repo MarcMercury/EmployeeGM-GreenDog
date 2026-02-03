@@ -967,7 +967,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
               
               <v-card v-for="(item, index) in selectedInventoryItems" :key="index" variant="outlined" class="mb-2 pa-3">
                 <v-row dense align="center">
-                  <v-col cols="12" md="4">
+                  <v-col cols="12" md="5">
                     <v-autocomplete
                       v-model="item.inventory_item_id"
                       :items="inventoryItems"
@@ -993,7 +993,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                       </template>
                     </v-autocomplete>
                   </v-col>
-                  <v-col cols="4" md="2">
+                  <v-col cols="3" md="2" style="min-width: 90px;">
                     <v-text-field
                       v-model.number="item.quantity_used"
                       label="Qty"
@@ -1002,9 +1002,10 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                       variant="outlined"
                       density="compact"
                       hide-details
+                      class="qty-input"
                     />
                   </v-col>
-                  <v-col cols="6" md="3">
+                  <v-col cols="6" md="4">
                     <v-select
                       v-model="item.location"
                       :items="locationOptions"
@@ -1014,7 +1015,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                       hide-details
                     />
                   </v-col>
-                  <v-col cols="2" md="1" class="d-flex align-center justify-center">
+                  <v-col cols="3" md="1" class="d-flex align-center justify-center">
                     <v-btn icon variant="text" size="small" color="error" @click="removeSelectedInventoryItem(index)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
