@@ -72,110 +72,168 @@
           :key="weekIndex" 
           class="calendar-week d-flex border-b"
         >
-          <div 
-            v-for="(day, dayIndex) in week" 
-            :key="`${weekIndex}-${dayIndex}`"
-            class="calendar-day flex-grow-1 pa-2"
-            :class="{
-              'bg-grey-lighten-4': !day.isCurrentMonth,
-              'bg-primary-lighten-5': day.isToday
-            }"
-            style="min-height: 120px; width: 14.28%;"
-          >
-            <!-- Day Number with Create Event Menu -->
-            <div class="d-flex justify-space-between align-center mb-1">
-              <v-menu v-if="hasCreateAccess" location="bottom start">
-                <template #activator="{ props: menuProps }">
-                  <span 
-                    v-bind="menuProps"
-                    class="text-caption font-weight-medium day-number-clickable"
-                    :class="{
-                      'text-grey': !day.isCurrentMonth,
-                      'text-primary font-weight-bold': day.isToday
-                    }"
-                  >
-                    {{ day.date.getDate() }}
-                  </span>
-                </template>
-                <v-list density="compact" class="create-event-menu">
-                  <v-list-subheader>Create on {{ formatShortDate(day.date) }}</v-list-subheader>
-                  <v-list-item
-                    prepend-icon="mdi-calendar-plus"
-                    title="Marketing Event"
-                    subtitle="Street fair, open house, etc."
-                    @click="createEventOnDate(day.date)"
-                  />
-                  <v-list-item
-                    prepend-icon="mdi-school"
-                    title="CE Event"
-                    subtitle="Continuing education event"
-                    @click="createCEEventOnDate(day.date)"
-                  />
-                  <v-divider class="my-1" />
-                  <v-list-item
-                    prepend-icon="mdi-note-plus"
-                    title="Add Note"
-                    subtitle="Add a colored note to this date"
-                    @click="openNoteDialog(day.date)"
-                  />
-                </v-list>
-              </v-menu>
-              <span 
-                v-else
-                class="text-caption font-weight-medium"
-                :class="{
-                  'text-grey': !day.isCurrentMonth,
-                  'text-primary font-weight-bold': day.isToday
-                }"
-              >
-                {{ day.date.getDate() }}
-              </span>
-              <v-chip
-                v-if="day.isToday"
-                color="primary"
-                size="x-small"
-                label
-              >
-                Today
-              </v-chip>
-            </div>
+          <template v-for="(day, dayIndex) in week" :key="`${weekIndex}-${dayIndex}`">
+            <!-- Clickable day cell with menu for users with create access -->
+            <v-menu v-if="hasCreateAccess" location="bottom start">
+              <template #activator="{ props: menuProps }">
+                <div 
+                  v-bind="menuProps"
+                  class="calendar-day flex-grow-1 pa-2 cursor-pointer day-cell-clickable"
+                  :class="{
+                    'bg-grey-lighten-4': !day.isCurrentMonth,
+                    'bg-primary-lighten-5': day.isToday
+                  }"
+                  style="min-height: 120px; width: 14.28%;"
+                >
+                  <!-- Day Number -->
+                  <div class="d-flex justify-space-between align-center mb-1">
+                    <span 
+                      class="text-caption font-weight-medium"
+                      :class="{
+                        'text-grey': !day.isCurrentMonth,
+                        'text-primary font-weight-bold': day.isToday
+                      }"
+                    >
+                      {{ day.date.getDate() }}
+                    </span>
+                    <v-chip
+                      v-if="day.isToday"
+                      color="primary"
+                      size="x-small"
+                      label
+                    >
+                      Today
+                    </v-chip>
+                  </div>
 
-            <!-- Events for this day -->
-            <div class="calendar-events">
-              <!-- Notes for this day -->
-              <div
-                v-for="note in getNotesForDate(day.date)"
-                :key="'note-' + note.id"
-                class="calendar-note mb-1 pa-1 rounded cursor-pointer"
-                :class="`bg-${note.color}-lighten-4 text-${note.color}-darken-3`"
-                @click="openNoteDialog(day.date, note)"
-              >
-                <div class="d-flex align-center gap-1">
-                  <v-icon size="10">mdi-note</v-icon>
-                  <span class="text-caption font-weight-medium text-truncate">
-                    {{ note.title }}
-                  </span>
+                  <!-- Events for this day -->
+                  <div class="calendar-events" @click.stop>
+                    <!-- Notes for this day -->
+                    <div
+                      v-for="note in getNotesForDate(day.date)"
+                      :key="'note-' + note.id"
+                      class="calendar-note mb-1 pa-1 rounded cursor-pointer"
+                      :class="`bg-${note.color}-lighten-4 text-${note.color}-darken-3`"
+                      @click.stop="openNoteDialog(day.date, note)"
+                    >
+                      <div class="d-flex align-center gap-1">
+                        <v-icon size="10">mdi-note</v-icon>
+                        <span class="text-caption font-weight-medium text-truncate">
+                          {{ note.title }}
+                        </span>
+                      </div>
+                    </div>
+                    <!-- Events for this day -->
+                    <div
+                      v-for="event in getEventsForDate(day.date)"
+                      :key="event.id"
+                      class="calendar-event mb-1 pa-1 rounded"
+                      :class="[getEventClass(event), { 'cursor-pointer': true }]"
+                      @click.stop="openEventDrawer(event)"
+                    >
+                      <div class="d-flex align-center gap-1">
+                        <span class="text-caption font-weight-medium text-truncate">
+                          {{ event.name }}
+                        </span>
+                      </div>
+                      <div v-if="event.start_time" class="text-caption opacity-70">
+                        {{ formatTime(event.start_time) }}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              </template>
+              <v-list density="compact" class="create-event-menu">
+                <v-list-subheader>Create on {{ formatShortDate(day.date) }}</v-list-subheader>
+                <v-list-item
+                  prepend-icon="mdi-calendar-plus"
+                  title="Marketing Event"
+                  subtitle="Street fair, open house, etc."
+                  @click="createEventOnDate(day.date)"
+                />
+                <v-list-item
+                  prepend-icon="mdi-school"
+                  title="CE Event"
+                  subtitle="Continuing education event"
+                  @click="createCEEventOnDate(day.date)"
+                />
+                <v-divider class="my-1" />
+                <v-list-item
+                  prepend-icon="mdi-note-plus"
+                  title="Add Note"
+                  subtitle="Add a colored note to this date"
+                  @click="openNoteDialog(day.date)"
+                />
+              </v-list>
+            </v-menu>
+            <!-- Non-clickable version for users without create access -->
+            <div 
+              v-else
+              class="calendar-day flex-grow-1 pa-2"
+              :class="{
+                'bg-grey-lighten-4': !day.isCurrentMonth,
+                'bg-primary-lighten-5': day.isToday
+              }"
+              style="min-height: 120px; width: 14.28%;"
+            >
+              <!-- Day Number -->
+              <div class="d-flex justify-space-between align-center mb-1">
+                <span 
+                  class="text-caption font-weight-medium"
+                  :class="{
+                    'text-grey': !day.isCurrentMonth,
+                    'text-primary font-weight-bold': day.isToday
+                  }"
+                >
+                  {{ day.date.getDate() }}
+                </span>
+                <v-chip
+                  v-if="day.isToday"
+                  color="primary"
+                  size="x-small"
+                  label
+                >
+                  Today
+                </v-chip>
               </div>
+
               <!-- Events for this day -->
-              <div
-                v-for="event in getEventsForDate(day.date)"
-                :key="event.id"
-                class="calendar-event mb-1 pa-1 rounded"
-                :class="[getEventClass(event), { 'cursor-pointer': true }]"
-                @click="openEventDrawer(event)"
-              >
-                <div class="d-flex align-center gap-1">
-                  <span class="text-caption font-weight-medium text-truncate">
-                    {{ event.name }}
-                  </span>
+              <div class="calendar-events">
+                <!-- Notes for this day -->
+                <div
+                  v-for="note in getNotesForDate(day.date)"
+                  :key="'note-' + note.id"
+                  class="calendar-note mb-1 pa-1 rounded cursor-pointer"
+                  :class="`bg-${note.color}-lighten-4 text-${note.color}-darken-3`"
+                  @click="openNoteDialog(day.date, note)"
+                >
+                  <div class="d-flex align-center gap-1">
+                    <v-icon size="10">mdi-note</v-icon>
+                    <span class="text-caption font-weight-medium text-truncate">
+                      {{ note.title }}
+                    </span>
+                  </div>
                 </div>
-                <div v-if="event.start_time" class="text-caption opacity-70">
-                  {{ formatTime(event.start_time) }}
+                <!-- Events for this day -->
+                <div
+                  v-for="event in getEventsForDate(day.date)"
+                  :key="event.id"
+                  class="calendar-event mb-1 pa-1 rounded"
+                  :class="[getEventClass(event), { 'cursor-pointer': true }]"
+                  @click="openEventDrawer(event)"
+                >
+                  <div class="d-flex align-center gap-1">
+                    <span class="text-caption font-weight-medium text-truncate">
+                      {{ event.name }}
+                    </span>
+                  </div>
+                  <div v-if="event.start_time" class="text-caption opacity-70">
+                    {{ formatTime(event.start_time) }}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </template>
         </div>
       </div>
     </v-card>
@@ -957,6 +1015,19 @@ onMounted(() => {
 
 .bg-primary-lighten-5 {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+/* Clickable day cell styling - entire cell is clickable */
+.day-cell-clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.day-cell-clickable:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08) !important;
+  border-color: rgba(var(--v-theme-primary), 0.3);
+  box-shadow: inset 0 0 0 2px rgba(var(--v-theme-primary), 0.1);
 }
 
 /* Clickable day number styling */
