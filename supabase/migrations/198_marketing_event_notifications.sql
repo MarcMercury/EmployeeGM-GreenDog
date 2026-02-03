@@ -27,7 +27,6 @@ BEGIN
     SELECT id, first_name, last_name
     FROM profiles
     WHERE role IN ('super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin')
-      AND status = 'active'
   LOOP
     INSERT INTO notifications (
       profile_id,
