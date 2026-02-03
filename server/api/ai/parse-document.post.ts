@@ -80,20 +80,27 @@ export default defineEventHandler(async (event) => {
     
     const user = await serverSupabaseUser(event)
 
-    console.log('[parse-document] User from auth:', user?.id || 'null')
+    console.log('[parse-document] User from auth:', JSON.stringify(user, null, 2))
     
     if (!user) {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
-    console.log('[parse-document] Processing request for user:', user.id)
+    // The user object from serverSupabaseUser has 'id' property for the auth user id
+    const authUserId = user.id
+    if (!authUserId) {
+      console.error('[parse-document] User object has no id property:', Object.keys(user))
+      throw createError({ statusCode: 401, message: 'Invalid user session' })
+    }
+
+    console.log('[parse-document] Processing request for user:', authUserId)
 
     // Check user has recruiting or admin access
     // Use service role to bypass RLS when checking profile role
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, role')
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', authUserId)
       .maybeSingle()
 
     if (profileError) {
@@ -102,7 +109,7 @@ export default defineEventHandler(async (event) => {
     }
 
     if (!profile) {
-      console.error('[parse-document] No profile found for auth_user_id:', user.id)
+      console.error('[parse-document] No profile found for auth_user_id:', authUserId)
       throw createError({ statusCode: 404, message: 'User profile not found' })
     }
 
@@ -234,7 +241,7 @@ For veterinary-specific skills and certifications, use standard terminology.`
 
     // Log usage (non-blocking, uses service role)
     logAIUsage(supabaseAdmin, {
-      userId: user.id,
+      userId: authUserId,
       feature: 'document_parse',
       documentType: result.documentType,
       model: 'gpt-4-turbo-preview',
