@@ -104,6 +104,10 @@ export default defineEventHandler(async (event) => {
 
     // Get OpenAI API key
     const config = useRuntimeConfig()
+    console.log('[parse-document] Runtime config keys:', Object.keys(config))
+    console.log('[parse-document] openaiApiKey exists:', !!config.openaiApiKey)
+    console.log('[parse-document] process.env.OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY)
+    
     const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
 
     if (!openaiKey) {
@@ -113,6 +117,8 @@ export default defineEventHandler(async (event) => {
         message: 'AI service not configured. Please add OPENAI_API_KEY.' 
       })
     }
+    
+    console.log('[parse-document] OpenAI key found, length:', openaiKey.length)
 
     // Read multipart form data
     console.log('[parse-document] Reading multipart form data...')
