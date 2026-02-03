@@ -993,18 +993,19 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                       </template>
                     </v-autocomplete>
                   </v-col>
-                  <v-col cols="6" md="2">
+                  <v-col cols="6" md="3">
                     <v-text-field
                       v-model.number="item.quantity_used"
-                      label="Qty"
+                      label="Avail:"
                       type="number"
                       min="1"
                       variant="outlined"
                       density="compact"
                       hide-details
+                      style="min-width: 100px;"
                     />
                   </v-col>
-                  <v-col cols="6" md="3">
+                  <v-col cols="6" md="2">
                     <v-select
                       v-model="item.location"
                       :items="locationOptions"
