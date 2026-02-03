@@ -34,8 +34,8 @@ CREATE POLICY "calendar_notes_insert_policy" ON marketing_calendar_notes
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin')
+      WHERE profiles.auth_user_id = auth.uid()
+      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin', 'super_admin', 'sup_admin')
     )
   );
 
@@ -44,8 +44,8 @@ CREATE POLICY "calendar_notes_update_policy" ON marketing_calendar_notes
   USING (
     EXISTS (
       SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin')
+      WHERE profiles.auth_user_id = auth.uid()
+      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin', 'super_admin', 'sup_admin')
     )
   );
 
@@ -54,8 +54,8 @@ CREATE POLICY "calendar_notes_delete_policy" ON marketing_calendar_notes
   USING (
     EXISTS (
       SELECT 1 FROM profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin')
+      WHERE profiles.auth_user_id = auth.uid()
+      AND profiles.role IN ('admin', 'manager', 'marketing_admin', 'hr_admin', 'super_admin', 'sup_admin')
     )
   );
 
