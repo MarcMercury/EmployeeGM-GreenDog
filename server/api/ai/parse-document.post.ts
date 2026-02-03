@@ -9,7 +9,7 @@
  * POST /api/ai/parse-document
  */
 
-import { serverSupabaseClient, serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 interface ExtractedPerson {
   firstName: string | null
@@ -61,87 +61,96 @@ interface DocumentParseResult {
 }
 
 export default defineEventHandler(async (event) => {
-  // Use service role for database operations (bypasses RLS)
-  const supabaseAdmin = await serverSupabaseServiceRole(event)
-  const client = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
-
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
-
-  // Check user has recruiting or admin access
-  // Use service role to bypass RLS when checking profile role
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (profileError) {
-    console.error('[parse-document] Profile fetch error:', profileError.message)
-    throw createError({ statusCode: 500, message: 'Failed to verify user profile' })
-  }
-
-  const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
-  const userRole = profile?.role as string
-  if (!profile || !recruitingRoles.includes(userRole)) {
-    throw createError({ statusCode: 403, message: `Access denied. Role: ${userRole || 'unknown'}` })
-  }
-
-  // Get OpenAI API key
-  const config = useRuntimeConfig()
-  const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
-
-  if (!openaiKey) {
-    throw createError({ 
-      statusCode: 503, 
-      message: 'AI service not configured. Please add OPENAI_API_KEY.' 
-    })
-  }
-
-  // Read multipart form data
-  const formData = await readMultipartFormData(event)
-  
-  if (!formData || formData.length === 0) {
-    throw createError({ statusCode: 400, message: 'No file provided' })
-  }
-
-  const fileField = formData.find(f => f.name === 'file')
-  const documentTypeHint = formData.find(f => f.name === 'type')?.data?.toString()
-
-  if (!fileField || !fileField.data) {
-    throw createError({ statusCode: 400, message: 'No file field found' })
-  }
-
-  // Validate file type
-  const mimeType = fileField.type || 'application/octet-stream'
-  const allowedTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/plain'
-  ]
-
-  if (!allowedTypes.includes(mimeType)) {
-    throw createError({ 
-      statusCode: 400, 
-      message: 'Unsupported file type. Please upload PDF, DOC, DOCX, or TXT.' 
-    })
-  }
-
-  // File size limit (5MB)
-  if (fileField.data.length > 5 * 1024 * 1024) {
-    throw createError({ statusCode: 400, message: 'File too large. Maximum 5MB.' })
-  }
-
   try {
+    // Use service role for database operations (bypasses RLS)
+    const supabaseAdmin = await serverSupabaseServiceRole(event)
+    const user = await serverSupabaseUser(event)
+
+    if (!user) {
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    }
+
+    console.log('[parse-document] Processing request for user:', user.id)
+
+    // Check user has recruiting or admin access
+    // Use service role to bypass RLS when checking profile role
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (profileError) {
+      console.error('[parse-document] Profile fetch error:', profileError.message)
+      throw createError({ statusCode: 500, message: 'Failed to verify user profile' })
+    }
+
+    console.log('[parse-document] User role:', profile?.role)
+
+    const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
+    const userRole = profile?.role as string
+    if (!profile || !recruitingRoles.includes(userRole)) {
+      throw createError({ statusCode: 403, message: `Access denied. Role: ${userRole || 'unknown'}` })
+    }
+
+    // Get OpenAI API key
+    const config = useRuntimeConfig()
+    const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
+
+    if (!openaiKey) {
+      console.error('[parse-document] No OpenAI API key configured')
+      throw createError({ 
+        statusCode: 503, 
+        message: 'AI service not configured. Please add OPENAI_API_KEY.' 
+      })
+    }
+
+    // Read multipart form data
+    console.log('[parse-document] Reading multipart form data...')
+    const formData = await readMultipartFormData(event)
+    
+    if (!formData || formData.length === 0) {
+      throw createError({ statusCode: 400, message: 'No file provided' })
+    }
+
+    const fileField = formData.find(f => f.name === 'file')
+    const documentTypeHint = formData.find(f => f.name === 'documentType')?.data?.toString()
+
+    if (!fileField || !fileField.data) {
+      throw createError({ statusCode: 400, message: 'No file field found' })
+    }
+
+    console.log('[parse-document] File received:', fileField.filename, 'Size:', fileField.data.length, 'Type:', fileField.type)
+
+    // Validate file type
+    const mimeType = fileField.type || 'application/octet-stream'
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ]
+
+    if (!allowedTypes.includes(mimeType)) {
+      throw createError({ 
+        statusCode: 400, 
+        message: `Unsupported file type: ${mimeType}. Please upload PDF, DOC, DOCX, or TXT.` 
+      })
+    }
+
+    // File size limit (5MB)
+    if (fileField.data.length > 5 * 1024 * 1024) {
+      throw createError({ statusCode: 400, message: 'File too large. Maximum 5MB.' })
+    }
+
     // Extract text from document
+    console.log('[parse-document] Extracting text from document...')
     let text: string
     try {
       text = await extractTextFromDocument(fileField.data, mimeType)
+      console.log('[parse-document] Extracted text length:', text?.length || 0)
     } catch (extractErr: any) {
-      console.error('[AI Parse] Text extraction error:', extractErr.message)
+      console.error('[AI Parse] Text extraction error:', extractErr.message || extractErr)
       throw createError({
         statusCode: 400,
         message: 'Could not read document. Please ensure the file is not corrupted or password-protected.'
@@ -151,7 +160,7 @@ export default defineEventHandler(async (event) => {
     if (!text || text.length < 50) {
       throw createError({ 
         statusCode: 400, 
-        message: 'Could not extract sufficient text from document. Please ensure the file is not image-only or try a different format.' 
+        message: `Could not extract sufficient text from document (got ${text?.length || 0} chars). Please ensure the file is not image-only or try a different format.` 
       })
     }
 
@@ -159,6 +168,7 @@ export default defineEventHandler(async (event) => {
     const prompt = buildExtractionPrompt(text, documentTypeHint)
 
     // Call OpenAI
+    console.log('[parse-document] Calling OpenAI API...')
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -181,22 +191,24 @@ For veterinary-specific skills and certifications, use standard terminology.`
           }
         ],
         response_format: { type: 'json_object' },
-        temperature: 0.1, // Very low for consistent extraction
+        temperature: 0.1,
         max_tokens: 3000
       })
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('[AI Parse] OpenAI error:', error)
-      throw createError({ statusCode: 503, message: 'AI service temporarily unavailable' })
+      const errorBody = await response.text()
+      console.error('[AI Parse] OpenAI error:', response.status, errorBody)
+      throw createError({ statusCode: 503, message: `AI service error: ${response.status}` })
     }
 
     const completion = await response.json()
+    console.log('[parse-document] OpenAI response received')
+    
     const result = JSON.parse(completion.choices[0].message.content) as DocumentParseResult
     
     // Add the raw text for reference
-    result.rawText = text.substring(0, 2000) // Limit stored text
+    result.rawText = text.substring(0, 2000)
 
     // Log usage (non-blocking, uses service role)
     logAIUsage(supabaseAdmin, {
@@ -207,10 +219,11 @@ For veterinary-specific skills and certifications, use standard terminology.`
       confidence: result.confidence
     }).catch(err => console.error('[AI Parse] Audit log failed:', err))
 
+    console.log('[parse-document] Success - returning result')
     return result
 
   } catch (err: any) {
-    console.error('[AI Parse] Error:', err.message || err)
+    console.error('[AI Parse] Handler error:', err.message || err, err.stack)
     
     if (err.statusCode) {
       throw err
