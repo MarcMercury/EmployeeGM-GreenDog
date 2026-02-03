@@ -640,6 +640,7 @@ const categories = [
   { value: 'profile', label: 'Profile', icon: 'mdi-account', color: 'purple', emoji: '👤' },
   { value: 'training', label: 'Training', icon: 'mdi-school', color: 'green', emoji: '🎓' },
   { value: 'hr', label: 'HR', icon: 'mdi-briefcase', color: 'orange', emoji: '💼' },
+  { value: 'marketing', label: 'Marketing', icon: 'mdi-bullhorn', color: 'pink', emoji: '📣' },
   { value: 'pto', label: 'Time Off', icon: 'mdi-palm-tree', color: 'teal', emoji: '🏖️' },
   { value: 'system', label: 'System', icon: 'mdi-cog', color: 'grey', emoji: '⚙️' },
 ]
@@ -875,6 +876,7 @@ const getCategoryColor = (category: string) => {
     profile: 'rgba(156, 39, 176, 0.15)',
     training: 'rgba(76, 175, 80, 0.15)',
     hr: 'rgba(255, 152, 0, 0.15)',
+    marketing: 'rgba(233, 30, 99, 0.15)',
     pto: 'rgba(0, 150, 136, 0.15)',
     system: 'rgba(158, 158, 158, 0.15)',
   }
