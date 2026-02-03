@@ -11,13 +11,6 @@
       <div class="d-flex gap-2">
         <v-btn
           variant="outlined"
-          prepend-icon="mdi-upload"
-          @click="showUploadWizard = true"
-        >
-          Import
-        </v-btn>
-        <v-btn
-          variant="outlined"
           prepend-icon="mdi-download"
           @click="exportCandidates"
         >
@@ -32,12 +25,6 @@
         </v-btn>
       </div>
     </div>
-
-    <!-- Upload Wizard Dialog -->
-    <RecruitingCandidateUploadWizard
-      v-model="showUploadWizard"
-      @uploaded="fetchCandidates"
-    />
 
     <!-- Add Candidate Dialog -->
     <v-dialog v-model="showAddDialog" max-width="600" persistent>
@@ -369,7 +356,6 @@ const selectedPosition = ref<string | null>(null)
 const selectedLocation = ref<string | null>(null)
 const selectedDepartment = ref<string | null>(null)
 const quickFilter = ref('all')
-const showUploadWizard = ref(false)
 const showAddDialog = ref(false)
 const saving = ref(false)
 
