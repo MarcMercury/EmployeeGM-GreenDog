@@ -455,6 +455,72 @@
             </v-list-item>
           </v-list>
 
+          <!-- External Links Section -->
+          <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-link</v-icon>
+              LINKS
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+              <v-chip
+                v-for="(link, idx) in selectedEvent.external_links"
+                :key="idx"
+                :href="link.url"
+                target="_blank"
+                color="primary"
+                variant="tonal"
+                size="small"
+              >
+                <v-icon start size="14">mdi-open-in-new</v-icon>
+                {{ link.title }}
+              </v-chip>
+            </div>
+          </div>
+
+          <!-- Registration URL -->
+          <div v-if="selectedEvent.registration_url" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-ticket</v-icon>
+              REGISTRATION
+            </p>
+            <v-btn
+              :href="selectedEvent.registration_url"
+              target="_blank"
+              color="success"
+              variant="tonal"
+              size="small"
+              block
+            >
+              <v-icon start size="16">mdi-open-in-new</v-icon>
+              Registration Link
+            </v-btn>
+          </div>
+
+          <!-- Attachments/Flyers Section -->
+          <div v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-file-document</v-icon>
+              FLYERS & ATTACHMENTS
+            </p>
+            <div class="d-flex flex-column gap-2">
+              <v-btn
+                v-for="(att, idx) in selectedEvent.attachments"
+                :key="idx"
+                :href="att.url"
+                target="_blank"
+                color="secondary"
+                variant="tonal"
+                size="small"
+                class="justify-start"
+              >
+                <v-icon start size="16">{{ getAttachmentIcon(att.type || att.name) }}</v-icon>
+                {{ att.name }}
+                <v-spacer />
+                <v-icon end size="14">mdi-download</v-icon>
+              </v-btn>
+            </div>
+          </div>
+
           <v-divider class="my-4" />
 
           <div v-if="isAdmin" class="text-center">
@@ -547,6 +613,17 @@ const { isAdmin } = useAppData()
 const { can } = usePermissions()
 const hasCreateAccess = computed(() => can('manage:marketing'))
 
+interface ExternalLink {
+  title: string
+  url: string
+}
+
+interface EventAttachment {
+  name: string
+  url: string
+  type?: string
+}
+
 interface MarketingEvent {
   id: string
   name: string
@@ -557,6 +634,9 @@ interface MarketingEvent {
   location: string | null
   staffing_status: string
   status: string
+  external_links: ExternalLink[] | null
+  attachments: EventAttachment[] | null
+  registration_url: string | null
 }
 
 interface CalendarNote {
@@ -785,6 +865,17 @@ const getStatusColor = (status: string): string => {
 
 const formatStatus = (status: string): string => {
   return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const getAttachmentIcon = (fileInfo: string): string => {
+  const lower = fileInfo.toLowerCase()
+  if (lower.includes('pdf')) return 'mdi-file-pdf-box'
+  if (lower.includes('doc') || lower.includes('word')) return 'mdi-file-word'
+  if (lower.includes('xls') || lower.includes('excel') || lower.includes('spreadsheet')) return 'mdi-file-excel'
+  if (lower.includes('ppt') || lower.includes('powerpoint')) return 'mdi-file-powerpoint'
+  if (lower.includes('jpg') || lower.includes('jpeg') || lower.includes('png') || lower.includes('gif') || lower.includes('image')) return 'mdi-file-image'
+  if (lower.includes('flyer')) return 'mdi-newspaper-variant-outline'
+  return 'mdi-file-document'
 }
 
 const formatDate = (dateStr: string): string => {
