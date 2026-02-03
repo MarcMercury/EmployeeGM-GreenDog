@@ -62,11 +62,26 @@ interface DocumentParseResult {
 }
 
 export default defineEventHandler(async (event) => {
+  console.log('[parse-document] Handler started')
+  
   try {
     // Use service role for database operations (bypasses RLS)
-    const supabaseAdmin = await serverSupabaseServiceRole(event)
+    console.log('[parse-document] Getting supabase clients...')
+    let supabaseAdmin
+    try {
+      supabaseAdmin = await serverSupabaseServiceRole(event)
+    } catch (err: any) {
+      console.error('[parse-document] Failed to get service role client:', err.message)
+      throw createError({ 
+        statusCode: 503, 
+        message: 'Database service unavailable. Please try again.' 
+      })
+    }
+    
     const user = await serverSupabaseUser(event)
 
+    console.log('[parse-document] User from auth:', user?.id || 'null')
+    
     if (!user) {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
@@ -79,11 +94,16 @@ export default defineEventHandler(async (event) => {
       .from('profiles')
       .select('id, role')
       .eq('auth_user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (profileError) {
-      console.error('[parse-document] Profile fetch error:', profileError.message)
-      throw createError({ statusCode: 500, message: 'Failed to verify user profile' })
+      console.error('[parse-document] Profile fetch error:', profileError.message, profileError.code, profileError.details)
+      throw createError({ statusCode: 500, message: `Failed to verify user profile: ${profileError.message}` })
+    }
+
+    if (!profile) {
+      console.error('[parse-document] No profile found for auth_user_id:', user.id)
+      throw createError({ statusCode: 404, message: 'User profile not found' })
     }
 
     console.log('[parse-document] User role:', profile?.role)
