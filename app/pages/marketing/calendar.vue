@@ -453,6 +453,22 @@
                 </v-chip>
               </v-list-item-subtitle>
             </v-list-item>
+
+            <v-list-item v-if="selectedEvent.staffing_needs">
+              <template #prepend>
+                <v-icon color="primary">mdi-account-multiple-check</v-icon>
+              </template>
+              <v-list-item-title>{{ selectedEvent.staffing_needs }}</v-list-item-title>
+              <v-list-item-subtitle>Staff Needed</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.event_type">
+              <template #prepend>
+                <v-icon color="primary">mdi-tag</v-icon>
+              </template>
+              <v-list-item-title>{{ formatEventType(selectedEvent.event_type) }}</v-list-item-title>
+              <v-list-item-subtitle>Event Type</v-list-item-subtitle>
+            </v-list-item>
           </v-list>
 
           <!-- Notes Section -->
@@ -462,6 +478,15 @@
               NOTES
             </p>
             <p class="text-body-2">{{ selectedEvent.notes }}</p>
+          </div>
+
+          <!-- Supplies Section -->
+          <div v-if="selectedEvent.supplies_needed" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-package-variant</v-icon>
+              SUPPLIES
+            </p>
+            <p class="text-body-2">{{ selectedEvent.supplies_needed }}</p>
           </div>
 
           <!-- Contact Information -->
@@ -738,10 +763,20 @@ interface MarketingEvent {
   end_time: string | null
   location: string | null
   staffing_status: string
+  staffing_needs: string | null
   status: string
+  event_type: string | null
   external_links: ExternalLink[] | null
   attachments: EventAttachment[] | null
-  registration_url: string | null
+  registration_link: string | null
+  registration_required: boolean | null
+  notes: string | null
+  contact_name: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  budget: number | null
+  expected_attendance: number | null
+  supplies_needed: string | null
 }
 
 interface CalendarNote {
@@ -974,6 +1009,20 @@ const getStatusColor = (status: string): string => {
 
 const formatStatus = (status: string): string => {
   return status.charAt(0).toUpperCase() + status.slice(1)
+}
+
+const formatEventType = (eventType: string): string => {
+  const types: Record<string, string> = {
+    general: 'General Event',
+    ce_event: 'CE Event',
+    conference: 'Conference',
+    community: 'Community Event',
+    training: 'Training',
+    networking: 'Networking',
+    trade_show: 'Trade Show',
+    other: 'Other'
+  }
+  return types[eventType] || eventType.charAt(0).toUpperCase() + eventType.slice(1).replace(/_/g, ' ')
 }
 
 const getAttachmentIcon = (fileInfo: string): string => {
