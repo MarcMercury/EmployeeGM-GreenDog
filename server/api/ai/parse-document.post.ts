@@ -80,16 +80,17 @@ export default defineEventHandler(async (event) => {
     
     const user = await serverSupabaseUser(event)
 
-    console.log('[parse-document] User from auth:', JSON.stringify(user, null, 2))
+    console.log('[parse-document] User from auth:', user ? 'present' : 'null')
     
     if (!user) {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
-    // The user object from serverSupabaseUser has 'id' property for the auth user id
-    const authUserId = user.id
+    // serverSupabaseUser returns JWT payload where user ID is in 'sub' (subject) claim
+    // Some versions may also have 'id' property
+    const authUserId = (user as any).sub || (user as any).id
     if (!authUserId) {
-      console.error('[parse-document] User object has no id property:', Object.keys(user))
+      console.error('[parse-document] User object has no sub or id property:', Object.keys(user))
       throw createError({ statusCode: 401, message: 'Invalid user session' })
     }
 
