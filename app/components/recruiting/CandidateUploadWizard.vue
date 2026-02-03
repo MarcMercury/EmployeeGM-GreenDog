@@ -814,6 +814,12 @@ async function handleResumeUpload(file: File | File[] | null) {
   parseError.value = null
 
   try {
+    // Get the current session token to pass to the server
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session - please log in again')
+    }
+
     const formData = new FormData()
     formData.append('file', file)
     formData.append('documentType', 'resume')
@@ -834,7 +840,10 @@ async function handleResumeUpload(file: File | File[] | null) {
       summary: string | null
     }>('/api/ai/parse-document', {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
     })
 
     // Calculate experience years from work history dates

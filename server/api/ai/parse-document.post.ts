@@ -9,7 +9,7 @@
  * POST /api/ai/parse-document
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole } from '#supabase/server'
 
 interface ExtractedPerson {
   firstName: string | null
@@ -64,10 +64,19 @@ export default defineEventHandler(async (event) => {
   try {
     // Use service role for database operations (bypasses RLS)
     const supabaseAdmin = await serverSupabaseServiceRole(event)
-    const user = await serverSupabaseUser(event)
-
-    if (!user) {
-      throw createError({ statusCode: 401, message: 'Unauthorized' })
+    
+    // Get auth token from header (same pattern as parse-referrals)
+    const authHeader = event.headers.get('authorization')
+    
+    if (!authHeader) {
+      throw createError({ statusCode: 401, message: 'No authorization header' })
+    }
+    
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      throw createError({ statusCode: 401, message: 'Invalid or expired session' })
     }
 
     console.log('[parse-document] Processing request for user:', user.id)
