@@ -76,11 +76,13 @@ export default defineEventHandler(async (event) => {
     }
 
     // Simple role check - get user's profile using their own session
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('auth_user_id', authUserId)
       .single()
+
+    console.log('[parse-document] Profile result:', profile, 'Error:', profileError?.message)
 
     const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
     if (!profile || !allowedRoles.includes(profile.role)) {
@@ -89,7 +91,10 @@ export default defineEventHandler(async (event) => {
 
     // Get OpenAI API key
     const config = useRuntimeConfig()
+    console.log('[parse-document] Runtime config keys:', Object.keys(config))
     const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
+
+    console.log('[parse-document] OpenAI key present:', !!openaiKey, 'Length:', openaiKey?.length || 0)
 
     if (!openaiKey) {
       console.error('[parse-document] No OpenAI API key configured')
