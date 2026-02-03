@@ -184,6 +184,8 @@ export default defineEventHandler(async (event) => {
 
     // Call OpenAI
     console.log('[parse-document] Calling OpenAI API...')
+    console.log('[parse-document] Using key prefix:', openaiKey.substring(0, 10) + '...')
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -191,7 +193,7 @@ export default defineEventHandler(async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -230,7 +232,7 @@ For veterinary-specific skills and certifications, use standard terminology.`
       userId: user.id,
       feature: 'document_parse',
       documentType: result.documentType,
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       confidence: result.confidence
     }).catch(err => console.error('[AI Parse] Audit log failed:', err))
 
