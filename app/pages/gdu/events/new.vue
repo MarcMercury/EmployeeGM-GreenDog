@@ -1081,3 +1081,14 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
     </v-card>
   </div>
 </template>
+
+<style scoped>
+/* Ensure quantity input has adequate width */
+.qty-input {
+  min-width: 80px;
+}
+
+.qty-input :deep(input) {
+  text-align: center;
+}
+</style>

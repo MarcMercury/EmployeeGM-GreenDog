@@ -455,6 +455,65 @@
             </v-list-item>
           </v-list>
 
+          <!-- Notes Section -->
+          <div v-if="selectedEvent.notes" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-note-text</v-icon>
+              NOTES
+            </p>
+            <p class="text-body-2">{{ selectedEvent.notes }}</p>
+          </div>
+
+          <!-- Contact Information -->
+          <div v-if="selectedEvent.contact_name || selectedEvent.contact_phone || selectedEvent.contact_email" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-account-circle</v-icon>
+              CONTACT
+            </p>
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item v-if="selectedEvent.contact_name" class="px-0">
+                <template #prepend>
+                  <v-icon size="18" color="grey">mdi-account</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ selectedEvent.contact_name }}</v-list-item-title>
+              </v-list-item>
+              <v-list-item v-if="selectedEvent.contact_phone" class="px-0">
+                <template #prepend>
+                  <v-icon size="18" color="grey">mdi-phone</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <a :href="'tel:' + selectedEvent.contact_phone">{{ selectedEvent.contact_phone }}</a>
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item v-if="selectedEvent.contact_email" class="px-0">
+                <template #prepend>
+                  <v-icon size="18" color="grey">mdi-email</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">
+                  <a :href="'mailto:' + selectedEvent.contact_email">{{ selectedEvent.contact_email }}</a>
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <!-- Event Details -->
+          <div v-if="selectedEvent.expected_attendance || selectedEvent.budget" class="mt-4">
+            <p class="text-overline text-grey mb-2">
+              <v-icon size="16" class="mr-1">mdi-chart-bar</v-icon>
+              DETAILS
+            </p>
+            <div class="d-flex gap-4">
+              <div v-if="selectedEvent.expected_attendance">
+                <span class="text-h6 font-weight-bold">{{ selectedEvent.expected_attendance }}</span>
+                <span class="text-caption text-grey d-block">Expected</span>
+              </div>
+              <div v-if="selectedEvent.budget">
+                <span class="text-h6 font-weight-bold">${{ selectedEvent.budget }}</span>
+                <span class="text-caption text-grey d-block">Budget</span>
+              </div>
+            </div>
+          </div>
+
           <!-- External Links Section -->
           <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mt-4">
             <p class="text-overline text-grey mb-2">
@@ -477,14 +536,14 @@
             </div>
           </div>
 
-          <!-- Registration URL -->
-          <div v-if="selectedEvent.registration_url" class="mt-4">
+          <!-- Registration Link -->
+          <div v-if="selectedEvent.registration_link" class="mt-4">
             <p class="text-overline text-grey mb-2">
               <v-icon size="16" class="mr-1">mdi-ticket</v-icon>
               REGISTRATION
             </p>
             <v-btn
-              :href="selectedEvent.registration_url"
+              :href="selectedEvent.registration_link"
               target="_blank"
               color="success"
               variant="tonal"
