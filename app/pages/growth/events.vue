@@ -2013,10 +2013,12 @@ onMounted(() => {
   if (route.query.action === 'add') {
     // Check if a date was passed for pre-filling
     const dateParam = route.query.date as string | undefined
-    if (dateParam) {
-      eventFormData.event_date = dateParam
-    }
-    openCreateDialog()
+    openCreateDialog().then(() => {
+      // Set date AFTER dialog opens and form is reset
+      if (dateParam) {
+        eventFormData.event_date = dateParam
+      }
+    })
   }
 })
 </script>
