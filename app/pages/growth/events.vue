@@ -1389,9 +1389,9 @@ const filteredEvents = computed(() => {
     result = result.filter(e => new Date(e.event_date) < today)
   }
   
-  // Sort by date
+  // Sort by date (most recent first)
   return result.sort((a, b) =>
-    new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
+    new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
   )
 })
 
