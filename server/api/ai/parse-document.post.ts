@@ -69,13 +69,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check user has recruiting or admin access
+  // Roles aligned with is_recruiting_admin() function in database
   const { data: profile } = await client
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !['admin', 'super_admin', 'manager', 'hr_admin', 'marketing_admin'].includes(profile.role)) {
+  const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
+  if (!profile || !recruitingRoles.includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Access denied' })
   }
 
