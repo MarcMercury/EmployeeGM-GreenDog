@@ -9,7 +9,7 @@
  * POST /api/ai/parse-document
  */
 
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 interface ExtractedPerson {
   firstName: string | null
@@ -64,19 +64,10 @@ export default defineEventHandler(async (event) => {
   try {
     // Use service role for database operations (bypasses RLS)
     const supabaseAdmin = await serverSupabaseServiceRole(event)
-    
-    // Get auth token from header (same pattern as parse-referrals)
-    const authHeader = event.headers.get('authorization')
-    
-    if (!authHeader) {
-      throw createError({ statusCode: 401, message: 'No authorization header' })
-    }
-    
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (authError || !user) {
-      throw createError({ statusCode: 401, message: 'Invalid or expired session' })
+    const user = await serverSupabaseUser(event)
+
+    if (!user) {
+      throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
     console.log('[parse-document] Processing request for user:', user.id)
@@ -104,10 +95,6 @@ export default defineEventHandler(async (event) => {
 
     // Get OpenAI API key
     const config = useRuntimeConfig()
-    console.log('[parse-document] Runtime config keys:', Object.keys(config))
-    console.log('[parse-document] openaiApiKey exists:', !!config.openaiApiKey)
-    console.log('[parse-document] process.env.OPENAI_API_KEY exists:', !!process.env.OPENAI_API_KEY)
-    
     const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
 
     if (!openaiKey) {
@@ -117,8 +104,6 @@ export default defineEventHandler(async (event) => {
         message: 'AI service not configured. Please add OPENAI_API_KEY.' 
       })
     }
-    
-    console.log('[parse-document] OpenAI key found, length:', openaiKey.length)
 
     // Read multipart form data
     console.log('[parse-document] Reading multipart form data...')
@@ -184,7 +169,6 @@ export default defineEventHandler(async (event) => {
 
     // Call OpenAI
     console.log('[parse-document] Calling OpenAI API...')
-    console.log('[parse-document] Using key prefix:', openaiKey.substring(0, 10) + '...')
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -193,7 +177,7 @@ export default defineEventHandler(async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4-turbo-preview',
         messages: [
           {
             role: 'system',
@@ -232,7 +216,7 @@ For veterinary-specific skills and certifications, use standard terminology.`
       userId: user.id,
       feature: 'document_parse',
       documentType: result.documentType,
-      model: 'gpt-4o',
+      model: 'gpt-4-turbo-preview',
       confidence: result.confidence
     }).catch(err => console.error('[AI Parse] Audit log failed:', err))
 
