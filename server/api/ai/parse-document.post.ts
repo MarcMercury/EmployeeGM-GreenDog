@@ -1,15 +1,12 @@
 /**
  * AI Document Parser API
  * 
- * Uses OpenAI to extract structured data from uploaded documents:
- * - Resumes → Candidate profile data
- * - Certifications → Credential info
- * - Transcripts → Education history
+ * Uses OpenAI to extract structured data from uploaded resumes.
  * 
  * POST /api/ai/parse-document
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 import PDFParser from 'pdf2json'
 
 interface ExtractedPerson {
@@ -62,64 +59,32 @@ interface DocumentParseResult {
 }
 
 export default defineEventHandler(async (event) => {
-  console.log('[parse-document] Handler started')
-  
   try {
-    // Use service role for database operations (bypasses RLS)
-    console.log('[parse-document] Getting supabase clients...')
-    let supabaseAdmin
-    try {
-      supabaseAdmin = await serverSupabaseServiceRole(event)
-    } catch (err: any) {
-      console.error('[parse-document] Failed to get service role client:', err.message)
-      throw createError({ 
-        statusCode: 503, 
-        message: 'Database service unavailable. Please try again.' 
-      })
-    }
-    
+    // Get the user's supabase client (uses their session)
+    const supabase = await serverSupabaseClient(event)
     const user = await serverSupabaseUser(event)
 
-    console.log('[parse-document] User from auth:', user ? 'present' : 'null')
-    
+    // Check authentication - user must be logged in
     if (!user) {
-      throw createError({ statusCode: 401, message: 'Unauthorized' })
+      throw createError({ statusCode: 401, message: 'Please log in to upload resumes' })
     }
 
-    // serverSupabaseUser returns JWT payload where user ID is in 'sub' (subject) claim
-    // Some versions may also have 'id' property
+    // Get user ID from JWT (it's in 'sub' claim)
     const authUserId = (user as any).sub || (user as any).id
     if (!authUserId) {
-      console.error('[parse-document] User object has no sub or id property:', Object.keys(user))
-      throw createError({ statusCode: 401, message: 'Invalid user session' })
+      throw createError({ statusCode: 401, message: 'Invalid session - please log in again' })
     }
 
-    console.log('[parse-document] Processing request for user:', authUserId)
-
-    // Check user has recruiting or admin access
-    // Use service role to bypass RLS when checking profile role
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // Simple role check - get user's profile using their own session
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('id, role')
+      .select('role')
       .eq('auth_user_id', authUserId)
-      .maybeSingle()
+      .single()
 
-    if (profileError) {
-      console.error('[parse-document] Profile fetch error:', profileError.message, profileError.code, profileError.details)
-      throw createError({ statusCode: 500, message: `Failed to verify user profile: ${profileError.message}` })
-    }
-
-    if (!profile) {
-      console.error('[parse-document] No profile found for auth_user_id:', authUserId)
-      throw createError({ statusCode: 404, message: 'User profile not found' })
-    }
-
-    console.log('[parse-document] User role:', profile?.role)
-
-    const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
-    const userRole = profile?.role as string
-    if (!profile || !recruitingRoles.includes(userRole)) {
-      throw createError({ statusCode: 403, message: `Access denied. Role: ${userRole || 'unknown'}` })
+    const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
+    if (!profile || !allowedRoles.includes(profile.role)) {
+      throw createError({ statusCode: 403, message: 'You do not have permission to upload resumes' })
     }
 
     // Get OpenAI API key
@@ -240,8 +205,8 @@ For veterinary-specific skills and certifications, use standard terminology.`
     // Add the raw text for reference
     result.rawText = text.substring(0, 2000)
 
-    // Log usage (non-blocking, uses service role)
-    logAIUsage(supabaseAdmin, {
+    // Log usage (non-blocking)
+    logAIUsage(supabase, {
       userId: authUserId,
       feature: 'document_parse',
       documentType: result.documentType,
@@ -253,7 +218,7 @@ For veterinary-specific skills and certifications, use standard terminology.`
     return result
 
   } catch (err: any) {
-    console.error('[AI Parse] Handler error:', err.message || err, err.stack)
+    console.error('[AI Parse] Handler error:', err.message || err)
     
     if (err.statusCode) {
       throw err
