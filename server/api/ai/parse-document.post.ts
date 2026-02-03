@@ -9,7 +9,7 @@
  * POST /api/ai/parse-document
  */
 
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 interface ExtractedPerson {
   firstName: string | null
@@ -61,6 +61,8 @@ interface DocumentParseResult {
 }
 
 export default defineEventHandler(async (event) => {
+  // Use service role for database operations (bypasses RLS)
+  const supabaseAdmin = await serverSupabaseServiceRole(event)
   const client = await serverSupabaseClient(event)
   const user = await serverSupabaseUser(event)
 
@@ -69,14 +71,17 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check user has recruiting or admin access
-  // Roles aligned with is_recruiting_admin() function in database
-  const { data: profile, error: profileError } = await client
+  // Use service role to bypass RLS when checking profile role
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
-  console.log('[parse-document] User:', user.id, 'Profile:', profile?.id, 'Role:', profile?.role, 'Error:', profileError?.message)
+  if (profileError) {
+    console.error('[parse-document] Profile fetch error:', profileError.message)
+    throw createError({ statusCode: 500, message: 'Failed to verify user profile' })
+  }
 
   const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
   const userRole = profile?.role as string
