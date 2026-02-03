@@ -10,6 +10,7 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import PDFParser from 'pdf2json'
 
 interface ExtractedPerson {
   firstName: string | null
@@ -238,43 +239,57 @@ For veterinary-specific skills and certifications, use standard terminology.`
 })
 
 async function extractTextFromDocument(data: Buffer, mimeType: string): Promise<string> {
-  // For now, handle plain text directly
-  // In production, you'd use libraries like pdf-parse, mammoth, etc.
-  
+  // Handle plain text directly
   if (mimeType === 'text/plain') {
     return data.toString('utf-8')
   }
 
-  // For PDF and DOCX, we'll use a simple approach
-  // In production, add proper parsing libraries
-  
+  // Parse PDF using pdf2json
   if (mimeType === 'application/pdf') {
-    // Try to extract text using basic PDF parsing
-    // This is a simplified approach - production should use pdf-parse or similar
-    const text = data.toString('utf-8')
-    
-    // Look for text between stream/endstream in PDF
-    const matches = text.match(/stream\n([\s\S]*?)\nendstream/g)
-    if (matches) {
-      return matches
-        .map(m => m.replace(/stream\n|\nendstream/g, ''))
-        .join('\n')
-        .replace(/[^\x20-\x7E\n]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-    }
-    
-    // Fallback: extract readable ASCII
-    return text
-      .replace(/[^\x20-\x7E\n]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+    return new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser()
+      
+      pdfParser.on('pdfParser_dataError', (errData: any) => {
+        console.error('[parse-document] pdf2json error:', errData.parserError)
+        reject(new Error(errData.parserError || 'PDF parsing failed'))
+      })
+      
+      pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+        try {
+          let text = ''
+          if (pdfData.Pages) {
+            for (const page of pdfData.Pages) {
+              if (page.Texts) {
+                for (const textItem of page.Texts) {
+                  if (textItem.R) {
+                    for (const run of textItem.R) {
+                      if (run.T) {
+                        text += decodeURIComponent(run.T) + ' '
+                      }
+                    }
+                  }
+                  text += '\n'
+                }
+              }
+            }
+          }
+          console.log('[parse-document] PDF extracted text length:', text.length)
+          resolve(text.trim())
+        } catch (err) {
+          reject(err)
+        }
+      })
+      
+      pdfParser.parseBuffer(data)
+    })
   }
 
-  // For DOCX, extract from XML content
+  // For DOCX, extract from XML content (unzip and read document.xml)
   if (mimeType.includes('wordprocessingml')) {
+    // DOCX files are ZIP archives - for now use simple extraction
+    // A production system would use mammoth or similar
     const text = data.toString('utf-8')
-    // Extract text from <w:t> tags
+    // Try to extract text from <w:t> tags if XML is visible
     const matches = text.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)
     if (matches) {
       return matches
@@ -283,7 +298,8 @@ async function extractTextFromDocument(data: Buffer, mimeType: string): Promise<
         .trim()
     }
     
-    return text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    // Fallback for compressed content - extract readable chars
+    return text.replace(/<[^>]+>/g, ' ').replace(/[^\x20-\x7E\n]/g, ' ').replace(/\s+/g, ' ').trim()
   }
 
   return data.toString('utf-8')
