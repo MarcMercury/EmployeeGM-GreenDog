@@ -70,15 +70,18 @@ export default defineEventHandler(async (event) => {
 
   // Check user has recruiting or admin access
   // Roles aligned with is_recruiting_admin() function in database
-  const { data: profile } = await client
+  const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
+  console.log('[parse-document] User:', user.id, 'Profile:', profile?.id, 'Role:', profile?.role, 'Error:', profileError?.message)
+
   const recruitingRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
-  if (!profile || !recruitingRoles.includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Access denied' })
+  const userRole = profile?.role as string
+  if (!profile || !recruitingRoles.includes(userRole)) {
+    throw createError({ statusCode: 403, message: `Access denied. Role: ${userRole || 'unknown'}` })
   }
 
   // Get OpenAI API key
