@@ -1,4 +1,14 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "files.associations": {
+        "**/supabase/**/*.sql": "pgsql",
+        "**/scripts/**/*.sql": "pgsql"
+    },
+    "[sql]": {
+        "editor.defaultFormatter": null
+    },
+    "mssql.enableQueryHistoryCapture": false,
+    "mssql.pgsql.enabled": true
 }
+

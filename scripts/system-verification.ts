@@ -215,19 +215,38 @@ async function testTriggers() {
   console.log('─'.repeat(50))
   
   // Check that critical triggers exist
-  const { data: triggers, error } = await adminClient.rpc('get_triggers_info').catch(() => ({ data: null, error: null }))
+  let triggers = null
+  let error = null
+  try {
+    const result = await adminClient.rpc('get_triggers_info')
+    triggers = result.data
+    error = result.error
+  } catch {
+    // Function may not exist
+  }
   
   // Alternative: Query pg_trigger directly via SQL
-  const { data: triggerData } = await adminClient
-    .from('pg_trigger' as any)
-    .select('*')
-    .limit(1)
-    .catch(() => ({ data: null }))
+  let triggerData = null
+  try {
+    const result = await adminClient
+      .from('pg_trigger' as any)
+      .select('*')
+      .limit(1)
+    triggerData = result.data
+  } catch {
+    // May not have access
+  }
   
   // Check the notification trigger exists by looking at function
-  const { data: functions } = await adminClient.rpc('check_function_exists', { 
-    func_name: 'notify_marketing_event_created' 
-  }).catch(() => ({ data: null }))
+  let functions = null
+  try {
+    const result = await adminClient.rpc('check_function_exists', { 
+      func_name: 'notify_marketing_event_created' 
+    })
+    functions = result.data
+  } catch {
+    // Function may not exist
+  }
   
   // Simpler check - try to insert and see if notification is created
   log({
