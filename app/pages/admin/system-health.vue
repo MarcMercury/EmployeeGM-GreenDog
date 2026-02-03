@@ -258,7 +258,7 @@ const emailTemplates = ref<EmailTemplate[]>([
     subject: 'Your Schedule for {{week}}',
     body: `<p>Hi {{first_name}},</p>
 <p>Your schedule for the week of {{week}} has been published.</p>
-<p>Please log in to TeamOS to view your shifts.</p>`,
+<p>Please log in to EmployeeGM to view your shifts.</p>`,
     is_active: true
   }
 ])

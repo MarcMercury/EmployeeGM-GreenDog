@@ -185,7 +185,7 @@ const closeMobileMenu = () => {
       
         <!-- Logo Header with Toggle -->
         <div class="flex h-16 items-center justify-between px-4 bg-slate-950/80 backdrop-blur shrink-0 border-b border-slate-800/50">
-          <span v-if="!sidebarCollapsed" class="text-xl font-bold tracking-tight bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">🐾 TeamOS</span>
+          <span v-if="!sidebarCollapsed" class="text-xl font-bold tracking-tight bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">🐾 GDD</span>
           <span v-else class="text-xl">🐾</span>
           <button 
             @click="toggleSidebar"

@@ -42,7 +42,7 @@ const PERMISSION_ROLES: Record<string, UserRole[]> = {
   'hire:candidate': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
   // Marketing & GDU
-  'view:marketing': ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  'view:marketing': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   'manage:marketing': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   'view:gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
   'manage:gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],

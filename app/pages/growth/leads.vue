@@ -117,6 +117,24 @@
           <span v-else class="text-grey text-caption">Direct</span>
         </template>
 
+        <template #item.prize="{ item }">
+          <div v-if="item.prize_item?.name" class="d-flex align-center">
+            <v-chip 
+              size="small" 
+              variant="tonal" 
+              color="amber-darken-2"
+              prepend-icon="mdi-gift"
+            >
+              {{ item.prize_item.name }}
+            </v-chip>
+            <v-tooltip activator="parent" location="top">
+              <div>Location: {{ formatLocation(item.prize_location) }}</div>
+              <div v-if="item.prize_quantity && item.prize_quantity > 1">Qty: {{ item.prize_quantity }}</div>
+            </v-tooltip>
+          </div>
+          <span v-else class="text-grey text-caption">-</span>
+        </template>
+
         <template #item.source="{ item }">
           <v-chip v-if="item.source" size="small" variant="tonal" color="secondary">
             {{ item.source }}
@@ -331,6 +349,10 @@ interface Lead {
   notes: string | null
   created_at: string
   source_event?: { id: string; name: string } | null
+  prize_inventory_item_id: string | null
+  prize_quantity: number | null
+  prize_location: string | null
+  prize_item?: { id: string; name: string } | null
 }
 
 interface Event {
@@ -382,6 +404,7 @@ const statusOptions = [
 const headers = [
   { title: 'Name', key: 'lead_name', sortable: true },
   { title: 'Event Source', key: 'event_source', sortable: true },
+  { title: 'Prize Won', key: 'prize', sortable: true },
   { title: 'Source', key: 'source', sortable: true },
   { title: 'Contact', key: 'contact', sortable: false },
   { title: 'Status', key: 'status', sortable: true },
@@ -437,6 +460,18 @@ const showNotification = (message: string, color = 'success') => {
 const getInitials = (name: string) => {
   const parts = name.split(' ')
   return parts.map(p => p[0]).join('').toUpperCase().slice(0, 2)
+}
+
+const formatLocation = (location: string | null) => {
+  if (!location) return 'N/A'
+  const locationMap: Record<string, string> = {
+    'venice': 'Venice',
+    'sherman_oaks': 'Sherman Oaks',
+    'valley': 'Valley',
+    'mpmv': 'MPMV',
+    'offsite': 'Offsite'
+  }
+  return locationMap[location] || location
 }
 
 const getStatusColor = (status: string) => {
@@ -621,7 +656,8 @@ const fetchData = async () => {
     const [leadsRes, eventsRes] = await Promise.all([
       client.from('marketing_leads').select(`
         *,
-        source_event:source_event_id(id, name)
+        source_event:source_event_id(id, name),
+        prize_item:prize_inventory_item_id(id, name)
       `).order('created_at', { ascending: false }),
       client.from('marketing_events').select('id, name').order('name')
     ])

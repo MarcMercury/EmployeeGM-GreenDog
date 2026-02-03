@@ -452,7 +452,7 @@ async function sendScheduleSlackNotification() {
       body: {
         triggerType: 'schedule_published',
         channel: '#schedule',
-        message: `📅 Schedule Published for ${weekLabel}\n\n${employeeIds.length} team members have shifts scheduled this week. Check your schedule in TeamOS!`,
+        message: `📅 Schedule Published for ${weekLabel}\n\n${employeeIds.length} team members have shifts scheduled this week. Check your schedule in EmployeeGM!`,
         metadata: {
           week_start: format(currentWeekStart.value, 'yyyy-MM-dd'),
           schedule_week_id: scheduleWeek.value?.id,

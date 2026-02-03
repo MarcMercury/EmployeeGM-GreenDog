@@ -733,7 +733,8 @@ export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'sup_a
 // SECTION_ACCESS in app/types/index.ts
 hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
 recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
-marketing: ['super_admin', 'admin', 'manager', 'marketing_admin']
+marketing: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin']
+crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin']
 education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin']
 schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin']
 schedules_view: [all roles]

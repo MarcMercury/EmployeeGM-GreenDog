@@ -1703,19 +1703,19 @@ const accessMatrixSections: AccessMatrixSection[] = [
         name: 'EzyVet CRM', 
         path: '/marketing/ezyvet-crm', 
         icon: 'mdi-database-import',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'view', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'EzyVet Analytics', 
         path: '/marketing/ezyvet-analytics', 
         icon: 'mdi-chart-areaspline',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'view', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       },
       { 
         name: 'List Hygiene', 
         path: '/marketing/list-hygiene', 
         icon: 'mdi-broom',
-        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'none', office_admin: 'none', marketing_admin: 'full', user: 'none' }
+        access: { super_admin: 'full', admin: 'full', manager: 'full', hr_admin: 'none', sup_admin: 'view', office_admin: 'none', marketing_admin: 'full', user: 'none' }
       }
     ]
   },

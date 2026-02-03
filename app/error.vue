@@ -111,7 +111,7 @@ const isAuthError = computed(() =>
       
       <!-- Brand Footer -->
       <div class="mt-12 text-slate-400 text-sm">
-        <span class="text-lg">🐾</span> TeamOS - Green Dog Veterinary
+        <span class="text-lg">🐾</span> GDD - Green Dog Veterinary
       </div>
     </div>
   </div>

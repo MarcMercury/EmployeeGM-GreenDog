@@ -143,27 +143,61 @@
           </div>
 
           <!-- What did you win? -->
-          <div class="mb-6">
+          <div class="mb-5">
             <label class="block text-slate-300 text-sm font-medium mb-2">
               What did you win? <span class="text-red-400">*</span>
             </label>
+            <div v-if="prizesLoading" class="text-slate-400 text-sm py-3">Loading prizes...</div>
             <select 
-              v-model="form.prize_won"
+              v-else
+              v-model="form.prize_item_id"
               required
+              @change="onPrizeSelect"
               class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
             >
               <option value="" disabled>Select your prize...</option>
-              <option value="$20 off">$20 off</option>
-              <option value="20% off NAD">20% off NAD</option>
-              <option value="Free exam">Free exam</option>
-              <option value="Pill Holder">Pill Holder</option>
-              <option value="Tote Bag">Tote Bag</option>
-              <option value="Bandana">Bandana</option>
-              <option value="Med Kits">Med Kits</option>
-              <option value="Flashlight">Flashlight</option>
-              <option value="Poo Bag holder">Poo Bag holder</option>
-              <option value="Other">Other</option>
+              <option 
+                v-for="prize in prizeItems" 
+                :key="prize.id" 
+                :value="prize.id"
+              >
+                {{ prize.name }}
+              </option>
+              <option value="other">Other / Not Listed</option>
             </select>
+          </div>
+
+          <!-- Prize Location (only shown when prize selected) -->
+          <div v-if="form.prize_item_id && form.prize_item_id !== 'other'" class="mb-5">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Which location gave you the prize? <span class="text-red-400">*</span>
+            </label>
+            <select 
+              v-model="form.prize_location"
+              required
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition appearance-none"
+            >
+              <option value="" disabled>Select location...</option>
+              <option value="venice">Venice</option>
+              <option value="sherman_oaks">Sherman Oaks</option>
+              <option value="valley">Valley</option>
+              <option value="mpmv">MPMV</option>
+              <option value="offsite">Offsite / Event</option>
+            </select>
+          </div>
+
+          <!-- Other Prize Description (shown when "Other" selected) -->
+          <div v-if="form.prize_item_id === 'other'" class="mb-6">
+            <label class="block text-slate-300 text-sm font-medium mb-2">
+              Describe your prize <span class="text-red-400">*</span>
+            </label>
+            <input 
+              v-model="form.other_prize_description"
+              type="text"
+              :required="form.prize_item_id === 'other'"
+              placeholder="Enter prize description"
+              class="w-full px-4 py-3 bg-slate-900/50 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition"
+            />
           </div>
 
           <!-- Error Message -->
@@ -203,6 +237,12 @@ definePageMeta({
   auth: false // Public page - no auth required
 })
 
+interface PrizeItem {
+  id: string
+  name: string
+  category: string
+}
+
 const route = useRoute()
 const supabase = useSupabaseClient()
 
@@ -211,6 +251,8 @@ const submitting = ref(false)
 const submitted = ref(false)
 const errorMessage = ref('')
 const eventData = ref<any>(null)
+const prizeItems = ref<PrizeItem[]>([])
+const prizesLoading = ref(true)
 
 const form = ref({
   first_name: '',
@@ -220,14 +262,47 @@ const form = ref({
   email: '',
   phone: '',
   is_current_client: false,
-  prize_won: ''
+  prize_item_id: '',
+  prize_location: '',
+  other_prize_description: ''
 })
 
 // Get event ID from URL
 const eventId = computed(() => route.params.eventId as string)
 
+// Handle prize selection change
+function onPrizeSelect() {
+  // Reset location when prize changes
+  if (form.value.prize_item_id === 'other') {
+    form.value.prize_location = ''
+  }
+}
+
+// Fetch prize inventory items
+async function fetchPrizeItems() {
+  prizesLoading.value = true
+  try {
+    // Fetch all inventory items that could be prizes (category = 'prize' or 'swag' or all items)
+    const { data, error } = await supabase
+      .from('marketing_inventory')
+      .select('id, name, category')
+      .order('name')
+    
+    if (error) throw error
+    prizeItems.value = data || []
+  } catch (err) {
+    console.error('Error fetching prize items:', err)
+    prizeItems.value = []
+  } finally {
+    prizesLoading.value = false
+  }
+}
+
 // Fetch event data on mount
 onMounted(async () => {
+  // Start fetching prizes in parallel
+  fetchPrizeItems()
+  
   if (!eventId.value) {
     loading.value = false
     return
@@ -265,26 +340,60 @@ async function submitForm() {
     if (form.value.pet_name) noteParts.push(`Pet: ${form.value.pet_name}`)
     if (form.value.species) noteParts.push(`Species: ${form.value.species}`)
     if (form.value.is_current_client) noteParts.push('Current Client: Yes')
-    if (form.value.prize_won) noteParts.push(`Prize Won: ${form.value.prize_won}`)
+    
+    // Add prize info to notes
+    const selectedPrize = prizeItems.value.find(p => p.id === form.value.prize_item_id)
+    if (selectedPrize) {
+      noteParts.push(`Prize Won: ${selectedPrize.name}`)
+    } else if (form.value.prize_item_id === 'other' && form.value.other_prize_description) {
+      noteParts.push(`Prize Won: ${form.value.other_prize_description}`)
+    }
+    
     const combinedNotes = noteParts.join(' | ') || null
     
-    const { error } = await supabase
-      .from('marketing_leads')
-      .insert({
-        lead_name: leadName,
-        first_name: form.value.first_name,
-        last_name: form.value.last_name,
-        email: form.value.email,
-        phone: form.value.phone || null,
-        notes: combinedNotes,
-        source_event_id: eventId.value,
-        event_id: eventId.value, // Also set event_id for backwards compat
-        source: 'event_qr',
-        status: 'new',
-        interest_level: form.value.is_current_client ? 'current_client' : 'new_prospect'
-      } as any) // Use 'as any' to bypass strict type checking for new columns
+    // Determine if we should use the RPC function (has valid prize item + location)
+    const hasValidPrize = form.value.prize_item_id && 
+                          form.value.prize_item_id !== 'other' && 
+                          form.value.prize_location
+    
+    if (hasValidPrize) {
+      // Use the create_lead_with_prize RPC to create lead AND deduct inventory
+      const { error } = await supabase.rpc('create_lead_with_prize', {
+        p_lead_name: leadName,
+        p_first_name: form.value.first_name,
+        p_last_name: form.value.last_name,
+        p_email: form.value.email,
+        p_phone: form.value.phone || null,
+        p_notes: combinedNotes,
+        p_source_event_id: eventId.value,
+        p_source: 'event_qr',
+        p_interest_level: form.value.is_current_client ? 'current_client' : 'new_prospect',
+        p_prize_item_id: form.value.prize_item_id,
+        p_prize_quantity: 1,
+        p_prize_location: form.value.prize_location
+      })
 
-    if (error) throw error
+      if (error) throw error
+    } else {
+      // Fallback to regular insert for "other" prizes or no prize
+      const { error } = await supabase
+        .from('marketing_leads')
+        .insert({
+          lead_name: leadName,
+          first_name: form.value.first_name,
+          last_name: form.value.last_name,
+          email: form.value.email,
+          phone: form.value.phone || null,
+          notes: combinedNotes,
+          source_event_id: eventId.value,
+          event_id: eventId.value,
+          source: 'event_qr',
+          status: 'new',
+          interest_level: form.value.is_current_client ? 'current_client' : 'new_prospect'
+        } as any)
+
+      if (error) throw error
+    }
 
     submitted.value = true
   } catch (err: any) {

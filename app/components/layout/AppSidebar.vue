@@ -17,7 +17,7 @@
           <v-icon color="white" size="24">mdi-paw</v-icon>
         </v-avatar>
         <div v-if="!rail" class="text-white">
-          <div class="text-subtitle-1 font-weight-bold">TeamOS</div>
+          <div class="text-subtitle-1 font-weight-bold">GDD</div>
           <div class="text-caption text-grey">Green Dog Dental</div>
         </div>
       </div>
@@ -307,8 +307,8 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   '/admin/master-roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
   
   // Marketing
-  '/marketing/calendar': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
-  '/marketing/resources': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'],
+  '/marketing/calendar': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/marketing/resources': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
   '/marketing/inventory': ['super_admin', 'admin', 'manager', 'marketing_admin', 'user'],
   '/marketing/partners': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
   '/marketing/influencers': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin'],
@@ -318,9 +318,9 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   '/growth/leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
   // CRM & Analytics
-  '/marketing/ezyvet-crm': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
-  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/marketing/ezyvet-crm': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
+  '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   
   // GDU
   '/gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],

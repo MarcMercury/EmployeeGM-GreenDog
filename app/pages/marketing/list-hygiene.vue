@@ -13,7 +13,7 @@
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'marketing-admin']
+  middleware: ['auth']
 })
 
 const supabase = useSupabaseClient()

@@ -5,7 +5,7 @@
       <button @click="$emit('toggle-sidebar')" class="mobile-menu-btn mr-3">
         <v-icon>mdi-menu</v-icon>
       </button>
-      <span class="text-h6 font-weight-bold text-primary">🐾 TeamOS</span>
+      <span class="text-h6 font-weight-bold text-primary">🐾 GDD</span>
       <v-spacer />
       <NuxtLink to="/activity" class="mobile-notification-btn position-relative">
         <v-icon size="24">mdi-bell</v-icon>

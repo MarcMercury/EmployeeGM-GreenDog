@@ -85,9 +85,17 @@ const getCategoryColorForInventory = (category: string): string => {
   return colors[category] || 'grey'
 }
 
-// Fetch inventory on mount
+// Fetch inventory on mount and handle date query param
 onMounted(() => {
   fetchInventoryItems()
+  
+  // Check if a date was passed for pre-filling from calendar
+  const route = useRoute()
+  const dateParam = route.query.date as string | undefined
+  if (dateParam) {
+    formData.value.event_date_start = dateParam
+    formData.value.event_date_end = dateParam
+  }
 })
 
 // Form data based on RACE application structure

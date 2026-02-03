@@ -71,7 +71,7 @@ export default defineNuxtConfig({
   // App configuration
   app: {
     head: {
-      title: 'TeamOS - Green Dog Veterinary',
+      title: 'EmployeeGM - Green Dog Veterinary',
       htmlAttrs: {
         lang: 'en'
       },
@@ -84,7 +84,7 @@ export default defineNuxtConfig({
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-        { name: 'apple-mobile-web-app-title', content: 'TeamOS' },
+        { name: 'apple-mobile-web-app-title', content: 'EmployeeGM' },
         
         // Theme colors
         { name: 'theme-color', content: '#0f172a' }, // slate-900
@@ -94,7 +94,7 @@ export default defineNuxtConfig({
         { name: 'format-detection', content: 'telephone=no' },
         
         // Open Graph
-        { property: 'og:title', content: 'TeamOS - Green Dog Veterinary' },
+        { property: 'og:title', content: 'EmployeeGM - Green Dog Veterinary' },
         { property: 'og:description', content: 'Team Management System' },
         { property: 'og:type', content: 'website' }
       ],

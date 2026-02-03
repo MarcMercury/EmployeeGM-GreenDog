@@ -65,10 +65,10 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
   // === Marketing === Calendar, Events, Leads, Partners, Influencers, Inventory, Resources, Referral CRM
-  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   
   // === CRM & Analytics === EzyVet CRM, EzyVet Analytics, List Hygiene
-  crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin'],
+  crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   
   // === GDU (Education) === GDU Dash, Student CRM, Visitor CRM, CE Events
   education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],

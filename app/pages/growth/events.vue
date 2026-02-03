@@ -441,7 +441,12 @@
                           <v-icon color="warning">mdi-package-variant</v-icon>
                         </template>
                         <v-list-item-title>{{ item.item_name }}</v-list-item-title>
-                        <v-list-item-subtitle>Quantity: {{ item.quantity_used }}</v-list-item-subtitle>
+                        <v-list-item-subtitle>
+                          Qty: {{ item.quantity_used }}
+                          <span v-if="item.location" class="ml-2">
+                            • {{ item.location.replace('_', ' ') }}
+                          </span>
+                        </v-list-item-subtitle>
                         <template #append>
                           <v-btn icon size="x-small" variant="text" color="error" @click="removeInventoryItem(idx)">
                             <v-icon size="small">mdi-delete</v-icon>
@@ -452,6 +457,7 @@
                     <v-card-text v-else class="text-center text-grey py-8">
                       <v-icon size="48" color="grey-lighten-2">mdi-package-variant-closed</v-icon>
                       <div class="mt-2">No inventory items tracked yet</div>
+                      <div class="text-caption mt-1">Click "Add Item" to assign inventory</div>
                     </v-card-text>
                   </v-card>
                 </v-col>
@@ -807,6 +813,84 @@
               </v-col>
             </v-row>
 
+            <!-- Inventory Section -->
+            <v-divider class="my-4" />
+            <div class="d-flex align-center justify-space-between mb-2">
+              <p class="text-overline text-grey mb-0">INVENTORY ITEMS</p>
+              <v-btn 
+                variant="tonal" 
+                color="primary" 
+                size="small" 
+                prepend-icon="mdi-plus" 
+                @click="addPlannedInventoryItem"
+              >
+                Add Item
+              </v-btn>
+            </div>
+            <v-row v-if="eventFormData.planned_inventory.length > 0">
+              <v-col cols="12">
+                <v-card 
+                  v-for="(item, idx) in eventFormData.planned_inventory" 
+                  :key="idx" 
+                  variant="outlined" 
+                  class="mb-2 pa-3"
+                >
+                  <div class="d-flex gap-2 align-center flex-wrap">
+                    <v-autocomplete
+                      v-model="item.inventory_item_id"
+                      :items="inventoryItems"
+                      item-title="item_name"
+                      item-value="id"
+                      label="Item"
+                      variant="outlined"
+                      density="compact"
+                      style="flex: 2; min-width: 200px;"
+                      hide-details
+                      :loading="inventoryLoading"
+                      @update:model-value="onPlannedInventorySelect(idx, $event)"
+                    >
+                      <template #item="{ props, item: invItem }">
+                        <v-list-item v-bind="props">
+                          <template #subtitle>{{ invItem.raw.category }} • Total: {{ invItem.raw.total_quantity }}</template>
+                        </v-list-item>
+                      </template>
+                    </v-autocomplete>
+                    <v-select
+                      v-model="item.location"
+                      :items="locationOptions"
+                      label="Location"
+                      variant="outlined"
+                      density="compact"
+                      style="flex: 1; min-width: 130px;"
+                      hide-details
+                    />
+                    <v-text-field
+                      v-model.number="item.quantity"
+                      label="Qty"
+                      type="number"
+                      variant="outlined"
+                      density="compact"
+                      min="1"
+                      style="flex: 0; width: 80px;"
+                      hide-details
+                    />
+                    <div v-if="item.inventory_item_id" class="text-caption text-grey" style="min-width: 60px;">
+                      Avail: {{ getPlannedItemAvailableQty(idx) }}
+                    </div>
+                    <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click="removePlannedInventoryItem(idx)" />
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+            <v-row v-else>
+              <v-col cols="12">
+                <div class="text-center text-grey py-4">
+                  <v-icon size="32" color="grey-lighten-2">mdi-package-variant-closed</v-icon>
+                  <div class="text-caption mt-1">No inventory items planned. Click "Add Item" to assign inventory.</div>
+                </div>
+              </v-col>
+            </v-row>
+
             <!-- External Links Section -->
             <v-divider class="my-4" />
             <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
@@ -941,28 +1025,64 @@
     </v-dialog>
 
     <!-- Add Inventory Item Dialog -->
-    <v-dialog v-model="inventoryDialog" max-width="400">
+    <v-dialog v-model="inventoryDialog" max-width="500">
       <v-card rounded="lg">
         <v-card-title class="bg-primary text-white py-4">
           <v-icon start>mdi-package-variant</v-icon>
-          Add Inventory Item
+          Add Inventory to Event
         </v-card-title>
         <v-card-text class="pt-6">
-          <v-text-field
-            v-model="inventoryItemForm.item_name"
-            label="Item Name *"
+          <v-autocomplete
+            v-model="inventoryItemForm.inventory_item_id"
+            :items="inventoryItems"
+            item-title="item_name"
+            item-value="id"
+            label="Select Inventory Item *"
             variant="outlined"
             density="compact"
-            placeholder="e.g., Flyers, Brochures, Swag Bags"
+            :loading="inventoryLoading"
+            placeholder="Search inventory..."
+            class="mb-3"
+            @update:model-value="onInventoryItemSelect"
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props">
+                <template #subtitle>
+                  <span class="text-caption">
+                    {{ item.raw.category }} • Total: {{ item.raw.total_quantity }}
+                  </span>
+                </template>
+              </v-list-item>
+            </template>
+          </v-autocomplete>
+          
+          <v-select
+            v-model="inventoryItemForm.location"
+            :items="locationOptions"
+            label="Location *"
+            variant="outlined"
+            density="compact"
             class="mb-3"
           />
+          
+          <div v-if="inventoryItemForm.inventory_item_id" class="mb-3 pa-2 bg-grey-lighten-4 rounded">
+            <span class="text-caption text-grey-darken-1">
+              Available at {{ inventoryItemForm.location.replace('_', ' ') }}: 
+              <strong :class="selectedItemAvailableQty > 0 ? 'text-success' : 'text-error'">
+                {{ selectedItemAvailableQty }}
+              </strong>
+            </span>
+          </div>
+          
           <v-text-field
             v-model.number="inventoryItemForm.quantity_used"
-            label="Quantity Used"
+            label="Quantity to Use *"
             type="number"
             variant="outlined"
             density="compact"
             min="1"
+            :max="selectedItemAvailableQty"
+            :rules="[v => v > 0 || 'Must be at least 1', v => v <= selectedItemAvailableQty || `Only ${selectedItemAvailableQty} available`]"
           />
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
@@ -970,10 +1090,10 @@
           <v-btn variant="text" @click="inventoryDialog = false">Cancel</v-btn>
           <v-btn 
             color="primary" 
-            :disabled="!inventoryItemForm.item_name.trim()"
+            :disabled="!inventoryItemForm.inventory_item_id || inventoryItemForm.quantity_used > selectedItemAvailableQty || inventoryItemForm.quantity_used < 1"
             @click="addInventoryItem"
           >
-            Add Item
+            Add & Deduct
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1030,6 +1150,20 @@ interface InventoryUsedItem {
   item_id: string
   item_name: string
   quantity_used: number
+  location?: string
+  inventory_item_id?: string  // FK to marketing_inventory
+}
+
+interface InventoryItem {
+  id: string
+  item_name: string
+  category: string
+  quantity_venice: number
+  quantity_sherman_oaks: number
+  quantity_valley: number
+  quantity_mpmv: number
+  quantity_offsite: number
+  total_quantity: number
 }
 
 interface EventAttachment {
@@ -1152,11 +1286,50 @@ const eventFormData = reactive({
   registration_link: '',
   notes: '',
   attachments: [] as EventAttachment[],
-  external_links: [] as ExternalLink[]
+  external_links: [] as ExternalLink[],
+  planned_inventory: [] as { inventory_item_id: string, item_name: string, quantity: number, location: string }[]
 })
 
 // New attachments for upload
 const newAttachments = ref<File[]>([])
+
+// Planned inventory for new events
+interface PlannedInventoryItem {
+  inventory_item_id: string
+  item_name: string
+  quantity: number
+  location: string
+}
+
+// Add planned inventory item during event creation
+const addPlannedInventoryItem = () => {
+  eventFormData.planned_inventory.push({
+    inventory_item_id: '',
+    item_name: '',
+    quantity: 1,
+    location: 'venice'
+  })
+}
+
+// Remove planned inventory item
+const removePlannedInventoryItem = (index: number) => {
+  eventFormData.planned_inventory.splice(index, 1)
+}
+
+// Update item name when inventory item is selected
+const onPlannedInventorySelect = (index: number, itemId: string) => {
+  const item = inventoryItems.value.find(i => i.id === itemId)
+  if (item) {
+    eventFormData.planned_inventory[index].item_name = item.item_name
+  }
+}
+
+// Get available quantity for planned inventory item
+const getPlannedItemAvailableQty = (index: number): number => {
+  const planned = eventFormData.planned_inventory[index]
+  if (!planned || !planned.inventory_item_id || !planned.location) return 0
+  return getAvailableQuantity(planned.inventory_item_id, planned.location)
+}
 
 const leadFormData = reactive({
   lead_name: '',
@@ -1372,7 +1545,7 @@ const openDrawer = (event: MarketingEvent) => {
   drawer.value = true
 }
 
-const openCreateDialog = () => {
+const openCreateDialog = async () => {
   editMode.value = false
   newAttachments.value = []
   Object.assign(eventFormData, {
@@ -1396,12 +1569,19 @@ const openCreateDialog = () => {
     registration_link: '',
     notes: '',
     attachments: [],
-    external_links: []
+    external_links: [],
+    planned_inventory: []
   })
+  
+  // Fetch inventory items if not loaded
+  if (inventoryItems.value.length === 0) {
+    await fetchInventoryItems()
+  }
+  
   eventDialog.value = true
 }
 
-const openEditDialog = () => {
+const openEditDialog = async () => {
   if (!selectedEvent.value) return
   editMode.value = true
   newAttachments.value = []
@@ -1426,8 +1606,15 @@ const openEditDialog = () => {
     registration_link: selectedEvent.value.registration_link || '',
     notes: selectedEvent.value.notes || '',
     attachments: selectedEvent.value.attachments || [],
-    external_links: selectedEvent.value.external_links || []
+    external_links: selectedEvent.value.external_links || [],
+    planned_inventory: [] // Edit mode uses the existing inventory, not planned
   })
+  
+  // Fetch inventory items if not loaded
+  if (inventoryItems.value.length === 0) {
+    await fetchInventoryItems()
+  }
+  
   eventDialog.value = true
 }
 
@@ -1447,9 +1634,53 @@ const openAddLeadDialog = () => {
 
 // Inventory dialog state
 const inventoryDialog = ref(false)
+const inventoryItems = ref<InventoryItem[]>([])
+const inventoryLoading = ref(false)
 const inventoryItemForm = reactive({
+  inventory_item_id: '' as string,
   item_name: '',
-  quantity_used: 1
+  quantity_used: 1,
+  location: 'venice' as string
+})
+
+const locationOptions = [
+  { title: 'Venice', value: 'venice' },
+  { title: 'Sherman Oaks', value: 'sherman_oaks' },
+  { title: 'Valley', value: 'valley' },
+  { title: 'MPMV (Mobile)', value: 'mpmv' },
+  { title: 'Off-Site', value: 'offsite' }
+]
+
+// Fetch available inventory items
+const fetchInventoryItems = async () => {
+  inventoryLoading.value = true
+  try {
+    const { data, error } = await client
+      .from('marketing_inventory')
+      .select('id, item_name, category, quantity_venice, quantity_sherman_oaks, quantity_valley, quantity_mpmv, quantity_offsite, total_quantity')
+      .order('item_name')
+    
+    if (error) throw error
+    inventoryItems.value = data || []
+  } catch (err) {
+    console.error('Error fetching inventory:', err)
+  } finally {
+    inventoryLoading.value = false
+  }
+}
+
+// Get available quantity at selected location
+const getAvailableQuantity = (itemId: string, location: string): number => {
+  const item = inventoryItems.value.find(i => i.id === itemId)
+  if (!item) return 0
+  const locationKey = `quantity_${location}` as keyof InventoryItem
+  return (item[locationKey] as number) || 0
+}
+
+// Computed for selected item's available quantity
+const selectedItemAvailableQty = computed(() => {
+  if (!inventoryItemForm.inventory_item_id || !inventoryItemForm.location) return 0
+  return getAvailableQuantity(inventoryItemForm.inventory_item_id, inventoryItemForm.location)
 })
 
 // Update event stat field
@@ -1477,37 +1708,80 @@ const updateEventStat = async (field: string, value: any) => {
 }
 
 // Open inventory dialog
-const openInventoryDialog = () => {
+const openInventoryDialog = async () => {
+  inventoryItemForm.inventory_item_id = ''
   inventoryItemForm.item_name = ''
   inventoryItemForm.quantity_used = 1
+  inventoryItemForm.location = 'venice'
+  
+  // Fetch inventory items if not loaded
+  if (inventoryItems.value.length === 0) {
+    await fetchInventoryItems()
+  }
+  
   inventoryDialog.value = true
 }
 
-// Add inventory item
-const addInventoryItem = async () => {
-  if (!selectedEvent.value || !inventoryItemForm.item_name.trim()) return
-  
-  const newItem: InventoryUsedItem = {
-    item_id: crypto.randomUUID(),
-    item_name: inventoryItemForm.item_name.trim(),
-    quantity_used: inventoryItemForm.quantity_used
+// Handle inventory item selection
+const onInventoryItemSelect = (itemId: string) => {
+  const item = inventoryItems.value.find(i => i.id === itemId)
+  if (item) {
+    inventoryItemForm.item_name = item.item_name
   }
-  
-  const updatedInventory = [...(selectedEvent.value.inventory_used || []), newItem]
-  
-  const { error } = await client
-    .from('marketing_events')
-    .update({ inventory_used: updatedInventory })
-    .eq('id', selectedEvent.value.id)
-  
-  if (error) {
-    showNotification('Failed to add inventory item: ' + error.message, 'error')
+}
+
+// Add inventory item with proper deduction
+const addInventoryItem = async () => {
+  if (!selectedEvent.value || !inventoryItemForm.inventory_item_id) {
+    showNotification('Please select an inventory item', 'warning')
     return
   }
   
-  selectedEvent.value.inventory_used = updatedInventory
-  inventoryDialog.value = false
-  showNotification('Inventory item added')
+  // Check available quantity
+  const available = selectedItemAvailableQty.value
+  if (inventoryItemForm.quantity_used > available) {
+    showNotification(`Only ${available} available at this location`, 'warning')
+    return
+  }
+  
+  try {
+    // Use the database function to deduct inventory and record usage
+    const { data, error } = await client.rpc('deduct_inventory_for_event', {
+      p_event_id: selectedEvent.value.id,
+      p_inventory_item_id: inventoryItemForm.inventory_item_id,
+      p_quantity: inventoryItemForm.quantity_used,
+      p_location: inventoryItemForm.location,
+      p_notes: null
+    })
+    
+    if (error) throw error
+    
+    // Also update the local inventory_used JSONB for display
+    const newItem: InventoryUsedItem = {
+      item_id: data || crypto.randomUUID(),
+      item_name: inventoryItemForm.item_name,
+      quantity_used: inventoryItemForm.quantity_used,
+      location: inventoryItemForm.location,
+      inventory_item_id: inventoryItemForm.inventory_item_id
+    }
+    
+    const updatedInventory = [...(selectedEvent.value.inventory_used || []), newItem]
+    
+    await client
+      .from('marketing_events')
+      .update({ inventory_used: updatedInventory })
+      .eq('id', selectedEvent.value.id)
+    
+    selectedEvent.value.inventory_used = updatedInventory
+    inventoryDialog.value = false
+    
+    // Refresh inventory to show updated quantities
+    await fetchInventoryItems()
+    
+    showNotification('Inventory item added and deducted from stock')
+  } catch (err: any) {
+    showNotification('Failed to add inventory: ' + err.message, 'error')
+  }
 }
 
 // Remove inventory item
@@ -1618,11 +1892,58 @@ const saveEvent = async () => {
       if (error) throw error
       showNotification('Event updated successfully')
     } else {
-      const { error } = await client
+      // Create new event
+      const { data: newEvent, error } = await client
         .from('marketing_events')
         .insert(eventPayload)
+        .select('id')
+        .single()
 
       if (error) throw error
+      
+      // If there are planned inventory items, deduct them from stock
+      if (newEvent && eventFormData.planned_inventory.length > 0) {
+        const inventoryUsedList: InventoryUsedItem[] = []
+        
+        for (const item of eventFormData.planned_inventory) {
+          if (item.inventory_item_id && item.quantity > 0) {
+            try {
+              // Use the database function to deduct inventory
+              const { data: usageId, error: deductError } = await client.rpc('deduct_inventory_for_event', {
+                p_event_id: newEvent.id,
+                p_inventory_item_id: item.inventory_item_id,
+                p_quantity: item.quantity,
+                p_location: item.location,
+                p_notes: 'Added during event creation'
+              })
+              
+              if (deductError) {
+                console.error('Inventory deduction error:', deductError)
+                showNotification(`Warning: Could not deduct ${item.item_name}`, 'warning')
+              } else {
+                inventoryUsedList.push({
+                  item_id: usageId || crypto.randomUUID(),
+                  item_name: item.item_name,
+                  quantity_used: item.quantity,
+                  location: item.location,
+                  inventory_item_id: item.inventory_item_id
+                })
+              }
+            } catch (err) {
+              console.error('Error deducting inventory:', err)
+            }
+          }
+        }
+        
+        // Update event with inventory_used JSONB
+        if (inventoryUsedList.length > 0) {
+          await client
+            .from('marketing_events')
+            .update({ inventory_used: inventoryUsedList })
+            .eq('id', newEvent.id)
+        }
+      }
+      
       showNotification('Event created successfully')
     }
 
@@ -1690,6 +2011,11 @@ onMounted(() => {
   // Handle action query param from marketing pages
   const route = useRoute()
   if (route.query.action === 'add') {
+    // Check if a date was passed for pre-filling
+    const dateParam = route.query.date as string | undefined
+    if (dateParam) {
+      eventFormData.event_date = dateParam
+    }
     openCreateDialog()
   }
 })

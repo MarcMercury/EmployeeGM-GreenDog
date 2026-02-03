@@ -82,9 +82,46 @@
             }"
             style="min-height: 120px; width: 14.28%;"
           >
-            <!-- Day Number -->
+            <!-- Day Number with Create Event Menu -->
             <div class="d-flex justify-space-between align-center mb-1">
+              <v-menu v-if="hasCreateAccess" location="bottom start">
+                <template #activator="{ props: menuProps }">
+                  <span 
+                    v-bind="menuProps"
+                    class="text-caption font-weight-medium day-number-clickable"
+                    :class="{
+                      'text-grey': !day.isCurrentMonth,
+                      'text-primary font-weight-bold': day.isToday
+                    }"
+                  >
+                    {{ day.date.getDate() }}
+                  </span>
+                </template>
+                <v-list density="compact" class="create-event-menu">
+                  <v-list-subheader>Create on {{ formatShortDate(day.date) }}</v-list-subheader>
+                  <v-list-item
+                    prepend-icon="mdi-calendar-plus"
+                    title="Marketing Event"
+                    subtitle="Street fair, open house, etc."
+                    @click="createEventOnDate(day.date)"
+                  />
+                  <v-list-item
+                    prepend-icon="mdi-school"
+                    title="CE Event"
+                    subtitle="Continuing education event"
+                    @click="createCEEventOnDate(day.date)"
+                  />
+                  <v-divider class="my-1" />
+                  <v-list-item
+                    prepend-icon="mdi-note-plus"
+                    title="Add Note"
+                    subtitle="Add a colored note to this date"
+                    @click="openNoteDialog(day.date)"
+                  />
+                </v-list>
+              </v-menu>
               <span 
+                v-else
                 class="text-caption font-weight-medium"
                 :class="{
                   'text-grey': !day.isCurrentMonth,
@@ -105,6 +142,22 @@
 
             <!-- Events for this day -->
             <div class="calendar-events">
+              <!-- Notes for this day -->
+              <div
+                v-for="note in getNotesForDate(day.date)"
+                :key="'note-' + note.id"
+                class="calendar-note mb-1 pa-1 rounded cursor-pointer"
+                :class="`bg-${note.color}-lighten-4 text-${note.color}-darken-3`"
+                @click="openNoteDialog(day.date, note)"
+              >
+                <div class="d-flex align-center gap-1">
+                  <v-icon size="10">mdi-note</v-icon>
+                  <span class="text-caption font-weight-medium text-truncate">
+                    {{ note.title }}
+                  </span>
+                </div>
+              </div>
+              <!-- Events for this day -->
               <div
                 v-for="event in getEventsForDate(day.date)"
                 :key="event.id"
@@ -129,7 +182,7 @@
 
     <!-- Week View Calendar Grid -->
     <v-card v-else rounded="lg">
-      <!-- Day Headers with Dates -->
+      <!-- Day Headers with Dates and Create Event Menu -->
       <div class="calendar-header d-flex border-b">
         <div 
           v-for="day in currentWeekDays" 
@@ -139,7 +192,41 @@
           style="width: 14.28%;"
         >
           <div class="text-overline text-grey">{{ weekDays[day.date.getDay()] }}</div>
+          <v-menu v-if="hasCreateAccess" location="bottom center">
+            <template #activator="{ props: menuProps }">
+              <div 
+                v-bind="menuProps"
+                class="text-h6 font-weight-bold day-number-clickable"
+                :class="{ 'text-primary': day.isToday }"
+              >
+                {{ day.date.getDate() }}
+              </div>
+            </template>
+            <v-list density="compact" class="create-event-menu">
+              <v-list-subheader>Create on {{ formatShortDate(day.date) }}</v-list-subheader>
+              <v-list-item
+                prepend-icon="mdi-calendar-plus"
+                title="Marketing Event"
+                subtitle="Street fair, open house, etc."
+                @click="createEventOnDate(day.date)"
+              />
+              <v-list-item
+                prepend-icon="mdi-school"
+                title="CE Event"
+                subtitle="Continuing education event"
+                @click="createCEEventOnDate(day.date)"
+              />
+              <v-divider class="my-1" />
+              <v-list-item
+                prepend-icon="mdi-note-plus"
+                title="Add Note"
+                subtitle="Add a colored note to this date"
+                @click="openNoteDialog(day.date)"
+              />
+            </v-list>
+          </v-menu>
           <div 
+            v-else
             class="text-h6 font-weight-bold"
             :class="{ 'text-primary': day.isToday }"
           >
@@ -157,8 +244,27 @@
           :class="{ 'bg-primary-lighten-5': day.isToday }"
           style="width: 14.28%;"
         >
-          <!-- Events for this day -->
+          <!-- Events and Notes for this day -->
           <div class="calendar-events">
+            <!-- Notes for this day -->
+            <div
+              v-for="note in getNotesForDate(day.date)"
+              :key="'note-' + note.id"
+              class="calendar-note mb-2 pa-2 rounded cursor-pointer"
+              :class="`bg-${note.color}-lighten-4 text-${note.color}-darken-3`"
+              @click="openNoteDialog(day.date, note)"
+            >
+              <div class="d-flex align-center gap-1 mb-1">
+                <v-icon size="14">mdi-note</v-icon>
+                <span class="text-caption font-weight-bold text-truncate">
+                  {{ note.title }}
+                </span>
+              </div>
+              <div v-if="note.content" class="text-caption opacity-80 text-truncate">
+                {{ note.content }}
+              </div>
+            </div>
+            <!-- Events for this day -->
             <div
               v-for="event in getEventsForDate(day.date)"
               :key="event.id"
@@ -182,7 +288,7 @@
             
             <!-- Empty state for day -->
             <div 
-              v-if="getEventsForDate(day.date).length === 0" 
+              v-if="getEventsForDate(day.date).length === 0 && getNotesForDate(day.date).length === 0" 
               class="text-center text-grey-lighten-1 py-8"
             >
               <v-icon size="24" color="grey-lighten-2">mdi-calendar-blank</v-icon>
@@ -305,6 +411,68 @@
         </div>
       </template>
     </v-navigation-drawer>
+
+    <!-- Add/Edit Note Dialog -->
+    <v-dialog v-model="noteDialog" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-note-edit</v-icon>
+          {{ editingNote ? 'Edit Note' : 'Add Note' }}
+          <v-spacer />
+          <span class="text-body-2 text-grey">{{ noteFormData.note_date }}</span>
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="noteFormData.title"
+            label="Title"
+            required
+            variant="outlined"
+            density="comfortable"
+            class="mb-3"
+          />
+          <v-textarea
+            v-model="noteFormData.content"
+            label="Content (optional)"
+            variant="outlined"
+            density="comfortable"
+            rows="3"
+            class="mb-3"
+          />
+          <div class="mb-2">
+            <label class="text-body-2 text-grey-darken-1 mb-2 d-block">Note Color</label>
+            <div class="d-flex flex-wrap gap-2">
+              <v-btn
+                v-for="colorOption in noteColorOptions"
+                :key="colorOption.value"
+                :color="colorOption.color"
+                size="small"
+                :variant="noteFormData.color === colorOption.value ? 'flat' : 'tonal'"
+                rounded
+                @click="noteFormData.color = colorOption.value"
+              >
+                <v-icon v-if="noteFormData.color === colorOption.value" start size="16">mdi-check</v-icon>
+                {{ colorOption.label }}
+              </v-btn>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn
+            v-if="editingNote"
+            color="error"
+            variant="text"
+            @click="deleteNote"
+          >
+            Delete
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="noteDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="savingNote" @click="saveNote">
+            {{ editingNote ? 'Update' : 'Add Note' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -317,6 +485,10 @@ definePageMeta({
 // Get admin status
 const { isAdmin } = useAppData()
 
+// Permission check for creating events (admin, manager, marketing_admin, hr_admin with manage access)
+const { can } = usePermissions()
+const hasCreateAccess = computed(() => can('manage:marketing'))
+
 interface MarketingEvent {
   id: string
   name: string
@@ -327,6 +499,16 @@ interface MarketingEvent {
   location: string | null
   staffing_status: string
   status: string
+}
+
+interface CalendarNote {
+  id: string
+  note_date: string
+  title: string
+  content: string | null
+  color: string
+  created_by: string | null
+  created_at: string
 }
 
 interface CalendarDay {
@@ -341,10 +523,34 @@ const client = useSupabaseClient()
 // State
 const loading = ref(true)
 const events = ref<MarketingEvent[]>([])
+const notes = ref<CalendarNote[]>([])
 const currentDate = ref(new Date())
 const drawer = ref(false)
 const selectedEvent = ref<MarketingEvent | null>(null)
 const viewMode = ref<'month' | 'week'>('month')
+
+// Note dialog state
+const noteDialog = ref(false)
+const editingNote = ref<CalendarNote | null>(null)
+const savingNote = ref(false)
+const noteFormData = ref({
+  note_date: '',
+  title: '',
+  content: '',
+  color: 'blue'
+})
+
+const noteColorOptions = [
+  { value: 'blue', label: 'Blue', color: 'blue' },
+  { value: 'green', label: 'Green', color: 'green' },
+  { value: 'red', label: 'Red', color: 'red' },
+  { value: 'orange', label: 'Orange', color: 'orange' },
+  { value: 'purple', label: 'Purple', color: 'purple' },
+  { value: 'pink', label: 'Pink', color: 'pink' },
+  { value: 'teal', label: 'Teal', color: 'teal' },
+  { value: 'amber', label: 'Amber', color: 'amber' },
+  { value: 'grey', label: 'Grey', color: 'grey' }
+]
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -554,6 +760,127 @@ const createEventRedirect = () => {
   router.push('/growth/events')
 }
 
+// Format date for menu display (e.g., "Feb 3")
+const formatShortDate = (date: Date): string => {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// Create marketing event on specific date
+const createEventOnDate = (date: Date) => {
+  const dateStr = date.toISOString().split('T')[0]
+  router.push(`/growth/events?action=add&date=${dateStr}`)
+}
+
+// Create CE event on specific date
+const createCEEventOnDate = (date: Date) => {
+  const dateStr = date.toISOString().split('T')[0]
+  router.push(`/gdu/events/new?date=${dateStr}`)
+}
+
+// Note functions
+const openNoteDialog = (date: Date, note?: CalendarNote) => {
+  const dateStr = date.toISOString().split('T')[0]
+  if (note) {
+    editingNote.value = note
+    noteFormData.value = {
+      note_date: note.note_date,
+      title: note.title,
+      content: note.content || '',
+      color: note.color
+    }
+  } else {
+    editingNote.value = null
+    noteFormData.value = {
+      note_date: dateStr,
+      title: '',
+      content: '',
+      color: 'blue'
+    }
+  }
+  noteDialog.value = true
+}
+
+const saveNote = async () => {
+  if (!noteFormData.value.title.trim()) return
+  
+  savingNote.value = true
+  try {
+    if (editingNote.value) {
+      // Update existing note
+      const { error } = await client
+        .from('marketing_calendar_notes')
+        .update({
+          title: noteFormData.value.title,
+          content: noteFormData.value.content || null,
+          color: noteFormData.value.color
+        })
+        .eq('id', editingNote.value.id)
+      
+      if (error) throw error
+    } else {
+      // Create new note
+      const { error } = await client
+        .from('marketing_calendar_notes')
+        .insert({
+          note_date: noteFormData.value.note_date,
+          title: noteFormData.value.title,
+          content: noteFormData.value.content || null,
+          color: noteFormData.value.color
+        })
+      
+      if (error) throw error
+    }
+    
+    noteDialog.value = false
+    await fetchNotes()
+  } catch (err) {
+    console.error('Error saving note:', err)
+  } finally {
+    savingNote.value = false
+  }
+}
+
+const deleteNote = async () => {
+  if (!editingNote.value) return
+  if (!confirm('Are you sure you want to delete this note?')) return
+  
+  savingNote.value = true
+  try {
+    const { error } = await client
+      .from('marketing_calendar_notes')
+      .delete()
+      .eq('id', editingNote.value.id)
+    
+    if (error) throw error
+    
+    noteDialog.value = false
+    await fetchNotes()
+  } catch (err) {
+    console.error('Error deleting note:', err)
+  } finally {
+    savingNote.value = false
+  }
+}
+
+const getNotesForDate = (date: Date): CalendarNote[] => {
+  const dateStr = date.toISOString().split('T')[0]
+  return notes.value.filter(n => n.note_date === dateStr)
+}
+
+const fetchNotes = async () => {
+  try {
+    const { data, error } = await client
+      .from('marketing_calendar_notes')
+      .select('*')
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+    notes.value = data || []
+  } catch (err) {
+    console.error('Error fetching notes:', err)
+  }
+}
+
 // Fetch events
 const fetchEvents = async () => {
   loading.value = true
@@ -574,6 +901,7 @@ const fetchEvents = async () => {
 
 onMounted(() => {
   fetchEvents()
+  fetchNotes()
 })
 </script>
 
@@ -609,6 +937,18 @@ onMounted(() => {
   transition: all 0.15s ease;
 }
 
+.calendar-note {
+  font-size: 11px;
+  line-height: 1.2;
+  border-left: 3px solid currentColor;
+}
+
+.calendar-note:hover {
+  opacity: 0.85;
+  transform: scale(1.02);
+  transition: all 0.15s ease;
+}
+
 .legend-dot {
   width: 12px;
   height: 12px;
@@ -617,5 +957,21 @@ onMounted(() => {
 
 .bg-primary-lighten-5 {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+/* Clickable day number styling */
+.day-number-clickable {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.day-number-clickable:hover {
+  background-color: rgba(var(--v-theme-primary), 0.15);
+}
+
+.create-event-menu {
+  min-width: 220px;
 }
 </style>
