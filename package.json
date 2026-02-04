@@ -31,6 +31,7 @@
     "date-fns": "^4.1.0",
     "marked": "^17.0.1",
     "nuxt": "^4.2.1",
+    "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.0",
     "pinia": "^2.3.1",
     "qrcode.vue": "^3.6.0",

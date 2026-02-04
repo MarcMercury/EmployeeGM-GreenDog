@@ -9,8 +9,8 @@
 
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
-// Simple PDF text extraction using pdf2json
-import PDFParser from 'pdf2json'
+// Use pdf-parse for robust PDF text extraction
+import pdfParse from 'pdf-parse'
 
 interface ParsedResume {
   first_name: string | null
@@ -110,38 +110,15 @@ async function extractText(data: Buffer, mimeType: string): Promise<string> {
     return data.toString('utf-8')
   }
 
-  // PDF
+  // PDF - use pdf-parse for robust extraction
   if (mimeType === 'application/pdf') {
-    return new Promise((resolve, reject) => {
-      const parser = new PDFParser()
-      
-      parser.on('pdfParser_dataError', (err: any) => {
-        reject(new Error(err.parserError || 'PDF parse failed'))
-      })
-      
-      parser.on('pdfParser_dataReady', (pdfData: any) => {
-        let text = ''
-        if (pdfData.Pages) {
-          for (const page of pdfData.Pages) {
-            if (page.Texts) {
-              for (const item of page.Texts) {
-                if (item.R) {
-                  for (const run of item.R) {
-                    if (run.T) {
-                      text += decodeURIComponent(run.T) + ' '
-                    }
-                  }
-                }
-                text += '\n'
-              }
-            }
-          }
-        }
-        resolve(text.trim())
-      })
-      
-      parser.parseBuffer(data)
-    })
+    try {
+      const result = await pdfParse(data)
+      return result.text?.trim() || ''
+    } catch (err: any) {
+      console.error('[parse-resume] PDF parse error:', err.message)
+      throw new Error('Could not read PDF. Please ensure the file is not corrupted or password-protected.')
+    }
   }
 
   // DOCX - basic extraction
