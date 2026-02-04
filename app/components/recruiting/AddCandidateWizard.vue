@@ -743,6 +743,7 @@ function resetCSV() {
 
 // Submit
 async function submit() {
+  console.log('[AddCandidateWizard] Submit called, method:', selectedMethod.value)
   saving.value = true
   errors.value = {}
   
@@ -750,13 +751,16 @@ async function submit() {
     if (selectedMethod.value === 'bulk') {
       await submitBulk()
     } else {
+      console.log('[AddCandidateWizard] Calling submitSingle...')
       await submitSingle()
     }
     
+    console.log('[AddCandidateWizard] Success, moving to step 3')
     step.value = 3
     emit('saved')
     
   } catch (err: any) {
+    console.error('[AddCandidateWizard] Error:', err)
     toast.error(err.message || 'Failed to save')
   } finally {
     saving.value = false
@@ -764,6 +768,8 @@ async function submit() {
 }
 
 async function submitSingle() {
+  console.log('[AddCandidateWizard] submitSingle - form:', candidateForm.value)
+  
   // Validate
   if (!candidateForm.value.first_name) {
     errors.value.first_name = 'First name is required'
@@ -794,16 +800,25 @@ async function submitSingle() {
     status: 'new'
   }
   
+  console.log('[AddCandidateWizard] Checking for duplicate email:', candidate.email)
+  
   // Check for duplicate
-  const { data: existing } = await supabase
+  const { data: existing, error: checkError } = await supabase
     .from('candidates')
     .select('id')
     .eq('email', candidate.email)
     .maybeSingle()
   
+  if (checkError) {
+    console.error('[AddCandidateWizard] Duplicate check error:', checkError)
+    throw new Error(checkError.message)
+  }
+  
   if (existing) {
     throw new Error('A candidate with this email already exists')
   }
+  
+  console.log('[AddCandidateWizard] Inserting candidate:', candidate)
   
   // Insert
   const { error } = await supabase
@@ -811,9 +826,11 @@ async function submitSingle() {
     .insert(candidate)
   
   if (error) {
+    console.error('[AddCandidateWizard] Insert error:', error)
     throw new Error(error.message)
   }
   
+  console.log('[AddCandidateWizard] Insert successful!')
   toast.success(`${candidate.first_name} ${candidate.last_name} added!`)
 }
 
