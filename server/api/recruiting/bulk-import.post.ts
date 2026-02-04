@@ -62,9 +62,10 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event)
-    const { headers, rows, useAIMapping } = body as {
+    const { headers, rows, headerMapping: providedMapping, useAIMapping } = body as {
       headers: string[]
       rows: Record<string, any>[]
+      headerMapping?: Record<string, string>
       useAIMapping?: boolean
     }
 
@@ -75,7 +76,10 @@ export default defineEventHandler(async (event) => {
     // Map headers to our schema
     let headerMapping: Record<string, string>
 
-    if (useAIMapping) {
+    if (providedMapping && Object.keys(providedMapping).length > 0) {
+      // Use client-provided mapping (from user's selections)
+      headerMapping = providedMapping
+    } else if (useAIMapping) {
       const config = useRuntimeConfig()
       const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
       
@@ -120,7 +124,23 @@ export default defineEventHandler(async (event) => {
 
         for (const [csvHeader, dbColumn] of Object.entries(headerMapping)) {
           if (dbColumn && row[csvHeader] !== undefined && row[csvHeader] !== '') {
-            candidate[dbColumn] = row[csvHeader]
+            // Handle full_name by splitting into first_name and last_name
+            if (dbColumn === 'full_name') {
+              const fullName = row[csvHeader].toString().trim()
+              const nameParts = fullName.split(/\s+/)
+              if (nameParts.length >= 2) {
+                candidate.first_name = nameParts[0]
+                candidate.last_name = nameParts.slice(1).join(' ')
+              } else if (nameParts.length === 1) {
+                candidate.first_name = nameParts[0]
+                candidate.last_name = 'Unknown'
+              }
+            } else if (dbColumn === 'target_position') {
+              // Skip for now - would need position lookup
+              continue
+            } else {
+              candidate[dbColumn] = row[csvHeader]
+            }
           }
         }
 
@@ -207,16 +227,17 @@ function mapHeadersManually(headers: string[]): Record<string, string> {
   const patterns: [RegExp, string][] = [
     [/^(first[_\s]?name|fname|first)$/i, 'first_name'],
     [/^(last[_\s]?name|lname|last|surname)$/i, 'last_name'],
-    [/^(email|e-mail|email[_\s]?address)$/i, 'email'],
-    [/^(phone|telephone|tel|phone[_\s]?number)$/i, 'phone'],
+    [/^(name|full[_\s]?name|candidate[_\s]?name|contact[_\s]?name)$/i, 'full_name'],
+    [/^(email|e-mail|email[_\s]?address|mail)$/i, 'email'],
+    [/^(phone|telephone|tel|phone[_\s]?number|home[_\s]?phone|work[_\s]?phone)$/i, 'phone'],
     [/^(mobile|cell|cell[_\s]?phone|mobile[_\s]?phone)$/i, 'phone_mobile'],
     [/^(city|town)$/i, 'city'],
-    [/^(state|province|st)$/i, 'state'],
-    [/^(zip|postal|zip[_\s]?code|postal[_\s]?code)$/i, 'postal_code'],
+    [/^(state|province|st|region)$/i, 'state'],
+    [/^(zip|postal|zip[_\s]?code|postal[_\s]?code|postcode)$/i, 'postal_code'],
     [/^(address|street|address[_\s]?1|street[_\s]?address)$/i, 'address_line1'],
     [/^(address[_\s]?2|apt|suite|unit)$/i, 'address_line2'],
-    [/^(source|referral|how[_\s]?did|lead[_\s]?source)$/i, 'source'],
-    [/^(notes|comments|additional[_\s]?info)$/i, 'notes'],
+    [/^(source|referral|how[_\s]?did|lead[_\s]?source|referred[_\s]?by)$/i, 'source'],
+    [/^(notes|comments|additional[_\s]?info|description)$/i, 'notes'],
     [/^(linkedin|linkedin[_\s]?url|linkedin[_\s]?profile)$/i, 'linkedin_url'],
     [/^(experience|years|experience[_\s]?years|yrs[_\s]?exp)$/i, 'experience_years']
   ]

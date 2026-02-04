@@ -301,8 +301,8 @@
             />
             
             <v-alert type="info" variant="tonal" class="mt-4">
-              <strong>Required columns:</strong> first_name, last_name, email<br>
-              <strong>Optional columns:</strong> phone, city, state, source, notes, linkedin_url
+              <strong>Required columns:</strong> First Name, Last Name, Email (or Full Name + Email)<br>
+              <strong>Optional columns:</strong> Phone, City, State, Source, Notes, LinkedIn
             </v-alert>
           </div>
           
@@ -311,9 +311,17 @@
               <strong>{{ csvData.rows.length }} rows</strong> found in CSV
             </v-alert>
             
+            <!-- Show mapping status -->
+            <v-alert v-if="!hasRequiredMappings" type="warning" variant="tonal" class="mb-4">
+              <strong>Required mappings missing:</strong> Please map columns to Email and either (First Name + Last Name) or Full Name.
+            </v-alert>
+            <v-alert v-else type="success" variant="tonal" class="mb-4">
+              <v-icon>mdi-check-circle</v-icon> Required fields mapped correctly
+            </v-alert>
+            
             <h4 class="text-subtitle-1 mb-2">Column Mapping</h4>
             <p class="text-body-2 text-grey mb-3">
-              Verify the AI-mapped columns are correct:
+              Verify the columns are mapped correctly:
             </p>
             
             <v-table density="compact" class="mb-4">
@@ -494,6 +502,7 @@ const mappingOptions = [
   { title: '-- Skip --', value: '' },
   { title: 'First Name', value: 'first_name' },
   { title: 'Last Name', value: 'last_name' },
+  { title: 'Full Name (First Last)', value: 'full_name' },
   { title: 'Email', value: 'email' },
   { title: 'Phone', value: 'phone' },
   { title: 'Mobile Phone', value: 'phone_mobile' },
@@ -503,7 +512,8 @@ const mappingOptions = [
   { title: 'Address', value: 'address_line1' },
   { title: 'Source', value: 'source' },
   { title: 'Notes', value: 'notes' },
-  { title: 'LinkedIn', value: 'linkedin_url' }
+  { title: 'LinkedIn', value: 'linkedin_url' },
+  { title: 'Position', value: 'target_position' }
 ]
 
 // Computed
@@ -516,9 +526,18 @@ const stepTwoTitle = computed(() => {
   }
 })
 
+// Check if required fields are mapped for bulk import
+const hasRequiredMappings = computed(() => {
+  if (!csvMappings.value) return false
+  const mappedFields = Object.values(csvMappings.value)
+  const hasEmail = mappedFields.includes('email')
+  const hasNames = (mappedFields.includes('first_name') && mappedFields.includes('last_name')) || mappedFields.includes('full_name')
+  return hasEmail && hasNames
+})
+
 const canSubmit = computed(() => {
   if (selectedMethod.value === 'bulk') {
-    return csvData.value && csvData.value.rows.length > 0
+    return csvData.value && csvData.value.rows.length > 0 && hasRequiredMappings.value
   }
   return candidateForm.value.first_name && 
          candidateForm.value.last_name && 
@@ -719,18 +738,39 @@ function parseCSVRow(row: string): string[] {
 function guessMapping(header: string): string {
   const h = header.toLowerCase().replace(/[_\s-]/g, '')
   
-  if (h.includes('first') || h === 'fname') return 'first_name'
-  if (h.includes('last') || h === 'lname' || h === 'surname') return 'last_name'
-  if (h.includes('email')) return 'email'
-  if (h.includes('mobile') || h.includes('cell')) return 'phone_mobile'
-  if (h.includes('phone') || h.includes('tel')) return 'phone'
-  if (h.includes('city')) return 'city'
-  if (h.includes('state') || h === 'st') return 'state'
-  if (h.includes('zip') || h.includes('postal')) return 'postal_code'
-  if (h.includes('address') || h.includes('street')) return 'address_line1'
-  if (h.includes('source') || h.includes('referral')) return 'source'
-  if (h.includes('note') || h.includes('comment')) return 'notes'
-  if (h.includes('linkedin')) return 'linkedin_url'
+  // First Name variations
+  if (h === 'firstname' || h === 'fname' || h === 'first' || h === 'givenname' || h === 'forename' || h.includes('firstname')) return 'first_name'
+  
+  // Last Name variations
+  if (h === 'lastname' || h === 'lname' || h === 'last' || h === 'surname' || h === 'familyname' || h.includes('lastname')) return 'last_name'
+  
+  // Full Name - we'll handle this specially in the mapping
+  if (h === 'name' || h === 'fullname' || h === 'candidatename' || h === 'contactname') return 'full_name'
+  
+  // Email variations
+  if (h === 'email' || h === 'emailaddress' || h === 'mail' || h === 'emailid' || h === 'contactemail' || h.includes('email')) return 'email'
+  
+  // Phone variations
+  if (h === 'mobile' || h === 'mobilephone' || h === 'cell' || h === 'cellphone') return 'phone_mobile'
+  if (h === 'phone' || h === 'phonenumber' || h === 'telephone' || h === 'tel' || h === 'contact' || h === 'homephone' || h === 'workphone' || h.includes('phone')) return 'phone'
+  
+  // Location variations
+  if (h === 'city' || h === 'town' || h.includes('city')) return 'city'
+  if (h === 'state' || h === 'st' || h === 'province' || h === 'region' || h.includes('state')) return 'state'
+  if (h === 'zip' || h === 'zipcode' || h === 'postalcode' || h === 'postal' || h === 'postcode' || h.includes('zip') || h.includes('postal')) return 'postal_code'
+  if (h === 'address' || h === 'street' || h === 'address1' || h === 'streetaddress' || h.includes('address')) return 'address_line1'
+  
+  // Source variations
+  if (h === 'source' || h === 'leadsource' || h === 'howhear' || h === 'referral' || h === 'referredby' || h === 'referralsource' || h.includes('source')) return 'source'
+  
+  // Notes variations
+  if (h === 'notes' || h === 'note' || h === 'comments' || h === 'comment' || h === 'description' || h === 'summary' || h.includes('note') || h.includes('comment')) return 'notes'
+  
+  // LinkedIn variations
+  if (h === 'linkedin' || h === 'linkedinurl' || h === 'linkedinprofile' || h.includes('linkedin')) return 'linkedin_url'
+  
+  // Position variations
+  if (h === 'position' || h === 'role' || h === 'jobtitle' || h === 'title' || h === 'applyingfor' || h.includes('position')) return 'target_position'
   
   return ''
 }
@@ -839,7 +879,7 @@ async function submitBulk() {
   
   const { data: { session } } = await supabase.auth.getSession()
   
-  // Invert mappings for API
+  // Pass the user's mappings to the API
   const headerMapping: Record<string, string> = {}
   for (const [csvHeader, dbColumn] of Object.entries(csvMappings.value)) {
     if (dbColumn) {
@@ -847,12 +887,15 @@ async function submitBulk() {
     }
   }
   
+  console.log('[AddCandidateWizard] Bulk import with mappings:', headerMapping)
+  
   const response = await $fetch<any>('/api/recruiting/bulk-import', {
     method: 'POST',
     body: {
       headers: csvData.value.headers,
       rows: csvData.value.rows,
-      useAIMapping: false // We're using the user's mappings
+      headerMapping, // Pass the user's column mappings
+      useAIMapping: false
     },
     headers: {
       'Authorization': `Bearer ${session?.access_token}`
