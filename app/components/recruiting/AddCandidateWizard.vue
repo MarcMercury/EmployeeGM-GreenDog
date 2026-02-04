@@ -298,6 +298,7 @@
               accept=".csv"
               prepend-icon="mdi-file-delimited"
               @update:model-value="parseCSV"
+              @change="parseCSV(csvFile)"
             />
             
             <v-alert type="info" variant="tonal" class="mt-4">
@@ -497,6 +498,13 @@ const csvFile = ref<File[] | null>(null)
 const csvData = ref<{ headers: string[]; rows: Record<string, any>[] } | null>(null)
 const csvMappings = ref<Record<string, string>>({})
 const bulkResult = ref<any>(null)
+
+// Watch for CSV file changes to ensure parsing happens
+watch(csvFile, (newFiles) => {
+  if (newFiles && newFiles.length > 0) {
+    parseCSV(newFiles)
+  }
+})
 
 const mappingOptions = [
   { title: '-- Skip --', value: '' },
