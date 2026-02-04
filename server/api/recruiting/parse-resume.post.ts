@@ -3,7 +3,7 @@
  * 
  * POST /api/recruiting/parse-resume
  * 
- * Uses pdfjs-dist to extract text from PDFs, then OpenAI to parse.
+ * Uses unpdf to extract text from PDFs (serverless-compatible), then OpenAI to parse.
  */
 
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
@@ -135,34 +135,28 @@ function extractDocxText(buffer: Buffer): string {
   }
 }
 
-// Extract text from PDF using pdfjs-dist
+// Extract text from PDF using unpdf (serverless-compatible)
 async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import of pdfjs-dist
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    // Use unpdf which is serverless-compatible
+    const { extractText } = await import('unpdf')
     
     // Convert buffer to Uint8Array
     const data = new Uint8Array(buffer)
     
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data })
-    const pdf = await loadingTask.promise
+    // Extract text from PDF
+    const result = await extractText(data, { mergePages: true })
     
-    console.log('[parse-resume] PDF loaded, pages:', pdf.numPages)
+    console.log('[parse-resume] PDF extracted, text length:', result.text?.length || 0)
     
-    let fullText = ''
-    
-    // Extract text from each page
-    for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) { // Limit to 5 pages
-      const page = await pdf.getPage(i)
-      const textContent = await page.getTextContent()
-      const pageText = textContent.items
-        .map((item: any) => item.str || '')
-        .join(' ')
-      fullText += pageText + '\n'
+    // Handle the result - unpdf returns { text: string, totalPages: number }
+    if (result.text && result.text.length > 0) {
+      return result.text.trim()
     }
     
-    return fullText.trim()
+    // If unpdf fails, try fallback
+    console.log('[parse-resume] unpdf returned empty, trying fallback')
+    return extractRawText(buffer)
   } catch (err: any) {
     console.error('[parse-resume] PDF extraction failed:', err.message)
     // Fall back to raw extraction
