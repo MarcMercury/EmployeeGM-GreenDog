@@ -107,16 +107,15 @@ async function extractText(data: Buffer, mimeType: string): Promise<string> {
     return data.toString('utf-8')
   }
 
-  // PDF - use pdf-parse for robust extraction
+  // PDF - use unpdf which is designed for serverless environments
   if (mimeType === 'application/pdf') {
     try {
-      // Dynamic require for CommonJS module compatibility
-      const pdfParse = require('pdf-parse')
-      const result = await pdfParse(data)
+      const { extractText: extractPdfText } = await import('unpdf')
+      const result = await extractPdfText(data, { mergePages: true })
       return result.text?.trim() || ''
     } catch (err: any) {
-      console.error('[parse-resume] PDF parse error:', err.message)
-      throw new Error('Could not read PDF. Please ensure the file is not corrupted or password-protected.')
+      console.error('[parse-resume] PDF parse error:', err.message, err.stack)
+      throw new Error('Could not read PDF. Please try a different file format (DOCX or TXT).')
     }
   }
 
