@@ -26,87 +26,11 @@
       </div>
     </div>
 
-    <!-- Add Candidate Dialog -->
-    <v-dialog v-model="showAddDialog" max-width="600" persistent>
-      <v-card>
-        <v-card-title class="d-flex align-center py-4 bg-primary">
-          <v-icon class="mr-3" color="white">mdi-account-plus</v-icon>
-          <span class="text-white font-weight-bold">Add New Candidate</span>
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="closeAddDialog" />
-        </v-card-title>
-        <v-card-text class="pa-6">
-          <v-row>
-            <v-col cols="6">
-              <v-text-field
-                v-model="newCandidate.first_name"
-                label="First Name *"
-                variant="outlined"
-                density="compact"
-                :rules="[v => !!v || 'Required']"
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                v-model="newCandidate.last_name"
-                label="Last Name *"
-                variant="outlined"
-                density="compact"
-                :rules="[v => !!v || 'Required']"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field
-                v-model="newCandidate.email"
-                label="Email *"
-                type="email"
-                variant="outlined"
-                density="compact"
-                :rules="[v => !!v || 'Required', v => /.+@.+\..+/.test(v) || 'Invalid email']"
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                v-model="newCandidate.phone"
-                label="Phone"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-select
-                v-model="newCandidate.source"
-                :items="['Indeed', 'LinkedIn', 'Referral', 'Walk-in', 'Website', 'Job Fair', 'Other']"
-                label="Source"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea
-                v-model="newCandidate.notes"
-                label="Notes"
-                variant="outlined"
-                density="compact"
-                rows="3"
-              />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions class="pa-4 bg-grey-lighten-4">
-          <v-spacer />
-          <v-btn variant="text" @click="closeAddDialog">Cancel</v-btn>
-          <v-btn 
-            color="primary" 
-            :loading="saving"
-            :disabled="!newCandidate.first_name || !newCandidate.last_name || !newCandidate.email"
-            @click="saveNewCandidate"
-          >
-            Add Candidate
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Add Candidate Wizard -->
+    <RecruitingAddCandidateWizard
+      v-model="showAddDialog"
+      @saved="fetchCandidates"
+    />
 
     <!-- Skeleton Loading State -->
     <template v-if="loading">
@@ -357,17 +281,6 @@ const selectedLocation = ref<string | null>(null)
 const selectedDepartment = ref<string | null>(null)
 const quickFilter = ref('all')
 const showAddDialog = ref(false)
-const saving = ref(false)
-
-// New Candidate Form
-const newCandidate = ref({
-  first_name: '',
-  last_name: '',
-  email: '',
-  phone: '',
-  source: 'Indeed',
-  notes: ''
-})
 
 // Filter Options
 const positionOptions = computed(() => {
@@ -564,55 +477,6 @@ const exportCandidates = () => {
   a.download = `candidates-${new Date().toISOString().split('T')[0]}.csv`
   a.click()
   URL.revokeObjectURL(url)
-}
-
-// Add Candidate Dialog
-const closeAddDialog = () => {
-  showAddDialog.value = false
-  newCandidate.value = {
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: '',
-    source: 'Indeed',
-    notes: ''
-  }
-}
-
-const saveNewCandidate = async () => {
-  saving.value = true
-  try {
-    const { data, error } = await client
-      .from('candidates')
-      .insert({
-        first_name: newCandidate.value.first_name,
-        last_name: newCandidate.value.last_name,
-        email: newCandidate.value.email,
-        phone: newCandidate.value.phone || null,
-        source: newCandidate.value.source,
-        notes: newCandidate.value.notes || null,
-        status: 'new',
-        applied_at: new Date().toISOString()
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-
-    toast.success('Candidate added successfully')
-    closeAddDialog()
-    fetchCandidates()
-    
-    // Navigate to the new candidate's detail page
-    if (data?.id) {
-      navigateTo(`/recruiting/${data.id}`)
-    }
-  } catch (error: any) {
-    console.error('Error adding candidate:', error)
-    toast.error(error.message || 'Failed to add candidate')
-  } finally {
-    saving.value = false
-  }
 }
 
 const fetchCandidates = async () => {
