@@ -7,7 +7,7 @@
  * then validates and inserts candidates in bulk.
  */
 
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 interface ImportResult {
   success: number
@@ -198,9 +198,10 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Batch insert
+    // Batch insert using service role to bypass RLS
     if (candidatesToInsert.length > 0) {
-      const { error: insertError } = await supabase
+      const supabaseAdmin = await serverSupabaseServiceRole(event)
+      const { error: insertError } = await supabaseAdmin
         .from('candidates')
         .insert(candidatesToInsert)
 

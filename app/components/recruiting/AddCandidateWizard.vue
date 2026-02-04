@@ -824,54 +824,36 @@ async function submitSingle() {
     throw new Error('Email is required')
   }
   
-  // Normalize
-  const candidate = {
-    first_name: candidateForm.value.first_name.trim(),
-    last_name: candidateForm.value.last_name.trim(),
-    email: candidateForm.value.email.toLowerCase().trim(),
-    phone: normalizePhone(candidateForm.value.phone),
-    city: candidateForm.value.city?.trim() || null,
-    state: normalizeState(candidateForm.value.state),
-    postal_code: candidateForm.value.postal_code?.trim() || null,
-    target_position_id: candidateForm.value.target_position_id || null,
-    source: candidateForm.value.source,
-    referral_source: candidateForm.value.referral_source?.trim() || null,
-    notes: candidateForm.value.notes?.trim() || null,
-    status: 'new'
+  // Get session for auth header
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // Call server API (bypasses RLS with service role)
+  const response = await $fetch<any>('/api/recruiting/create-candidate', {
+    method: 'POST',
+    body: {
+      first_name: candidateForm.value.first_name,
+      last_name: candidateForm.value.last_name,
+      email: candidateForm.value.email,
+      phone: candidateForm.value.phone,
+      city: candidateForm.value.city,
+      state: candidateForm.value.state,
+      postal_code: candidateForm.value.postal_code,
+      target_position_id: candidateForm.value.target_position_id,
+      source: candidateForm.value.source,
+      referral_source: candidateForm.value.referral_source,
+      notes: candidateForm.value.notes
+    },
+    headers: {
+      'Authorization': `Bearer ${session?.access_token}`
+    }
+  })
+  
+  if (!response.success) {
+    throw new Error(response.message || 'Failed to create candidate')
   }
   
-  console.log('[AddCandidateWizard] Checking for duplicate email:', candidate.email)
-  
-  // Check for duplicate
-  const { data: existing, error: checkError } = await supabase
-    .from('candidates')
-    .select('id')
-    .eq('email', candidate.email)
-    .maybeSingle()
-  
-  if (checkError) {
-    console.error('[AddCandidateWizard] Duplicate check error:', checkError)
-    throw new Error(checkError.message)
-  }
-  
-  if (existing) {
-    throw new Error('A candidate with this email already exists')
-  }
-  
-  console.log('[AddCandidateWizard] Inserting candidate:', candidate)
-  
-  // Insert
-  const { error } = await supabase
-    .from('candidates')
-    .insert(candidate)
-  
-  if (error) {
-    console.error('[AddCandidateWizard] Insert error:', error)
-    throw new Error(error.message)
-  }
-  
-  console.log('[AddCandidateWizard] Insert successful!')
-  toast.success(`${candidate.first_name} ${candidate.last_name} added!`)
+  console.log('[AddCandidateWizard] Created candidate:', response.data)
+  toast.success(`${candidateForm.value.first_name} ${candidateForm.value.last_name} added!`)
 }
 
 async function submitBulk() {
