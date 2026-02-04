@@ -9,10 +9,6 @@
 
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
-// Use pdf-parse for robust PDF text extraction
-import * as pdfParseModule from 'pdf-parse'
-const pdfParse = (pdfParseModule as any).default || pdfParseModule
-
 interface ParsedResume {
   first_name: string | null
   last_name: string | null
@@ -114,6 +110,8 @@ async function extractText(data: Buffer, mimeType: string): Promise<string> {
   // PDF - use pdf-parse for robust extraction
   if (mimeType === 'application/pdf') {
     try {
+      // Dynamic require for CommonJS module compatibility
+      const pdfParse = require('pdf-parse')
       const result = await pdfParse(data)
       return result.text?.trim() || ''
     } catch (err: any) {
