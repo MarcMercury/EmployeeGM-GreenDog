@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="modelValue" max-width="800" persistent>
+  <v-dialog v-model="dialogOpen" max-width="800" persistent>
     <v-card>
       <!-- Header -->
       <v-card-title class="d-flex align-center py-4 bg-primary">
@@ -432,6 +432,12 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient()
 const toast = useToast()
+
+// Computed for v-model on dialog
+const dialogOpen = computed({
+  get: () => props.modelValue,
+  set: (value: boolean) => emit('update:modelValue', value)
+})
 
 // State
 const step = ref(1)
