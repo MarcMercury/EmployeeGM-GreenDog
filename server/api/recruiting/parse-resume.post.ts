@@ -10,7 +10,8 @@
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 // Use pdf-parse for robust PDF text extraction
-import pdfParse from 'pdf-parse'
+import * as pdfParseModule from 'pdf-parse'
+const pdfParse = (pdfParseModule as any).default || pdfParseModule
 
 interface ParsedResume {
   first_name: string | null
