@@ -81,8 +81,16 @@ export default defineEventHandler(async (event) => {
 
     const positionTitles = positions?.map(p => p.title).join(', ') || ''
 
-    // Send file directly to OpenAI as base64
-    const parsed = await parseResumeWithAI(openaiKey, fileData, mimeType, positionTitles)
+    // For PDFs, use Vision API. For text/docx, extract text first.
+    let parsed: ParsedResume
+
+    if (mimeType === 'application/pdf') {
+      // Use GPT-4o Vision to read the PDF directly
+      parsed = await parseResumeWithVision(openaiKey, fileData, positionTitles)
+    } else {
+      // Extract text and send to GPT
+      parsed = await parseResumeWithAI(openaiKey, fileData, mimeType, positionTitles)
+    }
 
     return {
       success: true,
@@ -184,6 +192,91 @@ Use null for fields you can't find. Return ONLY valid JSON matching this structu
     return JSON.parse(content) as ParsedResume
   } catch {
     console.error('[parse-resume] Failed to parse JSON:', content)
+    throw new Error('AI returned invalid response')
+  }
+}
+
+// Use GPT-4o Vision API to read PDFs directly
+async function parseResumeWithVision(
+  apiKey: string,
+  fileData: Buffer,
+  positionTitles: string
+): Promise<ParsedResume> {
+  
+  const systemPrompt = `You are an expert resume parser for a veterinary dental clinic.
+Extract candidate information from this resume document and return ONLY valid JSON.
+
+Available positions: ${positionTitles || 'Veterinary Technician, Receptionist, Veterinary Assistant, Kennel Technician'}
+
+Extract these fields:
+- first_name, last_name: Full name split
+- email: Email address
+- phone: Phone number (digits only, 10 digits preferred)
+- city, state, postal_code, address_line1: Location info
+- experience_summary: 2-3 sentence summary of relevant experience
+- skills: Array of job-relevant skills
+- education: Highest education/certifications
+- linkedin_url: LinkedIn if present
+- suggested_position: Best match from our available positions
+
+Use null for fields you can't find. Return ONLY valid JSON.`
+
+  // Convert PDF to base64 for Vision API
+  const base64File = fileData.toString('base64')
+  
+  console.log('[parse-resume] Using Vision API for PDF, size:', fileData.length)
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',  // gpt-4o has vision capabilities
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Parse this resume and extract the candidate information as JSON.'
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:application/pdf;base64,${base64File}`,
+                detail: 'high'
+              }
+            }
+          ]
+        }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+      max_tokens: 2000
+    })
+  })
+
+  if (!response.ok) {
+    const errText = await response.text()
+    console.error('[parse-resume] Vision API error:', response.status, errText)
+    // Fall back to text extraction if vision fails
+    throw new Error('Vision API failed - please try a simpler PDF or manual entry')
+  }
+
+  const completion = await response.json()
+  const content = completion.choices[0]?.message?.content
+
+  if (!content) {
+    throw new Error('No response from AI')
+  }
+
+  try {
+    return JSON.parse(content) as ParsedResume
+  } catch {
+    console.error('[parse-resume] Failed to parse Vision JSON:', content)
     throw new Error('AI returned invalid response')
   }
 }
