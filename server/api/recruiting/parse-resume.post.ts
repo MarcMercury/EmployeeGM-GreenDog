@@ -3,7 +3,7 @@
  * 
  * POST /api/recruiting/parse-resume
  * 
- * Uses OpenAI Files API to properly parse PDFs.
+ * Uses pdfjs-dist to extract text from PDFs, then OpenAI to parse.
  */
 
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
@@ -70,8 +70,9 @@ export default defineEventHandler(async (event) => {
     }
 
     const mimeType = fileField.type || 'application/pdf'
-    const fileName = fileField.filename || 'resume.pdf'
     const fileData = fileField.data
+
+    console.log('[parse-resume] Processing file, type:', mimeType, 'size:', fileData.length)
 
     // Get available positions
     const { data: positions } = await supabase
@@ -81,184 +82,181 @@ export default defineEventHandler(async (event) => {
 
     const positionTitles = positions?.map(p => p.title).join(', ') || ''
 
-    // Upload to OpenAI and parse
-    const parsed = await parseResumeWithOpenAI(openaiKey, fileData, fileName, mimeType, positionTitles)
+    // Extract text from the file
+    let textContent = ''
+    
+    if (mimeType === 'text/plain') {
+      textContent = fileData.toString('utf-8')
+    } else if (mimeType.includes('docx') || mimeType.includes('wordprocessingml')) {
+      textContent = extractDocxText(fileData)
+    } else if (mimeType === 'application/pdf' || mimeType.includes('pdf')) {
+      textContent = await extractPdfText(fileData)
+    } else {
+      // Try raw text extraction
+      textContent = extractRawText(fileData)
+    }
+
+    console.log('[parse-resume] Extracted text length:', textContent.length)
+
+    if (textContent.length < 30) {
+      throw createError({ 
+        statusCode: 400, 
+        message: 'Could not extract text from file. Please try a different format (TXT recommended) or use manual entry.' 
+      })
+    }
+
+    // Parse with OpenAI
+    const parsed = await parseWithOpenAI(openaiKey, textContent, positionTitles)
 
     return { success: true, data: parsed }
 
   } catch (err: any) {
-    console.error('[parse-resume] Error:', err.message)
+    console.error('[parse-resume] Error:', err.message, err.stack)
     if (err.statusCode) throw err
     throw createError({ statusCode: 500, message: err.message || 'Failed to parse resume' })
   }
 })
 
-async function parseResumeWithOpenAI(
-  apiKey: string,
-  fileData: Buffer,
-  fileName: string,
-  mimeType: string,
-  positionTitles: string
-): Promise<ParsedResume> {
-  
-  // Upload file to OpenAI
-  console.log('[parse-resume] Uploading file:', fileName, fileData.length, 'bytes')
-  
-  const form = new FormData()
-  const blob = new Blob([fileData], { type: mimeType })
-  form.append('file', blob, fileName)
-  form.append('purpose', 'assistants')
-
-  const uploadRes = await fetch('https://api.openai.com/v1/files', {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + apiKey },
-    body: form
-  })
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text()
-    console.error('[parse-resume] Upload failed:', err)
-    throw new Error('Failed to upload file')
-  }
-
-  const uploadedFile = await uploadRes.json()
-  const fileId = uploadedFile.id
-  console.log('[parse-resume] Uploaded file ID:', fileId)
-
+// Extract text from DOCX
+function extractDocxText(buffer: Buffer): string {
   try {
-    // Create thread with file
-    const threadRes = await fetch('https://api.openai.com/v1/threads', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      body: JSON.stringify({
-        messages: [{
-          role: 'user',
-          content: 'Parse this resume and return ONLY valid JSON with these fields: first_name, last_name, email, phone, city, state, postal_code, address_line1, experience_summary (2-3 sentences), skills (array), education, linkedin_url, suggested_position. Use null for missing fields. Available positions: ' + (positionTitles || 'Veterinary Technician, Receptionist'),
-          attachments: [{ file_id: fileId, tools: [{ type: 'file_search' }] }]
-        }]
-      })
-    })
-
-    if (!threadRes.ok) {
-      console.log('[parse-resume] Thread failed, using fallback')
-      return await fallbackParse(apiKey, fileData, mimeType, positionTitles)
+    const content = buffer.toString('utf-8')
+    // Extract text from XML tags
+    const matches = content.match(/<w:t[^>]*>([^<]*)<\/w:t>/g)
+    if (matches && matches.length > 0) {
+      return matches
+        .map(m => m.replace(/<[^>]+>/g, ''))
+        .filter(t => t.trim())
+        .join(' ')
     }
-
-    const thread = await threadRes.json()
-
-    // Run with model directly (no assistant needed)
-    const runRes = await fetch('https://api.openai.com/v1/threads/' + thread.id + '/runs', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        instructions: 'You parse resumes. Return ONLY valid JSON, no markdown.',
-        tools: [{ type: 'file_search' }]
-      })
-    })
-
-    if (!runRes.ok) {
-      console.log('[parse-resume] Run failed, using fallback')
-      return await fallbackParse(apiKey, fileData, mimeType, positionTitles)
-    }
-
-    const run = await runRes.json()
-
-    // Poll for completion
-    let status = run.status
-    let attempts = 0
-    while (status !== 'completed' && status !== 'failed' && attempts < 30) {
-      await new Promise(r => setTimeout(r, 1000))
-      const statusRes = await fetch('https://api.openai.com/v1/threads/' + thread.id + '/runs/' + run.id, {
-        headers: { 'Authorization': 'Bearer ' + apiKey, 'OpenAI-Beta': 'assistants=v2' }
-      })
-      const statusData = await statusRes.json()
-      status = statusData.status
-      attempts++
-    }
-
-    if (status !== 'completed') {
-      throw new Error('Processing timed out')
-    }
-
-    // Get messages
-    const msgsRes = await fetch('https://api.openai.com/v1/threads/' + thread.id + '/messages', {
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'OpenAI-Beta': 'assistants=v2' }
-    })
-    const msgs = await msgsRes.json()
-    const assistantMsg = msgs.data?.find((m: any) => m.role === 'assistant')
-    const content = assistantMsg?.content?.[0]?.text?.value
-
-    if (!content) throw new Error('No AI response')
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Invalid AI response')
-
-    return JSON.parse(jsonMatch[0])
-
-  } finally {
-    // Cleanup file
-    fetch('https://api.openai.com/v1/files/' + fileId, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + apiKey }
-    }).catch(() => {})
+    return ''
+  } catch {
+    return ''
   }
 }
 
-async function fallbackParse(
+// Extract text from PDF using pdfjs-dist
+async function extractPdfText(buffer: Buffer): Promise<string> {
+  try {
+    // Dynamic import of pdfjs-dist
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+    
+    // Convert buffer to Uint8Array
+    const data = new Uint8Array(buffer)
+    
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({ data })
+    const pdf = await loadingTask.promise
+    
+    console.log('[parse-resume] PDF loaded, pages:', pdf.numPages)
+    
+    let fullText = ''
+    
+    // Extract text from each page
+    for (let i = 1; i <= Math.min(pdf.numPages, 5); i++) { // Limit to 5 pages
+      const page = await pdf.getPage(i)
+      const textContent = await page.getTextContent()
+      const pageText = textContent.items
+        .map((item: any) => item.str || '')
+        .join(' ')
+      fullText += pageText + '\n'
+    }
+    
+    return fullText.trim()
+  } catch (err: any) {
+    console.error('[parse-resume] PDF extraction failed:', err.message)
+    // Fall back to raw extraction
+    return extractRawText(buffer)
+  }
+}
+
+// Fallback: extract readable ASCII from binary
+function extractRawText(buffer: Buffer): string {
+  const binary = buffer.toString('binary')
+  
+  // Find readable sequences (5+ printable chars)
+  const matches = binary.match(/[\x20-\x7E]{5,}/g)
+  if (!matches) return ''
+  
+  // Filter out obvious binary/PDF commands
+  const filtered = matches.filter(chunk => {
+    // Must contain some letters
+    if (!/[a-zA-Z]{2,}/.test(chunk)) return false
+    // Filter out PDF internals
+    if (/^(obj|endobj|stream|endstream|xref|trailer|\/\w+|<<|>>)/.test(chunk)) return false
+    // Filter out just numbers
+    if (/^[\d\s.]+$/.test(chunk)) return false
+    return true
+  })
+  
+  return filtered.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+// Parse extracted text with OpenAI
+async function parseWithOpenAI(
   apiKey: string,
-  fileData: Buffer,
-  mimeType: string,
+  text: string,
   positionTitles: string
 ): Promise<ParsedResume> {
   
-  let text = ''
-  
-  if (mimeType === 'text/plain') {
-    text = fileData.toString('utf-8')
-  } else if (mimeType.includes('docx')) {
-    const raw = fileData.toString('utf-8')
-    const matches = raw.match(/<w:t[^>]*>([^<]+)<\/w:t>/g)
-    if (matches) text = matches.map(m => m.replace(/<[^>]+>/g, '')).join(' ')
-  } else {
-    // PDF: extract readable text
-    const bin = fileData.toString('binary')
-    const readable = bin.match(/[\x20-\x7E]{5,}/g)
-    if (readable) {
-      text = readable.filter(c => /[a-zA-Z]{2,}/.test(c)).join(' ')
-    }
-  }
+  const systemPrompt = `You are an expert resume parser for a veterinary dental clinic.
+Extract candidate information from the resume text.
+Return ONLY a valid JSON object with no additional text.
 
-  text = text.replace(/\s+/g, ' ').trim()
-  console.log('[parse-resume] Fallback text length:', text.length)
+Available positions: ${positionTitles || 'Veterinary Technician, Receptionist, Veterinary Assistant'}
 
-  if (text.length < 50) {
-    throw new Error('Could not extract text. Please use manual entry.')
-  }
+Return this exact JSON structure:
+{
+  "first_name": "string or null",
+  "last_name": "string or null",
+  "email": "string or null",
+  "phone": "string or null (10 digits preferred)",
+  "city": "string or null",
+  "state": "string or null (2-letter code preferred)",
+  "postal_code": "string or null",
+  "address_line1": "string or null",
+  "experience_summary": "2-3 sentence summary or null",
+  "skills": ["array", "of", "relevant", "skills"],
+  "education": "string or null",
+  "linkedin_url": "string or null",
+  "suggested_position": "best matching position from list or null"
+}`
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: 'Parse resume, return only JSON: {first_name, last_name, email, phone, city, state, postal_code, address_line1, experience_summary, skills[], education, linkedin_url, suggested_position}. Positions: ' + positionTitles },
-        { role: 'user', content: text.substring(0, 10000) }
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Parse this resume text:\n\n${text.substring(0, 12000)}` }
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.1
+      temperature: 0.1,
+      max_tokens: 2000
     })
   })
 
-  if (!res.ok) throw new Error('AI error')
-  const data = await res.json()
-  return JSON.parse(data.choices[0]?.message?.content || '{}')
+  if (!response.ok) {
+    const err = await response.text()
+    console.error('[parse-resume] OpenAI error:', response.status, err)
+    throw new Error('AI service temporarily unavailable')
+  }
+
+  const completion = await response.json()
+  const content = completion.choices[0]?.message?.content
+
+  if (!content) {
+    throw new Error('No response from AI')
+  }
+
+  try {
+    return JSON.parse(content) as ParsedResume
+  } catch {
+    console.error('[parse-resume] Failed to parse AI response:', content)
+    throw new Error('AI returned invalid format')
+  }
 }
