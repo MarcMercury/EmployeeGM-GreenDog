@@ -107,15 +107,30 @@ async function extractText(data: Buffer, mimeType: string): Promise<string> {
     return data.toString('utf-8')
   }
 
-  // PDF - use unpdf which is designed for serverless environments
+  // PDF - use unpdf with getDocumentProxy for more control
   if (mimeType === 'application/pdf') {
     try {
-      const { extractText: extractPdfText } = await import('unpdf')
-      const result = await extractPdfText(data, { mergePages: true })
-      return result.text?.trim() || ''
+      const { getDocumentProxy } = await import('unpdf')
+      
+      // Convert Buffer to Uint8Array
+      const uint8Array = new Uint8Array(data)
+      
+      const pdf = await getDocumentProxy(uint8Array)
+      let fullText = ''
+      
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const textContent = await page.getTextContent()
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ')
+        fullText += pageText + '\n'
+      }
+      
+      return fullText.trim()
     } catch (err: any) {
       console.error('[parse-resume] PDF parse error:', err.message, err.stack)
-      throw new Error('Could not read PDF. Please try a different file format (DOCX or TXT).')
+      throw new Error('Could not read PDF: ' + (err.message || 'Unknown error'))
     }
   }
 
