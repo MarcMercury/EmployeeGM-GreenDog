@@ -53,15 +53,34 @@ export default defineNuxtPlugin({
       switch (event) {
         case 'SIGNED_IN':
           // User signed in (includes initial sign in and token refresh)
-          if (newSession?.user && !authStore.profile) {
+          if (newSession?.user) {
             console.log('[AuthPlugin] Loading profile after sign in...')
-            await authStore.fetchProfile(newSession.user.id)
-            await userStore.fetchUserData()
+            if (!authStore.profile) {
+              await authStore.fetchProfile(newSession.user.id)
+              await userStore.fetchUserData()
+            }
+            
+            // Update last_login_at on actual sign-in event
+            try {
+              const { error } = await supabase
+                .from('profiles')
+                .update({ last_login_at: new Date().toISOString() })
+                .eq('auth_user_id', newSession.user.id)
+              
+              if (error) {
+                console.warn('[AuthPlugin] Failed to update last_login_at on sign-in:', error.message)
+              } else {
+                console.log('[AuthPlugin] Updated last_login_at on sign-in')
+              }
+            } catch (err) {
+              console.warn('[AuthPlugin] Error updating last_login_at on sign-in:', err)
+            }
           }
           break
 
         case 'SIGNED_OUT':
           // User signed out - stores are reset in authStore.signOut()
+          // Also update last_login_at to mark the logout time
           console.log('[AuthPlugin] User signed out')
           break
 

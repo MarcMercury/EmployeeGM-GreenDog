@@ -1,8 +1,9 @@
 /**
  * POST /api/admin/sync-login-times
  * 
- * Syncs last_sign_in_at from auth.users to profiles.last_login_at
- * Only super_admin can access this endpoint
+ * Updates last_login_at to NOW() for all users who have ever signed in.
+ * This effectively "marks everyone as active" at the moment the button is pressed.
+ * Only super_admin can access this endpoint.
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -90,22 +91,25 @@ export default defineEventHandler(async (event) => {
     page++
   }
 
-  // Update profiles.last_login_at for each auth user that has signed in
+  // Update profiles.last_login_at to NOW() for all users who have ever signed in
+  // This treats Sync as "mark everyone as active at this moment"
+  const now = new Date().toISOString()
   let updatedCount = 0
   let skippedCount = 0
   let notFoundCount = 0
   const errors: string[] = []
 
   for (const authUser of allAuthUsers) {
+    // Skip users who have never signed in (no session history)
     if (!authUser.last_sign_in_at) {
       skippedCount++
       continue
     }
 
-    // Use .select() to get actual count of updated rows
+    // Update last_login_at to NOW (current time), not the old last_sign_in_at
     const { data: updateResult, error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ last_login_at: authUser.last_sign_in_at })
+      .update({ last_login_at: now })
       .eq('auth_user_id', authUser.id)
       .select('id')
 
@@ -119,7 +123,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  console.log(`[Sync Login Times] Updated ${updatedCount} profiles, skipped ${skippedCount} (never signed in), ${notFoundCount} profiles not found, ${errors.length} errors`)
+  console.log(`[Sync Login Times] Updated ${updatedCount} profiles to NOW (${now}), skipped ${skippedCount} (never signed in), ${notFoundCount} profiles not found, ${errors.length} errors`)
 
   return {
     success: true,
