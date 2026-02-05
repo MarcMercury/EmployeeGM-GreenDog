@@ -959,10 +959,10 @@
                       variant="outlined"
                       density="compact"
                       min="1"
-                      style="flex: 0; width: 80px;"
+                      style="flex: 0; min-width: 100px; max-width: 120px;"
                       hide-details
                     />
-                    <div v-if="item.inventory_item_id" class="text-caption text-grey" style="min-width: 60px;">
+                    <div v-if="item.inventory_item_id" class="text-caption text-grey" style="min-width: 80px;">
                       Avail: {{ getPlannedItemAvailableQty(idx) }}
                     </div>
                     <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click="removePlannedInventoryItem(idx)" />

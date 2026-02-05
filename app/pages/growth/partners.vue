@@ -96,6 +96,18 @@
               </div>
             </div>
 
+            <!-- Last Visit & Relationship Score -->
+            <div class="d-flex align-center gap-4 mb-2">
+              <div v-if="partner.last_contact_date" class="d-flex align-center">
+                <v-icon size="18" color="grey" class="mr-1">mdi-calendar-clock</v-icon>
+                <span class="text-body-2">{{ formatLastVisit(partner.last_contact_date) }}</span>
+              </div>
+              <div v-if="(partner as any).relationship_score != null" class="d-flex align-center">
+                <v-icon size="18" :color="getScoreColor((partner as any).relationship_score)" class="mr-1">mdi-heart-pulse</v-icon>
+                <span class="text-body-2" :class="`text-${getScoreColor((partner as any).relationship_score)}`">{{ (partner as any).relationship_score }}%</span>
+              </div>
+            </div>
+
             <!-- Notes Preview -->
             <p v-if="partner.notes" class="text-caption text-grey text-truncate mb-0">
               {{ partner.notes }}
@@ -676,6 +688,8 @@ const partnerExportColumns = [
   { key: 'tier', title: 'Tier' },
   { key: 'total_referrals', title: 'Total Referrals' },
   { key: 'total_revenue', title: 'Total Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
+  { key: 'last_contact_date', title: 'Last Visit Date' },
+  { key: 'relationship_score', title: 'Relationship Score', format: (v: number) => v != null ? `${v}%` : '' },
   { key: 'is_active', title: 'Active', format: (v: boolean) => v ? 'Yes' : 'No' },
   { key: 'notes', title: 'Notes' },
   { key: 'created_at', title: 'Created At' }
@@ -849,6 +863,29 @@ const formatVisitDate = (dateStr: string) => {
     day: 'numeric',
     year: 'numeric'
   })
+}
+
+// Format last visit date for card display
+const formatLastVisit = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// Get color for relationship score
+const getScoreColor = (score: number) => {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'info'
+  if (score >= 40) return 'warning'
+  return 'error'
 }
 
 const openAddDialog = () => {
