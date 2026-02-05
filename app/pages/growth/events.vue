@@ -207,6 +207,11 @@
             <v-icon start>mdi-qrcode</v-icon>
             QR Code
           </v-tab>
+          <v-tab value="partners">
+            <v-icon start>mdi-handshake</v-icon>
+            Vendors/Partners
+            <v-badge v-if="eventPartners.length > 0" :content="eventPartners.length" color="secondary" inline class="ml-1" />
+          </v-tab>
         </v-tabs>
 
         <v-divider />
@@ -313,37 +318,43 @@
                   </v-card>
 
                   <!-- External Links -->
-                  <div v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0" class="mt-4">
+                  <div class="mt-4">
                     <p class="text-overline text-grey mb-2">EXTERNAL LINKS</p>
-                    <v-chip
-                      v-for="(link, idx) in selectedEvent.external_links"
-                      :key="idx"
-                      :href="link.url"
-                      target="_blank"
-                      color="primary"
-                      variant="tonal"
-                      class="mr-2 mb-2"
-                    >
-                      <v-icon start size="16">mdi-open-in-new</v-icon>
-                      {{ link.title }}
-                    </v-chip>
+                    <template v-if="selectedEvent.external_links && selectedEvent.external_links.length > 0">
+                      <v-chip
+                        v-for="(link, idx) in selectedEvent.external_links"
+                        :key="idx"
+                        :href="link.url"
+                        target="_blank"
+                        color="primary"
+                        variant="tonal"
+                        class="mr-2 mb-2"
+                      >
+                        <v-icon start size="16">mdi-open-in-new</v-icon>
+                        {{ link.title }}
+                      </v-chip>
+                    </template>
+                    <p v-else class="text-body-2 text-grey-darken-1">No external links added</p>
                   </div>
 
                   <!-- Attachments -->
-                  <div v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0" class="mt-4">
+                  <div class="mt-4">
                     <p class="text-overline text-grey mb-2">ATTACHMENTS</p>
-                    <v-chip
-                      v-for="(att, idx) in selectedEvent.attachments"
-                      :key="idx"
-                      :href="att.url"
-                      target="_blank"
-                      color="secondary"
-                      variant="tonal"
-                      class="mr-2 mb-2"
-                    >
-                      <v-icon start size="16">mdi-file-document</v-icon>
-                      {{ att.name }}
-                    </v-chip>
+                    <template v-if="selectedEvent.attachments && selectedEvent.attachments.length > 0">
+                      <v-chip
+                        v-for="(att, idx) in selectedEvent.attachments"
+                        :key="idx"
+                        :href="att.url"
+                        target="_blank"
+                        color="secondary"
+                        variant="tonal"
+                        class="mr-2 mb-2"
+                      >
+                        <v-icon start size="16">mdi-file-document</v-icon>
+                        {{ att.name }}
+                      </v-chip>
+                    </template>
+                    <p v-else class="text-body-2 text-grey-darken-1">No attachments uploaded</p>
                   </div>
                 </v-col>
               </v-row>
@@ -569,6 +580,83 @@
                   </v-card>
                 </v-col>
               </v-row>
+            </v-tabs-window-item>
+
+            <!-- VENDORS/PARTNERS TAB -->
+            <v-tabs-window-item value="partners">
+              <div class="d-flex justify-space-between align-center mb-4">
+                <p class="text-overline text-grey mb-0">EVENT VENDORS & PARTNERS</p>
+                <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddPartnerDialog">
+                  Add Partner
+                </v-btn>
+              </div>
+              
+              <v-progress-linear v-if="eventPartnersLoading" indeterminate color="primary" class="mb-4" />
+              
+              <template v-if="eventPartners.length > 0">
+                <v-data-table
+                  :items="eventPartners"
+                  :headers="[
+                    { title: 'Partner', key: 'partner.name', sortable: true },
+                    { title: 'Type', key: 'partner.partner_type', sortable: true },
+                    { title: 'Role', key: 'role', sortable: true },
+                    { title: 'Contact', key: 'partner.contact_name', sortable: false },
+                    { title: 'Confirmed', key: 'is_confirmed', sortable: true },
+                    { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
+                  ]"
+                  density="comfortable"
+                  class="elevation-1 rounded-lg"
+                >
+                  <template #item.partner.name="{ item }">
+                    <div class="d-flex align-center py-2">
+                      <v-avatar :color="getPartnerTypeColor(item.partner?.partner_type)" size="32" class="mr-2">
+                        <v-icon size="16" color="white">{{ getPartnerTypeIcon(item.partner?.partner_type) }}</v-icon>
+                      </v-avatar>
+                      <div>
+                        <div class="font-weight-medium">{{ item.partner?.name || 'Unknown' }}</div>
+                        <div class="text-caption text-grey">{{ item.partner?.address || 'No address' }}</div>
+                      </div>
+                    </div>
+                  </template>
+                  <template #item.partner.partner_type="{ item }">
+                    <v-chip size="small" :color="getPartnerTypeColor(item.partner?.partner_type)" variant="tonal">
+                      {{ formatPartnerType(item.partner?.partner_type) }}
+                    </v-chip>
+                  </template>
+                  <template #item.role="{ item }">
+                    <v-chip size="small" color="primary" variant="outlined">
+                      {{ formatPartnerRole(item.role) }}
+                    </v-chip>
+                  </template>
+                  <template #item.partner.contact_name="{ item }">
+                    <div v-if="item.partner?.contact_name || item.partner?.contact_phone">
+                      <div class="text-body-2">{{ item.partner?.contact_name || '-' }}</div>
+                      <div class="text-caption text-grey">{{ item.partner?.contact_phone || '' }}</div>
+                    </div>
+                    <span v-else class="text-grey">-</span>
+                  </template>
+                  <template #item.is_confirmed="{ item }">
+                    <v-icon :color="item.is_confirmed ? 'success' : 'grey'" size="20">
+                      {{ item.is_confirmed ? 'mdi-check-circle' : 'mdi-clock-outline' }}
+                    </v-icon>
+                  </template>
+                  <template #item.actions="{ item }">
+                    <v-btn icon size="small" variant="text" color="error" @click="removeEventPartner(item.id)">
+                      <v-icon size="18">mdi-delete</v-icon>
+                      <v-tooltip activator="parent" location="top">Remove from event</v-tooltip>
+                    </v-btn>
+                  </template>
+                </v-data-table>
+              </template>
+              
+              <v-card v-else variant="outlined" class="text-center pa-8">
+                <v-icon size="64" color="grey-lighten-2">mdi-handshake-outline</v-icon>
+                <div class="text-h6 text-grey mt-4">No vendors or partners added</div>
+                <div class="text-body-2 text-grey mb-4">Add partners from your partner database to this event</div>
+                <v-btn color="primary" prepend-icon="mdi-plus" @click="openAddPartnerDialog">
+                  Add Partner
+                </v-btn>
+              </v-card>
             </v-tabs-window-item>
           </v-tabs-window>
         </v-card-text>
@@ -1099,6 +1187,111 @@
       </v-card>
     </v-dialog>
 
+    <!-- Add Partner to Event Dialog -->
+    <v-dialog v-model="addPartnerDialog" max-width="600" scrollable>
+      <v-card rounded="lg">
+        <v-card-title class="bg-primary text-white py-4">
+          <v-icon start>mdi-handshake</v-icon>
+          Add Partner to Event
+        </v-card-title>
+        <v-card-text class="pt-6" style="max-height: 60vh;">
+          <!-- Search Partners -->
+          <v-text-field
+            v-model="partnerSearchQuery"
+            label="Search Partners"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="compact"
+            clearable
+            hint="Search by name, type, or contact"
+            persistent-hint
+            class="mb-4"
+          />
+          
+          <!-- Partners List -->
+          <div v-if="filteredMarketingPartners.length > 0" class="partner-list">
+            <v-list density="compact" class="rounded-lg border">
+              <v-list-item
+                v-for="partner in filteredMarketingPartners"
+                :key="partner.id"
+                :active="selectedPartnerToAdd?.id === partner.id"
+                @click="selectedPartnerToAdd = partner"
+                class="py-3"
+              >
+                <template #prepend>
+                  <v-avatar :color="getPartnerTypeColor(partner.partner_type)" size="40" class="mr-3">
+                    <v-icon size="20" color="white">{{ getPartnerTypeIcon(partner.partner_type) }}</v-icon>
+                  </v-avatar>
+                </template>
+                <v-list-item-title class="font-weight-medium">{{ partner.name }}</v-list-item-title>
+                <v-list-item-subtitle>
+                  <v-chip size="x-small" :color="getPartnerTypeColor(partner.partner_type)" variant="tonal" class="mr-1">
+                    {{ formatPartnerType(partner.partner_type) }}
+                  </v-chip>
+                  <span v-if="partner.contact_name" class="text-grey">{{ partner.contact_name }}</span>
+                </v-list-item-subtitle>
+                <template #append>
+                  <v-icon v-if="selectedPartnerToAdd?.id === partner.id" color="primary">mdi-check-circle</v-icon>
+                  <v-icon v-else-if="isPartnerAlreadyAdded(partner.id)" color="success" size="small">mdi-check</v-icon>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+          <v-alert v-else-if="partnerSearchQuery" type="info" variant="tonal" class="mt-2">
+            No partners found matching "{{ partnerSearchQuery }}"
+          </v-alert>
+          <v-alert v-else type="info" variant="tonal" class="mt-2">
+            Start typing to search for partners
+          </v-alert>
+          
+          <!-- Selected Partner Details -->
+          <v-expand-transition>
+            <v-card v-if="selectedPartnerToAdd" variant="outlined" class="mt-4 pa-4">
+              <div class="d-flex align-center mb-3">
+                <v-avatar :color="getPartnerTypeColor(selectedPartnerToAdd.partner_type)" size="48" class="mr-3">
+                  <v-icon size="24" color="white">{{ getPartnerTypeIcon(selectedPartnerToAdd.partner_type) }}</v-icon>
+                </v-avatar>
+                <div>
+                  <div class="text-h6">{{ selectedPartnerToAdd.name }}</div>
+                  <div class="text-caption text-grey">{{ formatPartnerType(selectedPartnerToAdd.partner_type) }}</div>
+                </div>
+              </div>
+              
+              <v-select
+                v-model="newPartnerRole"
+                :items="partnerRoleOptions"
+                label="Role at Event *"
+                variant="outlined"
+                density="compact"
+                class="mb-3"
+              />
+              
+              <v-textarea
+                v-model="newPartnerNotes"
+                label="Notes (optional)"
+                variant="outlined"
+                density="compact"
+                rows="2"
+                placeholder="Booth location, special requirements, etc."
+              />
+            </v-card>
+          </v-expand-transition>
+        </v-card-text>
+        <v-card-actions class="px-6 pb-4">
+          <v-spacer />
+          <v-btn variant="text" @click="closeAddPartnerDialog">Cancel</v-btn>
+          <v-btn 
+            color="primary" 
+            :loading="savingPartner" 
+            :disabled="!selectedPartnerToAdd || isPartnerAlreadyAdded(selectedPartnerToAdd?.id)"
+            @click="saveEventPartner"
+          >
+            {{ isPartnerAlreadyAdded(selectedPartnerToAdd?.id) ? 'Already Added' : 'Save Partner' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
       {{ snackbarText }}
@@ -1189,6 +1382,29 @@ interface Lead {
   notes: string | null
 }
 
+interface EventPartner {
+  id: string
+  event_id: string
+  partner_id: string
+  role: string
+  booth_info: string | null
+  notes: string | null
+  is_confirmed: boolean
+  created_at: string
+  partner?: MarketingPartner
+}
+
+interface MarketingPartner {
+  id: string
+  name: string
+  partner_type: string
+  status: string
+  contact_name: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  address: string | null
+}
+
 const client = useSupabaseClient()
 
 // State
@@ -1205,6 +1421,31 @@ const editMode = ref(false)
 const formValid = ref(false)
 const leadFormValid = ref(false)
 const eventProfileTab = ref('details')
+
+// Event Partners State
+const eventPartners = ref<EventPartner[]>([])
+const eventPartnersLoading = ref(false)
+const addPartnerDialog = ref(false)
+const allMarketingPartners = ref<MarketingPartner[]>([])
+const partnerSearchQuery = ref('')
+const selectedPartnerToAdd = ref<MarketingPartner | null>(null)
+const savingPartner = ref(false)
+const partnerRoleOptions = [
+  { title: 'Vendor', value: 'vendor' },
+  { title: 'Sponsor', value: 'sponsor' },
+  { title: 'Rescue', value: 'rescue' },
+  { title: 'Food Vendor', value: 'food_vendor' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Donor', value: 'donor' },
+  { title: 'Volunteer', value: 'volunteer' },
+  { title: 'Host', value: 'host' },
+  { title: 'Speaker', value: 'speaker' },
+  { title: 'Exhibitor', value: 'exhibitor' },
+  { title: 'Chamber', value: 'chamber' },
+  { title: 'Other', value: 'other' }
+]
+const newPartnerRole = ref('vendor')
+const newPartnerNotes = ref('')
 
 // Filters
 const searchQuery = ref('')
@@ -1407,6 +1648,18 @@ const confirmedCount = computed(() =>
 
 const totalLeads = computed(() => leads.value.length)
 
+// Filtered marketing partners for search
+const filteredMarketingPartners = computed(() => {
+  if (!partnerSearchQuery.value) return []
+  const query = partnerSearchQuery.value.toLowerCase()
+  return allMarketingPartners.value.filter(p => 
+    p.name.toLowerCase().includes(query) ||
+    p.partner_type?.toLowerCase().includes(query) ||
+    p.contact_name?.toLowerCase().includes(query) ||
+    p.address?.toLowerCase().includes(query)
+  ).slice(0, 20) // Limit to 20 results
+})
+
 // Methods
 const showNotification = (message: string, color = 'success') => {
   snackbarText.value = message
@@ -1492,6 +1745,78 @@ const getLeadStatusColor = (status: string) => {
   return colors[status] || 'grey'
 }
 
+// Partner Helper Functions
+const getPartnerTypeColor = (type: string | undefined) => {
+  const colors: Record<string, string> = {
+    vendor: 'blue',
+    rescue: 'pink',
+    chamber: 'purple',
+    pet_store: 'orange',
+    veterinary: 'teal',
+    grooming: 'cyan',
+    training: 'amber',
+    boarding: 'indigo',
+    exotic: 'green',
+    other: 'grey'
+  }
+  return colors[type || 'other'] || 'grey'
+}
+
+const getPartnerTypeIcon = (type: string | undefined) => {
+  const icons: Record<string, string> = {
+    vendor: 'mdi-store',
+    rescue: 'mdi-heart',
+    chamber: 'mdi-domain',
+    pet_store: 'mdi-shopping',
+    veterinary: 'mdi-hospital-box',
+    grooming: 'mdi-scissors-cutting',
+    training: 'mdi-school',
+    boarding: 'mdi-home-heart',
+    exotic: 'mdi-snake',
+    other: 'mdi-handshake'
+  }
+  return icons[type || 'other'] || 'mdi-handshake'
+}
+
+const formatPartnerType = (type: string | undefined) => {
+  const labels: Record<string, string> = {
+    vendor: 'Vendor',
+    rescue: 'Rescue',
+    chamber: 'Chamber',
+    pet_store: 'Pet Store',
+    veterinary: 'Veterinary',
+    grooming: 'Grooming',
+    training: 'Training',
+    boarding: 'Boarding',
+    exotic: 'Exotic',
+    other: 'Other'
+  }
+  return labels[type || 'other'] || type || 'Other'
+}
+
+const formatPartnerRole = (role: string | undefined) => {
+  const labels: Record<string, string> = {
+    vendor: 'Vendor',
+    sponsor: 'Sponsor',
+    rescue: 'Rescue',
+    food_vendor: 'Food Vendor',
+    entertainment: 'Entertainment',
+    donor: 'Donor',
+    volunteer: 'Volunteer',
+    host: 'Host',
+    speaker: 'Speaker',
+    exhibitor: 'Exhibitor',
+    chamber: 'Chamber',
+    other: 'Other'
+  }
+  return labels[role || 'other'] || role || 'Other'
+}
+
+const isPartnerAlreadyAdded = (partnerId: string | undefined): boolean => {
+  if (!partnerId) return false
+  return eventPartners.value.some(ep => ep.partner_id === partnerId)
+}
+
 const getLeadCount = (eventId: string) =>
   leads.value.filter(l => l.event_id === eventId).length
 
@@ -1540,9 +1865,18 @@ const downloadQrCode = (event: MarketingEvent) => {
   showNotification('QR code downloaded!')
 }
 
-const openDrawer = (event: MarketingEvent) => {
+const openDrawer = async (event: MarketingEvent) => {
+  console.log('[Event] Opening event details:', {
+    name: event.name,
+    external_links: event.external_links,
+    attachments: event.attachments
+  })
   selectedEvent.value = event
+  eventPartners.value = [] // Reset partners
   drawer.value = true
+  
+  // Fetch partners for this event in background
+  await fetchEventPartners()
 }
 
 const openCreateDialog = async () => {
@@ -1831,19 +2165,26 @@ const saveEvent = async () => {
         const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
         const filePath = `events/${timestamp}_${safeName}`
         
+        console.log(`[Event] Uploading file: ${file.name} to path: ${filePath}`)
+        
         const { data: uploadData, error: uploadError } = await client.storage
           .from('marketing-events')
           .upload(filePath, file)
         
         if (uploadError) {
-          console.error('Upload error:', uploadError)
+          console.error('[Event] Upload error:', uploadError)
+          showNotification(`Failed to upload ${file.name}: ${uploadError.message}`, 'error')
           continue
         }
+        
+        console.log('[Event] File uploaded successfully:', uploadData)
         
         // Get public URL
         const { data: urlData } = client.storage
           .from('marketing-events')
           .getPublicUrl(filePath)
+        
+        console.log('[Event] Public URL:', urlData.publicUrl)
         
         uploadedAttachments.push({
           name: file.name,
@@ -1858,6 +2199,9 @@ const saveEvent = async () => {
     const validLinks = eventFormData.external_links.filter(
       link => link.title && link.url
     )
+    
+    console.log('[Event] Saving with attachments:', uploadedAttachments)
+    console.log('[Event] Saving with links:', validLinks)
     
     const eventPayload = {
       name: eventFormData.name,
@@ -1986,6 +2330,122 @@ const saveLead = async () => {
     showNotification('Failed to add lead', 'error')
   } finally {
     savingLead.value = false
+  }
+}
+
+// =====================================================
+// EVENT PARTNERS MANAGEMENT
+// =====================================================
+
+const fetchEventPartners = async () => {
+  if (!selectedEvent.value) return
+  
+  eventPartnersLoading.value = true
+  try {
+    const { data, error } = await client
+      .from('event_marketing_partners')
+      .select(`
+        *,
+        partner:marketing_partners (
+          id, name, partner_type, status, 
+          contact_name, contact_phone, contact_email, address
+        )
+      `)
+      .eq('event_id', selectedEvent.value.id)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    eventPartners.value = data || []
+  } catch (error) {
+    console.error('Error fetching event partners:', error)
+    showNotification('Failed to load event partners', 'error')
+  } finally {
+    eventPartnersLoading.value = false
+  }
+}
+
+const fetchAllMarketingPartners = async () => {
+  try {
+    const { data, error } = await client
+      .from('marketing_partners')
+      .select('id, name, partner_type, status, contact_name, contact_phone, contact_email, address')
+      .order('name')
+    
+    if (error) throw error
+    allMarketingPartners.value = data || []
+  } catch (error) {
+    console.error('Error fetching marketing partners:', error)
+  }
+}
+
+const openAddPartnerDialog = async () => {
+  selectedPartnerToAdd.value = null
+  partnerSearchQuery.value = ''
+  newPartnerRole.value = 'vendor'
+  newPartnerNotes.value = ''
+  
+  // Fetch all partners if not already loaded
+  if (allMarketingPartners.value.length === 0) {
+    await fetchAllMarketingPartners()
+  }
+  
+  addPartnerDialog.value = true
+}
+
+const closeAddPartnerDialog = () => {
+  addPartnerDialog.value = false
+  selectedPartnerToAdd.value = null
+  partnerSearchQuery.value = ''
+}
+
+const saveEventPartner = async () => {
+  if (!selectedEvent.value || !selectedPartnerToAdd.value) return
+  
+  savingPartner.value = true
+  try {
+    const { error } = await client
+      .from('event_marketing_partners')
+      .insert({
+        event_id: selectedEvent.value.id,
+        partner_id: selectedPartnerToAdd.value.id,
+        role: newPartnerRole.value,
+        notes: newPartnerNotes.value || null,
+        is_confirmed: false
+      })
+    
+    if (error) {
+      if (error.code === '23505') {
+        showNotification('This partner is already added to this event', 'warning')
+      } else {
+        throw error
+      }
+    } else {
+      showNotification(`${selectedPartnerToAdd.value.name} added to event`)
+      closeAddPartnerDialog()
+      await fetchEventPartners()
+    }
+  } catch (error: any) {
+    console.error('Error adding partner to event:', error)
+    showNotification('Failed to add partner: ' + error.message, 'error')
+  } finally {
+    savingPartner.value = false
+  }
+}
+
+const removeEventPartner = async (eventPartnerId: string) => {
+  try {
+    const { error } = await client
+      .from('event_marketing_partners')
+      .delete()
+      .eq('id', eventPartnerId)
+    
+    if (error) throw error
+    
+    showNotification('Partner removed from event')
+    await fetchEventPartners()
+  } catch (error: any) {
+    console.error('Error removing partner:', error)
+    showNotification('Failed to remove partner: ' + error.message, 'error')
   }
 }
 

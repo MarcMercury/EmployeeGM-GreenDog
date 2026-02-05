@@ -2404,7 +2404,11 @@ async function syncLoginTimes(): Promise<void> {
     })
 
     if (response.success) {
-      showNotification(`Synced login times for ${response.updated} users`, 'success')
+      let message = `Synced login times for ${response.updated} users`
+      if (response.notFound && response.notFound > 0) {
+        message += ` (${response.notFound} profiles without auth link)`
+      }
+      showNotification(message, 'success')
       // Refresh users to show updated data
       await fetchUsers()
     }

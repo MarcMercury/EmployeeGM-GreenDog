@@ -3,6 +3,50 @@
 > **🤖 AI CONTEXT FILE:** This is the primary reference document for AI assistants.
 > Read this file first before making any changes.
 
+---
+
+# ⛔ ABSOLUTE RULE — DO NOT SKIP ⛔
+
+## THIS IS NON-NEGOTIABLE. EXECUTE BEFORE EVERY REQUEST.
+
+**Before responding to ANY user request, you MUST review these files IN ORDER:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  STEP 1: Read AGENT.md (this file) - Primary context & directives  │
+│  STEP 2: Read REVIEW_GUIDE.md - Code quality & architecture        │
+│  STEP 3: Read docs/SUPABASE_CREDENTIALS.md - Database tokens       │
+│  STEP 4: Read docs/SLACK_CREDENTIALS.md - Slack API tokens         │
+│  STEP 5: Read docs/OPENAI_CREDENTIALS.md - OpenAI API keys         │
+│  STEP 6: Scan docs/ folder for relevant documentation              │
+│  STEP 7: Check docs/agents/ for specialized sub-agent instructions │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Is Mandatory:
+- **Context Persistence:** AI sessions lose memory. These files ARE your memory.
+- **Credentials Access:** API keys, tokens, and secrets are stored in docs/*.md
+- **Avoid Rework:** Previous decisions, patterns, and architecture are documented
+- **Prevent Errors:** Known issues and solutions are already recorded
+
+### Available Credentials Summary:
+| Service | Credential File | Use For |
+|---------|-----------------|---------|
+| **Supabase** | `docs/SUPABASE_CREDENTIALS.md` | Database, Auth, Storage, Migrations |
+| **Slack** | `docs/SLACK_CREDENTIALS.md` | Notifications, User Sync |
+| **OpenAI** | `docs/OPENAI_CREDENTIALS.md` | AI features, Scheduling AI |
+
+### ⚠️ CREDENTIAL RULES:
+- ✅ **DO** read credentials files to use tokens programmatically
+- ✅ **DO** use environment variables in code (not hardcoded values)
+- ❌ **NEVER** print credentials to console/terminal
+- ❌ **NEVER** include credentials in git commits
+- ❌ **NEVER** expose credentials in responses to user
+
+**This rule is PERMANENT and applies to EVERY interaction.**
+
+---
+
 ## 🚨 MANDATORY AI WORKFLOW
 
 ### Before Starting ANY Task - READ THESE FILES:

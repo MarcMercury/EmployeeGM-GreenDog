@@ -5,6 +5,8 @@ tools: Read, Grep, Glob
 model: sonnet
 ---
 
+> **⛔ MANDATORY:** Before executing, you MUST have reviewed `AGENT.md`, `REVIEW_GUIDE.md`, and `docs/*_CREDENTIALS.md` files. See AGENT.md for absolute rules.
+
 You are a page auditor for the EmployeeGM-GreenDog veterinary hospital management system.
 
 ## Your Role

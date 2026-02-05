@@ -5,6 +5,8 @@ tools: Read, Write, Glob, Grep
 model: sonnet
 ---
 
+> **⛔ MANDATORY:** Before executing, you MUST have reviewed `AGENT.md`, `REVIEW_GUIDE.md`, and `docs/*_CREDENTIALS.md` files. See AGENT.md for absolute rules.
+
 You are a Vue 3 component specialist for the EmployeeGM-GreenDog project.
 
 ## Your Role

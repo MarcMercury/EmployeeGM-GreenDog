@@ -1,5 +1,7 @@
 # Code Review Preparation - Quick Reference
 
+> **🤖 AI AGENTS:** You MUST read `AGENT.md` FIRST before this file. This file is part of the mandatory pre-work checklist. Also review `docs/` folder for credentials and integration details.
+
 ## For Your Data Engineer / Front-End Specialist Friend
 
 Hey! Thanks for reviewing this codebase. Here's what you need to know:

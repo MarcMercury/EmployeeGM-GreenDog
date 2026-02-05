@@ -93,6 +93,7 @@ export default defineEventHandler(async (event) => {
   // Update profiles.last_login_at for each auth user that has signed in
   let updatedCount = 0
   let skippedCount = 0
+  let notFoundCount = 0
   const errors: string[] = []
 
   for (const authUser of allAuthUsers) {
@@ -101,25 +102,31 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    const { error: updateError } = await supabaseAdmin
+    // Use .select() to get actual count of updated rows
+    const { data: updateResult, error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ last_login_at: authUser.last_sign_in_at })
       .eq('auth_user_id', authUser.id)
+      .select('id')
 
     if (updateError) {
       errors.push(`Failed to update profile for ${authUser.email}: ${updateError.message}`)
+    } else if (!updateResult || updateResult.length === 0) {
+      // No profile found with this auth_user_id
+      notFoundCount++
     } else {
       updatedCount++
     }
   }
 
-  console.log(`[Sync Login Times] Updated ${updatedCount} profiles, skipped ${skippedCount} (never signed in), ${errors.length} errors`)
+  console.log(`[Sync Login Times] Updated ${updatedCount} profiles, skipped ${skippedCount} (never signed in), ${notFoundCount} profiles not found, ${errors.length} errors`)
 
   return {
     success: true,
     message: `Synced login times for ${updatedCount} users`,
     updated: updatedCount,
     skipped: skippedCount,
+    notFound: notFoundCount,
     errors: errors.length > 0 ? errors.slice(0, 5) : undefined
   }
 })
