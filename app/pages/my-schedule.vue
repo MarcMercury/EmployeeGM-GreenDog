@@ -958,24 +958,47 @@ async function fetchTimeOffBalances() {
     }
     
     const currentYear = new Date().getFullYear()
+    let balancesData: any[] = []
     
-    const { data, error } = await supabase
-      .from('employee_time_off_balances')
-      .select(`
-        *,
-        time_off_type:time_off_types(id, name, code)
-      `)
-      .eq('employee_id', employeeId)
-      .eq('period_year', currentYear)
+    try {
+      // Try with FK join first
+      const { data, error } = await supabase
+        .from('employee_time_off_balances')
+        .select(`
+          *,
+          time_off_type:time_off_types(id, name, code)
+        `)
+        .eq('employee_id', employeeId)
+        .eq('period_year', currentYear)
 
-    if (error) throw error
+      if (error) throw error
+      balancesData = data || []
+    } catch (joinErr) {
+      // Fallback: load without FK join
+      console.log('[MySchedule] FK join failed, using fallback:', joinErr)
+      const { data } = await supabase
+        .from('employee_time_off_balances')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('period_year', currentYear)
+      
+      balancesData = data || []
+      
+      // Manually enrich with type data
+      if (balancesData.length > 0 && timeOffTypes.value.length > 0) {
+        balancesData = balancesData.map(b => ({
+          ...b,
+          time_off_type: timeOffTypes.value.find(t => t.id === b.time_off_type_id) || { id: b.time_off_type_id, name: 'Unknown', code: 'UNK' }
+        }))
+      }
+    }
     
-    if (data && data.length > 0) {
+    if (balancesData.length > 0) {
       // Calculate totals
       let totalUsed = 0
       let totalAvailable = 0
       
-      ptoTypes.value = data.map((b: any) => {
+      ptoTypes.value = balancesData.map((b: any) => {
         const typeName = b.time_off_type?.name || 'Unknown'
         const typeCode = b.time_off_type?.code || typeName
         const style = typeStyles[typeName] || typeStyles[typeCode] || { icon: 'mdi-calendar', color: '#9E9E9E' }

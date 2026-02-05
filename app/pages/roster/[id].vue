@@ -980,46 +980,98 @@
                 </v-card>
               </v-col>
 
-              <!-- PTO Type Cards -->
-              <v-col v-for="balance in ptoBalances" :key="balance.id" cols="12" md="4">
+              <!-- PTO Type Cards with Inline Editing -->
+              <v-col v-for="(balance, index) in ptoBalances" :key="balance.id" cols="12" md="6">
                 <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
-                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold pb-0">
                     <v-icon start size="20" :color="getPTOTypeColor(balance.time_off_type?.name)">
                       {{ getPTOTypeIcon(balance.time_off_type?.name) }}
                     </v-icon>
                     {{ balance.time_off_type?.name || 'Unknown Type' }}
                     <v-spacer />
-                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPTODialog(balance)" />
+                    <v-chip size="x-small" :color="getPTOAvailable(balance) <= 0 ? 'error' : getPTOAvailable(balance) < 8 ? 'warning' : 'success'" variant="flat">
+                      {{ getPTOAvailable(balance).toFixed(1) }} hrs available
+                    </v-chip>
                   </v-card-title>
-                  <v-card-text>
-                    <div class="d-flex justify-space-between mb-3">
-                      <div class="text-center">
-                        <div class="text-h5 font-weight-bold text-info">{{ (balance.accrued_hours || 0).toFixed(1) }}</div>
-                        <div class="text-caption text-grey">Accrued</div>
+                  <v-card-text class="pt-4">
+                    <!-- Admin: Inline Editable Fields -->
+                    <template v-if="isAdmin">
+                      <v-row dense>
+                        <v-col cols="6">
+                          <v-text-field
+                            v-model.number="ptoEditableBalances[index].accrued_hours"
+                            label="Accrued"
+                            type="number"
+                            step="0.5"
+                            suffix="hrs"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            @update:model-value="markPTOChanged(index)"
+                          />
+                        </v-col>
+                        <v-col cols="6">
+                          <v-text-field
+                            v-model.number="ptoEditableBalances[index].carryover_hours"
+                            label="Carryover"
+                            type="number"
+                            step="0.5"
+                            suffix="hrs"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            @update:model-value="markPTOChanged(index)"
+                          />
+                        </v-col>
+                        <v-col cols="6">
+                          <v-text-field
+                            v-model.number="ptoEditableBalances[index].used_hours"
+                            label="Used"
+                            type="number"
+                            step="0.5"
+                            suffix="hrs"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            @update:model-value="markPTOChanged(index)"
+                          />
+                        </v-col>
+                        <v-col cols="6">
+                          <v-text-field
+                            v-model.number="ptoEditableBalances[index].pending_hours"
+                            label="Pending"
+                            type="number"
+                            step="0.5"
+                            suffix="hrs"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            @update:model-value="markPTOChanged(index)"
+                          />
+                        </v-col>
+                      </v-row>
+                    </template>
+                    <!-- Non-Admin: Read-Only Display -->
+                    <template v-else>
+                      <div class="d-flex justify-space-between mb-3">
+                        <div class="text-center">
+                          <div class="text-h5 font-weight-bold text-info">{{ (balance.accrued_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Accrued</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-h5 font-weight-bold text-purple">{{ (balance.carryover_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Carryover</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-h5 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Used</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-h5 font-weight-bold text-orange">{{ (balance.pending_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Pending</div>
+                        </div>
                       </div>
-                      <div class="text-center">
-                        <div class="text-h5 font-weight-bold text-purple">{{ (balance.carryover_hours || 0).toFixed(1) }}</div>
-                        <div class="text-caption text-grey">Carryover</div>
-                      </div>
-                    </div>
-                    <v-divider class="mb-3" />
-                    <div class="d-flex justify-space-between mb-3">
-                      <div class="text-center">
-                        <div class="text-h5 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
-                        <div class="text-caption text-grey">Used</div>
-                      </div>
-                      <div class="text-center">
-                        <div class="text-h5 font-weight-bold text-orange">{{ (balance.pending_hours || 0).toFixed(1) }}</div>
-                        <div class="text-caption text-grey">Pending</div>
-                      </div>
-                    </div>
-                    <v-divider class="mb-3" />
-                    <div class="text-center pa-2 bg-grey-lighten-4 rounded">
-                      <div class="text-caption text-grey mb-1">AVAILABLE</div>
-                      <div class="text-h4 font-weight-bold" :class="getPTOAvailableClass(balance)">
-                        {{ getPTOAvailable(balance).toFixed(1) }} hrs
-                      </div>
-                    </div>
+                    </template>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -1038,18 +1090,31 @@
                 </v-card>
               </v-col>
 
-              <!-- Admin Actions Card -->
+              <!-- Admin Actions Card with Save Button -->
               <v-col v-if="isAdmin && ptoBalances.length > 0" cols="12">
                 <v-card class="bg-amber-lighten-5 shadow-sm rounded-xl" elevation="0">
-                  <v-card-text class="d-flex align-center justify-space-between">
+                  <v-card-text class="d-flex align-center justify-space-between flex-wrap gap-2">
                     <div class="d-flex align-center">
                       <v-icon color="amber-darken-2" class="mr-2">mdi-information</v-icon>
                       <span class="text-body-2">PTO balance changes are logged in the Change History tab.</span>
                     </div>
-                    <v-btn variant="tonal" color="primary" size="small" @click="showAddPTOTypeDialog = true">
-                      <v-icon start size="18">mdi-plus</v-icon>
-                      Add PTO Type
-                    </v-btn>
+                    <div class="d-flex gap-2">
+                      <v-btn variant="tonal" color="grey" size="small" @click="showAddPTOTypeDialog = true">
+                        <v-icon start size="18">mdi-plus</v-icon>
+                        Add PTO Type
+                      </v-btn>
+                      <v-btn 
+                        variant="flat" 
+                        color="success" 
+                        size="small" 
+                        :loading="savingPTO"
+                        :disabled="!hasPTOChanges"
+                        @click="saveAllPTOBalances"
+                      >
+                        <v-icon start size="18">mdi-content-save</v-icon>
+                        Save PTO Changes
+                      </v-btn>
+                    </div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -2268,44 +2333,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- PTO Balance Edit Dialog -->
-    <v-dialog v-model="showPTODialog" max-width="500">
-      <v-card>
-        <v-card-title class="bg-success text-white py-4">
-          <v-icon start>mdi-beach</v-icon>
-          Edit PTO Balance
-        </v-card-title>
-        <v-card-text class="pa-6">
-          <div class="text-subtitle-1 font-weight-bold mb-4">{{ ptoEditForm.type_name }}</div>
-          <v-row dense>
-            <v-col cols="6">
-              <v-text-field v-model.number="ptoEditForm.accrued_hours" label="Accrued Hours" type="number" step="0.5" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field v-model.number="ptoEditForm.carryover_hours" label="Carryover Hours" type="number" step="0.5" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field v-model.number="ptoEditForm.used_hours" label="Used Hours" type="number" step="0.5" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field v-model.number="ptoEditForm.pending_hours" label="Pending Hours" type="number" step="0.5" variant="outlined" density="compact" />
-            </v-col>
-          </v-row>
-          <v-alert type="info" variant="tonal" class="mt-4" density="compact">
-            Available: {{ (ptoEditForm.accrued_hours + ptoEditForm.carryover_hours - ptoEditForm.used_hours - ptoEditForm.pending_hours).toFixed(1) }} hrs
-          </v-alert>
-        </v-card-text>
-        <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="showPTODialog = false">Cancel</v-btn>
-          <v-spacer />
-          <v-btn color="success" variant="flat" :loading="savingPTO" @click="savePTOBalance">
-            <v-icon start>mdi-content-save</v-icon>
-            Save
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Add PTO Type Dialog -->
     <v-dialog v-model="showAddPTOTypeDialog" max-width="500">
       <v-card>
@@ -2580,6 +2607,13 @@ const ptoEditForm = ref({
   used_hours: 0,
   pending_hours: 0
 })
+
+// PTO Inline Editing state
+const ptoEditableBalances = ref<Array<{ id: string; accrued_hours: number; carryover_hours: number; used_hours: number; pending_hours: number }>>([])
+const ptoChangedIndexes = ref<Set<number>>(new Set())
+
+// Computed: check if any PTO values have changed
+const hasPTOChanges = computed(() => ptoChangedIndexes.value.size > 0)
 
 // Add PTO Type state
 const showAddPTOTypeDialog = ref(false)
@@ -3145,7 +3179,7 @@ async function loadNextShift() {
       .in('status', ['published', 'draft'])
       .order('start_at', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     nextShift.value = data
   } catch (err) {
@@ -3155,16 +3189,53 @@ async function loadNextShift() {
 
 async function loadPTOBalances() {
   try {
-    const { data } = await supabase
-      .from('employee_time_off_balances')
-      .select(`
-        *,
-        time_off_type:time_off_types(name)
-      `)
-      .eq('employee_id', employeeId.value)
-      .eq('period_year', currentYear)
+    // Load PTO balances - try with embedded type name first, fall back to separate lookup
+    let balancesData: any[] = []
+    
+    try {
+      // First try with embedded foreign key join
+      const { data, error } = await supabase
+        .from('employee_time_off_balances')
+        .select(`
+          *,
+          time_off_type:time_off_types(name)
+        `)
+        .eq('employee_id', employeeId.value)
+        .eq('period_year', currentYear)
+      
+      if (error) throw error
+      balancesData = data || []
+    } catch (joinErr) {
+      // Fallback: load balances without join, then manually add type names
+      console.log('[Profile] FK join failed, using fallback:', joinErr)
+      const { data } = await supabase
+        .from('employee_time_off_balances')
+        .select('*')
+        .eq('employee_id', employeeId.value)
+        .eq('period_year', currentYear)
+      
+      balancesData = data || []
+      
+      // Manually enrich with type names from already-loaded timeOffTypes
+      if (balancesData.length > 0 && timeOffTypes.value.length > 0) {
+        balancesData = balancesData.map(b => ({
+          ...b,
+          time_off_type: timeOffTypes.value.find(t => t.id === b.time_off_type_id) || { name: 'Unknown' }
+        }))
+      }
+    }
 
-    ptoBalances.value = data || []
+    ptoBalances.value = balancesData
+    
+    // Initialize editable balances for inline editing
+    ptoEditableBalances.value = balancesData.map(b => ({
+      id: b.id,
+      accrued_hours: b.accrued_hours || 0,
+      carryover_hours: b.carryover_hours || 0,
+      used_hours: b.used_hours || 0,
+      pending_hours: b.pending_hours || 0
+    }))
+    ptoChangedIndexes.value.clear()
   } catch (err) {
     console.log('[Profile] PTO balances not available:', err)
   }
@@ -3207,7 +3278,7 @@ async function loadCompensation() {
       .from('employee_compensation')
       .select('*')
       .eq('employee_id', employeeId.value)
-      .single()
+      .maybeSingle()
 
     compensation.value = data
     
@@ -3627,7 +3698,7 @@ async function loadLookupData() {
       supabase.from('job_positions').select('id, title').order('title'),
       supabase.from('locations').select('id, name').order('name'),
       supabase.from('employees').select('id, first_name, last_name, preferred_name').eq('employment_status', 'active').order('first_name'),
-      supabase.from('time_off_types').select('id, name, code').eq('is_active', true).order('name')
+      supabase.from('time_off_types').select('id, name, code').order('name')
     ])
     
     departments.value = deptResult.data || []
@@ -3791,6 +3862,48 @@ function getPTOAvailableClass(balance: any): string {
   if (available <= 0) return 'text-error'
   if (available < 8) return 'text-warning'
   return 'text-success'
+}
+
+// Inline PTO Editing functions
+function markPTOChanged(index: number) {
+  ptoChangedIndexes.value.add(index)
+}
+
+async function saveAllPTOBalances() {
+  if (!hasPTOChanges.value) return
+  
+  savingPTO.value = true
+  try {
+    // Update all changed PTO balances
+    const updates = Array.from(ptoChangedIndexes.value).map(index => {
+      const editable = ptoEditableBalances.value[index]
+      return supabase
+        .from('employee_time_off_balances')
+        .update({
+          accrued_hours: editable.accrued_hours,
+          carryover_hours: editable.carryover_hours,
+          used_hours: editable.used_hours,
+          pending_hours: editable.pending_hours
+        })
+        .eq('id', editable.id)
+    })
+    
+    const results = await Promise.all(updates)
+    const errors = results.filter(r => r.error)
+    
+    if (errors.length > 0) {
+      throw new Error(`${errors.length} update(s) failed`)
+    }
+    
+    // Reload to get fresh data and reset change tracking
+    await loadPTOBalances()
+    toast.success('PTO balances updated')
+  } catch (err: any) {
+    console.error('Failed to save PTO balances:', err)
+    toast.error('Failed to update PTO balances')
+  } finally {
+    savingPTO.value = false
+  }
 }
 
 function openPTODialog(balance: any) {

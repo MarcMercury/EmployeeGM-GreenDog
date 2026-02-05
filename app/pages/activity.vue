@@ -615,8 +615,7 @@ async function fetchPersonalData() {
           .select(`
             id,
             status,
-            progress_percent,
-            course:training_course_id (title)
+            course:training_courses(title)
           `)
           .eq('employee_id', empData.id)
           .eq('status', 'in_progress')
