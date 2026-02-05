@@ -112,7 +112,7 @@ export const useUserStore = defineStore('user', {
   },
 
   actions: {
-    async fetchUserData() {
+    async fetchUserData(force = false) {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
 
@@ -134,6 +134,12 @@ export const useUserStore = defineStore('user', {
         console.log('[UserStore] No auth user ID available, clearing data')
         this.profile = null
         this.employee = null
+        return
+      }
+
+      // Skip fetch if we already have data for this user (unless forced)
+      if (!force && this.profile && this.profile.auth_user_id === authUserId && this.employee) {
+        console.log('[UserStore] Data already loaded for this user, skipping fetch')
         return
       }
 

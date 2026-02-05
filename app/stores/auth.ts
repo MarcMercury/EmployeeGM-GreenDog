@@ -79,7 +79,7 @@ export const useAuthStore = defineStore('auth', {
       this.initialized = true
     },
 
-    async fetchProfile(userId?: string) {
+    async fetchProfile(userId?: string, force = false) {
       const supabase = getSupabase()
       
       if (!supabase) {
@@ -93,6 +93,12 @@ export const useAuthStore = defineStore('auth', {
         console.log('[AuthStore] No user ID available, skipping profile fetch')
         this.profile = null
         return null
+      }
+
+      // Skip fetch if we already have a profile for this user (unless forced)
+      if (!force && this.profile && this.profile.auth_user_id === authUserId) {
+        console.log('[AuthStore] Profile already loaded for this user, skipping fetch')
+        return this.profile
       }
 
       console.log('[AuthStore] Fetching profile for auth_user_id:', authUserId)
