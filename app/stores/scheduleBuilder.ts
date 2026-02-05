@@ -648,7 +648,27 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         this.draftShifts.forEach(s => s.is_published = true)
         this.dbShifts.forEach(s => s.is_published = true)
 
-        // TODO: Trigger notifications via Edge Function
+        // Send Slack notification about published schedule
+        try {
+          const weekStart = new Date(this.selectedWeekStart)
+          const formattedWeek = weekStart.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          })
+          const shiftCount = this.draftShifts.length
+          
+          await $fetch('/api/slack/send', {
+            method: 'POST',
+            body: {
+              type: 'channel',
+              channel: '#schedule-updates',
+              text: `📅 *Schedule Published*\n\nThe schedule for the week of ${formattedWeek} has been published with ${shiftCount} shifts.\n\nCheck your schedule in TeamOS to see your shifts.`
+            }
+          })
+        } catch (slackErr) {
+          // Don't fail publish if Slack notification fails
+          console.warn('[ScheduleBuilder] Slack notification failed:', slackErr)
+        }
 
         return true
       } catch (e: any) {

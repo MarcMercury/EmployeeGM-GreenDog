@@ -275,9 +275,17 @@
               <v-icon start size="18">mdi-account-details</v-icon>
               Overview
             </v-tab>
+            <v-tab v-if="canViewSensitiveData" value="personal">
+              <v-icon start size="18">mdi-card-account-details</v-icon>
+              Personal Info
+            </v-tab>
             <v-tab v-if="canViewSensitiveData" value="compensation">
               <v-icon start size="18">mdi-cash</v-icon>
               Compensation
+            </v-tab>
+            <v-tab v-if="canViewSensitiveData" value="pto">
+              <v-icon start size="18">mdi-beach</v-icon>
+              PTO Balances
             </v-tab>
             <v-tab value="skills">
               <v-icon start size="18">mdi-star-circle</v-icon>
@@ -455,6 +463,290 @@
                       <v-icon size="40" color="grey-lighten-2">mdi-school-outline</v-icon>
                       <p class="text-caption text-grey mt-2">No certifications on file</p>
                     </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-window-item>
+
+          <!-- TAB: PERSONAL INFO (Admin/Self Only) -->
+          <v-window-item v-if="canViewSensitiveData" value="personal">
+            <v-row>
+              <!-- Basic Information Card -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="primary">mdi-account</v-icon>
+                    Basic Information
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-badge-account</v-icon></template>
+                        <v-list-item-title class="text-body-2">Employee Number</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.employee_number || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account</v-icon></template>
+                        <v-list-item-title class="text-body-2">First Name</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.first_name }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account</v-icon></template>
+                        <v-list-item-title class="text-body-2">Last Name</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.last_name }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-card-account-details</v-icon></template>
+                        <v-list-item-title class="text-body-2">Preferred Name</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.preferred_name || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-cake-variant</v-icon></template>
+                        <v-list-item-title class="text-body-2">Date of Birth</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ formatDate(employee.date_of_birth) }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-calendar-check</v-icon></template>
+                        <v-list-item-title class="text-body-2">Hire Date</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ formatDate(employee.hire_date) }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item v-if="employee.termination_date" class="px-0">
+                        <template #prepend><v-icon size="18" color="error">mdi-calendar-remove</v-icon></template>
+                        <v-list-item-title class="text-body-2 text-error">Termination Date</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 text-error">{{ formatDate(employee.termination_date) }}</span>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Contact Information Card -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="info">mdi-phone</v-icon>
+                    Contact Information
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-email-outline</v-icon></template>
+                        <v-list-item-title class="text-body-2">Work Email</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ employee.email_work || profileEmail || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-email</v-icon></template>
+                        <v-list-item-title class="text-body-2">Personal Email</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ employee.email_personal || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-cellphone</v-icon></template>
+                        <v-list-item-title class="text-body-2">Mobile Phone</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ employee.phone_mobile || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-phone-outline</v-icon></template>
+                        <v-list-item-title class="text-body-2">Work Phone</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ employee.phone_work || 'Not Set' }}</span>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Address Card -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="teal">mdi-map-marker</v-icon>
+                    Address
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="employee.address_street">
+                      <p class="text-body-2 mb-1">{{ employee.address_street }}</p>
+                      <p class="text-body-2 text-grey">
+                        {{ [employee.address_city, employee.address_state, employee.address_zip].filter(Boolean).join(', ') }}
+                      </p>
+                    </div>
+                    <div v-else class="text-center py-4">
+                      <v-icon size="40" color="grey-lighten-2">mdi-map-marker-outline</v-icon>
+                      <p class="text-caption text-grey mt-2">No address on file</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Emergency Contact Card -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="error">mdi-alert-circle</v-icon>
+                    Emergency Contact
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <div v-if="emergencyContact.name">
+                      <v-list density="compact" class="bg-transparent">
+                        <v-list-item class="px-0">
+                          <template #prepend><v-icon size="18" color="grey">mdi-account</v-icon></template>
+                          <v-list-item-title class="text-body-2">Name</v-list-item-title>
+                          <template #append>
+                            <span class="text-body-2 font-weight-medium">{{ emergencyContact.name }}</span>
+                          </template>
+                        </v-list-item>
+                        <v-list-item class="px-0">
+                          <template #prepend><v-icon size="18" color="grey">mdi-phone</v-icon></template>
+                          <v-list-item-title class="text-body-2">Phone</v-list-item-title>
+                          <template #append>
+                            <span class="text-body-2">{{ emergencyContact.phone }}</span>
+                          </template>
+                        </v-list-item>
+                        <v-list-item class="px-0">
+                          <template #prepend><v-icon size="18" color="grey">mdi-account-group</v-icon></template>
+                          <v-list-item-title class="text-body-2">Relationship</v-list-item-title>
+                          <template #append>
+                            <span class="text-body-2">{{ emergencyContact.relationship }}</span>
+                          </template>
+                        </v-list-item>
+                      </v-list>
+                    </div>
+                    <div v-else class="text-center py-4">
+                      <v-icon size="40" color="grey-lighten-2">mdi-account-alert-outline</v-icon>
+                      <p class="text-caption text-grey mt-2">No emergency contact on file</p>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Employment Details Card -->
+              <v-col cols="12" md="6">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="purple">mdi-briefcase</v-icon>
+                    Employment Details
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-domain</v-icon></template>
+                        <v-list-item-title class="text-body-2">Department</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.department?.name || 'Not Assigned' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account-tie</v-icon></template>
+                        <v-list-item-title class="text-body-2">Position</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2 font-weight-medium">{{ employee.position?.title || 'Not Assigned' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-map-marker</v-icon></template>
+                        <v-list-item-title class="text-body-2">Location</v-list-item-title>
+                        <template #append>
+                          <span class="text-body-2">{{ employee.location?.name || 'Not Assigned' }}</span>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-briefcase-clock</v-icon></template>
+                        <v-list-item-title class="text-body-2">Employment Type</v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="tonal" color="primary">
+                            {{ formatEmploymentType(employee.employment_type) }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account-check</v-icon></template>
+                        <v-list-item-title class="text-body-2">Status</v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="flat" :color="getStatusColor(employee.employment_status)">
+                            {{ employee.employment_status || 'Unknown' }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                      <v-list-item v-if="employee.manager" class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account-supervisor</v-icon></template>
+                        <v-list-item-title class="text-body-2">Reports To</v-list-item-title>
+                        <template #append>
+                          <NuxtLink :to="`/roster/${employee.manager.id}`" class="text-body-2 text-primary text-decoration-none">
+                            {{ employee.manager.preferred_name || employee.manager.first_name }} {{ employee.manager.last_name }}
+                          </NuxtLink>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Admin Settings Card (Admin Only) -->
+              <v-col v-if="isAdmin" cols="12" md="6">
+                <v-card class="bg-amber-lighten-5 shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" color="amber-darken-2">mdi-shield-account</v-icon>
+                    Admin Settings
+                    <v-chip size="x-small" variant="tonal" color="amber-darken-2" class="ml-2">Admin Only</v-chip>
+                    <v-spacer />
+                    <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="openPersonalInfoDialog" />
+                  </v-card-title>
+                  <v-card-text>
+                    <v-list density="compact" class="bg-transparent">
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-shield</v-icon></template>
+                        <v-list-item-title class="text-body-2">Profile Role</v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="tonal" :color="employee.profile?.role === 'admin' ? 'error' : 'primary'">
+                            {{ employee.profile?.role || 'No Profile' }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                      <v-list-item class="px-0">
+                        <template #prepend><v-icon size="18" color="grey">mdi-account-check</v-icon></template>
+                        <v-list-item-title class="text-body-2">Profile Active</v-list-item-title>
+                        <template #append>
+                          <v-chip size="x-small" variant="flat" :color="employee.profile?.is_active ? 'success' : 'error'">
+                            {{ employee.profile?.is_active ? 'Yes' : 'No' }}
+                          </v-chip>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                    <v-divider class="my-3" />
+                    <div class="text-overline text-grey mb-2">INTERNAL NOTES</div>
+                    <p v-if="employee.notes_internal" class="text-body-2" style="white-space: pre-wrap;">{{ employee.notes_internal }}</p>
+                    <p v-else class="text-caption text-grey font-italic">No internal notes</p>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -657,6 +949,107 @@
                     <p class="text-caption text-grey text-center mt-2">
                       Last updated: {{ compensation?.updated_at ? formatDate(compensation.updated_at) : 'Never' }}
                     </p>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-window-item>
+
+          <!-- TAB: PTO BALANCES (Admin/Self Only) -->
+          <v-window-item v-if="canViewSensitiveData" value="pto">
+            <v-row>
+              <!-- PTO Summary Card -->
+              <v-col cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl mb-4" elevation="0">
+                  <v-card-text class="d-flex justify-space-around text-center py-4">
+                    <div>
+                      <div class="text-h4 font-weight-bold text-success">{{ totalPTOHours.toFixed(1) }}</div>
+                      <div class="text-caption text-grey">Total Available (hrs)</div>
+                    </div>
+                    <v-divider vertical />
+                    <div>
+                      <div class="text-h4 font-weight-bold text-info">{{ ptoBalances.length }}</div>
+                      <div class="text-caption text-grey">PTO Types</div>
+                    </div>
+                    <v-divider vertical />
+                    <div>
+                      <div class="text-h4 font-weight-bold text-primary">{{ currentYear }}</div>
+                      <div class="text-caption text-grey">Period Year</div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- PTO Type Cards -->
+              <v-col v-for="balance in ptoBalances" :key="balance.id" cols="12" md="4">
+                <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
+                  <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+                    <v-icon start size="20" :color="getPTOTypeColor(balance.time_off_type?.name)">
+                      {{ getPTOTypeIcon(balance.time_off_type?.name) }}
+                    </v-icon>
+                    {{ balance.time_off_type?.name || 'Unknown Type' }}
+                    <v-spacer />
+                    <v-btn v-if="isAdmin" icon="mdi-pencil" size="x-small" variant="text" @click="openPTODialog(balance)" />
+                  </v-card-title>
+                  <v-card-text>
+                    <div class="d-flex justify-space-between mb-3">
+                      <div class="text-center">
+                        <div class="text-h5 font-weight-bold text-info">{{ (balance.accrued_hours || 0).toFixed(1) }}</div>
+                        <div class="text-caption text-grey">Accrued</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-h5 font-weight-bold text-purple">{{ (balance.carryover_hours || 0).toFixed(1) }}</div>
+                        <div class="text-caption text-grey">Carryover</div>
+                      </div>
+                    </div>
+                    <v-divider class="mb-3" />
+                    <div class="d-flex justify-space-between mb-3">
+                      <div class="text-center">
+                        <div class="text-h5 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
+                        <div class="text-caption text-grey">Used</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-h5 font-weight-bold text-orange">{{ (balance.pending_hours || 0).toFixed(1) }}</div>
+                        <div class="text-caption text-grey">Pending</div>
+                      </div>
+                    </div>
+                    <v-divider class="mb-3" />
+                    <div class="text-center pa-2 bg-grey-lighten-4 rounded">
+                      <div class="text-caption text-grey mb-1">AVAILABLE</div>
+                      <div class="text-h4 font-weight-bold" :class="getPTOAvailableClass(balance)">
+                        {{ getPTOAvailable(balance).toFixed(1) }} hrs
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- No PTO Types State -->
+              <v-col v-if="ptoBalances.length === 0" cols="12">
+                <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+                  <v-card-text class="text-center py-8">
+                    <v-icon size="64" color="grey-lighten-2">mdi-beach</v-icon>
+                    <p class="text-body-2 text-grey mt-4">No PTO balances configured for this employee</p>
+                    <v-btn v-if="isAdmin" variant="tonal" color="primary" class="mt-4" @click="showAddPTOTypeDialog = true">
+                      <v-icon start>mdi-plus</v-icon>
+                      Add PTO Balance
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <!-- Admin Actions Card -->
+              <v-col v-if="isAdmin && ptoBalances.length > 0" cols="12">
+                <v-card class="bg-amber-lighten-5 shadow-sm rounded-xl" elevation="0">
+                  <v-card-text class="d-flex align-center justify-space-between">
+                    <div class="d-flex align-center">
+                      <v-icon color="amber-darken-2" class="mr-2">mdi-information</v-icon>
+                      <span class="text-body-2">PTO balance changes are logged in the Change History tab.</span>
+                    </div>
+                    <v-btn variant="tonal" color="primary" size="small" @click="showAddPTOTypeDialog = true">
+                      <v-icon start size="18">mdi-plus</v-icon>
+                      Add PTO Type
+                    </v-btn>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -1722,6 +2115,234 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Personal Info Edit Dialog -->
+    <v-dialog v-model="showPersonalInfoDialog" max-width="800" scrollable>
+      <v-card>
+        <v-card-title class="bg-primary text-white d-flex align-center py-4">
+          <v-icon start>mdi-account-edit</v-icon>
+          Edit Personal Information
+        </v-card-title>
+        <v-card-text class="pa-6" style="max-height: 70vh;">
+          <v-tabs v-model="personalInfoTab" color="primary" class="mb-6">
+            <v-tab value="basic">Basic Info</v-tab>
+            <v-tab value="contact">Contact</v-tab>
+            <v-tab value="address">Address</v-tab>
+            <v-tab value="emergency">Emergency</v-tab>
+            <v-tab value="employment">Employment</v-tab>
+            <v-tab value="admin">Admin</v-tab>
+          </v-tabs>
+
+          <v-window v-model="personalInfoTab">
+            <!-- Basic Info Tab -->
+            <v-window-item value="basic">
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.first_name" label="First Name *" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.last_name" label="Last Name *" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.preferred_name" label="Preferred Name" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.employee_number" label="Employee Number" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.date_of_birth" label="Date of Birth" type="date" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.hire_date" label="Hire Date" type="date" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Contact Tab -->
+            <v-window-item value="contact">
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="personalInfoForm.email_work" label="Work Email" type="email" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="personalInfoForm.email_personal" label="Personal Email" type="email" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="personalInfoForm.phone_mobile" label="Mobile Phone" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field v-model="personalInfoForm.phone_work" label="Work Phone" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Address Tab -->
+            <v-window-item value="address">
+              <v-row dense>
+                <v-col cols="12">
+                  <v-text-field v-model="personalInfoForm.address_street" label="Street Address" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="5">
+                  <v-text-field v-model="personalInfoForm.address_city" label="City" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-text-field v-model="personalInfoForm.address_state" label="State" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.address_zip" label="ZIP Code" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Emergency Contact Tab -->
+            <v-window-item value="emergency">
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.emergency_contact_name" label="Contact Name" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.emergency_contact_phone" label="Contact Phone" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.emergency_contact_relationship" label="Relationship" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Employment Tab -->
+            <v-window-item value="employment">
+              <v-row dense>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.department_id" :items="departments" item-title="name" item-value="id" label="Department" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.position_id" :items="positions" item-title="title" item-value="id" label="Position" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.location_id" :items="locations" item-title="name" item-value="id" label="Location" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.employment_type" :items="['full-time', 'part-time', 'contract', 'per-diem', 'intern']" label="Employment Type" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.employment_status" :items="['active', 'inactive', 'on-leave', 'terminated']" label="Status" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select v-model="personalInfoForm.manager_employee_id" :items="managerOptions" item-title="label" item-value="value" label="Reports To" variant="outlined" density="compact" clearable />
+                </v-col>
+                <v-col v-if="personalInfoForm.employment_status === 'terminated'" cols="12" md="4">
+                  <v-text-field v-model="personalInfoForm.termination_date" label="Termination Date" type="date" variant="outlined" density="compact" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
+            <!-- Admin Tab -->
+            <v-window-item value="admin">
+              <v-alert type="warning" variant="tonal" class="mb-4">
+                <v-icon start>mdi-shield-alert</v-icon>
+                Changes to these settings affect system access.
+              </v-alert>
+              <v-row dense>
+                <v-col cols="12" md="6">
+                  <v-select v-model="personalInfoForm.profile_role" :items="['admin', 'user']" label="Profile Role" variant="outlined" density="compact" />
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-switch v-model="personalInfoForm.profile_is_active" label="Profile Active" color="success" hide-details />
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea v-model="personalInfoForm.notes_internal" label="Internal Notes (Admin Only)" variant="outlined" density="compact" rows="4" />
+                </v-col>
+              </v-row>
+            </v-window-item>
+          </v-window>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showPersonalInfoDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" :loading="savingPersonalInfo" @click="savePersonalInfo">
+            <v-icon start>mdi-content-save</v-icon>
+            Save Changes
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- PTO Balance Edit Dialog -->
+    <v-dialog v-model="showPTODialog" max-width="500">
+      <v-card>
+        <v-card-title class="bg-success text-white py-4">
+          <v-icon start>mdi-beach</v-icon>
+          Edit PTO Balance
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <div class="text-subtitle-1 font-weight-bold mb-4">{{ ptoEditForm.type_name }}</div>
+          <v-row dense>
+            <v-col cols="6">
+              <v-text-field v-model.number="ptoEditForm.accrued_hours" label="Accrued Hours" type="number" step="0.5" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model.number="ptoEditForm.carryover_hours" label="Carryover Hours" type="number" step="0.5" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model.number="ptoEditForm.used_hours" label="Used Hours" type="number" step="0.5" variant="outlined" density="compact" />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model.number="ptoEditForm.pending_hours" label="Pending Hours" type="number" step="0.5" variant="outlined" density="compact" />
+            </v-col>
+          </v-row>
+          <v-alert type="info" variant="tonal" class="mt-4" density="compact">
+            Available: {{ (ptoEditForm.accrued_hours + ptoEditForm.carryover_hours - ptoEditForm.used_hours - ptoEditForm.pending_hours).toFixed(1) }} hrs
+          </v-alert>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showPTODialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="success" variant="flat" :loading="savingPTO" @click="savePTOBalance">
+            <v-icon start>mdi-content-save</v-icon>
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add PTO Type Dialog -->
+    <v-dialog v-model="showAddPTOTypeDialog" max-width="500">
+      <v-card>
+        <v-card-title class="bg-primary text-white py-4">
+          <v-icon start>mdi-plus-circle</v-icon>
+          Add PTO Balance Type
+        </v-card-title>
+        <v-card-text class="pa-6">
+          <v-select
+            v-model="addPTOForm.time_off_type_id"
+            :items="availableTimeOffTypes"
+            item-title="name"
+            item-value="id"
+            label="Time Off Type *"
+            variant="outlined"
+            density="compact"
+            class="mb-4"
+          />
+          <v-text-field
+            v-model.number="addPTOForm.accrued_hours"
+            label="Initial Accrued Hours"
+            type="number"
+            step="0.5"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-btn variant="text" @click="showAddPTOTypeDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="primary" variant="flat" :loading="addingPTOType" :disabled="!addPTOForm.time_off_type_id" @click="addPTOType">
+            <v-icon start>mdi-plus</v-icon>
+            Add
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -1896,6 +2517,83 @@ const skillCategoryOptionsForReview = [
   'Specialized',
   'Species Expertise'
 ]
+
+// Personal Info Edit state
+const showPersonalInfoDialog = ref(false)
+const savingPersonalInfo = ref(false)
+const personalInfoTab = ref('basic')
+const personalInfoForm = ref({
+  first_name: '',
+  last_name: '',
+  preferred_name: '',
+  employee_number: '',
+  date_of_birth: '',
+  hire_date: '',
+  email_work: '',
+  email_personal: '',
+  phone_mobile: '',
+  phone_work: '',
+  address_street: '',
+  address_city: '',
+  address_state: '',
+  address_zip: '',
+  emergency_contact_name: '',
+  emergency_contact_phone: '',
+  emergency_contact_relationship: '',
+  department_id: null as string | null,
+  position_id: null as string | null,
+  location_id: null as string | null,
+  employment_type: '',
+  employment_status: '',
+  manager_employee_id: null as string | null,
+  termination_date: '',
+  profile_role: 'user',
+  profile_is_active: true,
+  notes_internal: ''
+})
+
+// Lookup data for personal info form
+const departments = ref<any[]>([])
+const positions = ref<any[]>([])
+const locations = ref<any[]>([])
+const allEmployees = ref<any[]>([])
+const timeOffTypes = ref<any[]>([])
+
+// Manager options computed
+const managerOptions = computed(() => {
+  return allEmployees.value
+    .filter(e => e.id !== employeeId.value)
+    .map(e => ({
+      label: `${e.preferred_name || e.first_name} ${e.last_name}`,
+      value: e.id
+    }))
+})
+
+// PTO Edit state
+const showPTODialog = ref(false)
+const savingPTO = ref(false)
+const ptoEditForm = ref({
+  id: '',
+  type_name: '',
+  accrued_hours: 0,
+  carryover_hours: 0,
+  used_hours: 0,
+  pending_hours: 0
+})
+
+// Add PTO Type state
+const showAddPTOTypeDialog = ref(false)
+const addingPTOType = ref(false)
+const addPTOForm = ref({
+  time_off_type_id: null as string | null,
+  accrued_hours: 0
+})
+
+// Available time off types (not already assigned)
+const availableTimeOffTypes = computed(() => {
+  const assignedIds = new Set(ptoBalances.value.map(b => b.time_off_type_id))
+  return timeOffTypes.value.filter(t => !assignedIds.has(t.id))
+})
 
 // ==========================================
 // COMPUTED
@@ -2919,10 +3617,257 @@ async function submitAdminReviewRequest() {
 }
 
 // ==========================================
+// PERSONAL INFO FUNCTIONS
+// ==========================================
+async function loadLookupData() {
+  try {
+    // Load departments, positions, locations, employees, and time off types in parallel
+    const [deptResult, posResult, locResult, empResult, totResult] = await Promise.all([
+      supabase.from('departments').select('id, name').order('name'),
+      supabase.from('job_positions').select('id, title').order('title'),
+      supabase.from('locations').select('id, name').order('name'),
+      supabase.from('employees').select('id, first_name, last_name, preferred_name').eq('employment_status', 'active').order('first_name'),
+      supabase.from('time_off_types').select('id, name, code').eq('is_active', true).order('name')
+    ])
+    
+    departments.value = deptResult.data || []
+    positions.value = posResult.data || []
+    locations.value = locResult.data || []
+    allEmployees.value = empResult.data || []
+    timeOffTypes.value = totResult.data || []
+  } catch (err) {
+    console.log('[Profile] Failed to load lookup data:', err)
+  }
+}
+
+function openPersonalInfoDialog() {
+  // Pre-populate form with current employee data
+  const emp = employee.value
+  if (!emp) return
+  
+  personalInfoForm.value = {
+    first_name: emp.first_name || '',
+    last_name: emp.last_name || '',
+    preferred_name: emp.preferred_name || '',
+    employee_number: emp.employee_number || '',
+    date_of_birth: emp.date_of_birth || '',
+    hire_date: emp.hire_date || '',
+    email_work: emp.email_work || '',
+    email_personal: emp.email_personal || '',
+    phone_mobile: emp.phone_mobile || '',
+    phone_work: emp.phone_work || '',
+    address_street: emp.address_street || '',
+    address_city: emp.address_city || '',
+    address_state: emp.address_state || '',
+    address_zip: emp.address_zip || '',
+    emergency_contact_name: emp.emergency_contact_name || '',
+    emergency_contact_phone: emp.emergency_contact_phone || '',
+    emergency_contact_relationship: emp.emergency_contact_relationship || '',
+    department_id: emp.department_id || null,
+    position_id: emp.position_id || null,
+    location_id: emp.location_id || null,
+    employment_type: emp.employment_type || '',
+    employment_status: emp.employment_status || '',
+    manager_employee_id: emp.manager_employee_id || null,
+    termination_date: emp.termination_date || '',
+    profile_role: emp.profile?.role || 'user',
+    profile_is_active: emp.profile?.is_active ?? true,
+    notes_internal: emp.notes_internal || ''
+  }
+  
+  personalInfoTab.value = 'basic'
+  showPersonalInfoDialog.value = true
+}
+
+async function savePersonalInfo() {
+  savingPersonalInfo.value = true
+  try {
+    const form = personalInfoForm.value
+    
+    // Update employee record
+    const employeeUpdate: Record<string, any> = {
+      first_name: form.first_name,
+      last_name: form.last_name,
+      preferred_name: form.preferred_name || null,
+      employee_number: form.employee_number || null,
+      date_of_birth: form.date_of_birth || null,
+      hire_date: form.hire_date || null,
+      email_work: form.email_work || null,
+      email_personal: form.email_personal || null,
+      phone_mobile: form.phone_mobile || null,
+      phone_work: form.phone_work || null,
+      address_street: form.address_street || null,
+      address_city: form.address_city || null,
+      address_state: form.address_state || null,
+      address_zip: form.address_zip || null,
+      emergency_contact_name: form.emergency_contact_name || null,
+      emergency_contact_phone: form.emergency_contact_phone || null,
+      emergency_contact_relationship: form.emergency_contact_relationship || null,
+      department_id: form.department_id || null,
+      position_id: form.position_id || null,
+      location_id: form.location_id || null,
+      employment_type: form.employment_type || null,
+      employment_status: form.employment_status || null,
+      manager_employee_id: form.manager_employee_id || null,
+      termination_date: form.termination_date || null,
+      notes_internal: form.notes_internal || null
+    }
+    
+    const { error: empErr } = await supabase
+      .from('employees')
+      .update(employeeUpdate)
+      .eq('id', employeeId.value)
+    
+    if (empErr) throw empErr
+    
+    // Update profile if it exists and role/is_active changed
+    if (employee.value?.profile?.id) {
+      const profileUpdate: Record<string, any> = {
+        role: form.profile_role,
+        is_active: form.profile_is_active
+      }
+      
+      const { error: profErr } = await supabase
+        .from('profiles')
+        .update(profileUpdate)
+        .eq('id', employee.value.profile.id)
+      
+      if (profErr) throw profErr
+    }
+    
+    // Reload employee data
+    await loadEmployeeData()
+    showPersonalInfoDialog.value = false
+    toast.success('Personal information updated')
+  } catch (err: any) {
+    console.error('Failed to save personal info:', err)
+    toast.error('Failed to save personal information')
+  } finally {
+    savingPersonalInfo.value = false
+  }
+}
+
+// ==========================================
+// PTO FUNCTIONS
+// ==========================================
+function getPTOTypeIcon(typeName: string): string {
+  const icons: Record<string, string> = {
+    'Vacation': 'mdi-beach',
+    'Sick': 'mdi-hospital-box',
+    'Personal': 'mdi-account',
+    'Bereavement': 'mdi-candle',
+    'Holiday': 'mdi-gift',
+    'Jury Duty': 'mdi-gavel',
+    'Maternity': 'mdi-baby-carriage',
+    'Paternity': 'mdi-baby-carriage',
+    'Unpaid': 'mdi-cash-off',
+    'Floating Holiday': 'mdi-star-outline'
+  }
+  return icons[typeName] || 'mdi-calendar-clock'
+}
+
+function getPTOTypeColor(typeName: string): string {
+  const colors: Record<string, string> = {
+    'Vacation': 'success',
+    'Sick': 'error',
+    'Personal': 'info',
+    'Bereavement': 'grey',
+    'Holiday': 'warning',
+    'Jury Duty': 'purple',
+    'Maternity': 'pink',
+    'Paternity': 'pink',
+    'Unpaid': 'grey-darken-1',
+    'Floating Holiday': 'amber'
+  }
+  return colors[typeName] || 'primary'
+}
+
+function getPTOAvailable(balance: any): number {
+  return (balance.accrued_hours || 0) + (balance.carryover_hours || 0) - (balance.used_hours || 0) - (balance.pending_hours || 0)
+}
+
+function getPTOAvailableClass(balance: any): string {
+  const available = getPTOAvailable(balance)
+  if (available <= 0) return 'text-error'
+  if (available < 8) return 'text-warning'
+  return 'text-success'
+}
+
+function openPTODialog(balance: any) {
+  ptoEditForm.value = {
+    id: balance.id,
+    type_name: balance.time_off_type?.name || 'Unknown Type',
+    accrued_hours: balance.accrued_hours || 0,
+    carryover_hours: balance.carryover_hours || 0,
+    used_hours: balance.used_hours || 0,
+    pending_hours: balance.pending_hours || 0
+  }
+  showPTODialog.value = true
+}
+
+async function savePTOBalance() {
+  savingPTO.value = true
+  try {
+    const { error: err } = await supabase
+      .from('employee_time_off_balances')
+      .update({
+        accrued_hours: ptoEditForm.value.accrued_hours,
+        carryover_hours: ptoEditForm.value.carryover_hours,
+        used_hours: ptoEditForm.value.used_hours,
+        pending_hours: ptoEditForm.value.pending_hours
+      })
+      .eq('id', ptoEditForm.value.id)
+    
+    if (err) throw err
+    
+    await loadPTOBalances()
+    showPTODialog.value = false
+    toast.success('PTO balance updated')
+  } catch (err: any) {
+    console.error('Failed to save PTO balance:', err)
+    toast.error('Failed to update PTO balance')
+  } finally {
+    savingPTO.value = false
+  }
+}
+
+async function addPTOType() {
+  if (!addPTOForm.value.time_off_type_id) return
+  
+  addingPTOType.value = true
+  try {
+    const { error: err } = await supabase
+      .from('employee_time_off_balances')
+      .insert({
+        employee_id: employeeId.value,
+        time_off_type_id: addPTOForm.value.time_off_type_id,
+        period_year: currentYear,
+        accrued_hours: addPTOForm.value.accrued_hours,
+        carryover_hours: 0,
+        used_hours: 0,
+        pending_hours: 0
+      })
+    
+    if (err) throw err
+    
+    await loadPTOBalances()
+    showAddPTOTypeDialog.value = false
+    addPTOForm.value = { time_off_type_id: null, accrued_hours: 0 }
+    toast.success('PTO type added')
+  } catch (err: any) {
+    console.error('Failed to add PTO type:', err)
+    toast.error('Failed to add PTO type')
+  } finally {
+    addingPTOType.value = false
+  }
+}
+
+// ==========================================
 // LIFECYCLE
 // ==========================================
 onMounted(() => {
   loadEmployeeData()
+  loadLookupData()
 })
 
 // Watch for route changes

@@ -1,5 +1,25 @@
 <template>
   <div>
+    <!-- DEPRECATION NOTICE -->
+    <v-alert
+      type="warning"
+      variant="tonal"
+      class="mb-4"
+      prominent
+      closable
+    >
+      <template #prepend>
+        <v-icon size="32">mdi-alert-circle</v-icon>
+      </template>
+      <div class="text-subtitle-1 font-weight-bold mb-1">This page is being deprecated</div>
+      <div class="text-body-2">
+        All employee data management has been consolidated into the 
+        <NuxtLink to="/roster" class="text-primary font-weight-medium">Team Roster</NuxtLink> 
+        page. Click on any employee profile to view and edit their complete information 
+        including Personal Info, Compensation, and PTO Balances.
+      </div>
+    </v-alert>
+
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-4">
       <div>

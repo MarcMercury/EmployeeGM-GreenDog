@@ -2,11 +2,20 @@
  * Slack Sync Service - Get All Slack Users
  * ==========================================
  * Returns all Slack users for admin selection/matching
+ * Requires authentication (admin action).
  * 
  * GET /api/slack/sync/users
  */
 
+import { serverSupabaseUser } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const config = useRuntimeConfig()
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
 

@@ -2,11 +2,12 @@
  * Slack Integration Health Check
  * ==============================
  * Returns the health status of the Slack integration
+ * Requires authentication (admin diagnostics).
  * 
  * GET /api/slack/health
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 // Inline security utilities since server utils aren't auto-imported
 function getSlackBotToken(): string | null {
@@ -23,6 +24,12 @@ function maskToken(token: string): string {
 }
 
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const client = await serverSupabaseClient(event)
   const health: Record<string, any> = {
     timestamp: new Date().toISOString(),

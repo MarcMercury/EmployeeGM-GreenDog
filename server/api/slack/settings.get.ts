@@ -2,11 +2,18 @@
  * Slack API - Get Settings
  * ========================
  * Returns configured Slack channel IDs for different notification types.
+ * Requires authentication.
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   try {
     const supabase = await serverSupabaseClient(event)
     

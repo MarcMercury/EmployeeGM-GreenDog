@@ -383,9 +383,9 @@ const fetchSkills = async () => {
         viewingEmployeeName.value = `${empData.first_name} ${empData.last_name}`
       }
     } else {
-      // Get current user's employee record
-      const email = user.value?.email
-      if (!email) {
+      // Get current user's employee record via profile_id (more reliable than email)
+      const profileId = authStore.profile?.id
+      if (!profileId) {
         loading.value = false
         return
       }
@@ -393,7 +393,7 @@ const fetchSkills = async () => {
       const { data: employee } = await client
         .from('employees')
         .select('id')
-        .eq('email_work', email)
+        .eq('profile_id', profileId)
         .single() as { data: { id: string } | null }
       
       employeeId = employee?.id || null

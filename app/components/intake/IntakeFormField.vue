@@ -187,12 +187,48 @@ async function handleFileUpload(event: Event) {
   
   if (!file) return
 
-  // For now, create a data URL (in production, upload to storage)
-  // TODO: Integrate with Supabase Storage for file uploads
-  const reader = new FileReader()
-  reader.onload = () => {
-    // In production, this would be a URL from the storage bucket
-    // For now, we'll store a placeholder with file info
+  // Upload to Supabase Storage
+  try {
+    const supabase = useSupabaseClient()
+    const fileExt = file.name.split('.').pop()
+    const fileName = `intake/${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`
+    
+    const { data, error } = await supabase.storage
+      .from('intake-uploads')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+    
+    if (error) {
+      console.error('Upload error:', error)
+      // Fallback to file info if storage bucket doesn't exist
+      emit('update:modelValue', JSON.stringify({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        uploadedAt: new Date().toISOString(),
+        error: 'Storage bucket not configured'
+      }))
+      return
+    }
+    
+    // Get public URL for the uploaded file
+    const { data: urlData } = supabase.storage
+      .from('intake-uploads')
+      .getPublicUrl(data.path)
+    
+    emit('update:modelValue', JSON.stringify({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      path: data.path,
+      url: urlData.publicUrl,
+      uploadedAt: new Date().toISOString()
+    }))
+  } catch (err) {
+    console.error('Failed to upload file:', err)
+    // Fallback to file info
     emit('update:modelValue', JSON.stringify({
       name: file.name,
       size: file.size,
@@ -200,6 +236,5 @@ async function handleFileUpload(event: Event) {
       uploadedAt: new Date().toISOString()
     }))
   }
-  reader.readAsDataURL(file)
 }
 </script>

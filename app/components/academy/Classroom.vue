@@ -411,9 +411,32 @@ function renderContent(content: string): string {
   return marked(content) as string
 }
 
-function downloadAttachment() {
-  // TODO: Implement file download from Supabase storage
-  console.log('Download attachment:', currentLesson.value?.file_id)
+async function downloadAttachment() {
+  if (!currentLesson.value?.file_id) return
+  
+  try {
+    const supabase = useSupabaseClient()
+    const { data, error } = await supabase.storage
+      .from('academy-files')
+      .download(currentLesson.value.file_id)
+    
+    if (error) {
+      console.error('Download error:', error)
+      return
+    }
+    
+    // Create download link
+    const url = URL.createObjectURL(data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = currentLesson.value.file_name || 'attachment'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('Failed to download attachment:', err)
+  }
 }
 
 // Lifecycle

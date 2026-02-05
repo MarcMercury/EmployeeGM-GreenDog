@@ -223,6 +223,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   'updated': []
+  'edit': [goalId: string]
 }>()
 
 const performanceStore = usePerformanceStore()
@@ -379,7 +380,9 @@ async function completeGoal() {
 }
 
 function editGoal() {
-  // TODO: Open edit dialog
-  console.log('Edit goal:', props.goal?.id)
+  if (props.goal?.id) {
+    emit('edit', props.goal.id)
+    close()
+  }
 }
 </script>

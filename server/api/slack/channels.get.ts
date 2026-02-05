@@ -2,9 +2,18 @@
  * Slack API - List Channels
  * =========================
  * Server endpoint to list available Slack channels for channel picker.
+ * Requires authentication.
  */
 
+import { serverSupabaseUser } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const config = useRuntimeConfig()
   
   const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN

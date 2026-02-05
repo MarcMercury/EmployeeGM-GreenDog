@@ -168,9 +168,11 @@ definePageMeta({
 const opsStore = useOperationsStore()
 const userStore = useUserStore()
 const employeeStore = useEmployeeStore()
+const supabase = useSupabaseClient()
 const toast = useToast()
 
 // State
+const ptoBalances = ref<{ accrued_hours: number; used_hours: number; pending_hours: number }[]>([])
 const swapDialog = ref(false)
 const dropDialog = ref(false)
 const swapShift = ref<Shift | null>(null)
@@ -228,8 +230,11 @@ const weeklyHours = computed(() => {
 })
 
 const remainingPTO = computed(() => {
-  // TODO: Calculate from employee's PTO balance
-  return 12 // Placeholder
+  // Calculate total remaining PTO from all balances
+  return ptoBalances.value.reduce((total, bal) => {
+    const remaining = (bal.accrued_hours || 0) - (bal.used_hours || 0) - (bal.pending_hours || 0)
+    return total + Math.max(0, remaining)
+  }, 0)
 })
 
 const availableEmployees = computed(() => {
@@ -327,6 +332,14 @@ onMounted(async () => {
       now.toISOString(),
       employeeId.value
     )
+    
+    // Fetch PTO balances for current employee
+    const { data: balances } = await supabase
+      .from('employee_time_off_balances')
+      .select('accrued_hours, used_hours, pending_hours')
+      .eq('employee_id', employeeId.value)
+    
+    ptoBalances.value = balances || []
   }
 })
 </script>

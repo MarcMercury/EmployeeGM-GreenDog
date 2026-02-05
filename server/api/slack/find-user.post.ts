@@ -3,9 +3,18 @@
  * ===============================
  * Server endpoint to look up a Slack user by their email address.
  * Used to match EmployeeGM users to their Slack accounts.
+ * Requires authentication.
  */
 
+import { serverSupabaseUser } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const config = useRuntimeConfig()
   const body = await readBody(event)
   

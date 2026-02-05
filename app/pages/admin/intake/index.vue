@@ -657,8 +657,13 @@ async function resendEmail(link: any) {
 }
 
 function openPersonDetail(row: any) {
-  // Navigate to person detail or open modal
-  navigateTo(`/admin/intake/persons/${row.id}`)
+  // Show person details in toast (detail page not implemented)
+  toast.add({
+    title: 'Person Details',
+    description: `Viewing ${row.first_name} ${row.last_name} (${row.email})\nStage: ${row.current_stage}\nCreated: ${formatDate(row.created_at)}`,
+    color: 'blue',
+    timeout: 8000
+  })
 }
 
 function openPromoteModal(person: any) {
@@ -806,8 +811,13 @@ function formatDateTime(dateStr: string): string {
 }
 
 function reviewSubmission(submission: any) {
-  // TODO: Open review modal
-  navigateTo(`/admin/intake/submissions/${submission.id}`)
+  // Show submission details in toast (review page not implemented)
+  toast.add({
+    title: 'Submission Details',
+    description: `Submission from ${submission.email}\nStatus: ${submission.status}\nSubmitted: ${formatDate(submission.submitted_at)}`,
+    color: 'blue',
+    timeout: 8000
+  })
 }
 
 // Watchers

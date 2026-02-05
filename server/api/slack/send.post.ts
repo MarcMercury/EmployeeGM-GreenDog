@@ -3,9 +3,18 @@
  * ========================
  * Server endpoint to send messages to Slack channels or DMs.
  * Uses the Bot Token stored in environment variables.
+ * Requires authentication.
  */
 
+import { serverSupabaseUser } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const config = useRuntimeConfig()
   const body = await readBody(event)
   

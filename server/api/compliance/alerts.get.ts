@@ -2,12 +2,19 @@
  * Compliance Alerts API Endpoint
  * 
  * Returns active compliance alerts (expiring licenses, certifications, etc.)
+ * Requires authentication.
  * GET /api/compliance/alerts
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
+
   const client = await serverSupabaseClient(event)
   
   // Get query parameters
