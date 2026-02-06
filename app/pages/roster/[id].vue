@@ -1015,10 +1015,10 @@
                     {{ balance.time_off_type?.name || 'Unknown Type' }}
                   </v-card-title>
                   <v-card-text class="pt-4">
-                    <!-- Admin: Editable Assigned, Read-only Used & Balance -->
+                    <!-- Admin: Editable Assigned & Used, Calculated Balance -->
                     <template v-if="isAdmin">
                       <v-row dense class="mb-2">
-                        <v-col cols="12">
+                        <v-col cols="6">
                           <v-text-field
                             v-model.number="ptoEditableBalances[index].assigned_hours"
                             label="Assigned"
@@ -1031,18 +1031,25 @@
                             @update:model-value="markPTOChanged(index)"
                           />
                         </v-col>
+                        <v-col cols="6">
+                          <v-text-field
+                            v-model.number="ptoEditableBalances[index].used_hours"
+                            label="Used"
+                            type="number"
+                            step="0.5"
+                            suffix="hrs"
+                            variant="outlined"
+                            density="compact"
+                            hide-details
+                            @update:model-value="markPTOChanged(index)"
+                          />
+                        </v-col>
                       </v-row>
-                      <div class="d-flex justify-space-between">
-                        <div class="text-center">
-                          <div class="text-h6 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
-                          <div class="text-caption text-grey">Used</div>
+                      <div class="text-center mt-2">
+                        <div class="text-h5 font-weight-bold" :class="getEditablePTOBalance(index) <= 0 ? 'text-error' : getEditablePTOBalance(index) < 8 ? 'text-warning' : 'text-success'">
+                          {{ getEditablePTOBalance(index).toFixed(1) }}
                         </div>
-                        <div class="text-center">
-                          <div class="text-h6 font-weight-bold" :class="getPTOAvailable(balance) <= 0 ? 'text-error' : getPTOAvailable(balance) < 8 ? 'text-warning' : 'text-success'">
-                            {{ getPTOAvailable(balance).toFixed(1) }}
-                          </div>
-                          <div class="text-caption text-grey">Balance</div>
-                        </div>
+                        <div class="text-caption text-grey">Balance (Assigned - Used)</div>
                       </div>
                     </template>
                     <!-- Non-Admin: Read-Only Display -->
@@ -4376,6 +4383,13 @@ function getPTOAvailable(balance: any): number {
   return (balance.assigned_hours || 0) - (balance.used_hours || 0)
 }
 
+function getEditablePTOBalance(index: number): number {
+  // Balance from editable values for admin inline editing
+  const editable = ptoEditableBalances.value[index]
+  if (!editable) return 0
+  return (editable.assigned_hours || 0) - (editable.used_hours || 0)
+}
+
 function getPTOAvailableClass(balance: any): string {
   const available = getPTOAvailable(balance)
   if (available <= 0) return 'text-error'
@@ -4393,13 +4407,14 @@ async function saveAllPTOBalances() {
   
   savingPTO.value = true
   try {
-    // Update all changed PTO balances - only assigned_hours (used_hours is auto-calculated from time_off_requests)
+    // Update all changed PTO balances - both assigned_hours and used_hours (manual override)
     const updates = Array.from(ptoChangedIndexes.value).map(index => {
       const editable = ptoEditableBalances.value[index]
       return supabase
         .from('employee_time_off_balances')
         .update({
-          assigned_hours: editable.assigned_hours
+          assigned_hours: editable.assigned_hours,
+          used_hours: editable.used_hours
         })
         .eq('id', editable.id)
     })
