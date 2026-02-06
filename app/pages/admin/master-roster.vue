@@ -617,25 +617,27 @@
               </v-row>
             </v-window-item>
 
-            <!-- PTO BALANCES TAB -->
+            <!-- PTO BALANCES TAB - Simplified: Assigned Hours only (Used is auto-calculated) -->
             <v-window-item value="pto">
-              <p class="text-overline text-grey mb-2">TIME OFF BALANCES ({{ new Date().getFullYear() }})</p>
+              <p class="text-overline text-grey mb-2">ASSIGNED TIME OFF ({{ new Date().getFullYear() }})</p>
               <v-row dense>
                 <v-col v-for="tot in timeOffTypes" :key="tot.id" cols="12" md="4">
                   <v-text-field
                     v-model.number="editForm.pto_balances[tot.id]"
-                    :label="`${tot.name} (${tot.code})`"
+                    :label="`${tot.name} - Assigned`"
                     type="number"
                     suffix="hrs"
                     variant="outlined"
                     density="compact"
+                    hint="Used hours are auto-calculated"
+                    persistent-hint
                   />
                 </v-col>
               </v-row>
 
               <v-alert type="info" variant="tonal" class="mt-4">
                 <v-icon start>mdi-information</v-icon>
-                Changes to PTO balances will be logged in the Change History tab.
+                Used hours are auto-calculated from approved time-off requests. Only the assigned hours can be edited here.
               </v-alert>
             </v-window-item>
 
@@ -1053,9 +1055,10 @@ const fetchAllData = async () => {
       supabase.from('departments').select('id, name').order('name'),
       supabase.from('job_positions').select('id, title').order('title'),
       supabase.from('locations').select('id, name').order('name'),
-      supabase.from('time_off_types').select('id, name, code').order('name'),
-      // Fetch PTO balances separately to avoid PostgREST relationship issues
-      supabase.from('employee_time_off_balances').select('id, employee_id, time_off_type_id, accrued_hours, used_hours, pending_hours, carryover_hours, period_year'),
+      // Only load active time off types (PTO, Unpaid Time Off, Other)
+      supabase.from('time_off_types').select('id, name, code').eq('is_active', true).order('name'),
+      // Fetch PTO balances - simplified to assigned_hours and used_hours
+      supabase.from('employee_time_off_balances').select('id, employee_id, time_off_type_id, assigned_hours, used_hours, period_year'),
       // Fetch profiles separately
       supabase.from('profiles').select('id, role, is_active, email, auth_user_id')
     ])
@@ -1109,9 +1112,8 @@ const openEditDialog = async (employee: Employee) => {
   if (employee.time_off_balances) {
     for (const bal of employee.time_off_balances) {
       if (bal.period_year === currentYear) {
-        // Calculate available hours: accrued + carryover - used - pending
-        const available = (bal.accrued_hours || 0) + (bal.carryover_hours || 0) - (bal.used_hours || 0) - (bal.pending_hours || 0)
-        ptoBalances[bal.time_off_type_id] = available
+        // Use assigned_hours directly (used_hours is shown separately, balance is computed)
+        ptoBalances[bal.time_off_type_id] = bal.assigned_hours || 0
       }
     }
   }
@@ -1389,7 +1391,7 @@ const saveChanges = async () => {
       if (profileError) throw profileError
     }
 
-    // 4. Update PTO balances
+    // 4. Update PTO balances - only assigned_hours (used_hours is auto-calculated)
     const currentYear = new Date().getFullYear()
     for (const [typeId, hours] of Object.entries(editForm.pto_balances)) {
       // Check if old value was different
@@ -1398,22 +1400,19 @@ const saveChanges = async () => {
         const typeName = timeOffTypes.value.find(t => t.id === typeId)?.name || typeId
         allChanges.push({
           table: 'employee_time_off_balances',
-          field: `pto_${typeName.toLowerCase().replace(/\s+/g, '_')}`,
+          field: `pto_${typeName.toLowerCase().replace(/\s+/g, '_')}_assigned`,
           oldValue: oldHours,
           newValue: hours
         })
       }
       
-      // Upsert the balance
+      // Upsert the balance - only set assigned_hours
       await supabase
         .from('employee_time_off_balances')
         .upsert({
           employee_id: editingEmployee.value.id,
           time_off_type_id: typeId,
-          accrued_hours: hours,
-          used_hours: 0,
-          pending_hours: 0,
-          carryover_hours: 0,
+          assigned_hours: hours,
           period_year: currentYear
         }, { onConflict: 'employee_id,time_off_type_id,period_year' })
     }

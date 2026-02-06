@@ -980,66 +980,23 @@
                 </v-card>
               </v-col>
 
-              <!-- PTO Type Cards with Inline Editing -->
-              <v-col v-for="(balance, index) in ptoBalances" :key="balance.id" cols="12" md="6">
+              <!-- PTO Type Cards with Inline Editing - Simplified: Assigned, Used, Balance -->
+              <v-col v-for="(balance, index) in ptoBalances" :key="balance.id" cols="12" md="4">
                 <v-card class="bg-white shadow-sm rounded-xl h-100" elevation="0">
                   <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold pb-0">
                     <v-icon start size="20" :color="getPTOTypeColor(balance.time_off_type?.name)">
                       {{ getPTOTypeIcon(balance.time_off_type?.name) }}
                     </v-icon>
                     {{ balance.time_off_type?.name || 'Unknown Type' }}
-                    <v-spacer />
-                    <v-chip size="x-small" :color="getPTOAvailable(balance) <= 0 ? 'error' : getPTOAvailable(balance) < 8 ? 'warning' : 'success'" variant="flat">
-                      {{ getPTOAvailable(balance).toFixed(1) }} hrs available
-                    </v-chip>
                   </v-card-title>
                   <v-card-text class="pt-4">
-                    <!-- Admin: Inline Editable Fields -->
+                    <!-- Admin: Editable Assigned, Read-only Used & Balance -->
                     <template v-if="isAdmin">
-                      <v-row dense>
-                        <v-col cols="6">
+                      <v-row dense class="mb-2">
+                        <v-col cols="12">
                           <v-text-field
-                            v-model.number="ptoEditableBalances[index].accrued_hours"
-                            label="Accrued"
-                            type="number"
-                            step="0.5"
-                            suffix="hrs"
-                            variant="outlined"
-                            density="compact"
-                            hide-details
-                            @update:model-value="markPTOChanged(index)"
-                          />
-                        </v-col>
-                        <v-col cols="6">
-                          <v-text-field
-                            v-model.number="ptoEditableBalances[index].carryover_hours"
-                            label="Carryover"
-                            type="number"
-                            step="0.5"
-                            suffix="hrs"
-                            variant="outlined"
-                            density="compact"
-                            hide-details
-                            @update:model-value="markPTOChanged(index)"
-                          />
-                        </v-col>
-                        <v-col cols="6">
-                          <v-text-field
-                            v-model.number="ptoEditableBalances[index].used_hours"
-                            label="Used"
-                            type="number"
-                            step="0.5"
-                            suffix="hrs"
-                            variant="outlined"
-                            density="compact"
-                            hide-details
-                            @update:model-value="markPTOChanged(index)"
-                          />
-                        </v-col>
-                        <v-col cols="6">
-                          <v-text-field
-                            v-model.number="ptoEditableBalances[index].pending_hours"
-                            label="Pending"
+                            v-model.number="ptoEditableBalances[index].assigned_hours"
+                            label="Assigned"
                             type="number"
                             step="0.5"
                             suffix="hrs"
@@ -1050,25 +1007,35 @@
                           />
                         </v-col>
                       </v-row>
+                      <div class="d-flex justify-space-between">
+                        <div class="text-center">
+                          <div class="text-h6 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Used</div>
+                        </div>
+                        <div class="text-center">
+                          <div class="text-h6 font-weight-bold" :class="getPTOAvailable(balance) <= 0 ? 'text-error' : getPTOAvailable(balance) < 8 ? 'text-warning' : 'text-success'">
+                            {{ getPTOAvailable(balance).toFixed(1) }}
+                          </div>
+                          <div class="text-caption text-grey">Balance</div>
+                        </div>
+                      </div>
                     </template>
                     <!-- Non-Admin: Read-Only Display -->
                     <template v-else>
-                      <div class="d-flex justify-space-between mb-3">
+                      <div class="d-flex justify-space-between">
                         <div class="text-center">
-                          <div class="text-h5 font-weight-bold text-info">{{ (balance.accrued_hours || 0).toFixed(1) }}</div>
-                          <div class="text-caption text-grey">Accrued</div>
-                        </div>
-                        <div class="text-center">
-                          <div class="text-h5 font-weight-bold text-purple">{{ (balance.carryover_hours || 0).toFixed(1) }}</div>
-                          <div class="text-caption text-grey">Carryover</div>
+                          <div class="text-h5 font-weight-bold text-info">{{ (balance.assigned_hours || 0).toFixed(1) }}</div>
+                          <div class="text-caption text-grey">Assigned</div>
                         </div>
                         <div class="text-center">
                           <div class="text-h5 font-weight-bold text-warning">{{ (balance.used_hours || 0).toFixed(1) }}</div>
                           <div class="text-caption text-grey">Used</div>
                         </div>
                         <div class="text-center">
-                          <div class="text-h5 font-weight-bold text-orange">{{ (balance.pending_hours || 0).toFixed(1) }}</div>
-                          <div class="text-caption text-grey">Pending</div>
+                          <div class="text-h5 font-weight-bold" :class="getPTOAvailable(balance) <= 0 ? 'text-error' : getPTOAvailable(balance) < 8 ? 'text-warning' : 'text-success'">
+                            {{ getPTOAvailable(balance).toFixed(1) }}
+                          </div>
+                          <div class="text-caption text-grey">Balance</div>
                         </div>
                       </div>
                     </template>
@@ -2352,12 +2319,14 @@
             class="mb-4"
           />
           <v-text-field
-            v-model.number="addPTOForm.accrued_hours"
-            label="Initial Accrued Hours"
+            v-model.number="addPTOForm.assigned_hours"
+            label="Assigned Hours"
             type="number"
             step="0.5"
             variant="outlined"
             density="compact"
+            hint="Total hours allocated for this year"
+            persistent-hint
           />
         </v-card-text>
         <v-card-actions class="pa-4">
@@ -2596,20 +2565,18 @@ const managerOptions = computed(() => {
     }))
 })
 
-// PTO Edit state
+// PTO Edit state - simplified to Assigned/Used/Balance
 const showPTODialog = ref(false)
 const savingPTO = ref(false)
 const ptoEditForm = ref({
   id: '',
   type_name: '',
-  accrued_hours: 0,
-  carryover_hours: 0,
-  used_hours: 0,
-  pending_hours: 0
+  assigned_hours: 0,
+  used_hours: 0
 })
 
-// PTO Inline Editing state
-const ptoEditableBalances = ref<Array<{ id: string; accrued_hours: number; carryover_hours: number; used_hours: number; pending_hours: number }>>([])
+// PTO Inline Editing state - simplified to Assigned/Used only, Balance is computed
+const ptoEditableBalances = ref<Array<{ id: string; assigned_hours: number; used_hours: number }>>([])
 const ptoChangedIndexes = ref<Set<number>>(new Set())
 
 // Computed: check if any PTO values have changed
@@ -2620,7 +2587,7 @@ const showAddPTOTypeDialog = ref(false)
 const addingPTOType = ref(false)
 const addPTOForm = ref({
   time_off_type_id: null as string | null,
-  accrued_hours: 0
+  assigned_hours: 0
 })
 
 // Available time off types (not already assigned)
@@ -2644,10 +2611,10 @@ const canViewSensitiveData = computed(() => {
 })
 
 const totalPTOHours = computed(() => {
-  // Calculate available PTO: accrued + carryover - used - pending
+  // Calculate available PTO: assigned - used
   return ptoBalances.value.reduce((sum, b) => {
-    const available = (b.accrued_hours || 0) + (b.carryover_hours || 0) - (b.used_hours || 0) - (b.pending_hours || 0)
-    return sum + available
+    const available = (b.assigned_hours || 0) - (b.used_hours || 0)
+    return sum + Math.max(0, available)
   }, 0)
 })
 
@@ -3227,13 +3194,11 @@ async function loadPTOBalances() {
 
     ptoBalances.value = balancesData
     
-    // Initialize editable balances for inline editing
+    // Initialize editable balances for inline editing - simplified to Assigned/Used
     ptoEditableBalances.value = balancesData.map(b => ({
       id: b.id,
-      accrued_hours: b.accrued_hours || 0,
-      carryover_hours: b.carryover_hours || 0,
-      used_hours: b.used_hours || 0,
-      pending_hours: b.pending_hours || 0
+      assigned_hours: b.assigned_hours || 0,
+      used_hours: b.used_hours || 0
     }))
     ptoChangedIndexes.value.clear()
   } catch (err) {
@@ -3698,7 +3663,8 @@ async function loadLookupData() {
       supabase.from('job_positions').select('id, title').order('title'),
       supabase.from('locations').select('id, name').order('name'),
       supabase.from('employees').select('id, first_name, last_name, preferred_name').eq('employment_status', 'active').order('first_name'),
-      supabase.from('time_off_types').select('id, name, code').order('name')
+      // Only load active PTO types (PTO, Unpaid Time Off, Other)
+      supabase.from('time_off_types').select('id, name, code').eq('is_active', true).order('name')
     ])
     
     departments.value = deptResult.data || []
@@ -3819,42 +3785,35 @@ async function savePersonalInfo() {
 }
 
 // ==========================================
-// PTO FUNCTIONS
+// PTO FUNCTIONS - Simplified to 3 types: PTO, Unpaid Time Off, Other
 // ==========================================
 function getPTOTypeIcon(typeName: string): string {
   const icons: Record<string, string> = {
-    'Vacation': 'mdi-beach',
-    'Sick': 'mdi-hospital-box',
-    'Personal': 'mdi-account',
-    'Bereavement': 'mdi-candle',
-    'Holiday': 'mdi-gift',
-    'Jury Duty': 'mdi-gavel',
-    'Maternity': 'mdi-baby-carriage',
-    'Paternity': 'mdi-baby-carriage',
-    'Unpaid': 'mdi-cash-off',
-    'Floating Holiday': 'mdi-star-outline'
+    'PTO': 'mdi-beach',
+    'Paid Time Off': 'mdi-beach',
+    'Unpaid Time Off': 'mdi-cash-off',
+    'UNPAID': 'mdi-cash-off',
+    'Unpaid Leave': 'mdi-cash-off',
+    'Other': 'mdi-calendar-question'
   }
   return icons[typeName] || 'mdi-calendar-clock'
 }
 
 function getPTOTypeColor(typeName: string): string {
   const colors: Record<string, string> = {
-    'Vacation': 'success',
-    'Sick': 'error',
-    'Personal': 'info',
-    'Bereavement': 'grey',
-    'Holiday': 'warning',
-    'Jury Duty': 'purple',
-    'Maternity': 'pink',
-    'Paternity': 'pink',
-    'Unpaid': 'grey-darken-1',
-    'Floating Holiday': 'amber'
+    'PTO': 'primary',
+    'Paid Time Off': 'primary',
+    'Unpaid Time Off': 'grey-darken-1',
+    'UNPAID': 'grey-darken-1',
+    'Unpaid Leave': 'grey-darken-1',
+    'Other': 'secondary'
   }
   return colors[typeName] || 'primary'
 }
 
 function getPTOAvailable(balance: any): number {
-  return (balance.accrued_hours || 0) + (balance.carryover_hours || 0) - (balance.used_hours || 0) - (balance.pending_hours || 0)
+  // Balance = Assigned - Used (auto-calculated)
+  return (balance.assigned_hours || 0) - (balance.used_hours || 0)
 }
 
 function getPTOAvailableClass(balance: any): string {
@@ -3874,16 +3833,13 @@ async function saveAllPTOBalances() {
   
   savingPTO.value = true
   try {
-    // Update all changed PTO balances
+    // Update all changed PTO balances - only assigned_hours (used_hours is auto-calculated from time_off_requests)
     const updates = Array.from(ptoChangedIndexes.value).map(index => {
       const editable = ptoEditableBalances.value[index]
       return supabase
         .from('employee_time_off_balances')
         .update({
-          accrued_hours: editable.accrued_hours,
-          carryover_hours: editable.carryover_hours,
-          used_hours: editable.used_hours,
-          pending_hours: editable.pending_hours
+          assigned_hours: editable.assigned_hours
         })
         .eq('id', editable.id)
     })
@@ -3955,17 +3911,15 @@ async function addPTOType() {
         employee_id: employeeId.value,
         time_off_type_id: addPTOForm.value.time_off_type_id,
         period_year: currentYear,
-        accrued_hours: addPTOForm.value.accrued_hours,
-        carryover_hours: 0,
-        used_hours: 0,
-        pending_hours: 0
+        assigned_hours: addPTOForm.value.assigned_hours,
+        used_hours: 0
       })
     
     if (err) throw err
     
     await loadPTOBalances()
     showAddPTOTypeDialog.value = false
-    addPTOForm.value = { time_off_type_id: null, accrued_hours: 0 }
+    addPTOForm.value = { time_off_type_id: null, assigned_hours: 0 }
     toast.success('PTO type added')
   } catch (err: any) {
     console.error('Failed to add PTO type:', err)

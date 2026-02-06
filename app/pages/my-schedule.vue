@@ -648,27 +648,15 @@ const ptoBalance = ref({
 const ptoTypes = ref<any[]>([])
 const loadingBalances = ref(true)
 
-// Type icons and colors mapping
+// Type icons and colors mapping - Simplified 3 types
 const typeStyles: Record<string, { icon: string; color: string }> = {
   'PTO': { icon: 'mdi-beach', color: '#2196F3' },
   'Paid Time Off': { icon: 'mdi-beach', color: '#2196F3' },
-  'Sick Leave': { icon: 'mdi-hospital', color: '#F44336' },
-  'SICK': { icon: 'mdi-hospital', color: '#F44336' },
-  'Personal Day': { icon: 'mdi-account', color: '#9C27B0' },
-  'PERS': { icon: 'mdi-account', color: '#9C27B0' },
-  'Vacation': { icon: 'mdi-palm-tree', color: '#4CAF50' },
-  'VAC': { icon: 'mdi-palm-tree', color: '#4CAF50' },
-  'Bereavement': { icon: 'mdi-heart', color: '#607D8B' },
-  'BRV': { icon: 'mdi-heart', color: '#607D8B' },
-  'Jury Duty': { icon: 'mdi-gavel', color: '#795548' },
-  'JURY': { icon: 'mdi-gavel', color: '#795548' },
-  'Holiday': { icon: 'mdi-calendar-star', color: '#FF9800' },
-  'HOL': { icon: 'mdi-calendar-star', color: '#FF9800' },
-  'Unpaid Leave': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
+  'Unpaid Time Off': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
   'UNPAID': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
-  'FMLA': { icon: 'mdi-file-document', color: '#3F51B5' },
-  'Maternity/Paternity': { icon: 'mdi-baby-carriage', color: '#E91E63' },
-  'PARENTAL': { icon: 'mdi-baby-carriage', color: '#E91E63' }
+  'Unpaid Leave': { icon: 'mdi-currency-usd-off', color: '#9E9E9E' },
+  'Other': { icon: 'mdi-calendar-question', color: '#607D8B' },
+  'OTHER': { icon: 'mdi-calendar-question', color: '#607D8B' }
 }
 
 const ptoTypeOptions = computed(() => timeOffTypes.value.map(t => ({ 
@@ -928,17 +916,19 @@ async function fetchRequests() {
 async function fetchTimeOffTypes() {
   loadingTypes.value = true
   try {
+    // Only load active time off types (PTO, Unpaid Time Off, Other)
     const { data, error } = await supabase
       .from('time_off_types')
       .select('*')
+      .eq('is_active', true)
       .order('name')
 
     if (error) throw error
     timeOffTypes.value = data || []
     
-    // Set default type if available
+    // Set default type if available - prefer PTO
     if (timeOffTypes.value.length > 0 && !form.type_id) {
-      const ptoType = timeOffTypes.value.find(t => t.code === 'PTO' || t.name === 'Paid Time Off')
+      const ptoType = timeOffTypes.value.find(t => t.code === 'PTO' || t.name === 'PTO')
       form.type_id = ptoType?.id || timeOffTypes.value[0].id
     }
   } catch (err) {
@@ -994,27 +984,26 @@ async function fetchTimeOffBalances() {
     }
     
     if (balancesData.length > 0) {
-      // Calculate totals
+      // Calculate totals with simplified structure (Assigned, Used, Balance)
       let totalUsed = 0
-      let totalAvailable = 0
+      let totalAssigned = 0
       
       ptoTypes.value = balancesData.map((b: any) => {
         const typeName = b.time_off_type?.name || 'Unknown'
         const typeCode = b.time_off_type?.code || typeName
         const style = typeStyles[typeName] || typeStyles[typeCode] || { icon: 'mdi-calendar', color: '#9E9E9E' }
         
-        // Calculate from accrued, used, pending, carryover
+        // Simplified: Assigned - Used = Balance
         const used = b.used_hours || 0
-        const total = (b.accrued_hours || 0) + (b.carryover_hours || 0)
-        const pending = b.pending_hours || 0
-        const available = Math.max(0, total - used - pending)
+        const assigned = b.assigned_hours || 0
+        const available = Math.max(0, assigned - used)
         
         totalUsed += used
-        totalAvailable += available
+        totalAssigned += assigned
         
         return {
           name: typeName,
-          total: Math.round(total / 8), // Convert hours to days
+          total: Math.round(assigned / 8), // Convert hours to days
           available: Math.round(available / 8),
           used: Math.round(used / 8),
           icon: style.icon,
@@ -1023,9 +1012,9 @@ async function fetchTimeOffBalances() {
       })
       
       ptoBalance.value = {
-        total: Math.round((totalUsed + totalAvailable) / 8),
+        total: Math.round(totalAssigned / 8),
         used: Math.round(totalUsed / 8),
-        available: Math.round(totalAvailable / 8)
+        available: Math.round(Math.max(0, totalAssigned - totalUsed) / 8)
       }
     } else {
       // No balances found - show empty state

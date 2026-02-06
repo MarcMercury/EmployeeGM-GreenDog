@@ -886,9 +886,11 @@ export const useOperationsStore = defineStore('operations', {
       const supabase = useSupabaseClient()
 
       try {
+        // Only load active time off types (PTO, Unpaid Time Off, Other)
         const { data, error } = await supabase
           .from('time_off_types')
           .select('*')
+          .eq('is_active', true)
           .order('name')
 
         if (error) throw error
