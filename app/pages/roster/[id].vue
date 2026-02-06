@@ -3501,10 +3501,14 @@ async function loadPTOBalances() {
       }
     }
 
-    ptoBalances.value = balancesData
+    ptoBalances.value = balancesData.filter(b => {
+      // Only show balances for active time_off_types (ones that exist in timeOffTypes)
+      const typeExists = timeOffTypes.value.some(t => t.id === b.time_off_type_id)
+      return typeExists && b.time_off_type?.name && b.time_off_type.name !== 'Unknown'
+    })
     
     // Initialize editable balances for inline editing - simplified to Assigned/Used
-    ptoEditableBalances.value = balancesData.map(b => ({
+    ptoEditableBalances.value = ptoBalances.value.map(b => ({
       id: b.id,
       assigned_hours: b.assigned_hours || 0,
       used_hours: b.used_hours || 0
