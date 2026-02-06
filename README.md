@@ -1,8 +1,8 @@
 # TeamOS - Green Dog Dental Edition
 
-> **Enterprise Veterinary Workforce Management Platform**
+> **Enterprise Unified Operating System for Veterinary Hospital Networks**
 > 
-> A comprehensive, production-grade HR/Operations system for veterinary practices, featuring employee lifecycle management, skills tracking, scheduling, recruiting, marketing CRM, and education program management.
+> A unified ERP platform consolidating 8 discrete software verticals into a single application: Talent Acquisition, HRIS, Workforce Scheduling, Learning Management, Partner CRM, Marketing Outreach, Knowledge Management, and Education Programs.
 
 [![Nuxt 3](https://img.shields.io/badge/Nuxt-3-00DC82?logo=nuxt.js)](https://nuxt.com)
 [![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vue.js)](https://vuejs.org)
@@ -15,6 +15,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [The 8 Verticals](#-the-8-verticals)
 - [Key Features](#-key-features)
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
@@ -24,62 +25,105 @@
 - [Security Model](#-security-model)
 - [API Integrations](#-api-integrations)
 - [Deployment](#-deployment)
-- [Contributing](#-contributing)
 
 ---
 
 ## 🎯 Overview
 
-TeamOS (formerly "Employee GM") is an enterprise workforce management platform built specifically for veterinary dental practices. Originally conceived as "Madden for Vets" - a gamified employee management system - it has evolved into a full-featured operations platform managing the complete lifecycle of people from initial contact through employment and beyond.
+TeamOS (formerly "Employee GM") is an **enterprise unified operating system** designed to replace multiple third-party SaaS subscriptions with a single, integrated interface. Originally conceived as "Madden for Vets" - a gamified employee management system - it has evolved into a comprehensive ERP platform managing the complete lifecycle of people, operations, training, and growth for veterinary dental practices.
 
 ### Core Philosophy: "One Human = One ID"
 
 The system implements a **Unified Person Model** where every individual (visitor, lead, student, applicant, employee, alumni) maintains a single identity throughout their entire relationship with the organization. Data flows seamlessly between lifecycle stages without duplication.
 
+### Functional Objective
+
+Deliver a cohesive operating system capable of replacing multiple third-party SaaS subscriptions through a single, integrated interface with:
+- Deterministic business logic (not probabilistic)
+- Type-safe data validation at all boundaries
+- Row-level security for data isolation
+- Real-time collaboration via Supabase
+
+---
+
+## 🏢 The 8 Verticals
+
+| Vertical | System Type | Core Function |
+|----------|-------------|---------------|
+| **1. Talent Acquisition** | ATS | End-to-end recruitment pipeline with AI resume parsing |
+| **2. Human Resources** | HRIS | Employee data, compliance, compensation, documents |
+| **3. Workforce Logistics** | Scheduler | Multi-location staffing with conflict resolution |
+| **4. Learning Management** | LMS | 250+ skills, proficiency tracking, mentor sign-offs |
+| **5. Partner Relations** | CRM | Referral clinic management with revenue analytics |
+| **6. Marketing & Outreach** | Marketing | Events, leads, influencer management |
+| **7. Knowledge Management** | Wiki | AI-powered medical knowledge base, SOPs |
+| **8. Education Programs** | GDU | Internships, externships, cohorts, CE events |
+
 ---
 
 ## ⭐ Key Features
 
-### 👥 Human Resources
+### 👥 Human Resources (HRIS)
 - **Employee Profiles** - Comprehensive "baseball card" view with photo, role, skills, tenure
 - **Skill Tracking System** - 250+ veterinary skills with 0-5 rating scale (Learner → Mentor)
 - **Performance Reviews** - Review requests, manager sign-offs, goal tracking
 - **Compensation Management** - Pay rates, pay changes, payroll export integration
-- **Time-Off Management** - PTO requests, approval workflow, balance tracking
-- **Document Storage** - Secure employee document management
+- **Time-Off Management** - PTO requests with shift conflict detection, approval workflow
+- **Document Storage** - Secure employee document management via Supabase Storage
+- **Attendance Tracking** - Clock in/out with geolocation verification
 
 ### 📅 Operations & Scheduling
 - **Shift Scheduling** - Visual schedule builder with drag-and-drop
+- **Service Templates** - Pre-defined staffing requirements (e.g., "Surgery = 1 DVM + 2 Tech")
+- **Conflict Detection** - Deterministic SQL logic prevents overlapping assignments
+- **Draft State** - Stage schedule modifications before committing to live
+- **AI Suggestions** - OpenAI-powered smart shift filling based on skills/availability
 - **Multi-location Support** - Venice, Sherman Oaks, The Valley locations
-- **Attendance Tracking** - Time punch integration, attendance records
 - **Payroll Workbench** - Period-based payroll preparation and export
 
-### 🎓 GDU (Green Dog University)
-- **Student Program Management** - Interns, Externs, Paid Cohorts, Intensives
-- **CE (Continuing Education) Events** - RACE-compliant course creation and tracking
+### 🎓 Learning Management (LMS)
+- **Skill Library** - 250+ categorized clinical/administrative skills
+- **Proficiency Levels** - 0-5 scale: Learner (0-2), Competent (3-4), Mentor (5)
+- **Mentor Sign-offs** - RBAC restricts validation to Level 5 employees
 - **Course Catalog** - Training modules with progress tracking
-- **Manager Sign-offs** - Completion verification and skill advancement
-- **Student Invite Wizard** - Identity resolution and onboarding
+- **Skill Advancement** - Course completion auto-advances proficiency
+- **CE Tracking** - RACE-compliant continuing education events
 
-### 🔍 Recruiting Pipeline
-- **Candidate Management** - Full applicant tracking from lead to hire
-- **Interview Scheduling** - Multi-stage interview coordination
-- **Onboarding Wizard** - Automated new hire onboarding checklist
+### 🎓 GDU (Green Dog University)
+- **Program Types** - Internships, Externships, Paid Cohorts, Intensives, Shadows
+- **Student Management** - Full lifecycle from inquiry to completion
+- **Student Invite Wizard** - Identity resolution and unified onboarding
+- **Visitor CRM** - Track educational inquiries and conversions
+
+### 🔍 Recruiting Pipeline (ATS)
+- **AI Resume Parsing** - OpenAI extracts structured data from unstructured PDFs
+- **Zod Validation** - All entry methods (manual, bulk, upload) use unified schema
+- **Interview Scheduling** - Multi-stage coordination
+- **Onboarding Wizard** - Automated checklist for new hires
 - **Shadow Program** - Track job shadow visits
 
-### 📣 Marketing Hub
-- **Command Center** - Marketing dashboard with KPIs
+### 📣 Marketing & CRM
+- **Partner Management** - 500+ referral clinics with relationship tracking
+- **Quintile Ranking** - Revenue-based tier segmentation via NTILE
+- **Relationship Health** - Computed score (0-100) from tier + activity recency
+- **Visit Logging** - Geolocation capture verifies physical presence
+- **EzyVet Integration** - CSV parsing from veterinary PIMS
 - **Event Management** - Marketing events, attendees, follow-ups
-- **Lead CRM** - Marketing qualified leads tracking
-- **Partner Management** - Referral partners, veterinary clinics
+- **Influencer Tracking** - Social media relationship management
 - **Resource Library** - Marketing materials and assets
-- **Influencer Tracking** - Social media influencer relationships
+
+### 📚 Knowledge Management (Wiki)
+- **Medical Wiki** - AI-powered veterinary knowledge search
+- **Category Browsing** - Organized by clinical topic
+- **AI Assistant** - OpenAI-backed Q&A with source warnings
+- **Role-Based Access** - Content visibility by department/role
+- **Skill Linking** - Documentation connected to LMS skill records
 
 ### 🔔 Notifications & Activity
 - **Real-time Notifications** - In-app notification system
 - **Activity Feed** - Company-wide activity stream
-- **Slack Integration** - Bi-directional Slack sync for announcements
-- **Email Notifications** - Transactional emails via Supabase
+- **Slack Integration** - Bi-directional sync for announcements
+- **Email Notifications** - Transactional emails via Supabase/Resend
 
 ---
 
@@ -173,15 +217,21 @@ app/
 
 | Layer | Technology | Purpose |
 |-------|------------|---------|
-| **Framework** | Nuxt 3 | Full-stack Vue meta-framework |
-| **UI Library** | Vuetify 3 | Material Design components |
-| **State** | Pinia | Vue state management |
-| **Language** | TypeScript 5 | Type safety |
-| **Database** | PostgreSQL (Supabase) | Primary data store |
-| **Auth** | Supabase Auth | Email/password authentication |
-| **Storage** | Supabase Storage | File uploads (docs, images) |
-| **Hosting** | Vercel | Edge deployment |
-| **Integrations** | Slack API | Team notifications |
+| **Framework** | Nuxt 3 | Full-stack Vue meta-framework with SSR |
+| **UI Library** | Vuetify 3 | Material Design component library |
+| **Styling** | Tailwind CSS | Utility-first CSS (supplementary) |
+| **State** | Pinia | Vue state management with persistence |
+| **Language** | TypeScript 5 | Strict type safety throughout |
+| **Database** | PostgreSQL (Supabase) | Primary data store with 120+ tables |
+| **Auth** | Supabase Auth | Email/password with RBAC |
+| **Storage** | Supabase Storage | Secure file uploads (docs, images) |
+| **Validation** | Zod | Runtime type validation at all boundaries |
+| **AI** | OpenAI GPT-4 | Resume parsing, schedule suggestions, wiki Q&A |
+| **Hosting** | Vercel Edge | Global CDN with auto-deploy |
+| **Integrations** | Slack API | Bi-directional notifications |
+| **Data Sync** | EzyVet CSV | Veterinary PIMS data ingestion |
+| **Charts** | ApexCharts | Data visualization |
+| **Drag & Drop** | Vue Draggable | Schedule builder interactions |
 
 ---
 
@@ -347,19 +397,31 @@ employees (profile_id = profiles.id)
 
 ## 🔌 API Integrations
 
-### Supabase (Active)
+### Supabase (✅ Active)
 - Authentication (email/password)
-- Database (PostgreSQL)
+- Database (PostgreSQL with RLS)
 - Storage (file uploads)
 - Real-time subscriptions
+- Edge Functions (CRON jobs)
 
-### Slack (Active)
+### OpenAI (✅ Active)
+- Resume parsing (GPT-4)
+- Schedule suggestions
+- Wiki Q&A assistant
+
+### Slack (✅ Active)
 - Bi-directional user sync
 - Channel notifications
 - Announcement posting
 - User avatar sync
+- Time-off request alerts
 
-### Vercel (Active)
+### EzyVet (✅ CSV Sync)
+- Referral statistics import
+- Contact data synchronization
+- Revenue analytics
+
+### Vercel (✅ Active)
 - Edge hosting
 - CI/CD from GitHub
 - Environment management
@@ -416,14 +478,39 @@ MIT License - Green Dog Dental
 
 ## 📊 Project Stats
 
-- **122+ Database Migrations**
-- **50+ Application Pages**
-- **100+ Vue Components**
-- **250+ Skills in Library**
-- **15+ Composables**
-- **10+ Pinia Stores**
+| Metric | Count |
+|--------|-------|
+| Database Migrations | 136 |
+| Database Tables | 120+ |
+| Application Pages | 77 |
+| Vue Components | 100+ |
+| Skills in Library | 250+ |
+| Composables | 19 |
+| Pinia Stores | 10+ |
+| Active Scripts | ~30 |
+| TypeScript Coverage | 100% |
+| Locations Supported | 3 |
+| RBAC Roles | 5 |
+
+---
+
+## 🎯 Business Value
+
+TeamOS consolidates the following typical SaaS subscriptions into one platform:
+
+| Replaced SaaS Category | Annual Cost (Typical) |
+|------------------------|----------------------|
+| ATS (Workable, Greenhouse) | $5,000-15,000 |
+| HRIS (BambooHR, Gusto) | $3,000-10,000 |
+| Scheduling (When I Work, Deputy) | $2,000-5,000 |
+| LMS (Lessonly, TalentLMS) | $3,000-8,000 |
+| CRM (HubSpot, Salesforce) | $5,000-20,000 |
+| Wiki (Notion, Confluence) | $1,000-3,000 |
+| **Potential Annual Savings** | **$19,000-61,000** |
 
 ---
 
 Built with ❤️ for veterinary professionals by the Green Dog Dental team.
+
+*Last Updated: February 2026*
 

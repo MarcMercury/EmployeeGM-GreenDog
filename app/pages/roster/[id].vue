@@ -388,13 +388,20 @@
                     <v-icon start size="20" color="warning">mdi-card-account-details</v-icon>
                     Professional Licenses
                     <v-spacer />
-                    <v-chip size="x-small" variant="tonal" :color="expiringLicensesCount > 0 ? 'warning' : 'success'">
+                    <v-chip size="x-small" variant="tonal" :color="expiringLicensesCount > 0 ? 'warning' : 'success'" class="mr-2">
                       {{ licenses.length }} on file
                     </v-chip>
+                    <v-btn v-if="isAdmin || isOwnProfile" icon="mdi-plus" size="x-small" variant="text" color="primary" @click="openAddLicenseDialog" />
                   </v-card-title>
                   <v-card-text>
                     <v-list v-if="licenses.length > 0" density="compact" class="bg-transparent">
-                      <v-list-item v-for="license in licenses" :key="license.id" class="px-0">
+                      <v-list-item 
+                        v-for="license in licenses" 
+                        :key="license.id" 
+                        class="px-0"
+                        :class="{ 'cursor-pointer': isAdmin || isOwnProfile }"
+                        @click="(isAdmin || isOwnProfile) && openEditLicenseDialog(license)"
+                      >
                         <template #prepend>
                           <v-avatar size="32" :color="getLicenseStatusColor(license)" variant="tonal">
                             <v-icon size="16">mdi-certificate</v-icon>
@@ -408,17 +415,20 @@
                           <span v-if="license.state"> • {{ license.state }}</span>
                         </v-list-item-subtitle>
                         <template #append>
-                          <div class="text-right">
-                            <v-chip 
-                              size="x-small" 
-                              :color="getLicenseStatusColor(license)"
-                              variant="flat"
-                            >
-                              {{ formatExpirationStatus(license) }}
-                            </v-chip>
-                            <div class="text-caption text-grey mt-1">
-                              {{ license.expiration_date ? formatDate(license.expiration_date) : 'No expiry' }}
+                          <div class="text-right d-flex align-center gap-2">
+                            <div>
+                              <v-chip 
+                                size="x-small" 
+                                :color="getLicenseStatusColor(license)"
+                                variant="flat"
+                              >
+                                {{ formatExpirationStatus(license) }}
+                              </v-chip>
+                              <div class="text-caption text-grey mt-1">
+                                {{ license.never_expires ? 'Never Expires' : (license.expiration_date ? formatDate(license.expiration_date) : 'No expiry') }}
+                              </div>
                             </div>
+                            <v-btn v-if="isAdmin || isOwnProfile" icon="mdi-pencil" size="x-small" variant="text" @click.stop="openEditLicenseDialog(license)" />
                           </div>
                         </template>
                       </v-list-item>
@@ -426,6 +436,10 @@
                     <div v-else class="text-center py-4">
                       <v-icon size="40" color="grey-lighten-2">mdi-card-account-details-outline</v-icon>
                       <p class="text-caption text-grey mt-2">No licenses on file</p>
+                      <v-btn v-if="isAdmin || isOwnProfile" size="small" variant="text" color="primary" @click="openAddLicenseDialog">
+                        <v-icon start>mdi-plus</v-icon>
+                        Add License
+                      </v-btn>
                     </div>
                   </v-card-text>
                 </v-card>
@@ -438,9 +452,10 @@
                     <v-icon start size="20" color="info">mdi-school</v-icon>
                     Certifications & Training
                     <v-spacer />
-                    <v-chip size="x-small" variant="tonal" color="info">
+                    <v-chip size="x-small" variant="tonal" :color="expiringCertsCount > 0 ? 'warning' : 'info'" class="mr-2">
                       {{ certifications.length }} earned
                     </v-chip>
+                    <v-btn v-if="isAdmin || isOwnProfile" icon="mdi-plus" size="x-small" variant="text" color="primary" @click="openAddCertDialog" />
                   </v-card-title>
                   <v-card-text>
                     <div v-if="certifications.length > 0" class="d-flex flex-wrap gap-2">
@@ -450,10 +465,16 @@
                         :color="getCertStatusColor(cert)"
                         variant="tonal"
                         size="small"
+                        :class="{ 'cursor-pointer': isAdmin || isOwnProfile }"
+                        @click="(isAdmin || isOwnProfile) && openEditCertDialog(cert)"
                       >
                         <v-icon start size="14">mdi-check-decagram</v-icon>
                         {{ cert.certification?.name || cert.certification_id }}
-                        <template v-if="cert.expiration_date">
+                        <template v-if="cert.never_expires">
+                          <v-divider vertical class="mx-2" />
+                          <span class="text-caption">Never Expires</span>
+                        </template>
+                        <template v-else-if="cert.expiration_date">
                           <v-divider vertical class="mx-2" />
                           <span class="text-caption">{{ formatDate(cert.expiration_date) }}</span>
                         </template>
@@ -462,6 +483,10 @@
                     <div v-else class="text-center py-4">
                       <v-icon size="40" color="grey-lighten-2">mdi-school-outline</v-icon>
                       <p class="text-caption text-grey mt-2">No certifications on file</p>
+                      <v-btn v-if="isAdmin || isOwnProfile" size="small" variant="text" color="primary" @click="openAddCertDialog">
+                        <v-icon start>mdi-plus</v-icon>
+                        Add Certification
+                      </v-btn>
                     </div>
                   </v-card-text>
                 </v-card>
@@ -2339,6 +2364,227 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- License Add/Edit Dialog -->
+    <v-dialog v-model="showLicenseDialog" max-width="550" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center bg-warning-lighten-5 py-4">
+          <v-icon start color="warning">mdi-card-account-details</v-icon>
+          {{ licenseForm.id ? 'Edit License' : 'Add License' }}
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeLicenseDialog" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-6">
+          <v-row dense>
+            <v-col cols="12">
+              <v-text-field
+                v-model="licenseForm.license_type"
+                label="License Type *"
+                placeholder="e.g., RVT, DVM, CVT"
+                variant="outlined"
+                density="compact"
+                :rules="[v => !!v || 'License type is required']"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="licenseForm.license_number"
+                label="License Number"
+                placeholder="e.g., 12345"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="licenseForm.state"
+                :items="usStates"
+                label="State"
+                variant="outlined"
+                density="compact"
+                clearable
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="licenseForm.issued_date"
+                label="Issued Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="licenseForm.expiration_date"
+                label="Expiration Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+                :disabled="licenseForm.never_expires"
+                :hint="licenseForm.never_expires ? 'Disabled - license never expires' : ''"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-checkbox
+                v-model="licenseForm.never_expires"
+                label="This license never expires"
+                color="primary"
+                density="compact"
+                hide-details
+                class="mt-0"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="licenseForm.status"
+                :items="licenseStatusOptions"
+                label="Status"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+          
+          <v-alert v-if="licenseForm.id" type="warning" variant="tonal" density="compact" class="mt-4">
+            <template #prepend>
+              <v-icon>mdi-information</v-icon>
+            </template>
+            Changing the expiration date will reset notification reminders.
+          </v-alert>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn v-if="licenseForm.id" color="error" variant="text" @click="confirmDeleteLicense">
+            <v-icon start>mdi-delete</v-icon>
+            Delete
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="closeLicenseDialog">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" :loading="savingLicense" :disabled="!licenseForm.license_type" @click="saveLicense">
+            <v-icon start>{{ licenseForm.id ? 'mdi-content-save' : 'mdi-plus' }}</v-icon>
+            {{ licenseForm.id ? 'Save' : 'Add' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Certification Add/Edit Dialog -->
+    <v-dialog v-model="showCertDialog" max-width="550" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center bg-info-lighten-5 py-4">
+          <v-icon start color="info">mdi-school</v-icon>
+          {{ certForm.id ? 'Edit Certification' : 'Add Certification' }}
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeCertDialog" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-6">
+          <v-row dense>
+            <v-col cols="12">
+              <v-autocomplete
+                v-model="certForm.certification_id"
+                :items="availableCertifications"
+                item-title="name"
+                item-value="id"
+                label="Certification *"
+                placeholder="Select or search certification"
+                variant="outlined"
+                density="compact"
+                :rules="[v => !!v || 'Certification is required']"
+              >
+                <template #item="{ item, props }">
+                  <v-list-item v-bind="props">
+                    <v-list-item-subtitle>{{ item.raw.issuing_authority }}</v-list-item-subtitle>
+                  </v-list-item>
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12">
+              <v-text-field
+                v-model="certForm.certification_number"
+                label="Certification Number"
+                placeholder="e.g., CERT-12345"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="certForm.issued_date"
+                label="Issued Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="certForm.expiration_date"
+                label="Expiration Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+                :disabled="certForm.never_expires"
+                :hint="certForm.never_expires ? 'Disabled - certification never expires' : ''"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-checkbox
+                v-model="certForm.never_expires"
+                label="This certification never expires"
+                color="primary"
+                density="compact"
+                hide-details
+                class="mt-0"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="certForm.status"
+                :items="certStatusOptions"
+                label="Status"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="certForm.notes"
+                label="Notes"
+                placeholder="Optional notes about this certification"
+                variant="outlined"
+                density="compact"
+                rows="2"
+              />
+            </v-col>
+          </v-row>
+          
+          <v-alert v-if="certForm.id" type="info" variant="tonal" density="compact" class="mt-4">
+            <template #prepend>
+              <v-icon>mdi-information</v-icon>
+            </template>
+            Changing the expiration date will reset notification reminders.
+          </v-alert>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-btn v-if="certForm.id" color="error" variant="text" @click="confirmDeleteCert">
+            <v-icon start>mdi-delete</v-icon>
+            Delete
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="closeCertDialog">Cancel</v-btn>
+          <v-btn color="primary" variant="flat" :loading="savingCert" :disabled="!certForm.certification_id" @click="saveCert">
+            <v-icon start>{{ certForm.id ? 'mdi-content-save' : 'mdi-plus' }}</v-icon>
+            {{ certForm.id ? 'Save' : 'Add' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -2597,6 +2843,65 @@ const availableTimeOffTypes = computed(() => {
 })
 
 // ==========================================
+// LICENSE MANAGEMENT
+// ==========================================
+const showLicenseDialog = ref(false)
+const savingLicense = ref(false)
+const licenseForm = ref({
+  id: null as string | null,
+  license_type: '',
+  license_number: '',
+  state: '',
+  issued_date: '',
+  expiration_date: '',
+  never_expires: false,
+  status: 'active'
+})
+
+const licenseStatusOptions = ['active', 'expired', 'pending', 'revoked']
+const usStates = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
+
+// ==========================================
+// CERTIFICATION MANAGEMENT
+// ==========================================
+const showCertDialog = ref(false)
+const savingCert = ref(false)
+const allCertifications = ref<any[]>([]) // Master list of certifications
+const certForm = ref({
+  id: null as string | null,
+  certification_id: null as string | null,
+  certification_number: '',
+  issued_date: '',
+  expiration_date: '',
+  never_expires: false,
+  status: 'active',
+  notes: ''
+})
+
+const certStatusOptions = ['pending', 'active', 'expired', 'revoked', 'renewal_pending']
+
+// Available certifications for dropdown (excludes already assigned unless editing)
+const availableCertifications = computed(() => {
+  const assignedIds = new Set(certifications.value.map(c => c.certification_id))
+  // If editing, include the current certification
+  if (certForm.value.id) {
+    const editingCertId = certifications.value.find(c => c.id === certForm.value.id)?.certification_id
+    return allCertifications.value.filter(c => !assignedIds.has(c.id) || c.id === editingCertId)
+  }
+  return allCertifications.value.filter(c => !assignedIds.has(c.id))
+})
+
+// Expiring certifications count
+const expiringCertsCount = computed(() => {
+  return certifications.value.filter(c => {
+    if (c.never_expires) return false
+    if (!c.expiration_date) return false
+    const daysUntil = differenceInDays(new Date(c.expiration_date), new Date())
+    return daysUntil <= 60 && daysUntil >= 0
+  }).length
+})
+
+// ==========================================
 // COMPUTED
 // ==========================================
 const isAdmin = computed(() => authStore.isAdmin)
@@ -2620,6 +2925,7 @@ const totalPTOHours = computed(() => {
 
 const expiringLicensesCount = computed(() => {
   return licenses.value.filter(l => {
+    if (l.never_expires) return false
     if (!l.expiration_date) return false
     const daysUntil = differenceInDays(new Date(l.expiration_date), new Date())
     return daysUntil <= 60 && daysUntil >= 0
@@ -2770,6 +3076,7 @@ function getAvailabilityForDay(day: string): string {
 }
 
 function getLicenseStatusColor(license: any): string {
+  if (license.never_expires) return 'success'
   if (!license.expiration_date) return 'grey'
   const daysUntil = differenceInDays(new Date(license.expiration_date), new Date())
   if (daysUntil < 0) return 'error'
@@ -2779,6 +3086,7 @@ function getLicenseStatusColor(license: any): string {
 }
 
 function formatExpirationStatus(license: any): string {
+  if (license.never_expires) return 'Permanent'
   if (!license.expiration_date) return 'No Expiry'
   const daysUntil = differenceInDays(new Date(license.expiration_date), new Date())
   if (daysUntil < 0) return 'Expired'
@@ -2790,6 +3098,7 @@ function formatExpirationStatus(license: any): string {
 function getCertStatusColor(cert: any): string {
   if (cert.status === 'expired') return 'error'
   if (cert.status === 'pending' || cert.status === 'renewal_pending') return 'warning'
+  if (cert.never_expires) return 'success'
   if (!cert.expiration_date) return 'info'
   const daysUntil = differenceInDays(new Date(cert.expiration_date), new Date())
   if (daysUntil < 0) return 'error'
@@ -3222,6 +3531,7 @@ async function loadLicenses() {
 
 async function loadCertifications() {
   try {
+    // Load employee's certifications
     const { data } = await supabase
       .from('employee_certifications')
       .select(`
@@ -3232,8 +3542,254 @@ async function loadCertifications() {
       .order('expiration_date', { ascending: true })
 
     certifications.value = data || []
+    
+    // Also load master certification list for the dropdown
+    const { data: certList } = await supabase
+      .from('certifications')
+      .select('id, name, code, issuing_authority, validity_months')
+      .order('name')
+    
+    allCertifications.value = certList || []
   } catch (err) {
     console.log('[Profile] Certifications not available:', err)
+  }
+}
+
+// ==========================================
+// LICENSE CRUD FUNCTIONS
+// ==========================================
+function openAddLicenseDialog() {
+  licenseForm.value = {
+    id: null,
+    license_type: '',
+    license_number: '',
+    state: '',
+    issued_date: '',
+    expiration_date: '',
+    never_expires: false,
+    status: 'active'
+  }
+  showLicenseDialog.value = true
+}
+
+function openEditLicenseDialog(license: any) {
+  licenseForm.value = {
+    id: license.id,
+    license_type: license.license_type || '',
+    license_number: license.license_number || '',
+    state: license.state || '',
+    issued_date: license.issued_date || '',
+    expiration_date: license.expiration_date || '',
+    never_expires: license.never_expires || false,
+    status: license.status || 'active'
+  }
+  showLicenseDialog.value = true
+}
+
+function closeLicenseDialog() {
+  showLicenseDialog.value = false
+  licenseForm.value = {
+    id: null,
+    license_type: '',
+    license_number: '',
+    state: '',
+    issued_date: '',
+    expiration_date: '',
+    never_expires: false,
+    status: 'active'
+  }
+}
+
+async function saveLicense() {
+  if (!licenseForm.value.license_type) {
+    toast.error('License type is required')
+    return
+  }
+
+  savingLicense.value = true
+  try {
+    const payload = {
+      employee_id: employeeId.value,
+      license_type: licenseForm.value.license_type,
+      license_number: licenseForm.value.license_number || null,
+      state: licenseForm.value.state || null,
+      issued_date: licenseForm.value.issued_date || null,
+      expiration_date: licenseForm.value.never_expires ? null : (licenseForm.value.expiration_date || null),
+      never_expires: licenseForm.value.never_expires,
+      status: licenseForm.value.status
+    }
+
+    if (licenseForm.value.id) {
+      // Update existing
+      const { error } = await supabase
+        .from('employee_licenses')
+        .update(payload)
+        .eq('id', licenseForm.value.id)
+
+      if (error) throw error
+      toast.success('License updated')
+    } else {
+      // Create new
+      const { error } = await supabase
+        .from('employee_licenses')
+        .insert(payload)
+
+      if (error) throw error
+      toast.success('License added')
+    }
+
+    closeLicenseDialog()
+    await loadLicenses()
+  } catch (err: any) {
+    console.error('Error saving license:', err)
+    toast.error(err.message || 'Failed to save license')
+  } finally {
+    savingLicense.value = false
+  }
+}
+
+async function confirmDeleteLicense() {
+  if (!licenseForm.value.id) return
+  
+  if (!confirm('Are you sure you want to delete this license? This action cannot be undone.')) {
+    return
+  }
+
+  savingLicense.value = true
+  try {
+    const { error } = await supabase
+      .from('employee_licenses')
+      .delete()
+      .eq('id', licenseForm.value.id)
+
+    if (error) throw error
+    toast.success('License deleted')
+    closeLicenseDialog()
+    await loadLicenses()
+  } catch (err: any) {
+    console.error('Error deleting license:', err)
+    toast.error(err.message || 'Failed to delete license')
+  } finally {
+    savingLicense.value = false
+  }
+}
+
+// ==========================================
+// CERTIFICATION CRUD FUNCTIONS
+// ==========================================
+function openAddCertDialog() {
+  certForm.value = {
+    id: null,
+    certification_id: null,
+    certification_number: '',
+    issued_date: '',
+    expiration_date: '',
+    never_expires: false,
+    status: 'active',
+    notes: ''
+  }
+  showCertDialog.value = true
+}
+
+function openEditCertDialog(cert: any) {
+  certForm.value = {
+    id: cert.id,
+    certification_id: cert.certification_id,
+    certification_number: cert.certification_number || '',
+    issued_date: cert.issued_date || '',
+    expiration_date: cert.expiration_date || '',
+    never_expires: cert.never_expires || false,
+    status: cert.status || 'active',
+    notes: cert.notes || ''
+  }
+  showCertDialog.value = true
+}
+
+function closeCertDialog() {
+  showCertDialog.value = false
+  certForm.value = {
+    id: null,
+    certification_id: null,
+    certification_number: '',
+    issued_date: '',
+    expiration_date: '',
+    never_expires: false,
+    status: 'active',
+    notes: ''
+  }
+}
+
+async function saveCert() {
+  if (!certForm.value.certification_id) {
+    toast.error('Please select a certification')
+    return
+  }
+
+  savingCert.value = true
+  try {
+    const payload = {
+      employee_id: employeeId.value,
+      certification_id: certForm.value.certification_id,
+      certification_number: certForm.value.certification_number || null,
+      issued_date: certForm.value.issued_date || null,
+      expiration_date: certForm.value.never_expires ? null : (certForm.value.expiration_date || null),
+      never_expires: certForm.value.never_expires,
+      status: certForm.value.status,
+      notes: certForm.value.notes || null
+    }
+
+    if (certForm.value.id) {
+      // Update existing
+      const { error } = await supabase
+        .from('employee_certifications')
+        .update(payload)
+        .eq('id', certForm.value.id)
+
+      if (error) throw error
+      toast.success('Certification updated')
+    } else {
+      // Create new
+      const { error } = await supabase
+        .from('employee_certifications')
+        .insert(payload)
+
+      if (error) throw error
+      toast.success('Certification added')
+    }
+
+    closeCertDialog()
+    await loadCertifications()
+  } catch (err: any) {
+    console.error('Error saving certification:', err)
+    toast.error(err.message || 'Failed to save certification')
+  } finally {
+    savingCert.value = false
+  }
+}
+
+async function confirmDeleteCert() {
+  if (!certForm.value.id) return
+  
+  if (!confirm('Are you sure you want to delete this certification? This action cannot be undone.')) {
+    return
+  }
+
+  savingCert.value = true
+  try {
+    const { error } = await supabase
+      .from('employee_certifications')
+      .delete()
+      .eq('id', certForm.value.id)
+
+    if (error) throw error
+    toast.success('Certification deleted')
+    closeCertDialog()
+    await loadCertifications()
+  } catch (err: any) {
+    console.error('Error deleting certification:', err)
+    toast.error(err.message || 'Failed to delete certification')
+  } finally {
+    savingCert.value = false
   }
 }
 
