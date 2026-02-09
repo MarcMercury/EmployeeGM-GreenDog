@@ -27,7 +27,7 @@ const PERMISSION_ROLES: Record<string, UserRole[]> = {
   'manage:roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   'edit:employee': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   'delete:employee': ['super_admin', 'admin'],
-  'view:salary': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
+  'view:salary': ['super_admin', 'admin', 'hr_admin'],
   
   // Schedule Management
   'view:schedule': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 const authStore = useAuthStore()
 const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData, initialized } = useAppData()
 const supabase = useSupabaseClient()
@@ -52,13 +55,12 @@ const isSuperAdmin = computed(() => userRole.value === 'super_admin')
 const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSuperAdmin.value)
 const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
-// Section access checks
-// Updated to match database page_access table exactly
-const hasManagementAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'].includes(userRole.value))
-const hasHrAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin'].includes(userRole.value))
-const hasMarketingEditAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'user'].includes(userRole.value))
-const hasGduAccess = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin', 'office_admin'].includes(userRole.value))
-const hasAdminOpsAccess = computed(() => ['super_admin', 'admin'].includes(userRole.value))
+// Section access checks — single source of truth from SECTION_ACCESS in ~/types
+const hasManagementAccess = computed(() => SECTION_ACCESS.management.includes(userRole.value as UserRole))
+const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value as UserRole))
+const hasMarketingEditAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value as UserRole))
+const hasGduAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value as UserRole))
+const hasAdminOpsAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value as UserRole))
 
 // Display helpers
 const firstName = computed(() => profile.value?.first_name || 'User')

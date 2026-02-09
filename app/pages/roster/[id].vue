@@ -238,7 +238,7 @@
           </v-card>
 
           <!-- Admin Quick Actions -->
-          <v-card v-if="isAdmin && !isOwnProfile" class="bg-white shadow-sm rounded-xl" elevation="0">
+          <v-card v-if="canViewCompensation && !isOwnProfile" class="bg-white shadow-sm rounded-xl" elevation="0">
             <v-card-title class="text-subtitle-2 text-grey-darken-2 pb-0">
               <v-icon size="18" class="mr-2">mdi-cog</v-icon>
               Admin Actions
@@ -279,7 +279,7 @@
               <v-icon start size="18">mdi-card-account-details</v-icon>
               Personal Info
             </v-tab>
-            <v-tab v-if="canViewSensitiveData" value="compensation">
+            <v-tab v-if="canViewCompensation" value="compensation">
               <v-icon start size="18">mdi-cash</v-icon>
               Compensation
             </v-tab>
@@ -505,8 +505,8 @@
             />
           </v-window-item>
 
-          <!-- TAB 2: COMPENSATION (Admin/Self Only) -->
-          <v-window-item v-if="canViewSensitiveData" value="compensation">
+          <!-- TAB 2: COMPENSATION (Super Admin, Admin, HR Admin ONLY) -->
+          <v-window-item v-if="canViewCompensation" value="compensation">
             <RosterCompensationTab
               :compensation="compensation"
               :is-admin="isAdmin"
@@ -877,8 +877,8 @@
       </v-card>
     </v-dialog>
 
-    <!-- Compensation Edit Dialog -->
-    <v-dialog v-model="showCompensationDialog" max-width="600">
+    <!-- Compensation Edit Dialog (Super Admin, Admin, HR Admin ONLY) -->
+    <v-dialog v-if="canViewCompensation" v-model="showCompensationDialog" max-width="600">
       <v-card>
         <v-card-title>
           <v-icon start color="success">mdi-cash</v-icon>
@@ -1893,14 +1893,22 @@ const expiringCertsCount = computed(() => {
 // COMPUTED
 // ==========================================
 const isAdmin = computed(() => authStore.isAdmin)
+const currentRole = computed(() => authStore.userRole || 'user')
 
 const canViewSensitiveData = computed(() => {
   // Admins can see everything
   if (isAdmin.value) return true
+  // HR Admin and Supervisors can view sensitive employee data
+  if (['hr_admin', 'manager', 'sup_admin', 'office_admin'].includes(currentRole.value)) return true
   // Users can see their own profile
   if (isOwnProfile.value) return true
   // Peers cannot see sensitive data
   return false
+})
+
+// Compensation is highly sensitive — only Super Admin, Admin, and HR Admin can view/edit
+const canViewCompensation = computed(() => {
+  return ['super_admin', 'admin', 'hr_admin'].includes(currentRole.value)
 })
 
 const totalPTOHours = computed(() => {
@@ -2120,16 +2128,22 @@ async function loadEmployeeData() {
 
     // Load additional data only if user can view sensitive info
     if (canViewSensitiveData.value) {
-      await Promise.all([
+      const sensitiveLoads = [
         loadReliabilityScore(),
         loadNextShift(),
         loadPTOBalances(),
-        loadCompensation(),
         loadNotes(),
         loadDocuments(),
         loadAssets(),
         loadAuditLogs()
-      ])
+      ]
+      
+      // Compensation is extra-sensitive — only super_admin, admin, hr_admin
+      if (canViewCompensation.value) {
+        sensitiveLoads.push(loadCompensation())
+      }
+      
+      await Promise.all(sensitiveLoads)
     } else {
       // Still load next shift for basic view
       await loadNextShift()
@@ -2739,6 +2753,11 @@ async function archiveEmployee() {
 }
 
 async function saveCompensation() {
+  // Guard: only super_admin, admin, hr_admin can edit compensation
+  if (!canViewCompensation.value) {
+    toast.error('You do not have permission to edit compensation')
+    return
+  }
   savingCompensation.value = true
   try {
     const compData = {

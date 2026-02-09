@@ -735,7 +735,7 @@ import type { ExternalLink, EventAttachment, MarketingEvent, CalendarNote } from
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'marketing-admin']
+  middleware: ['auth']
 })
 
 // Get admin status
