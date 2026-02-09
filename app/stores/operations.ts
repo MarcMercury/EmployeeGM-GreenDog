@@ -8,9 +8,8 @@
 
 import { reactive, type UnwrapRef } from 'vue'
 
-export { useOperationsShiftsStore } from './operationsShifts'
-export { useOperationsTimeTrackingStore } from './operationsTimeTracking'
-export { useOperationsTimeOffStore } from './operationsTimeOff'
+// Sub-stores are auto-imported by Nuxt from their own files.
+// Do NOT re-export them here — it causes "Duplicated imports" warnings.
 
 // Re-export types so existing `import type { Shift } from '~/stores/operations'` keeps working
 export type { Shift, ShiftChange, ConflictResult, TimePunch, TimeEntry, TimeOffRequest, TimeOffType, Geofence } from '~/types/operations.types'

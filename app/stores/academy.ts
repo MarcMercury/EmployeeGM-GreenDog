@@ -6,9 +6,8 @@
 //   - academyQuiz.ts     → Quiz engine
 // =====================================================
 
-export { useAcademyCoursesStore } from './academyCourses'
-export { useAcademyProgressStore } from './academyProgress'
-export { useAcademyQuizStore } from './academyQuiz'
+// Sub-stores are auto-imported by Nuxt from their own files.
+// Do NOT re-export them here — it causes "Duplicated imports" warnings.
 
 import { useAcademyCoursesStore } from './academyCourses'
 import { useAcademyProgressStore } from './academyProgress'

@@ -8,9 +8,8 @@
 
 import { reactive } from 'vue'
 
-export { usePerformanceGoalsStore } from './performanceGoals'
-export { usePerformanceReviewsStore } from './performanceReviews'
-export { usePerformanceFeedbackStore } from './performanceFeedback'
+// Sub-stores are auto-imported by Nuxt from their own files.
+// Do NOT re-export them here — it causes "Duplicated imports" warnings.
 
 // Re-export types so existing `import type { Goal } from '~/stores/performance'` keeps working
 export type { Goal, GoalUpdate, ReviewCycle, ReviewTemplate, ReviewQuestion, PerformanceReview, ReviewResponse, ReviewSignoff, Feedback } from '~/types/performance.types'

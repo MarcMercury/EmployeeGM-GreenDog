@@ -11,11 +11,13 @@
  *   - useLifecycleData     — extension-table CRUD & migration
  */
 
-// Re-export sub-composables for independent use
-export { useLifecyclePersons } from './useLifecyclePersons'
-export { useLifecycleIntake } from './useLifecycleIntake'
-export { useLifecycleHats } from './useLifecycleHats'
-export { useLifecycleData } from './useLifecycleData'
+// Sub-composables are auto-imported by Nuxt from their own files.
+// Do NOT re-export them here — it causes "Duplicated imports" warnings.
+
+import { useLifecyclePersons } from './useLifecyclePersons'
+import { useLifecycleIntake } from './useLifecycleIntake'
+import { useLifecycleHats } from './useLifecycleHats'
+import { useLifecycleData } from './useLifecycleData'
 
 /**
  * Unified lifecycle composable — returns everything the original

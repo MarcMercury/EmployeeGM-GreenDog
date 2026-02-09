@@ -1442,6 +1442,7 @@ onMounted(async () => {
       @notify="showNotification($event.message, $event.color)"
     />
   </div>
+</template>
 
 <style scoped>
 .schedule-wizard {
