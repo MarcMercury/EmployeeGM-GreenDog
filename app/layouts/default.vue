@@ -579,6 +579,10 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-cyan-500/20">⚙️</div>
                   System Settings
                 </NuxtLink>
+                <NuxtLink to="/admin/agents" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">🤖</div>
+                  AI Agents
+                </NuxtLink>
               </div>
             </div>
           </template>

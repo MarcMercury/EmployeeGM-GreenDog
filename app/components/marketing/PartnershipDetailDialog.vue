@@ -117,6 +117,27 @@
                       <v-chip size="small" variant="outlined">{{ getZoneDisplay(partner.zone) }}</v-chip>
                     </div>
 
+                    <!-- Visit status summary aligned with Visit Schedule -->
+                    <div class="mt-2 pa-2 rounded" :style="{ backgroundColor: partner.visit_overdue ? 'rgba(244,67,54,0.08)' : 'rgba(76,175,80,0.08)' }">
+                      <div class="d-flex align-center justify-space-between">
+                        <span class="text-caption font-weight-medium">
+                          <v-icon size="14" :color="partner.visit_overdue ? 'error' : 'success'" class="mr-1">
+                            {{ partner.visit_overdue ? 'mdi-alert-circle' : 'mdi-check-circle' }}
+                          </v-icon>
+                          {{ partner.visit_overdue ? 'Visit Overdue' : 'On Schedule' }}
+                        </span>
+                        <span class="text-caption text-grey-darken-1">
+                          <template v-if="partner.days_since_last_visit != null">
+                            {{ partner.days_since_last_visit }}d ago
+                          </template>
+                          <template v-else>Never visited</template>
+                          <template v-if="partner.expected_visit_frequency_days">
+                            / {{ partner.expected_visit_frequency_days }}d cycle
+                          </template>
+                        </span>
+                      </div>
+                    </div>
+
                     <div class="mt-3" v-if="partner.relationship_health !== null">
                       <div class="d-flex align-center justify-space-between mb-1">
                         <span class="text-caption">Relationship Health</span>
@@ -141,12 +162,6 @@
                       <div class="mb-1"><strong>Size:</strong> {{ partner.size || 'Not set' }}</div>
                       <div class="mb-1"><strong>Organization:</strong> {{ partner.organization_type || 'Not set' }}</div>
                       <div v-if="partner.employee_count"><strong>Employees:</strong> {{ partner.employee_count }}</div>
-                      <div v-if="partner.expected_visit_frequency_days">
-                        <strong>Expected Visit Every:</strong> {{ partner.expected_visit_frequency_days }} days
-                        <span v-if="partner.days_since_last_visit" class="text-grey-darken-1">
-                          ({{ partner.days_since_last_visit }} days ago)
-                        </span>
-                      </div>
                     </div>
                   </v-card>
                 </v-col>
@@ -161,17 +176,25 @@
                     <div class="text-body-2">
                       <div class="mb-1">
                         <strong>Last Visit:</strong>
-                        <span :class="isPartnerOverdue(partner) ? 'text-error font-weight-bold' : ''">
+                        <span :class="partner.visit_overdue ? 'text-error font-weight-bold' : ''">
                           {{ partner.last_visit_date ? formatPartnerDate(partner.last_visit_date) : 'Never' }}
                         </span>
-                        <v-chip v-if="isPartnerOverdue(partner)" size="x-small" color="error" class="ml-2">Overdue</v-chip>
+                        <v-chip v-if="partner.visit_overdue" size="x-small" color="error" class="ml-2">Overdue</v-chip>
+                        <span v-if="partner.days_since_last_visit != null" class="text-caption text-grey ml-1">
+                          ({{ partner.days_since_last_visit }} days ago)
+                        </span>
                       </div>
                       <div class="mb-1">
                         <strong>Last Referral:</strong> {{ partner.last_referral_date ? formatPartnerDate(partner.last_referral_date) : 'Never' }}
                       </div>
                       <div class="mb-1"><strong>Last Contact:</strong> {{ partner.last_contact_date ? formatPartnerDate(partner.last_contact_date) : 'Never' }}</div>
                       <div class="mb-1"><strong>Next Follow-up:</strong> {{ partner.next_followup_date ? formatPartnerDate(partner.next_followup_date) : 'Not set' }}</div>
-                      <div class="mb-1"><strong>Visit Frequency:</strong> {{ partner.visit_frequency || 'monthly' }}</div>
+                      <div class="mb-1">
+                        <strong>Visit Frequency:</strong> {{ partner.visit_frequency || 'monthly' }}
+                        <span v-if="partner.expected_visit_frequency_days" class="text-caption text-grey">
+                          (every {{ partner.expected_visit_frequency_days }} days)
+                        </span>
+                      </div>
                       <div class="mb-1"><strong>Preferred Day:</strong> {{ partner.preferred_visit_day || 'Any' }}</div>
                       <div><strong>Preferred Time:</strong> {{ partner.preferred_visit_time || partner.preferred_contact_time || 'Any' }}</div>
                     </div>
@@ -464,17 +487,26 @@
                 <v-timeline-item
                   v-for="log in partnerVisits"
                   :key="log.id"
-                  :dot-color="getVisitTypeColor(log.visit_type)"
+                  :dot-color="log.visit_type ? getVisitTypeColor(log.visit_type) : 'success'"
                   size="small"
                 >
                   <div>
                     <div class="d-flex justify-space-between">
-                      <strong>{{ log.visit_type }}</strong>
+                      <strong>{{ log.visit_type || 'Clinic Visit' }}</strong>
                       <span class="text-caption">{{ formatPartnerDate(log.visit_date) }}</span>
                     </div>
-                    <div class="text-body-2">{{ log.summary }}</div>
+                    <div v-if="log.spoke_to" class="text-body-2">Spoke with: {{ log.spoke_to }}</div>
+                    <div v-if="log.items_discussed?.length" class="text-body-2">
+                      Discussed: {{ log.items_discussed.join(', ') }}
+                    </div>
+                    <div v-if="log.visit_notes" class="text-body-2">{{ log.visit_notes }}</div>
+                    <div v-if="log.summary" class="text-body-2">{{ log.summary }}</div>
                     <div v-if="log.outcome" class="text-caption">Outcome: {{ log.outcome }}</div>
                     <div v-if="log.next_steps" class="text-caption text-primary">Next: {{ log.next_steps }}</div>
+                    <div v-if="log.next_visit_date" class="text-caption text-info">
+                      <v-icon size="12">mdi-calendar-clock</v-icon>
+                      Next visit: {{ formatPartnerDate(log.next_visit_date) }}
+                    </div>
                   </div>
                 </v-timeline-item>
                 <v-timeline-item v-if="!partnerVisits.length" dot-color="grey">
@@ -761,7 +793,7 @@ async function loadPartnerDetails(partnerId: string) {
     const [contacts, notes, visits, goals, events] = await Promise.all([
       supabase.from('partner_contacts').select('*').eq('partner_id', partnerId).order('is_primary', { ascending: false }),
       supabase.from('partner_notes').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
-      supabase.from('partner_visit_logs').select('*').eq('partner_id', partnerId).order('visit_date', { ascending: false }),
+      supabase.from('clinic_visits').select('*').eq('partner_id', partnerId).order('visit_date', { ascending: false }),
       supabase.from('partner_goals').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
       supabase.from('partner_events').select('*, marketing_events(name, event_date)').eq('partner_id', partnerId).order('event_date', { ascending: false })
     ])

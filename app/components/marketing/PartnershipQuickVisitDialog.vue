@@ -373,13 +373,25 @@ async function save() {
 
     if (error) throw error
 
-    if (form.next_visit_date && form.partner_id) {
+    // Update the partner record with visit-related fields
+    if (form.partner_id) {
+      const partnerUpdate: Record<string, any> = {
+        last_contact_date: form.visit_date,
+        updated_at: new Date().toISOString()
+      }
+
+      if (form.next_visit_date) {
+        // Next visit scheduled — flag for followup
+        partnerUpdate.next_followup_date = form.next_visit_date
+        partnerUpdate.needs_followup = true
+      } else {
+        // No next visit scheduled — clear followup flag since we just visited
+        partnerUpdate.needs_followup = false
+      }
+
       await supabase
         .from('referral_partners')
-        .update({
-          next_followup_date: form.next_visit_date,
-          needs_followup: true
-        })
+        .update(partnerUpdate)
         .eq('id', form.partner_id)
     }
 

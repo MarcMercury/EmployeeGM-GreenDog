@@ -122,7 +122,7 @@ export async function hireCandidate(
       const skillInserts = candidateSkills.map((skill: any) => ({
         employee_id: newEmployee.id,
         skill_id: skill.skill_id,
-        skill_level: skill.skill_level,
+        level: skill.skill_level || skill.rating || 0,
         created_at: new Date().toISOString()
       }))
       

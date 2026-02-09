@@ -18,6 +18,18 @@
     {
       "path": "/api/cron/credential-expiry-check",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/agent-dispatcher",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/agent-budget-reset",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/agent-notifications",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

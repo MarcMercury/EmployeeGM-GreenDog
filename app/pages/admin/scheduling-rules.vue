@@ -15,7 +15,7 @@ import type { SchedulingRule } from '~/types/schedule.types'
 // Composables
 const supabase = useSupabaseClient()
 const toast = useToast()
-const { locations, departments, positions } = useAppData()
+const { locations, departments, positions, skills: skillLibrary } = useAppData()
 
 // State
 const rules = ref<SchedulingRule[]>([])
@@ -84,7 +84,8 @@ const ruleTypes = [
     description: 'Require specific skill for assignment',
     icon: 'mdi-school',
     params: [
-      { key: 'skill_name', label: 'Skill Name', type: 'text', default: '' },
+      { key: 'skill_id', label: 'Skill', type: 'skill_select', default: '' },
+      { key: 'skill_name', label: 'Skill Name', type: 'hidden', default: '' },
       { key: 'min_level', label: 'Minimum Level', type: 'number', default: 1 }
     ]
   },
@@ -528,11 +529,29 @@ onMounted(loadRules)
               
               <!-- Dynamic parameters based on rule type -->
               <v-col 
-                v-for="param in currentRuleType?.params" 
+                v-for="param in currentRuleType?.params?.filter(p => p.type !== 'hidden')" 
                 :key="param.key" 
                 cols="6"
               >
+                <!-- Skill library autocomplete for skill_select type -->
+                <v-autocomplete
+                  v-if="param.type === 'skill_select'"
+                  v-model="ruleForm.parameters[param.key]"
+                  :items="skillLibrary"
+                  item-title="name"
+                  item-value="id"
+                  :label="param.label"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  @update:model-value="(val) => {
+                    const skill = skillLibrary.find(s => s.id === val)
+                    ruleForm.parameters.skill_name = skill?.name || ''
+                  }"
+                />
+                <!-- Default text/number input -->
                 <v-text-field
+                  v-else
                   v-model="ruleForm.parameters[param.key]"
                   :label="param.label"
                   :type="param.type === 'number' ? 'number' : 'text'"

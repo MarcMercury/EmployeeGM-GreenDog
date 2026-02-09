@@ -547,19 +547,21 @@
                 
                 <!-- Relationship Health -->
                 <v-col cols="12" class="mt-2">
-                  <div class="text-subtitle-2 mb-2 d-flex align-center">
-                    <v-icon size="18" class="mr-2">mdi-heart-pulse</v-icon>
-                    Relationship Health (0-100)
+                  <v-alert type="info" variant="tonal" density="compact" class="mb-2">
+                    <strong>Relationship Health</strong> is auto-calculated from Tier + Priority + Visit Recency.
+                    Use "Recalculate Metrics" to refresh all scores.
+                  </v-alert>
+                  <div class="d-flex align-center gap-3" v-if="form.relationship_health != null">
+                    <span class="text-body-2">Current Score:</span>
+                    <v-progress-linear
+                      :model-value="form.relationship_health"
+                      :color="getRelationshipHealthColor(form.relationship_health)"
+                      height="12"
+                      rounded
+                      style="max-width: 200px;"
+                    />
+                    <span class="text-body-2 font-weight-medium">{{ form.relationship_health }}%</span>
                   </div>
-                  <v-slider
-                    v-model="form.relationship_health"
-                    :min="0"
-                    :max="100"
-                    :step="5"
-                    thumb-label="always"
-                    :color="getRelationshipHealthColor(form.relationship_health)"
-                    hide-details
-                  />
                 </v-col>
               </v-row>
             </v-window-item>
@@ -567,10 +569,10 @@
             <v-window-item value="targeting">
               <v-row dense>
                 <v-col cols="6">
-                  <v-select v-model="form.visit_frequency" :items="frequencyOptions" label="Visit Frequency" variant="outlined" density="compact" />
+                  <v-select v-model="form.visit_frequency" :items="frequencyOptions" label="Visit Frequency" variant="outlined" density="compact" @update:model-value="syncVisitFrequencyDays" />
                 </v-col>
                 <v-col cols="6">
-                  <v-text-field v-model.number="form.expected_visit_frequency_days" label="Expected Days Between Visits" type="number" variant="outlined" density="compact" min="1" />
+                  <v-text-field v-model.number="form.expected_visit_frequency_days" label="Expected Days Between Visits" type="number" variant="outlined" density="compact" min="1" hint="Auto-set from frequency, or override manually" persistent-hint />
                 </v-col>
                 <v-col cols="6">
                   <v-select v-model="form.preferred_visit_day" :items="dayOptions" label="Preferred Day" variant="outlined" density="compact" clearable />
@@ -1186,6 +1188,22 @@ function openLogVisit(partner: any) {
   quickVisitRef.value?.openWithPartner(partner)
 }
 
+// Sync visit_frequency text label → expected_visit_frequency_days
+function syncVisitFrequencyDays(frequency: string) {
+  const frequencyToDays: Record<string, number> = {
+    weekly: 7,
+    biweekly: 14,
+    monthly: 30,
+    quarterly: 90,
+    annually: 365,
+    as_needed: 180
+  }
+  const days = frequencyToDays[frequency]
+  if (days) {
+    form.expected_visit_frequency_days = days
+  }
+}
+
 function resetForm() {
   Object.assign(form, {
     id: '',
@@ -1273,8 +1291,8 @@ async function savePartner() {
       ce_event_host: form.ce_event_host,
       lunch_and_learn_eligible: form.lunch_and_learn_eligible,
       drop_off_materials: form.drop_off_materials,
-      // Relationship
-      relationship_health: form.relationship_health
+      // relationship_health is auto-calculated by DB trigger (update_partner_derived_fields)
+      // based on tier, priority, and last_visit_date — do not send manually
     }
     if (editMode.value) {
       const { error } = await supabase.from('referral_partners').update(payload).eq('id', form.id)

@@ -352,6 +352,7 @@ const toast = useToast()
 const candidate = ref<Candidate | null>(null)
 const candidateSkills = ref<CandidateSkill[]>([])
 const availableSkills = ref<{ id: string; name: string }[]>([])
+const positionRequiredSkills = ref<{ skill_id: string; required_level: number; skill_name: string }[]>([])
 const loading = ref(true)
 const converting = ref(false)
 const savingNotes = ref(false)
@@ -378,8 +379,22 @@ const daysInPipeline = computed(() => {
 
 const skillMatch = computed(() => {
   if (candidateSkills.value.length === 0) return 0
+  // If position has required skills, compare against those
+  if (positionRequiredSkills.value.length > 0) {
+    let totalScore = 0
+    let maxScore = 0
+    for (const req of positionRequiredSkills.value) {
+      maxScore += req.required_level
+      const candidateSkill = candidateSkills.value.find(cs => cs.skill_id === req.skill_id)
+      if (candidateSkill) {
+        totalScore += Math.min(candidateSkill.skill_level, req.required_level)
+      }
+    }
+    return maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
+  }
+  // Fallback: average level as percentage
   const avg = candidateSkills.value.reduce((sum, s) => sum + s.skill_level, 0) / candidateSkills.value.length
-  return Math.round(avg * 20) // Convert 1-5 to percentage
+  return Math.round(avg * 20)
 })
 
 // Methods
@@ -582,6 +597,7 @@ const fetchAvailableSkills = async () => {
     const { data, error } = await client
       .from('skill_library')
       .select('id, name')
+      .eq('is_active', true)
       .order('name')
     
     if (error) throw error
@@ -591,10 +607,34 @@ const fetchAvailableSkills = async () => {
   }
 }
 
-onMounted(() => {
-  fetchCandidate()
+const fetchPositionRequiredSkills = async () => {
+  if (!candidate.value?.target_position_id) return
+  try {
+    const { data, error } = await client
+      .from('position_required_skills')
+      .select(`
+        skill_id,
+        required_level,
+        skill:skill_library(name)
+      `)
+      .eq('position_id', candidate.value.target_position_id)
+
+    if (error) throw error
+    positionRequiredSkills.value = (data || []).map((d: any) => ({
+      skill_id: d.skill_id,
+      required_level: d.required_level,
+      skill_name: d.skill?.name || 'Unknown'
+    }))
+  } catch (error) {
+    console.error('Error fetching position required skills:', error)
+  }
+}
+
+onMounted(async () => {
+  await fetchCandidate()
   fetchCandidateSkills()
   fetchAvailableSkills()
+  fetchPositionRequiredSkills()
 })
 </script>
 

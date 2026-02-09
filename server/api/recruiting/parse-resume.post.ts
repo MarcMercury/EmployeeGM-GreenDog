@@ -19,6 +19,7 @@ interface ParsedResume {
   address_line1: string | null
   experience_summary: string | null
   skills: string[]
+  matched_skills: { skill_id: string; name: string; matched_from: string }[]
   education: string | null
   linkedin_url: string | null
   suggested_position: string | null
@@ -108,6 +109,22 @@ export default defineEventHandler(async (event) => {
     // Parse with OpenAI
     const parsed = await parseWithOpenAI(openaiKey, textContent, positionTitles)
 
+    // Match parsed skill strings to skill_library entries
+    if (parsed.skills && parsed.skills.length > 0) {
+      const { data: librarySkills } = await supabase
+        .from('skill_library')
+        .select('id, name')
+        .eq('is_active', true)
+
+      if (librarySkills && librarySkills.length > 0) {
+        parsed.matched_skills = matchSkillsToLibrary(parsed.skills, librarySkills)
+      } else {
+        parsed.matched_skills = []
+      }
+    } else {
+      parsed.matched_skills = []
+    }
+
     return { success: true, data: parsed }
 
   } catch (err: any) {
@@ -184,6 +201,45 @@ function extractRawText(buffer: Buffer): string {
   })
   
   return filtered.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+// Match parsed skill strings against skill_library entries using normalized substring matching
+function matchSkillsToLibrary(
+  parsedSkills: string[],
+  librarySkills: { id: string; name: string }[]
+): { skill_id: string; name: string; matched_from: string }[] {
+  const matched: { skill_id: string; name: string; matched_from: string }[] = []
+  const usedIds = new Set<string>()
+
+  for (const rawSkill of parsedSkills) {
+    const normalized = rawSkill.toLowerCase().trim()
+    if (!normalized) continue
+
+    // Try exact match first, then substring match
+    let bestMatch: { id: string; name: string } | null = null
+
+    for (const lib of librarySkills) {
+      const libNorm = lib.name.toLowerCase()
+      if (libNorm === normalized) {
+        bestMatch = lib
+        break // Exact match, stop looking
+      }
+      if (!bestMatch && (libNorm.includes(normalized) || normalized.includes(libNorm))) {
+        bestMatch = lib
+      }
+    }
+
+    if (bestMatch && !usedIds.has(bestMatch.id)) {
+      usedIds.add(bestMatch.id)
+      matched.push({
+        skill_id: bestMatch.id,
+        name: bestMatch.name,
+        matched_from: rawSkill
+      })
+    }
+  }
+
+  return matched
 }
 
 // Parse extracted text with OpenAI

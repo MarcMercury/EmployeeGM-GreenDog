@@ -680,7 +680,7 @@ function getStatusLabel(status: string): string {
 
 function getTopSkills(skills: any[], count = 2) {
   if (!skills || skills.length === 0) return []
-  return [...skills].sort((a, b) => b.rating - a.rating).slice(0, count)
+  return [...skills].sort((a, b) => (b.level ?? b.rating ?? 0) - (a.level ?? a.rating ?? 0)).slice(0, count)
 }
 
 function clearFilters() {

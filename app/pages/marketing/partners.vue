@@ -189,6 +189,96 @@ const summaryStats = computed(() => {
   }
 })
 
+// =====================================================
+// PARTNER SCORING LOGIC
+// Matches referral partner scoring with modified visit thresholds:
+//   Top third: within 4 months
+//   Middle third: within 8 months
+//   Bottom third: within 12 months
+// =====================================================
+
+function computeVisitScore(lastVisitDate: string | null | undefined): number {
+  if (!lastVisitDate) return 0
+  const last = new Date(lastVisitDate)
+  const now = new Date()
+  const months = (now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+  if (months <= 4) return 50   // Top third
+  if (months <= 8) return 33   // Middle third
+  if (months <= 12) return 17  // Bottom third
+  return 0                     // Beyond 12 months
+}
+
+function computePriorityScore(priority: string | null | undefined): number {
+  const scores: Record<string, number> = {
+    critical: 50, high: 38, medium: 25, low: 12
+  }
+  return scores[priority || ''] || 15
+}
+
+function computeRelationshipScore(partner: Partner): number {
+  return computeVisitScore(partner.last_visit_date) + computePriorityScore(partner.priority)
+}
+
+function getPartnerTier(score: number): string {
+  if (score >= 80) return 'Platinum'
+  if (score >= 60) return 'Gold'
+  if (score >= 40) return 'Silver'
+  if (score >= 20) return 'Bronze'
+  return 'Coal'
+}
+
+function getPartnerTierColor(tier: string): string {
+  const colors: Record<string, string> = {
+    Platinum: '#E5E4E2', Gold: '#FFD700', Silver: '#C0C0C0', Bronze: '#CD7F32', Coal: '#36454F'
+  }
+  return colors[tier] || '#9E9E9E'
+}
+
+function getPartnerTierLabel(tier: string): string {
+  const labels: Record<string, string> = {
+    Platinum: 'P', Gold: 'G', Silver: 'S', Bronze: 'B', Coal: 'C'
+  }
+  return labels[tier] || '?'
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'info'
+  if (score >= 40) return 'warning'
+  return 'error'
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 80) return 'Excellent'
+  if (score >= 60) return 'Good'
+  if (score >= 40) return 'Needs Attention'
+  return 'At Risk'
+}
+
+// Table headers (matching Referral CRM grid style)
+const tableHeaders = [
+  { title: 'Priority', key: 'priority', sortable: true, width: '100px' },
+  { title: 'Name', key: 'name', sortable: true },
+  { title: 'Service', key: 'services_provided', sortable: true },
+  { title: 'Zone', key: 'address', sortable: true },
+  { title: 'Email', key: 'contact_email', sortable: true },
+  { title: 'Last Visit', key: 'last_visit_date', sortable: true },
+  { title: 'Score', key: 'computed_score', sortable: true, width: '120px' },
+  { title: '', key: 'actions', sortable: false, width: '100px' }
+]
+
+// Scored and filtered partners for the data table
+const scoredPartners = computed(() => {
+  return (filteredPartners.value || []).map(p => {
+    const score = computeRelationshipScore(p)
+    return {
+      ...p,
+      computed_score: score,
+      computed_tier: getPartnerTier(score)
+    }
+  })
+})
+
 // Dialog state
 const dialogOpen = ref(false)
 const saving = ref(false)
@@ -989,7 +1079,7 @@ function getPriorityColor(priority: string | null | undefined): string {
               hide-details
             />
           </v-col>
-          <v-col cols="6" md="3" class="d-flex align-center gap-2">
+          <v-col cols="6" md="3">
             <v-select
               v-model="selectedStatus"
               :items="statusOptions"
@@ -997,16 +1087,7 @@ function getPriorityColor(priority: string | null | undefined): string {
               variant="outlined"
               density="compact"
               hide-details
-              class="flex-grow-1"
             />
-            <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
-              <v-btn value="list" size="small">
-                <v-icon size="18">mdi-format-list-bulleted</v-icon>
-              </v-btn>
-              <v-btn value="cards" size="small">
-                <v-icon size="18">mdi-view-grid</v-icon>
-              </v-btn>
-            </v-btn-toggle>
           </v-col>
         </v-row>
         <v-row v-if="selectedType === 'pet_business' || selectedType === 'rescue'" dense class="mt-2">
@@ -1030,205 +1111,99 @@ function getPriorityColor(priority: string | null | undefined): string {
       </v-card-text>
     </v-card>
 
-    <!-- Partners List View -->
-    <v-card v-if="viewMode === 'list'" variant="outlined">
-      <v-progress-linear v-if="pending" indeterminate color="primary" />
-      
-      <v-list v-if="filteredPartners.length > 0" lines="two">
-        <template v-for="(partner, index) in filteredPartners" :key="partner.id">
-          <v-divider v-if="index > 0" />
-          <v-list-item @click="handleItemClick(partner)">
-            <template #prepend>
-              <v-avatar :color="getTypeColor(partner.partner_type)" size="40">
-                <v-icon color="white">
-                  {{
-                    partner.partner_type === 'pet_business' ? 'mdi-dog' :
-                    partner.partner_type === 'exotic_shop' ? 'mdi-snake' :
-                    partner.partner_type === 'rescue' ? 'mdi-paw' :
-                    partner.partner_type === 'influencer' ? 'mdi-star-circle' :
-                    partner.partner_type === 'entertainment' ? 'mdi-party-popper' :
-                    partner.partner_type === 'print_vendor' ? 'mdi-printer' :
-                    partner.partner_type === 'chamber' ? 'mdi-office-building' :
-                    partner.partner_type === 'food_vendor' ? 'mdi-food' :
-                    partner.partner_type === 'association' ? 'mdi-account-group' :
-                    partner.partner_type === 'spay_neuter' ? 'mdi-medical-bag' :
-                    'mdi-handshake'
-                  }}
-                </v-icon>
-              </v-avatar>
-            </template>
-            
-            <v-list-item-title class="font-weight-medium">
-              {{ partner.name }}
-            </v-list-item-title>
-            
-            <v-list-item-subtitle>
-              <div class="d-flex align-center flex-wrap gap-2 mt-1">
-                <v-chip size="x-small" :color="getStatusColor(partner.status)" variant="flat">
-                  {{ partner.status }}
-                </v-chip>
-                <v-chip v-if="partner.services_provided" size="x-small" color="info" variant="tonal">
-                  {{ partner.services_provided }}
-                </v-chip>
-                <span v-if="partner.contact_phone">
-                  <v-icon size="x-small">mdi-phone</v-icon>
-                  {{ partner.contact_phone }}
-                </span>
-                <span v-if="partner.contact_email">
-                  <v-icon size="x-small">mdi-email</v-icon>
-                  {{ partner.contact_email }}
-                </span>
-              </div>
-              <div class="d-flex align-center flex-wrap gap-2 mt-1">
-                <span class="text-medium-emphasis">
-                  <v-icon size="x-small">mdi-calendar-check</v-icon>
-                  Last Visit: {{ partner.last_visit_date ? new Date(partner.last_visit_date).toLocaleDateString() : '—' }}
-                </span>
-              </div>
-              <div v-if="partner.notes" class="text-truncate mt-1" style="max-width: 500px;">
-                {{ partner.notes }}
-              </div>
-            </v-list-item-subtitle>
-
-            <template #append>
-              <div class="d-flex flex-column align-end gap-1">
-                <v-chip
-                  v-if="partner.membership_end"
-                  size="x-small"
-                  :color="new Date(partner.membership_end) < new Date() ? 'error' : 'success'"
-                  variant="tonal"
-                >
-                  {{ new Date(partner.membership_end) < new Date() ? 'Expired' : 'Expires' }}
-                  {{ new Date(partner.membership_end).toLocaleDateString() }}
-                </v-chip>
-                <div v-if="partner.membership_fee" class="text-caption">
-                  ${{ partner.membership_fee }}/year
-                </div>
-              </div>
-              <v-btn
-                icon
-                variant="text"
-                size="small"
-                color="error"
-                class="ml-2"
-                @click.stop="handleDelete(partner)"
-              >
-                <v-icon>mdi-delete</v-icon>
-              </v-btn>
-            </template>
-          </v-list-item>
-          <v-divider v-if="index < filteredPartners.length - 1" />
+    <!-- Partners Data Table (Referral CRM grid style) -->
+    <v-card variant="outlined">
+      <v-data-table-virtual
+        :headers="tableHeaders"
+        :items="scoredPartners"
+        :loading="pending"
+        hover
+        height="calc(100vh - 340px)"
+        @click:row="(_e: any, { item }: any) => handleItemClick(item)"
+      >
+        <template #item.priority="{ item }">
+          <v-chip :color="getPriorityColor(item.priority)" size="x-small" variant="flat">
+            {{ item.priority || 'Medium' }}
+          </v-chip>
         </template>
-      </v-list>
 
-      <v-card-text v-else class="text-center py-12">
-        <v-icon size="64" color="grey-lighten-1">mdi-handshake-outline</v-icon>
-        <div class="text-h6 mt-4">No contacts found</div>
-        <div class="text-body-2 text-medium-emphasis">
-          {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner to get started' }}
-        </div>
-        <v-btn
-          v-if="!searchQuery && !selectedType && !selectedStatus"
-          color="primary"
-          class="mt-4"
-          @click="openAddDialog"
-        >
-          Add Partner
-        </v-btn>
-      </v-card-text>
+        <template #item.name="{ item }">
+          <div class="d-flex align-center py-2">
+            <v-avatar :color="getPartnerTierColor(item.computed_tier)" size="36" class="mr-3">
+              <span class="text-white text-caption font-weight-bold">{{ getPartnerTierLabel(item.computed_tier) }}</span>
+            </v-avatar>
+            <div>
+              <div class="font-weight-medium">{{ item.name }}</div>
+              <div class="text-caption text-grey">{{ formatTypeName(item.partner_type) }}</div>
+            </div>
+          </div>
+        </template>
+
+        <template #item.services_provided="{ item }">
+          <v-chip v-if="item.services_provided" size="x-small" color="info" variant="tonal">
+            {{ item.services_provided }}
+          </v-chip>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <template #item.address="{ item }">
+          <span v-if="item.address" class="text-body-2">{{ item.address }}</span>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <template #item.contact_email="{ item }">
+          <span v-if="item.contact_email" class="text-body-2">{{ item.contact_email }}</span>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <template #item.last_visit_date="{ item }">
+          <div v-if="item.last_visit_date">
+            {{ new Date(item.last_visit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+            <div v-if="computeVisitScore(item.last_visit_date) === 0" class="text-caption text-error">
+              <v-icon size="10">mdi-alert</v-icon> Overdue
+            </div>
+          </div>
+          <span v-else class="text-grey">Never</span>
+        </template>
+
+        <template #item.computed_score="{ item }">
+          <div class="d-flex align-center" style="min-width: 80px;">
+            <v-progress-linear
+              :model-value="item.computed_score"
+              :color="getScoreColor(item.computed_score)"
+              height="8"
+              rounded
+              style="width: 60px;"
+            />
+            <span class="text-caption ml-2">{{ item.computed_score }}%</span>
+          </div>
+        </template>
+
+        <template #item.actions="{ item }">
+          <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" aria-label="View partner profile" @click.stop="handleItemClick(item)" />
+          <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" aria-label="Edit partner" @click.stop="openEditDialog(item)" />
+          <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" title="Delete" aria-label="Delete partner" @click.stop="handleDelete(item)" />
+        </template>
+
+        <template #no-data>
+          <div class="text-center py-12">
+            <v-icon size="64" color="grey-lighten-1">mdi-handshake-outline</v-icon>
+            <div class="text-h6 mt-4">No contacts found</div>
+            <div class="text-body-2 text-medium-emphasis">
+              {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner to get started' }}
+            </div>
+            <v-btn
+              v-if="!searchQuery && !selectedType && !selectedStatus"
+              color="primary"
+              class="mt-4"
+              @click="openAddDialog"
+            >
+              Add Partner
+            </v-btn>
+          </div>
+        </template>
+      </v-data-table-virtual>
     </v-card>
-
-    <!-- Partners Card Grid View -->
-    <div v-else>
-      <v-progress-linear v-if="pending" indeterminate color="primary" class="mb-4" />
-      
-      <v-row v-if="filteredPartners.length > 0">
-        <v-col
-          v-for="partner in filteredPartners"
-          :key="partner.id"
-          cols="12"
-          sm="6"
-          md="4"
-          lg="3"
-        >
-          <v-card 
-            rounded="lg" 
-            elevation="2" 
-            class="h-100 cursor-pointer"
-            hover
-            @click="handleItemClick(partner)"
-          >
-            <v-card-text class="text-center pb-2">
-              <v-avatar :color="getTypeColor(partner.partner_type)" size="64" class="mb-3">
-                <v-icon color="white" size="28">
-                  {{
-                    partner.partner_type === 'pet_business' ? 'mdi-dog' :
-                    partner.partner_type === 'exotic_shop' ? 'mdi-snake' :
-                    partner.partner_type === 'rescue' ? 'mdi-paw' :
-                    partner.partner_type === 'influencer' ? 'mdi-star-circle' :
-                    partner.partner_type === 'entertainment' ? 'mdi-party-popper' :
-                    partner.partner_type === 'print_vendor' ? 'mdi-printer' :
-                    partner.partner_type === 'chamber' ? 'mdi-office-building' :
-                    partner.partner_type === 'food_vendor' ? 'mdi-food' :
-                    partner.partner_type === 'association' ? 'mdi-account-group' :
-                    partner.partner_type === 'spay_neuter' ? 'mdi-medical-bag' :
-                    'mdi-handshake'
-                  }}
-                </v-icon>
-              </v-avatar>
-              <h3 class="text-subtitle-1 font-weight-bold mb-1 text-truncate">{{ partner.name }}</h3>
-              <p class="text-caption text-grey mb-2">{{ formatTypeName(partner.partner_type) }}</p>
-              <v-chip :color="getStatusColor(partner.status)" size="x-small" variant="flat">
-                {{ partner.status }}
-              </v-chip>
-            </v-card-text>
-            <v-divider />
-            <v-card-text class="py-2">
-              <div class="d-flex flex-column gap-1 text-caption">
-                <div v-if="partner.contact_email" class="d-flex align-center gap-1">
-                  <v-icon size="14" color="grey">mdi-email</v-icon>
-                  <span class="text-truncate">{{ partner.contact_email }}</span>
-                </div>
-                <div v-if="partner.contact_phone" class="d-flex align-center gap-1">
-                  <v-icon size="14" color="grey">mdi-phone</v-icon>
-                  <span>{{ partner.contact_phone }}</span>
-                </div>
-                <div v-if="partner.services_provided" class="d-flex align-center gap-1">
-                  <v-icon size="14" color="grey">mdi-tag</v-icon>
-                  <span>{{ partner.services_provided }}</span>
-                </div>
-                <div class="d-flex align-center gap-1">
-                  <v-icon size="14" color="grey">mdi-calendar-check</v-icon>
-                  <span>Last Visit: {{ partner.last_visit_date ? new Date(partner.last_visit_date).toLocaleDateString() : '—' }}</span>
-                </div>
-              </div>
-            </v-card-text>
-            <v-card-actions class="px-4 pb-3">
-              <v-spacer />
-              <v-btn icon size="x-small" variant="text" color="error" aria-label="Delete partner" @click.stop="handleDelete(partner)">
-                <v-icon size="16">mdi-delete</v-icon>
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <v-card v-else class="text-center py-12" variant="outlined">
-        <v-icon size="64" color="grey-lighten-1">mdi-handshake-outline</v-icon>
-        <div class="text-h6 mt-4">No contacts found</div>
-        <div class="text-body-2 text-medium-emphasis">
-          {{ searchQuery || selectedType || selectedStatus ? 'Try adjusting your filters' : 'Add your first partner to get started' }}
-        </div>
-        <v-btn
-          v-if="!searchQuery && !selectedType && !selectedStatus"
-          color="primary"
-          class="mt-4"
-          @click="openAddDialog"
-        >
-          Add Partner
-        </v-btn>
-      </v-card>
-    </div>
 
     <!-- Add/Edit Dialog -->
     <v-dialog v-model="dialogOpen" max-width="700" scrollable>
@@ -1794,10 +1769,52 @@ function getPriorityColor(priority: string | null | undefined): string {
             <!-- Relationship Tab -->
             <v-tabs-window-item value="relationship">
               <v-row>
+                <!-- Computed Score & Tier -->
+                <v-col cols="12">
+                  <v-card variant="outlined" class="mb-4">
+                    <v-card-text>
+                      <div class="d-flex align-center justify-space-between mb-3">
+                        <div class="text-subtitle-2">Computed Relationship Score</div>
+                        <v-chip
+                          :color="getPartnerTierColor(getPartnerTier(computeRelationshipScore(selectedPartner)))"
+                          variant="elevated"
+                          size="small"
+                          class="font-weight-bold"
+                        >
+                          {{ getPartnerTier(computeRelationshipScore(selectedPartner)) }} Tier
+                        </v-chip>
+                      </div>
+                      <div class="d-flex align-center">
+                        <v-progress-linear
+                          :model-value="computeRelationshipScore(selectedPartner)"
+                          :color="getScoreColor(computeRelationshipScore(selectedPartner))"
+                          height="24"
+                          rounded
+                        >
+                          <template #default>
+                            <strong>{{ computeRelationshipScore(selectedPartner) }}%</strong>
+                          </template>
+                        </v-progress-linear>
+                      </div>
+                      <div class="d-flex gap-4 mt-3 text-caption text-medium-emphasis">
+                        <div>
+                          <v-icon size="12">mdi-flag</v-icon>
+                          Priority Score: {{ computePriorityScore(selectedPartner.priority) }}/50
+                        </div>
+                        <div>
+                          <v-icon size="12">mdi-calendar</v-icon>
+                          Visit Score: {{ computeVisitScore(selectedPartner.last_visit_date) }}/50
+                          <span class="ml-1">(4mo / 8mo / 12mo thresholds)</span>
+                        </div>
+                      </div>
+                    </v-card-text>
+                  </v-card>
+                </v-col>
+
                 <v-col cols="12" md="6">
                   <v-card variant="outlined" class="mb-4">
                     <v-card-text>
-                      <div class="text-subtitle-2 mb-3">Relationship Score</div>
+                      <div class="text-subtitle-2 mb-3">Manual Relationship Score Override</div>
                       <div class="d-flex align-center">
                         <v-progress-linear
                           :model-value="selectedPartner.relationship_score || 50"

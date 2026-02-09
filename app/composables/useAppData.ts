@@ -61,7 +61,8 @@ export interface AppEmployee {
     skill_id: string
     skill_name: string
     category: string
-    rating: number
+    level: number
+    rating: number // Alias for level (backward compat)
     is_goal: boolean
   }[]
   // Computed helpers
@@ -422,6 +423,7 @@ export const useAppData = () => {
               employee_id,
               skill_id,
               level,
+              is_goal,
               skill_library:skill_id ( id, name, category )
             `)
           
@@ -438,8 +440,9 @@ export const useAppData = () => {
                 skill_id: es.skill_id,
                 skill_name: es.skill_library?.name || 'Unknown',
                 category: es.skill_library?.category || 'General',
-                rating: es.level || 0, // Map 'level' column to 'rating' for component compatibility
-                is_goal: false // Default value - migration may not be applied
+                level: es.level || 0,
+                rating: es.level || 0, // Alias for backward compatibility
+                is_goal: es.is_goal ?? false
               })
             })
             

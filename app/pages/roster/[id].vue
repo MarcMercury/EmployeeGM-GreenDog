@@ -1628,6 +1628,7 @@ const compensation = ref<any>(null)
 const skills = ref<any[]>([])
 const mentorships = ref<any[]>([])
 const skillCategories = ref<string[]>([])
+const allSkillCategories = ref<string[]>([])
 const notes = ref<any[]>([])
 const documents = ref<any[]>([])
 const assets = ref<any[]>([])
@@ -1730,23 +1731,12 @@ const reviewTopicSuggestions = [
   'Professional Development'
 ]
 const minReviewDate = computed(() => new Date().toISOString().split('T')[0])
-// Skill category options for review - matches veterinary taxonomy from migration 126
-const skillCategoryOptionsForReview = [
-  'Clinical',
-  'Surgical',
-  'Anesthesia',
-  'Dentistry',
-  'Pharmacy',
-  'Emergency',
-  'Imaging',
-  'Animal Care',
-  'Nutrition',
-  'Client Services',
-  'Administrative',
-  'Safety & Compliance',
-  'Specialized',
-  'Species Expertise'
-]
+// Skill category options for review - dynamically loaded from skill_library
+const skillCategoryOptionsForReview = computed(() => {
+  if (allSkillCategories.value.length > 0) return allSkillCategories.value
+  // Fallback to employee's assigned skill categories if library hasn't loaded
+  return skillCategories.value
+})
 
 // Personal Info Edit state
 const showPersonalInfoDialog = ref(false)
@@ -2123,7 +2113,8 @@ async function loadEmployeeData() {
       loadLicenses(),
       loadCertifications(),
       loadSkills(),
-      loadMentorships()
+      loadMentorships(),
+      loadAllSkillCategories()
     ])
 
     // Load additional data only if user can view sensitive info
@@ -2624,6 +2615,22 @@ async function loadSkills() {
     skillCategories.value = Array.from(cats).sort()
   } catch (err) {
     console.log('[Profile] Skills not available:', err)
+  }
+}
+
+async function loadAllSkillCategories() {
+  try {
+    const { data } = await supabase
+      .from('skill_library')
+      .select('category')
+      .eq('is_active', true)
+    if (data) {
+      const cats = new Set<string>()
+      data.forEach((s: any) => { if (s.category) cats.add(s.category) })
+      allSkillCategories.value = Array.from(cats).sort()
+    }
+  } catch (err) {
+    console.log('[Profile] Skill categories not available:', err)
   }
 }
 

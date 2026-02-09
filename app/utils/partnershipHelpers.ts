@@ -101,10 +101,21 @@ export function getVisitTypeColor(type: string): string {
 }
 
 export function isPartnerOverdue(partner: any): boolean {
-  if (!partner.last_visit_date || partner.visit_frequency === 'as_needed') return false
+  // Prefer server-computed visit_overdue field (set by recalculate_partner_metrics RPC
+  // and update_partner_derived_fields trigger using expected_visit_frequency_days)
+  if (partner.visit_overdue !== undefined && partner.visit_overdue !== null) {
+    return partner.visit_overdue
+  }
+  // Fallback: client-side calculation using expected_visit_frequency_days or visit_frequency
+  if (!partner.last_visit_date) return false
+  if (partner.visit_frequency === 'as_needed') return false
   const last = new Date(partner.last_visit_date)
   const now = new Date()
   const days = Math.floor((now.getTime() - last.getTime()) / (1000 * 60 * 60 * 24))
+  // Use expected_visit_frequency_days if available (aligned with server logic)
+  if (partner.expected_visit_frequency_days) {
+    return days > partner.expected_visit_frequency_days
+  }
   const thresholds: Record<string, number> = { weekly: 7, biweekly: 14, monthly: 30, quarterly: 90, annually: 365 }
-  return days > (thresholds[partner.visit_frequency] || 30)
+  return days > (thresholds[partner.visit_frequency] || 120)
 }

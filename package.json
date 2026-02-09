@@ -15,7 +15,10 @@
     "db:types": "npx supabase gen types typescript --project-id <your-project-id> > types/database.types.ts",
     "lint:unused": "knip",
     "lint:deps": "depcheck",
-    "lint:all": "npm run lint:unused && npm run lint:deps"
+    "lint:all": "npm run lint:unused && npm run lint:deps",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -49,6 +52,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@nuxt/test-utils": "^4.0.0",
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@types/canvas-confetti": "^1.9.0",
     "autoprefixer": "^10.4.22",
@@ -60,6 +64,7 @@
     "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
     "vue-tsc": "^3.1.8",
     "xlsx": "^0.18.5"
   },
