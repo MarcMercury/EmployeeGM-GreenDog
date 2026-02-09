@@ -11,7 +11,7 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="userStore.isLoading && !userStore.profile" class="d-flex justify-center align-center" style="min-height: 400px;">
+    <div v-if="userStore.isLoading && !userStore.profile" class="d-flex justify-center align-center min-h-400">
       <v-progress-circular indeterminate color="primary" size="64" />
     </div>
 

@@ -9,12 +9,12 @@
           <div class="text-caption">Bulk import students from CSV file</div>
         </div>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="close" :disabled="uploading" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="close" :disabled="uploading" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pa-0" style="max-height: 70vh; overflow-y: auto;">
+      <v-card-text class="pa-0 scrollable-70vh">
         <v-stepper v-model="step" flat>
           <v-stepper-header class="elevation-0 border-b">
             <v-stepper-item :value="1" :complete="step > 1" title="Upload File" />
@@ -300,20 +300,7 @@
 
 <script setup lang="ts">
 import type { Database } from '~/types/database.types'
-
-interface ParsedStudent {
-  first_name: string
-  last_name: string
-  email: string
-  phone_mobile: string | null
-  program_type: string
-  enrollment_status: string
-  program_name: string | null
-  cohort_identifier: string | null
-  school_of_origin: string | null
-  start_date: string | null
-  end_date: string | null
-}
+import type { ParsedStudent } from '~/types/gdu.types'
 
 const props = defineProps<{
   modelValue: boolean

@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, trigger: data }
 
   } catch (error: any) {
-    console.error('Error updating trigger:', error)
+    logger.error('Error updating trigger', error, 'slack/notifications/triggers')
     return { ok: false, error: error.message }
   }
 })

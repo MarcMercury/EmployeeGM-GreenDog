@@ -11,7 +11,8 @@ import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 // Inline security utilities since server utils aren't auto-imported
 function getSlackBotToken(): string | null {
-  return process.env.SLACK_BOT_TOKEN || null
+  const config = useRuntimeConfig()
+  return config.slackBotToken || null
 }
 
 function validateSlackToken(token: string): boolean {

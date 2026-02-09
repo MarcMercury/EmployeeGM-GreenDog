@@ -9,12 +9,12 @@
           <div class="text-caption">Bulk import from CSV or Excel file</div>
         </div>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="close" :disabled="uploading" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="close" :disabled="uploading" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pa-0" style="max-height: 70vh; overflow-y: auto;">
+      <v-card-text class="pa-0 scrollable-70vh">
         <v-stepper v-model="step" flat>
           <v-stepper-header class="elevation-0 border-b">
             <v-stepper-item :value="1" :complete="step > 1" title="Upload File" />

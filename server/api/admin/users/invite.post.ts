@@ -59,11 +59,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Invite User API] Missing credentials:', { 
+    logger.error('Missing credentials', null, 'admin-invite-user', { 
       hasUrl: !!supabaseUrl, 
       hasServiceKey: !!supabaseServiceKey
     })
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
   // Check if caller is admin
   const { data: callerProfile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, id')
     .eq('auth_user_id', callerUser.id)
     .single()
 
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const adminRoles = ['admin', 'super_admin', 'hr_admin', 'management']
+  const adminRoles = ['admin', 'super_admin', 'hr_admin', 'manager']
   if (!adminRoles.includes(callerProfile.role)) {
     throw createError({
       statusCode: 403,
@@ -143,7 +143,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Get the redirect URL
-    const appUrl = process.env.APP_URL || config.public.appUrl || 'https://employeegm.greendog.vet'
+    const appUrl = config.public.appUrl || 'https://employeegm.greendog.vet'
     const redirectTo = `${appUrl}/auth/callback?type=invite&profileId=${body.profileId}`
 
     // Send the invitation using Supabase's built-in invite
@@ -159,7 +159,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (inviteError) {
-      console.error('[Admin Invite User API] Invite error:', inviteError)
+      logger.error('Invite error', inviteError, 'admin-invite-user')
       throw createError({
         statusCode: 500,
         message: `Failed to send invitation: ${inviteError.message}`
@@ -176,7 +176,7 @@ export default defineEventHandler(async (event) => {
       .eq('id', body.employeeId)
 
     if (updateError) {
-      console.warn('[Admin Invite User API] Could not update employee record:', updateError)
+      logger.warn('Could not update employee record', 'admin-invite-user', { error: updateError })
     }
 
     // Link the new auth user to the profile
@@ -190,7 +190,7 @@ export default defineEventHandler(async (event) => {
       .eq('id', body.profileId)
 
     if (linkError) {
-      console.warn('[Admin Invite User API] Could not link auth user to profile:', linkError)
+      logger.warn('Could not link auth user to profile', 'admin-invite-user', { error: linkError })
     }
 
     // Add system note
@@ -201,7 +201,15 @@ export default defineEventHandler(async (event) => {
       hr_only: false
     })
 
-    console.log(`[Admin Invite User API] Invitation sent successfully to ${body.email}`)
+    logger.info('Invitation sent successfully', 'admin-invite-user', { email: body.email })
+
+    await createAuditLog({
+      action: 'user_invited',
+      entityType: 'user',
+      entityId: inviteData.user.id,
+      actorProfileId: callerProfile.id,
+      metadata: { email: body.email, employeeId: body.employeeId }
+    })
 
     return {
       success: true,
@@ -218,7 +226,7 @@ export default defineEventHandler(async (event) => {
       throw error
     }
     
-    console.error('[Admin Invite User API] Unexpected error:', error)
+    logger.error('Unexpected error', error, 'admin-invite-user')
     throw createError({
       statusCode: 500,
       message: error.message || 'Failed to send invitation'

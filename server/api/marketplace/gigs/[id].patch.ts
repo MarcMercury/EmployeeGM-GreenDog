@@ -28,21 +28,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
-  const body = await readBody(event)
+  const body = await validateBody(event, gigUpdateSchema.extend({
+    status: z.enum(['open', 'closed', 'expired']).optional(),
+  }))
 
+  // Build update object from validated fields (omit undefined)
   const updates: Record<string, any> = {}
-  
-  if (body.title !== undefined) updates.title = body.title
-  if (body.description !== undefined) updates.description = body.description
-  if (body.bounty_value !== undefined) updates.bounty_value = body.bounty_value
-  if (body.duration_minutes !== undefined) updates.duration_minutes = body.duration_minutes
-  if (body.flake_penalty !== undefined) updates.flake_penalty = body.flake_penalty
-  if (body.category !== undefined) updates.category = body.category
-  if (body.difficulty !== undefined) updates.difficulty = body.difficulty
-  if (body.icon !== undefined) updates.icon = body.icon
-  if (body.max_claims !== undefined) updates.max_claims = body.max_claims
-  if (body.is_recurring !== undefined) updates.is_recurring = body.is_recurring
-  if (body.status !== undefined) updates.status = body.status
+  for (const [key, value] of Object.entries(body)) {
+    if (value !== undefined) updates[key] = value
+  }
 
   const { data: gig, error } = await client
     .from('marketplace_gigs')

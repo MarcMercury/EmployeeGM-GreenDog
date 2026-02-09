@@ -98,7 +98,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, message: `Conflict ${action === 'ignore' ? 'ignored' : 'resolved'} successfully` }
 
   } catch (error: any) {
-    console.error('Error resolving conflict:', error)
+    logger.error('Error resolving conflict', error, 'slack/sync/resolve')
     return { ok: false, error: error.message }
   }
 })

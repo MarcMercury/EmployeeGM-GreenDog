@@ -93,6 +93,7 @@ const fetchUnreadCount = async () => {
     const { count, error } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
+      .eq('profile_id', profile.value.id)
       .eq('is_read', false)
       .is('closed_at', null)
     
@@ -118,7 +119,7 @@ watch(() => profile.value?.id, (newId) => {
       .channel('notifications-count')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications' },
+        { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${newId}` },
         () => fetchUnreadCount()
       )
       .subscribe()

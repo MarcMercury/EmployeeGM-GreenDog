@@ -8,9 +8,7 @@
 export function getAppUrl(): string {
   const config = useRuntimeConfig()
   
-  const appUrl = config.public.appUrl 
-    || process.env.NUXT_PUBLIC_APP_URL 
-    || process.env.APP_URL
+  const appUrl = config.public.appUrl
   
   if (appUrl) {
     // Remove trailing slash if present
@@ -19,7 +17,7 @@ export function getAppUrl(): string {
   
   // In development, allow localhost fallback
   if (process.env.NODE_ENV === 'development') {
-    console.warn('[getAppUrl] APP_URL not set, using localhost fallback (dev only)')
+    logger.warn('APP_URL not set, using localhost fallback (dev only)', 'getAppUrl')
     return 'http://localhost:3000'
   }
   

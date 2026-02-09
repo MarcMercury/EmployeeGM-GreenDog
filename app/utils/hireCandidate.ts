@@ -165,29 +165,25 @@ export async function hireCandidate(
 }
 
 /**
- * Batch hire multiple candidates at once
+ * Batch hire multiple candidates using the atomic RPC path.
  */
 export async function hireCandidates(
   client: SupabaseClient,
-  candidateIds: string[],
-  options?: { startDate?: string }
+  payloads: HireCandidatePayload[]
 ): Promise<{ success: string[]; failed: { id: string; error: string }[] }> {
   const results = {
     success: [] as string[],
     failed: [] as { id: string; error: string }[]
   }
   
-  for (const candidateId of candidateIds) {
-    const result = await hireCandidate(client, {
-      candidateId,
-      startDate: options?.startDate
-    })
+  for (const payload of payloads) {
+    const result = await hireCandidateWithPayload(client, payload)
     
     if (result.success && result.employeeId) {
       results.success.push(result.employeeId)
     } else {
       results.failed.push({
-        id: candidateId,
+        id: payload.candidate_id,
         error: result.error || 'Unknown error'
       })
     }

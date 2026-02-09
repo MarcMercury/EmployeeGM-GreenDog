@@ -279,7 +279,7 @@
       <v-card v-if="selectedEmployee">
         <!-- Dialog Header -->
         <v-toolbar color="primary">
-          <v-btn icon @click="closeDetailDialog">
+          <v-btn icon aria-label="Close" @click="closeDetailDialog">
             <v-icon>mdi-close</v-icon>
           </v-btn>
           <v-toolbar-title>

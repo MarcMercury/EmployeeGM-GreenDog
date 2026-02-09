@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    console.error('Error fetching sync status:', error)
+    logger.error('Error fetching sync status', error, 'slack/sync/status')
     return { ok: false, error: error.message }
   }
 })

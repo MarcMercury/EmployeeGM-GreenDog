@@ -22,8 +22,8 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw createError({
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (authFetchError) {
-      console.error('Error fetching auth users:', authFetchError)
+      logger.error('Error fetching auth users', authFetchError, 'sync-login-times')
       break
     }
 
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  console.log(`[Sync Login Times] Updated ${updatedCount} profiles to NOW (${now}), skipped ${skippedCount} (never signed in), ${notFoundCount} profiles not found, ${errors.length} errors`)
+  logger.info('Login times sync completed', 'sync-login-times', { updatedCount, now, skippedCount, notFoundCount, errorCount: errors.length })
 
   return {
     success: true,

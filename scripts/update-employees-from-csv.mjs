@@ -75,11 +75,11 @@ function parseCSVLine(line) {
 }
 
 // Supabase connection
-const supabaseUrl = process.env.SUPABASE_URL || 'https://uekumyupkhnpjpdcjfxb.supabase.co'
+const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-if (!supabaseKey) {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY environment variable is required')
+if (!supabaseUrl || !supabaseKey) {
+  console.error('\u274c SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required')
   process.exit(1)
 }
 

@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const client = await serverSupabaseClient(event)
   const body = await readBody(event)
 
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
 
   const { employeeId, slackUserId, email } = body
 
@@ -107,7 +107,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    console.error('Error linking user:', error)
+    logger.error('Error linking user', error, 'slack/sync/link-user')
     return { ok: false, error: error.message }
   }
 })

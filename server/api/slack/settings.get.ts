@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
       .like('key', 'slack_%')
     
     if (error) {
-      console.error('Failed to fetch Slack settings:', error)
+      logger.error('Failed to fetch Slack settings', error, 'slack/settings')
       return { ok: false, error: error.message, settings: {} }
     }
     
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
     
     return { ok: true, settings }
   } catch (error: any) {
-    console.error('Error fetching Slack settings:', error)
+    logger.error('Error fetching Slack settings', error, 'slack/settings')
     return { ok: false, error: error.message, settings: {} }
   }
 })

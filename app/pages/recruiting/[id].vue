@@ -1,7 +1,7 @@
 <template>
   <div class="candidate-profile-page">
     <!-- Loading State -->
-    <div v-if="isLoading" class="d-flex justify-center align-center" style="min-height: 70vh;">
+    <div v-if="isLoading" class="d-flex justify-center align-center min-h-70vh">
       <v-progress-circular indeterminate color="primary" size="64" />
     </div>
 
@@ -18,7 +18,7 @@
       <!-- Header with Hire Button -->
       <div class="d-flex align-center justify-space-between mb-6 flex-wrap gap-3">
         <div class="d-flex align-center gap-4">
-          <v-btn icon="mdi-arrow-left" variant="text" @click="navigateTo('/recruiting')" />
+          <v-btn icon="mdi-arrow-left" variant="text" aria-label="Go back" @click="navigateTo('/recruiting')" />
           <v-avatar :color="getStatusColor(candidate.status)" size="64">
             <v-img v-if="candidate.avatar_url" :src="candidate.avatar_url" cover />
             <span v-else class="text-white font-weight-bold text-h5">
@@ -715,8 +715,8 @@
                         {{ formatDate(doc.created_at) }}
                       </v-list-item-subtitle>
                       <template #append>
-                        <v-btn icon="mdi-download" variant="text" size="small" :href="doc.file_url" target="_blank" />
-                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="deleteDocument(doc)" />
+                        <v-btn icon="mdi-download" variant="text" size="small" aria-label="Download" :href="doc.file_url" target="_blank" />
+                        <v-btn icon="mdi-delete" variant="text" size="small" color="error" aria-label="Delete" @click="deleteDocument(doc)" />
                       </template>
                     </v-list-item>
                   </v-list>

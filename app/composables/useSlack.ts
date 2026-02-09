@@ -6,28 +6,7 @@
  * Includes notification helpers for common Employee GM events.
  */
 
-interface SlackMessage {
-  channel: string // Channel ID or name (e.g., '#general' or 'C1234567890')
-  text: string
-  blocks?: any[] // Optional Block Kit blocks for rich formatting
-}
-
-interface SlackDM {
-  userId: string // Slack User ID (e.g., 'U1234567890')
-  text: string
-  blocks?: any[]
-}
-
-interface SlackUser {
-  id: string
-  email: string
-  real_name: string
-  display_name: string
-}
-
-interface NotificationData {
-  [key: string]: any
-}
+import type { SlackMessage, SlackDM, SlackUser, NotificationData } from '~/types/integrations.types'
 
 export const useSlack = () => {
   const config = useRuntimeConfig()
@@ -47,9 +26,9 @@ export const useSlack = () => {
         }
       })
       return response as { ok: boolean; error?: string }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Slack sendToChannel error:', error)
-      return { ok: false, error: error.message }
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
 
@@ -68,9 +47,9 @@ export const useSlack = () => {
         }
       })
       return response as { ok: boolean; error?: string }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Slack sendDM error:', error)
-      return { ok: false, error: error.message }
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
 
@@ -83,8 +62,8 @@ export const useSlack = () => {
         method: 'POST',
         body: { email }
       })
-      return (response as any).user || null
-    } catch (error: any) {
+      return (response as { user?: SlackUser | null }).user || null
+    } catch (error: unknown) {
       console.error('Slack findUserByEmail error:', error)
       return null
     }
@@ -162,9 +141,9 @@ export const useSlack = () => {
         body: { eventType, data }
       })
       return response as { ok: boolean; error?: string }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Slack sendEventNotification error:', error)
-      return { ok: false, error: error.message }
+      return { ok: false, error: error instanceof Error ? error.message : String(error) }
     }
   }
 

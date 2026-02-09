@@ -18,22 +18,25 @@ export default defineEventHandler(async (event) => {
     })
   }
   
-  const body = await readBody(event)
-  const { alertId, notes } = body
+  // Verify caller has compliance/admin role
+  const { data: callerProfile } = await client
+    .from('profiles')
+    .select('id, role')
+    .eq('auth_user_id', user.id)
+    .single()
   
-  if (!alertId) {
+  const complianceRoles = ['super_admin', 'admin', 'hr_admin', 'manager']
+  if (!callerProfile || !complianceRoles.includes(callerProfile.role)) {
     throw createError({
-      statusCode: 400,
-      message: 'alertId is required'
+      statusCode: 403,
+      message: 'Insufficient permissions - compliance admin access required'
     })
   }
   
-  // Get profile ID for resolved_by
-  const { data: profile } = await client
-    .from('profiles')
-    .select('id')
-    .eq('auth_user_id', user.id)
-    .single()
+  const { alertId, notes } = await validateBody(event, complianceResolveSchema)
+  
+  // Get profile ID for resolved_by (already fetched above)
+  const profile = callerProfile
   
   // Update the alert
   const { data, error } = await client

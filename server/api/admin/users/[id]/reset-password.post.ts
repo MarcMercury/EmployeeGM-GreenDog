@@ -42,11 +42,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Reset Password] Missing credentials:', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
+    logger.error('Missing credentials', null, 'admin-reset-password', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
   // Check if caller is super_admin
   const { data: callerProfile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, id')
     .eq('auth_user_id', callerUser.id)
     .single()
 
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
   )
 
   if (updateError) {
-    console.error('Error resetting password:', updateError)
+    logger.error('Error resetting password', updateError, 'admin-reset-password')
     throw createError({
       statusCode: 500,
       message: `Failed to reset password: ${updateError.message}`
@@ -117,7 +117,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // Log this action for audit purposes
-  console.log(`[AUDIT] Password reset for user ${userId} (${targetProfile.email}) by super_admin ${callerUser.id} at ${new Date().toISOString()}`)
+  logger.info('Password reset', 'AUDIT', { userId, email: targetProfile.email, by: callerUser.id })
+
+  await createAuditLog({
+    action: 'password_reset',
+    entityType: 'user',
+    entityId: userId,
+    actorProfileId: callerProfile.id,
+    metadata: { email: targetProfile.email }
+  })
 
   return {
     success: true,

@@ -176,24 +176,7 @@
 </template>
 
 <script setup lang="ts">
-interface Supply {
-  id: string
-  name: string
-  category: string
-  unit_cost: number
-  quantity_on_hand: number
-}
-
-interface EventSupply {
-  id: string
-  event_id: string
-  supply_id: string
-  quantity_allocated: number
-  quantity_used: number | null
-  unit_cost_at_time: number
-  total_cost: number
-  supply?: Supply
-}
+import type { Supply, EventSupply } from '~/types/marketing.types'
 
 const props = defineProps<{
   eventId: string

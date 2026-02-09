@@ -20,7 +20,7 @@
       <!-- Header -->
       <div class="d-flex align-center justify-space-between mb-6">
         <div class="d-flex align-center">
-          <v-btn icon variant="text" class="mr-2" @click="navigateTo('/recruiting/onboarding')">
+          <v-btn icon variant="text" class="mr-2" aria-label="Go back" @click="navigateTo('/recruiting/onboarding')">
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
           <div>
@@ -540,67 +540,12 @@
 </template>
 
 <script setup lang="ts">
+import type { Stage, Task, Onboarding, Candidate, Asset } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface Stage {
-  id: string
-  template_id: string
-  name: string
-  description: string
-  icon: string
-  sort_order: number
-}
-
-interface Task {
-  id: string
-  onboarding_id: string
-  task_template_id: string
-  stage_id: string
-  name: string
-  description: string
-  task_type: string
-  is_required: boolean
-  is_completed: boolean
-  completed_at: string | null
-  completed_by: string | null
-  document_id: string | null
-  notes: string | null
-  sort_order: number
-}
-
-interface Onboarding {
-  id: string
-  candidate_id: string
-  template_id: string
-  current_stage_id: string
-  status: string
-  started_at: string
-  completed_at: string | null
-  assigned_to: string | null
-  target_start_date: string | null
-  actual_start_date: string | null
-  notes: string | null
-}
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  job_positions?: { title: string }
-}
-
-interface Asset {
-  id: string
-  asset_type: string
-  asset_name: string
-  serial_number: string | null
-  condition: string
-  notes: string | null
-}
 
 const route = useRoute()
 const client = useSupabaseClient()

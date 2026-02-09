@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Column, ActionButton } from '~/types/ui.types'
+
 /**
  * MasterListTable Component
  * 
@@ -10,22 +12,6 @@
  * - Clickable phone/email links
  * - Truncated notes with hover/expand
  */
-
-interface Column {
-  key: string
-  title: string
-  sortable?: boolean
-  width?: string
-  align?: 'start' | 'center' | 'end'
-}
-
-interface ActionButton {
-  icon: string
-  color?: string
-  tooltip?: string
-  action: string
-  show?: (item: any) => boolean
-}
 
 interface Props {
   items: any[]

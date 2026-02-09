@@ -193,7 +193,7 @@ export default defineEventHandler(async (event) => {
         })
     }
   } catch (err) {
-    console.error('Promotion error:', err)
+    logger.error('Promotion error', err instanceof Error ? err : null, 'intake/promote')
     
     const errorMessage = err instanceof Error ? err.message : 'Promotion failed'
     

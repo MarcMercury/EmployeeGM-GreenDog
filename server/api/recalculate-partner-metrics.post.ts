@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
       .eq('auth_user_id', userId)
       .single()
     
-    const allowedRoles = ['super_admin', 'admin', 'marketing_manager']
+    const allowedRoles = ['super_admin', 'admin', 'marketing_admin']
     if (profileError) {
       throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
     }
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, message: `Access denied. Required roles: ${allowedRoles.join(', ')}. Your role: ${profile?.role || 'unknown'}` })
     }
     
-    console.log('[recalculate-metrics] Access granted for role:', profile.role)
+    logger.info('Access granted', 'recalculate-metrics', { role: profile.role })
     
     // Get supabase client
     const supabase = await serverSupabaseClient(event)
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     const { data, error } = await supabase.rpc('recalculate_partner_metrics')
     
     if (error) {
-      console.error('[recalculate-metrics] Error calling function:', error)
+      logger.error('Error calling function', error, 'recalculate-metrics')
       throw createError({ statusCode: 500, message: `Failed to recalculate metrics: ${error.message}` })
     }
     
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
       .is('deleted_at', null)
     
     if (summaryError) {
-      console.warn('[recalculate-metrics] Error fetching summary:', summaryError)
+      logger.warn('Error fetching summary', 'recalculate-metrics', { error: summaryError })
     }
     
     // Calculate counts
@@ -83,7 +83,7 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    console.log('[recalculate-metrics] Completed. Partners updated:', summary?.length || 0)
+    logger.info('Completed', 'recalculate-metrics', { partnersUpdated: summary?.length || 0 })
     
     return {
       success: true,
@@ -99,7 +99,7 @@ export default defineEventHandler(async (event) => {
     }
     
   } catch (error: any) {
-    console.error('[recalculate-metrics] Error:', error)
+    logger.error('Error', error, 'recalculate-metrics')
     
     if (error.statusCode) {
       throw error

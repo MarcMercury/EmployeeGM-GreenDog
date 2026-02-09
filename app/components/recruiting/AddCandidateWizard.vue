@@ -6,7 +6,7 @@
         <v-icon class="mr-3" color="white">mdi-account-plus</v-icon>
         <span class="text-white font-weight-bold">Add Candidate</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="closeWizard" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="closeWizard" />
       </v-card-title>
 
       <!-- Step Indicator -->

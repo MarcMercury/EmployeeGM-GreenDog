@@ -248,7 +248,7 @@ export const useAppData = () => {
         if (profile) {
           currentUserProfile.value = profile as AppUserProfile
           // Check for admin roles (admin or super_admin)
-          isAdmin.value = ['admin', 'super_admin'].includes((profile as any).role)
+          isAdmin.value = ['admin', 'super_admin'].includes((profile as { role?: string }).role || '')
           console.log('[useAppData] isAdmin set to:', isAdmin.value)
         }
       } else {
@@ -456,9 +456,9 @@ export const useAppData = () => {
         }
       }
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[AppData] Fetch Error:', e)
-      error.value = e.message || 'Failed to load app data'
+      error.value = e instanceof Error ? e.message : 'Failed to load app data'
     } finally {
       loading.value = false
     }
@@ -482,15 +482,42 @@ export const useAppData = () => {
     console.log('[useAppData] Setting up realtime subscriptions...')
 
     // Subscribe to employees table changes
+    // Use targeted updates from payload instead of full refresh
     const employeesChannel = client
       .channel('employees-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'employees' },
         (payload) => {
-          console.log('[Realtime] Employee change:', payload.eventType, payload.new)
-          // Refresh employees on any change
-          refresh()
+          console.log('[Realtime] Employee change:', payload.eventType)
+          const { eventType, new: newRow, old: oldRow } = payload
+
+          if (eventType === 'DELETE' && oldRow?.id) {
+            employees.value = employees.value.filter(e => e.id !== oldRow.id)
+          } else if (eventType === 'UPDATE' && newRow?.id) {
+            // Patch the changed fields in-place
+            const idx = employees.value.findIndex(e => e.id === newRow.id)
+            if (idx !== -1) {
+              const existing = employees.value[idx]
+              employees.value[idx] = {
+                ...existing,
+                first_name: newRow.first_name ?? existing.first_name,
+                last_name: newRow.last_name ?? existing.last_name,
+                full_name: `${newRow.first_name || existing.first_name} ${newRow.last_name || existing.last_name}`.trim(),
+                email: newRow.email_work ?? existing.email,
+                phone: newRow.phone_mobile ?? existing.phone,
+                hire_date: newRow.hire_date ?? existing.hire_date,
+                employment_status: newRow.employment_status ?? existing.employment_status,
+                is_active: (newRow.employment_status ?? existing.employment_status) === 'active'
+              }
+            } else {
+              // New employee not in list — do a targeted fetch
+              refresh()
+            }
+          } else if (eventType === 'INSERT') {
+            // For new inserts, a targeted fetch is simpler than reconstructing joins
+            refresh()
+          }
         }
       )
       .subscribe((status) => {

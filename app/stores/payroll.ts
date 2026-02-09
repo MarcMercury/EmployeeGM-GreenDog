@@ -4,85 +4,10 @@
  */
 import { defineStore } from 'pinia'
 import { format, differenceInMinutes, parseISO, startOfWeek, addDays } from 'date-fns'
-
-// Types
-export interface PayrollEmployee {
-  employee_id: string
-  employee_name: string
-  department_name: string | null
-  pay_rate: number
-  pay_type: 'Hourly' | 'Salary'
-  regular_hours: number
-  overtime_hours: number
-  double_time_hours: number
-  pto_hours: number
-  adjustments_total: number
-  gross_pay_estimate: number
-  status: 'pending' | 'approved' | 'disputed' | 'needs_review'
-  has_issues: boolean
-  issue_details: string | null
-}
-
-export interface TimeEntry {
-  entry_id: string
-  shift_id: string | null
-  entry_date: string
-  clock_in_at: string
-  clock_out_at: string | null
-  original_clock_in: string
-  original_clock_out: string | null
-  total_hours: number | null
-  is_corrected: boolean
-  correction_reason: string | null
-  has_issue: boolean
-  issue_type: 'missing_clock_out' | 'missing_hours' | 'negative_hours' | null
-}
-
-export interface PayrollAdjustment {
-  id: string
-  employee_id: string
-  pay_period_start: string
-  pay_period_end: string
-  type: 'bonus' | 'reimbursement' | 'commission' | 'deduction' | 'pto_payout' | 'holiday_pay' | 'other'
-  amount: number
-  note: string | null
-  created_by: string | null
-  created_at: string
-}
-
-export interface PayrollSignoff {
-  id: string
-  employee_id: string
-  pay_period_start: string
-  pay_period_end: string
-  status: 'pending' | 'approved' | 'disputed' | 'needs_review'
-  regular_hours: number
-  overtime_hours: number
-  double_time_hours: number
-  pto_hours: number
-  total_adjustments: number
-  gross_pay_estimate: number
-  has_missing_punches: boolean
-  has_negative_hours: boolean
-  requires_attention: boolean
-  attention_reason: string | null
-  reviewed_by: string | null
-  reviewed_at: string | null
-  approved_by: string | null
-  approved_at: string | null
-  reviewer_notes: string | null
-}
-
-export interface PayrollStats {
-  totalPayroll: number
-  pendingReviews: number
-  approvedCount: number
-  missingPunches: number
-  totalEmployees: number
-  totalRegularHours: number
-  totalOvertimeHours: number
-  totalPTOHours: number
-}
+import type { PayrollEmployee, PayrollTimeEntry, PayrollAdjustment, PayrollSignoff, PayrollStats } from '~/types/operations.types'
+import { calculateCaliforniaOT } from '~/utils/overtimeCalculation'
+import type { DailyHoursMap } from '~/utils/overtimeCalculation'
+export type { PayrollEmployee, PayrollTimeEntry, PayrollAdjustment, PayrollSignoff, PayrollStats }
 
 interface PayrollState {
   // Period selection
@@ -96,7 +21,7 @@ interface PayrollState {
   
   // Selected employee for detail view
   selectedEmployeeId: string | null
-  selectedEmployeeTimecard: TimeEntry[]
+  selectedEmployeeTimecard: PayrollTimeEntry[]
   selectedEmployeeAdjustments: PayrollAdjustment[]
   selectedEmployeeSignoff: PayrollSignoff | null
   loadingDetail: boolean
@@ -159,52 +84,26 @@ export const usePayrollStore = defineStore('payroll', {
       }
       
       // Group entries by day
-      const dailyHours: Record<string, number> = {}
+      const dailyHours: DailyHoursMap = {}
       state.selectedEmployeeTimecard.forEach(entry => {
         const day = entry.entry_date
         const hours = entry.total_hours || 0
         dailyHours[day] = (dailyHours[day] || 0) + hours
       })
       
-      // Calculate OT using California rules
-      let totalRegular = 0
-      let totalOT = 0
-      let totalDT = 0
-      
-      Object.values(dailyHours).forEach(hours => {
-        if (hours <= 8) {
-          totalRegular += hours
-        } else if (hours <= 12) {
-          totalRegular += 8
-          totalOT += hours - 8
-        } else {
-          totalRegular += 8
-          totalOT += 4
-          totalDT += hours - 12
-        }
-      })
-      
-      // Weekly OT check
-      if (totalRegular > 40) {
-        totalOT += totalRegular - 40
-        totalRegular = 40
-      }
-      
-      return {
-        regular: Math.round(totalRegular * 100) / 100,
-        overtime: Math.round(totalOT * 100) / 100,
-        doubleTime: Math.round(totalDT * 100) / 100,
-        total: Math.round((totalRegular + totalOT + totalDT) * 100) / 100
-      }
+      // Calculate OT using shared California rules utility
+      return calculateCaliforniaOT(dailyHours)
     },
     
     // Calculate gross pay for selected employee
-    selectedEmployeeGrossPay: (state): number => {
+    selectedEmployeeGrossPay(state): number {
       const employee = state.employees.find(e => e.employee_id === state.selectedEmployeeId)
       if (!employee) return 0
       
       const rate = employee.pay_rate || 0
-      const totals = usePayrollStore().selectedEmployeeTotals
+      // Use `this` instead of re-entering the store via usePayrollStore() to avoid
+      // recursive getter invocation and potential infinite reactivity loops.
+      const totals = this.selectedEmployeeTotals
       const adjustments = state.selectedEmployeeAdjustments.reduce((sum, adj) => {
         return sum + (adj.type === 'deduction' ? -adj.amount : adj.amount)
       }, 0)
@@ -274,7 +173,7 @@ export const usePayrollStore = defineStore('payroll', {
         // Calculate stats
         this.calculateStats()
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn('[Payroll] Database function not available, using fallback:', err)
         
         // Fallback: manual query
@@ -291,6 +190,7 @@ export const usePayrollStore = defineStore('payroll', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         // Get all active employees with compensation
         const { data: employees } = await supabase
           .from('employees')
@@ -353,29 +253,11 @@ export const usePayrollStore = defineStore('payroll', {
             }
           })
           
-          // California OT calculation
-          let regularHours = 0
-          let overtimeHours = 0
-          let doubleTimeHours = 0
-          
-          Object.values(hoursByDay).forEach(hours => {
-            if (hours <= 8) {
-              regularHours += hours
-            } else if (hours <= 12) {
-              regularHours += 8
-              overtimeHours += hours - 8
-            } else {
-              regularHours += 8
-              overtimeHours += 4
-              doubleTimeHours += hours - 12
-            }
-          })
-          
-          // Weekly cap
-          if (regularHours > 40) {
-            overtimeHours += regularHours - 40
-            regularHours = 40
-          }
+          // California OT calculation (shared utility)
+          const otResult = calculateCaliforniaOT(hoursByDay)
+          const regularHours = otResult.regular
+          const overtimeHours = otResult.overtime
+          const doubleTimeHours = otResult.doubleTime
           
           const ptoHours = empPTO.reduce((sum: number, p: any) => sum + (p.duration_hours || 0), 0)
           const adjTotal = empAdj.reduce((sum: number, a: any) => {
@@ -416,9 +298,9 @@ export const usePayrollStore = defineStore('payroll', {
         
         this.calculateStats()
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error fetching payroll data:', err)
-        this.error = err.message || 'Failed to load payroll data'
+        this.error = err instanceof Error ? err.message : 'Failed to load payroll data'
       }
     },
     
@@ -473,7 +355,7 @@ export const usePayrollStore = defineStore('payroll', {
         
         this.selectedEmployeeSignoff = signoff
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error loading employee detail:', err)
       } finally {
         this.loadingDetail = false
@@ -595,7 +477,7 @@ export const usePayrollStore = defineStore('payroll', {
         }
         
         return true
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error correcting time entry:', err)
         throw err
       }
@@ -644,7 +526,7 @@ export const usePayrollStore = defineStore('payroll', {
         this.calculateStats()
         return data
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error adding adjustment:', err)
         throw err
       }
@@ -682,7 +564,7 @@ export const usePayrollStore = defineStore('payroll', {
         
         this.calculateStats()
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error removing adjustment:', err)
         throw err
       }
@@ -738,7 +620,7 @@ export const usePayrollStore = defineStore('payroll', {
         
         return data
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error approving payroll:', err)
         throw err
       }
@@ -784,7 +666,7 @@ export const usePayrollStore = defineStore('payroll', {
         
         return data
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[Payroll] Error flagging for review:', err)
         throw err
       }

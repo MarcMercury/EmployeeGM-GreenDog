@@ -44,11 +44,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Toggle Active] Missing credentials:', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
+    logger.error('Missing credentials', null, 'admin-toggle-active', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
     .eq('id', userId)
 
   if (profileUpdateError) {
-    console.error('Error updating profile:', profileUpdateError)
+    logger.error('Error updating profile', profileUpdateError, 'admin-toggle-active')
     throw createError({
       statusCode: 500,
       message: `Failed to update user: ${profileUpdateError.message}`
@@ -138,7 +138,7 @@ export default defineEventHandler(async (event) => {
     )
 
     if (authUpdateError) {
-      console.error('Error updating auth user:', authUpdateError)
+      logger.error('Error updating auth user', authUpdateError, 'admin-toggle-active')
       // Revert profile change
       await supabaseAdmin
         .from('profiles')
@@ -153,7 +153,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // Log this action for audit purposes
-  console.log(`[AUDIT] User ${userId} (${targetProfile.email}) ${is_active ? 'enabled' : 'disabled'} by super_admin ${callerUser.id} at ${new Date().toISOString()}`)
+  logger.info(`User ${is_active ? 'enabled' : 'disabled'}`, 'AUDIT', { userId, email: targetProfile.email, action: is_active ? 'enabled' : 'disabled', by: callerUser.id })
+
+  await createAuditLog({
+    action: 'user_toggled_active',
+    entityType: 'user',
+    entityId: userId,
+    actorProfileId: callerProfile.id,
+    metadata: { email: targetProfile.email, is_active }
+  })
 
   return {
     success: true,

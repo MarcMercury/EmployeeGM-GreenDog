@@ -195,7 +195,7 @@ function formatDate(date: string | null): string {
   <div>
     <!-- Header -->
     <div class="d-flex align-center mb-6">
-      <v-btn icon variant="text" @click="goBack" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" @click="goBack" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div class="flex-grow-1">
@@ -413,7 +413,7 @@ function formatDate(date: string | null): string {
           <v-icon class="mr-2">mdi-pencil</v-icon>
           Edit Partner
           <v-spacer />
-          <v-btn icon variant="text" @click="cancelEditing" :disabled="isSaving">
+          <v-btn icon variant="text" aria-label="Close" @click="cancelEditing" :disabled="isSaving">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>

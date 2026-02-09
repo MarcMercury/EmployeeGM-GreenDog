@@ -288,7 +288,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useAcademyStore } from '~/stores/academy'
+import { useAcademyProgressStore } from '~/stores/academyProgress'
+import { useAcademyQuizStore } from '~/stores/academyQuiz'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
 
@@ -296,7 +297,8 @@ const props = defineProps<{
   courseId: string
 }>()
 
-const academyStore = useAcademyStore()
+const progressStore = useAcademyProgressStore()
+const quizStore = useAcademyQuizStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -305,19 +307,19 @@ const currentLessonIndex = ref(0)
 const markingComplete = ref(false)
 
 // Computed
-const loading = computed(() => academyStore.loading)
-const course = computed(() => academyStore.currentCourse)
+const loading = computed(() => progressStore.isLoading)
+const course = computed(() => progressStore.currentCourse)
 const lessons = computed(() => 
-  academyStore.lessons
+  progressStore.lessons
     .filter(l => l.course_id === props.courseId)
     .sort((a, b) => a.position - b.position)
 )
-const currentLesson = computed(() => academyStore.currentLesson)
+const currentLesson = computed(() => progressStore.currentLesson)
 
-const overallProgress = computed(() => academyStore.courseProgress(props.courseId))
+const overallProgress = computed(() => progressStore.courseProgress(props.courseId))
 
 const courseQuiz = computed(() => 
-  academyStore.quizzes.find(q => q.course_id === props.courseId && !q.lesson_id)
+  quizStore.quizzes.find(q => q.course_id === props.courseId && !q.lesson_id)
 )
 
 const allLessonsCompleted = computed(() => {
@@ -326,7 +328,7 @@ const allLessonsCompleted = computed(() => {
 
 const quizPassed = computed(() => {
   if (!courseQuiz.value) return false
-  const attempt = academyStore.quizAttempts.find(
+  const attempt = quizStore.quizAttempts.find(
     a => a.quiz_id === courseQuiz.value!.id && a.passed
   )
   return !!attempt
@@ -334,7 +336,7 @@ const quizPassed = computed(() => {
 
 // Methods
 function isLessonCompleted(lesson: any): boolean {
-  const progress = academyStore.lessonProgress(lesson.id)
+  const progress = progressStore.lessonProgress(lesson.id)
   return progress >= 100
 }
 
@@ -355,7 +357,7 @@ function getLessonStatusColor(lesson: any, index: number): string {
 function selectLesson(lesson: any, index: number) {
   if (isLessonLocked(index)) return
   currentLessonIndex.value = index
-  academyStore.setCurrentLesson(lesson)
+  progressStore.setCurrentLesson(lesson)
 }
 
 function previousLesson() {
@@ -374,7 +376,7 @@ async function markComplete() {
   if (!currentLesson.value) return
   markingComplete.value = true
   try {
-    await academyStore.completeLesson(currentLesson.value.id)
+    await progressStore.completeLesson(currentLesson.value.id)
     // Auto-advance if there's a next lesson
     if (currentLessonIndex.value < lessons.value.length - 1) {
       setTimeout(() => nextLesson(), 500)
@@ -441,9 +443,9 @@ async function downloadAttachment() {
 
 // Lifecycle
 onMounted(async () => {
-  await academyStore.fetchLessonsForCourse(props.courseId)
-  await academyStore.fetchQuizzes(props.courseId)
-  await academyStore.fetchProgress()
+  await progressStore.fetchLessonsForCourse(props.courseId)
+  await quizStore.fetchQuizzes(props.courseId)
+  await progressStore.fetchProgress()
   
   // Select first incomplete lesson or first lesson
   const firstIncomplete = lessons.value.findIndex(l => !isLessonCompleted(l))

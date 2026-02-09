@@ -16,10 +16,10 @@ export default defineEventHandler(async (event) => {
   
   // Validate cron secret for security (REQUIRED)
   const cronSecret = getHeader(event, 'x-cron-secret')
-  const expectedSecret = process.env.CRON_SECRET
+  const expectedSecret = config.cronSecret
   
   if (!expectedSecret) {
-    console.error('[Slack Scheduled] CRON_SECRET not configured')
+    logger.error('CRON_SECRET not configured', null, 'Slack Scheduled')
     throw createError({ statusCode: 500, message: 'Server configuration error' })
   }
   
@@ -27,10 +27,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
 
   if (!SLACK_BOT_TOKEN) {
-    console.error('[Slack Scheduled] Missing Slack bot token')
+    logger.error('Missing Slack bot token', null, 'Slack Scheduled')
     return { ok: false, error: 'Missing Slack configuration' }
   }
 
@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    console.error('Scheduled sync failed:', error)
+    logger.error('Scheduled sync failed', error, 'Slack Scheduled')
     return { ok: false, error: error.message }
   }
 })

@@ -9,112 +9,12 @@
  * 4. PUBLISH: Finalize and notify employees
  */
 import { format, addDays, startOfWeek, parseISO } from 'date-fns'
+import type { Service, StaffingRequirement, DraftSlot, WizardValidationResult, DashboardLocation } from '~/types/schedule.types'
 
 definePageMeta({
   middleware: ['auth', 'schedule-access'],
   layout: 'default'
 })
-
-// Types
-interface Service {
-  id: string
-  name: string
-  code: string
-  color: string
-  icon: string
-  requires_dvm: boolean
-  min_staff_count: number
-  sort_order: number
-}
-
-interface StaffingRequirement {
-  id: string
-  service_id: string
-  role_category: string
-  role_label: string
-  min_count: number
-  max_count: number
-  is_required: boolean
-  priority: number
-  sort_order: number
-}
-
-interface DraftSlot {
-  id: string
-  draft_id: string
-  service_id: string
-  staffing_requirement_id: string | null
-  role_category: string
-  role_label: string
-  is_required: boolean
-  priority: number
-  slot_date: string
-  start_time: string
-  end_time: string
-  employee_id: string | null
-  is_filled: boolean
-  has_conflict: boolean
-  conflict_reason: string | null
-  ai_suggested_employee_id: string | null
-  ai_confidence: number | null
-  service?: Service
-  employee?: { first_name: string; last_name: string }
-}
-
-interface AvailableEmployee {
-  employee_id: string
-  first_name: string
-  last_name: string
-  position_title: string
-  is_available: boolean
-  conflict_reason: string | null
-  current_week_hours: number
-  reliability_score: number
-  availability_type: string
-  availability_note: string | null
-  preference_level: number
-}
-
-interface ValidationResult {
-  errors: Array<{ type: string; severity: string; message: string; date?: string }>
-  warnings: Array<{ type: string; severity: string; message: string }>
-  coverage_score: number
-  total_slots: number
-  filled_slots: number
-  required_unfilled: number
-  is_valid: boolean
-}
-
-interface ScheduleTemplate {
-  id: string
-  name: string
-  description: string | null
-  location_id: string | null
-  location_name: string | null
-  operational_days: number[]
-  service_count: number
-  slot_count: number
-  is_default: boolean
-  usage_count: number
-  last_used_at: string | null
-  created_at: string
-}
-
-interface DashboardLocation {
-  location_id: string
-  location_name: string
-  location_code: string
-  draft_id: string | null
-  draft_status: string
-  total_slots: number
-  filled_slots: number
-  required_slots: number
-  required_filled: number
-  coverage_percentage: number
-  has_draft: boolean
-  published_at: string | null
-  last_updated: string | null
-}
 
 // Composables
 const supabase = useSupabaseClient()
@@ -153,26 +53,13 @@ const services = ref<Service[]>([])
 const staffingRequirements = ref<StaffingRequirement[]>([])
 const draftId = ref<string | null>(null)
 const draftSlots = ref<DraftSlot[]>([])
-const validationResult = ref<ValidationResult | null>(null)
+const validationResult = ref<WizardValidationResult | null>(null)
 
 // Employee selector
-const selectorDialog = ref(false)
-const selectedSlot = ref<DraftSlot | null>(null)
-const availableEmployees = ref<AvailableEmployee[]>([])
-const isLoadingEmployees = ref(false)
-const employeeSearch = ref('')
+const employeeSelectorRef = ref<{ open: (slot: DraftSlot) => void } | null>(null)
 
-// Filtered employees based on search
-const filteredEmployees = computed(() => {
-  const search = employeeSearch.value.toLowerCase().trim()
-  if (!search) return availableEmployees.value
-  
-  return availableEmployees.value.filter(emp => {
-    const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase()
-    const position = (emp.position_title || '').toLowerCase()
-    return fullName.includes(search) || position.includes(search)
-  })
-})
+// Templates manager
+const templatesManagerRef = ref<{ openBrowser: () => void; openSave: () => void } | null>(null)
 
 // Quick action states
 const isCopyingWeek = ref(false)
@@ -185,16 +72,17 @@ const editStartTime = ref('')
 const editEndTime = ref('')
 const isSavingTime = ref(false)
 
-// Templates
-const templates = ref<ScheduleTemplate[]>([])
-const templatesDialog = ref(false)
-const saveTemplateDialog = ref(false)
-const templateName = ref('')
-const templateDescription = ref('')
-const templateLocationSpecific = ref(false)
-const isSavingTemplate = ref(false)
-const isApplyingTemplate = ref(false)
-const isLoadingTemplates = ref(false)
+// Snackbar notification bridge for child components
+const showNotification = (message: string, color = 'success') => {
+  if (color === 'error') toast.error(message)
+  else if (color === 'warning') toast.warning(message)
+  else toast.success(message)
+}
+
+// Handle template applied event
+const handleTemplateApplied = () => {
+  loadDraftSlots()
+}
 
 // Multi-Location Dashboard
 const viewMode = ref<'wizard' | 'dashboard'>('wizard')
@@ -514,73 +402,6 @@ async function loadDraftSlots() {
 }
 
 // Open employee selector for a slot
-async function openEmployeeSelector(slot: DraftSlot) {
-  selectedSlot.value = slot
-  selectorDialog.value = true
-  isLoadingEmployees.value = true
-  
-  try {
-    const { data, error } = await supabase.rpc('get_available_employees_for_slot', {
-      p_draft_id: draftId.value,
-      p_slot_date: slot.slot_date,
-      p_start_time: slot.start_time,
-      p_end_time: slot.end_time,
-      p_role_category: slot.role_category
-    })
-    
-    if (error) throw error
-    availableEmployees.value = data || []
-  } catch (err) {
-    console.error('Failed to load available employees:', err)
-    // Fallback to all employees
-    availableEmployees.value = (employees.value || []).map(e => ({
-      employee_id: e.id,
-      first_name: e.first_name,
-      last_name: e.last_name,
-      position_title: e.position?.title || 'Staff',
-      is_available: true,
-      conflict_reason: null,
-      current_week_hours: 0,
-      reliability_score: 80
-    }))
-  } finally {
-    isLoadingEmployees.value = false
-  }
-}
-
-// Assign employee to slot
-async function assignEmployee(employeeId: string) {
-  if (!selectedSlot.value) return
-  
-  isSaving.value = true
-  try {
-    const { error } = await supabase.rpc('assign_employee_to_slot', {
-      p_slot_id: selectedSlot.value.id,
-      p_employee_id: employeeId
-    })
-    
-    if (error) throw error
-    
-    // Update local state
-    const slot = draftSlots.value.find(s => s.id === selectedSlot.value?.id)
-    if (slot) {
-      slot.employee_id = employeeId
-      const emp = employees.value?.find(e => e.id === employeeId)
-      if (emp) {
-        slot.employee = { first_name: emp.first_name, last_name: emp.last_name }
-      }
-    }
-    
-    selectorDialog.value = false
-    toast.success('Employee assigned')
-  } catch (err) {
-    console.error('Failed to assign employee:', err)
-    toast.error('Failed to assign employee')
-  } finally {
-    isSaving.value = false
-  }
-}
-
 // Clear employee from slot
 async function clearSlot(slot: DraftSlot) {
   try {
@@ -632,22 +453,6 @@ async function saveSlotTimes() {
     toast.error('Failed to update shift time')
   } finally {
     isSavingTime.value = false
-  }
-}
-
-// Get availability display info
-function getAvailabilityDisplay(emp: AvailableEmployee): { icon: string; color: string; text: string } {
-  switch (emp.availability_type) {
-    case 'preferred':
-      return { icon: 'mdi-star', color: 'success', text: 'Prefers this day' }
-    case 'available':
-      return { icon: 'mdi-check-circle', color: 'success', text: 'Available' }
-    case 'avoid':
-      return { icon: 'mdi-alert', color: 'warning', text: emp.availability_note || 'Prefers not to work' }
-    case 'unavailable':
-      return { icon: 'mdi-close-circle', color: 'error', text: emp.availability_note || 'Not available' }
-    default:
-      return { icon: 'mdi-help-circle-outline', color: 'grey', text: 'No preference set' }
   }
 }
 
@@ -808,119 +613,6 @@ function resetWizard() {
 // TEMPLATES FUNCTIONS
 // ============================================================
 
-// Load available templates
-async function loadTemplates() {
-  isLoadingTemplates.value = true
-  try {
-    const { data, error } = await supabase.rpc('list_schedule_templates', {
-      p_location_id: selectedLocationId.value
-    })
-    
-    if (error) throw error
-    templates.value = data || []
-  } catch (err) {
-    console.error('Failed to load templates:', err)
-    templates.value = []
-  } finally {
-    isLoadingTemplates.value = false
-  }
-}
-
-// Open templates dialog
-async function openTemplatesDialog() {
-  await loadTemplates()
-  templatesDialog.value = true
-}
-
-// Apply template to current draft
-async function applyTemplate(template: ScheduleTemplate) {
-  if (!selectedLocationId.value) {
-    toast.error('Please select a location first')
-    return
-  }
-  
-  isApplyingTemplate.value = true
-  try {
-    const { data, error } = await supabase.rpc('apply_template_to_draft', {
-      p_template_id: template.id,
-      p_location_id: selectedLocationId.value,
-      p_week_start: format(selectedWeekStart.value, 'yyyy-MM-dd')
-    })
-    
-    if (error) throw error
-    
-    draftId.value = data
-    operationalDays.value = [...template.operational_days]
-    
-    // Load the applied slots
-    await loadDraftSlots()
-    
-    templatesDialog.value = false
-    currentStep.value = 2
-    toast.success(`Applied template "${template.name}" - ${template.slot_count} slots created`)
-  } catch (err) {
-    console.error('Failed to apply template:', err)
-    toast.error('Failed to apply template')
-  } finally {
-    isApplyingTemplate.value = false
-  }
-}
-
-// Open save template dialog
-function openSaveTemplateDialog() {
-  templateName.value = `${selectedLocation.value?.name || 'Schedule'} Template`
-  templateDescription.value = ''
-  templateLocationSpecific.value = false
-  saveTemplateDialog.value = true
-}
-
-// Save current draft as template
-async function saveAsTemplate() {
-  if (!draftId.value || !templateName.value.trim()) {
-    toast.error('Please provide a template name')
-    return
-  }
-  
-  isSavingTemplate.value = true
-  try {
-    const { data, error } = await supabase.rpc('save_template_from_draft', {
-      p_draft_id: draftId.value,
-      p_name: templateName.value.trim(),
-      p_description: templateDescription.value.trim() || null,
-      p_location_specific: templateLocationSpecific.value
-    })
-    
-    if (error) throw error
-    
-    saveTemplateDialog.value = false
-    toast.success('Template saved successfully!')
-  } catch (err) {
-    console.error('Failed to save template:', err)
-    toast.error('Failed to save template')
-  } finally {
-    isSavingTemplate.value = false
-  }
-}
-
-// Delete a template
-async function deleteTemplate(template: ScheduleTemplate) {
-  if (!confirm(`Delete template "${template.name}"?`)) return
-  
-  try {
-    const { error } = await supabase.rpc('delete_schedule_template', {
-      p_template_id: template.id
-    })
-    
-    if (error) throw error
-    
-    templates.value = templates.value.filter(t => t.id !== template.id)
-    toast.success('Template deleted')
-  } catch (err) {
-    console.error('Failed to delete template:', err)
-    toast.error('Failed to delete template')
-  }
-}
-
 // ============================================================
 // DASHBOARD FUNCTIONS
 // ============================================================
@@ -1077,7 +769,7 @@ onMounted(async () => {
         <v-btn 
           variant="outlined" 
           color="secondary"
-          @click="openTemplatesDialog"
+          @click="templatesManagerRef?.openBrowser()"
         >
           <v-icon start>mdi-file-document-outline</v-icon>
           Templates
@@ -1100,11 +792,11 @@ onMounted(async () => {
       <!-- Week Navigation -->
       <v-card rounded="lg" class="mb-4">
         <v-card-text class="d-flex align-center justify-center gap-4 py-3">
-          <v-btn icon="mdi-chevron-left" variant="text" @click="changeWeek(-1); loadDashboard()" />
+          <v-btn icon="mdi-chevron-left" variant="text" aria-label="Previous" @click="changeWeek(-1); loadDashboard()" />
           <v-chip size="large" color="primary" variant="flat">
             {{ weekLabel }}
           </v-chip>
-          <v-btn icon="mdi-chevron-right" variant="text" @click="changeWeek(1); loadDashboard()" />
+          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="changeWeek(1); loadDashboard()" />
           <v-btn variant="outlined" size="small" @click="goToThisWeek(); loadDashboard()">
             This Week
           </v-btn>
@@ -1214,7 +906,7 @@ onMounted(async () => {
     />
 
     <!-- Loading -->
-    <div v-if="isLoading" class="d-flex justify-center align-center" style="min-height: 400px;">
+    <div v-if="isLoading" class="d-flex justify-center align-center min-h-400">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
 
@@ -1231,11 +923,11 @@ onMounted(async () => {
               </v-card-title>
               <v-card-text>
                 <div class="d-flex align-center justify-center gap-2 mb-4">
-                  <v-btn icon="mdi-chevron-left" variant="text" @click="changeWeek(-1)" />
+                  <v-btn icon="mdi-chevron-left" variant="text" aria-label="Previous" @click="changeWeek(-1)" />
                   <v-chip size="large" color="primary" variant="flat">
                     {{ weekLabel }}
                   </v-chip>
-                  <v-btn icon="mdi-chevron-right" variant="text" @click="changeWeek(1)" />
+                  <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="changeWeek(1)" />
                 </div>
                 <v-btn block variant="outlined" size="small" @click="goToThisWeek">
                   Go to This Week
@@ -1478,7 +1170,7 @@ onMounted(async () => {
               variant="tonal"
               color="secondary"
               size="small"
-              @click="openSaveTemplateDialog"
+              @click="templatesManagerRef?.openSave()"
             >
               <v-icon start>mdi-content-save-outline</v-icon>
               Save Template
@@ -1544,7 +1236,7 @@ onMounted(async () => {
                     'slot-optional': !slot.is_required && !slot.employee_id
                   }"
                   :style="{ borderLeftColor: getRoleCategoryColor(slot.role_category) }"
-                  @click="openEmployeeSelector(slot)"
+                  @click="employeeSelectorRef?.open(slot)"
                 >
                   <div class="slot-role text-caption font-weight-medium">
                     {{ slot.role_label }}
@@ -1731,307 +1423,25 @@ onMounted(async () => {
     </template>
 
     <!-- Employee Selector Dialog -->
-    <v-dialog v-model="selectorDialog" max-width="600" @after-leave="employeeSearch = ''">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-search</v-icon>
-          Select Employee
-          <v-spacer />
-          <v-chip v-if="selectedSlot" size="small" :color="getRoleCategoryColor(selectedSlot.role_category)">
-            {{ selectedSlot.role_label }}
-          </v-chip>
-        </v-card-title>
-        
-        <v-divider />
-        
-        <!-- Search Field -->
-        <div class="px-4 pt-4">
-          <v-text-field
-            v-model="employeeSearch"
-            placeholder="Search by name or position..."
-            prepend-inner-icon="mdi-magnify"
-            variant="outlined"
-            density="compact"
-            hide-details
-            clearable
-            autofocus
-            @keydown.esc="selectorDialog = false"
-          />
-        </div>
-        
-        <v-card-text v-if="isLoadingEmployees" class="text-center py-8">
-          <v-progress-circular indeterminate color="primary" />
-        </v-card-text>
-        
-        <v-list v-else lines="three" class="py-0" style="max-height: 400px; overflow-y: auto;">
-          <template v-if="filteredEmployees.length === 0">
-            <v-list-item>
-              <v-list-item-title class="text-center text-grey">
-                No employees match "{{ employeeSearch }}"
-              </v-list-item-title>
-            </v-list-item>
-          </template>
-          <v-list-item
-            v-for="emp in filteredEmployees"
-            :key="emp.employee_id"
-            :disabled="!emp.is_available"
-            @click="emp.is_available && assignEmployee(emp.employee_id)"
-          >
-            <template #prepend>
-              <v-avatar :color="emp.is_available ? 'primary' : 'grey'" size="40">
-                <span class="text-white font-weight-bold">
-                  {{ emp.first_name?.charAt(0) }}{{ emp.last_name?.charAt(0) }}
-                </span>
-              </v-avatar>
-            </template>
-            
-            <v-list-item-title :class="{ 'text-grey': !emp.is_available }">
-              {{ emp.first_name }} {{ emp.last_name }}
-            </v-list-item-title>
-            
-            <v-list-item-subtitle>
-              {{ emp.position_title }}
-              <template v-if="emp.conflict_reason">
-                • <span class="text-error">{{ emp.conflict_reason }}</span>
-              </template>
-            </v-list-item-subtitle>
-            
-            <!-- Availability Status Row -->
-            <v-list-item-subtitle class="mt-1">
-              <v-chip 
-                size="x-small" 
-                :color="getAvailabilityDisplay(emp).color"
-                variant="tonal"
-                class="mr-1"
-              >
-                <v-icon size="12" start>{{ getAvailabilityDisplay(emp).icon }}</v-icon>
-                {{ getAvailabilityDisplay(emp).text }}
-              </v-chip>
-            </v-list-item-subtitle>
-            
-            <template #append>
-              <div class="text-right">
-                <div class="text-caption">{{ emp.current_week_hours?.toFixed(1) || 0 }}h this week</div>
-                <v-chip 
-                  size="x-small" 
-                  :color="emp.reliability_score >= 90 ? 'success' : emp.reliability_score >= 70 ? 'warning' : 'error'"
-                  variant="tonal"
-                >
-                  {{ Math.round(emp.reliability_score) }}% reliable
-                </v-chip>
-              </div>
-            </template>
-          </v-list-item>
-        </v-list>
-        
-        <v-divider />
-        
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="selectorDialog = false">Cancel</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    
-    <!-- Time Edit Dialog -->
-    <v-dialog v-model="timeEditDialog" max-width="360">
-      <v-card>
-        <v-card-title>
-          <v-icon class="mr-2">mdi-clock-edit-outline</v-icon>
-          Edit Shift Time
-        </v-card-title>
-        
-        <v-card-text>
-          <div v-if="editingSlot" class="mb-4">
-            <v-chip size="small" :color="getRoleCategoryColor(editingSlot.role_category)" class="mb-2">
-              {{ editingSlot.role_label }}
-            </v-chip>
-          </div>
-          
-          <v-row>
-            <v-col cols="6">
-              <v-text-field
-                v-model="editStartTime"
-                label="Start Time"
-                type="time"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                v-model="editEndTime"
-                label="End Time"
-                type="time"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="timeEditDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="isSavingTime" @click="saveSlotTimes">
-            Save
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    
-    <!-- Templates Dialog -->
-    <v-dialog v-model="templatesDialog" max-width="700">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-file-document-multiple-outline</v-icon>
-          Schedule Templates
-          <v-spacer />
-          <v-btn 
-            v-if="draftId" 
-            variant="tonal" 
-            color="primary" 
-            size="small"
-            @click="templatesDialog = false; openSaveTemplateDialog()"
-          >
-            <v-icon start>mdi-content-save</v-icon>
-            Save Current as Template
-          </v-btn>
-        </v-card-title>
-        
-        <v-divider />
-        
-        <v-card-text v-if="isLoadingTemplates" class="text-center py-8">
-          <v-progress-circular indeterminate color="primary" />
-        </v-card-text>
-        
-        <v-list v-else-if="templates.length > 0" lines="three">
-          <v-list-item
-            v-for="template in templates"
-            :key="template.id"
-            :disabled="isApplyingTemplate"
-            @click="applyTemplate(template)"
-          >
-            <template #prepend>
-              <v-avatar color="secondary" variant="tonal">
-                <v-icon>mdi-file-document-outline</v-icon>
-              </v-avatar>
-            </template>
-            
-            <v-list-item-title class="font-weight-medium">
-              {{ template.name }}
-              <v-chip v-if="template.is_default" size="x-small" color="primary" class="ml-2">
-                Default
-              </v-chip>
-            </v-list-item-title>
-            
-            <v-list-item-subtitle>
-              {{ template.description || 'No description' }}
-            </v-list-item-subtitle>
-            
-            <v-list-item-subtitle class="mt-1">
-              <v-chip size="x-small" variant="outlined" class="mr-1">
-                {{ template.slot_count }} slots
-              </v-chip>
-              <v-chip size="x-small" variant="outlined" class="mr-1">
-                {{ template.service_count }} services
-              </v-chip>
-              <v-chip v-if="template.location_name" size="x-small" variant="outlined">
-                {{ template.location_name }}
-              </v-chip>
-              <v-chip v-else size="x-small" variant="outlined" color="success">
-                Any Location
-              </v-chip>
-            </v-list-item-subtitle>
-            
-            <template #append>
-              <div class="d-flex flex-column align-end">
-                <div class="text-caption text-grey mb-1">
-                  Used {{ template.usage_count }} times
-                </div>
-                <v-btn 
-                  icon="mdi-delete" 
-                  size="x-small" 
-                  variant="text" 
-                  color="error"
-                  @click.stop="deleteTemplate(template)"
-                />
-              </div>
-            </template>
-          </v-list-item>
-        </v-list>
-        
-        <v-card-text v-else class="text-center py-8">
-          <v-icon size="48" color="grey">mdi-file-document-outline</v-icon>
-          <p class="text-body-2 text-grey mt-2">No templates found</p>
-          <p class="text-caption text-grey">
-            Build a schedule and save it as a template to reuse it later
-          </p>
-        </v-card-text>
-        
-        <v-divider />
-        
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="templatesDialog = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    
-    <!-- Save Template Dialog -->
-    <v-dialog v-model="saveTemplateDialog" max-width="450">
-      <v-card>
-        <v-card-title>
-          <v-icon class="mr-2">mdi-content-save-outline</v-icon>
-          Save as Template
-        </v-card-title>
-        
-        <v-card-text>
-          <v-text-field
-            v-model="templateName"
-            label="Template Name"
-            placeholder="e.g., Standard Monday-Friday"
-            variant="outlined"
-            density="compact"
-            :rules="[(v: string) => !!v.trim() || 'Name is required']"
-            class="mb-3"
-          />
-          
-          <v-textarea
-            v-model="templateDescription"
-            label="Description (optional)"
-            placeholder="Describe when to use this template..."
-            variant="outlined"
-            density="compact"
-            rows="2"
-            class="mb-3"
-          />
-          
-          <v-checkbox
-            v-model="templateLocationSpecific"
-            label="Location-specific template"
-            hint="If checked, this template will only be available for the current location"
-            persistent-hint
-            density="compact"
-          />
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="saveTemplateDialog = false">Cancel</v-btn>
-          <v-btn 
-            color="primary" 
-            :loading="isSavingTemplate" 
-            :disabled="!templateName.trim()"
-            @click="saveAsTemplate"
-          >
-            Save Template
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <ScheduleWizardEmployeeSelector
+      ref="employeeSelectorRef"
+      :draft-id="draftId || ''"
+      :week-start="selectedWeekStart"
+      :location-id="selectedLocationId"
+      @assigned="loadDraftSlots()"
+      @notify="showNotification($event.message, $event.color)"
+    />
+
+    <!-- Templates Manager (Browse & Save) -->
+    <ScheduleWizardTemplatesManager
+      ref="templatesManagerRef"
+      :week-start="selectedWeekStart"
+      :location-id="selectedLocationId"
+      :draft-id="draftId"
+      @applied="handleTemplateApplied"
+      @notify="showNotification($event.message, $event.color)"
+    />
   </div>
-</template>
 
 <style scoped>
 .schedule-wizard {

@@ -21,28 +21,29 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const severity = query.severity as string | undefined
   const limit = parseInt(query.limit as string) || 50
+  const offset = parseInt(query.offset as string) || 0
   
   // First, generate any new alerts
   try {
     await client.rpc('generate_compliance_alerts')
   } catch (e) {
     // Function may not exist yet, continue anyway
-    console.warn('[Compliance] generate_compliance_alerts not available:', e)
+    logger.warn('generate_compliance_alerts not available', 'Compliance', { error: e })
   }
   
   // Fetch active alerts
   let alertsQuery = client
     .from('compliance_alerts')
-    .select('*')
+    .select('*', { count: 'exact' })
     .is('resolved_at', null)
     .order('due_date', { ascending: true })
-    .limit(limit)
+    .range(offset, offset + limit - 1)
   
   if (severity) {
     alertsQuery = alertsQuery.eq('severity', severity)
   }
   
-  const { data: alerts, error } = await alertsQuery
+  const { data: alerts, count: totalAlerts, error } = await alertsQuery
   
   if (error) {
     throw createError({
@@ -59,13 +60,18 @@ export default defineEventHandler(async (event) => {
   }
   
   return {
-    total: alerts?.length || 0,
+    total: totalAlerts || 0,
     alerts,
     grouped,
     summary: {
       critical: grouped.critical.length,
       warning: grouped.warning.length,
       info: grouped.info.length
+    },
+    pagination: {
+      offset,
+      limit,
+      total: totalAlerts || 0
     }
   }
 })

@@ -3,43 +3,9 @@
  * Validates shift assignments before allowing drops
  */
 import { differenceInMinutes } from 'date-fns'
+import type { ScheduleShift, ScheduleEmployee, RuleValidationResult } from '~/types/schedule.types'
 
-// --- Types ---
-export interface ScheduleShift {
-  id: string
-  start_at: string // ISO String (DB column name)
-  end_at: string   // ISO String (DB column name)
-  location_id: string
-  location_name?: string
-  employee_id: string | null // DB uses employee_id not assigned_employee_id
-  role_required?: string
-  status: 'draft' | 'published' | 'completed' | 'missed' | 'cancelled' | 'open' | 'filled' | 'closed_clinic'
-  is_published: boolean
-  is_open_shift: boolean
-}
-
-export interface ScheduleEmployee {
-  id: string
-  first_name: string
-  last_name: string
-  full_name: string
-  initials: string
-  avatar_url?: string | null
-  position?: {
-    id: string
-    title: string
-  } | null
-  hoursScheduled?: number
-  targetHours?: number
-  reliabilityScore?: number
-}
-
-export interface ValidationResult {
-  valid: boolean
-  type: 'success' | 'warning' | 'error'
-  message: string | null
-  conflictShiftId?: string
-}
+export type { ScheduleShift, ScheduleEmployee, RuleValidationResult }
 
 export const useScheduleRules = () => {
 
@@ -51,7 +17,7 @@ export const useScheduleRules = () => {
     employee: ScheduleEmployee, 
     targetShift: ScheduleShift, 
     allShifts: ScheduleShift[]
-  ): ValidationResult => {
+  ): RuleValidationResult => {
 
     // 1. CRITICAL: Closed Clinic Check
     if (targetShift.status === 'closed_clinic') {
@@ -136,7 +102,7 @@ export const useScheduleRules = () => {
   /**
    * Get validation class for visual feedback
    */
-  const getValidationClass = (result: ValidationResult | null): string => {
+  const getValidationClass = (result: RuleValidationResult | null): string => {
     if (!result) return ''
     switch (result.type) {
       case 'error': return 'border-red-500 bg-red-50'

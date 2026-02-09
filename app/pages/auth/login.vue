@@ -243,7 +243,7 @@ async function handleSubmit() {
 
 /* Card Header */
 .card-header {
-  background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 50%, #0D3D12 100%);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)) 0%, #1B5E20 50%, #0D3D12 100%);
   position: relative;
   overflow: visible;
 }
@@ -279,7 +279,7 @@ async function handleSubmit() {
 }
 
 .paw-avatar {
-  background: linear-gradient(145deg, #4CAF50, #2E7D32) !important;
+  background: linear-gradient(145deg, rgb(var(--v-theme-skill-mentor)), rgb(var(--v-theme-primary))) !important;
   box-shadow: 
     0 10px 40px rgba(46, 125, 50, 0.4),
     0 0 60px rgba(76, 175, 80, 0.3),
@@ -401,7 +401,7 @@ async function handleSubmit() {
   letter-spacing: 0.5px;
   text-transform: none;
   height: 52px !important;
-  background: linear-gradient(135deg, #2E7D32, #1B5E20) !important;
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), #1B5E20) !important;
   box-shadow: 0 4px 15px rgba(46, 125, 50, 0.4) !important;
   transition: all 0.3s ease !important;
 }
@@ -420,7 +420,7 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   text-align: center;
-  color: #9e9e9e;
+  color: rgb(var(--v-theme-muted));
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -430,7 +430,7 @@ async function handleSubmit() {
 .demo-divider::after {
   content: '';
   flex: 1;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgb(var(--v-theme-border));
 }
 
 .demo-divider span {

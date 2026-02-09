@@ -2,9 +2,9 @@
   <v-card class="schedule-calendar" :elevation="2" rounded="lg">
     <v-card-title class="d-flex align-center justify-space-between">
       <div class="d-flex align-center gap-2">
-        <v-btn icon="mdi-chevron-left" variant="text" @click="navigatePrevious" />
+        <v-btn icon="mdi-chevron-left" variant="text" aria-label="Previous" @click="navigatePrevious" />
         <span class="text-h6">{{ headerTitle }}</span>
-        <v-btn icon="mdi-chevron-right" variant="text" @click="navigateNext" />
+        <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="navigateNext" />
       </div>
       
       <div class="d-flex align-center gap-2">
@@ -413,7 +413,7 @@ function getShiftIcon(type: ShiftType): string {
 .week-day-header {
   padding: 12px 8px;
   text-align: center;
-  background: #fafafa;
+  background: rgb(var(--v-theme-surface-variant));
 }
 
 .week-day-header.today {
@@ -423,7 +423,7 @@ function getShiftIcon(type: ShiftType): string {
 .day-name {
   display: block;
   font-size: 0.75rem;
-  color: #666;
+  color: rgb(var(--v-theme-text-secondary));
 }
 
 .day-number {
@@ -484,7 +484,7 @@ function getShiftIcon(type: ShiftType): string {
 
 .schedule-item.full-day {
   background: rgba(76, 175, 80, 0.15);
-  color: #2e7d32;
+  color: rgb(var(--v-theme-primary));
 }
 
 .schedule-item.off {
@@ -521,8 +521,8 @@ function getShiftIcon(type: ShiftType): string {
   text-align: center;
   font-size: 0.75rem;
   font-weight: 500;
-  color: #666;
-  background: #fafafa;
+  color: rgb(var(--v-theme-text-secondary));
+  background: rgb(var(--v-theme-surface-variant));
 }
 
 .month-body {
@@ -559,7 +559,7 @@ function getShiftIcon(type: ShiftType): string {
 }
 
 .month-day-cell.today .day-number {
-  background: #2e7d32;
+  background: rgb(var(--v-theme-primary));
   color: white;
   border-radius: 50%;
   width: 28px;
@@ -585,11 +585,11 @@ function getShiftIcon(type: ShiftType): string {
   border-radius: 50%;
 }
 
-.schedule-dot.morning { background: #FF9800; }
-.schedule-dot.afternoon { background: #2196F3; }
+.schedule-dot.morning { background: rgb(var(--v-theme-skill-learning)); }
+.schedule-dot.afternoon { background: rgb(var(--v-theme-skill-competent)); }
 .schedule-dot.evening { background: #9C27B0; }
-.schedule-dot.full-day { background: #4CAF50; }
-.schedule-dot.off { background: #9E9E9E; }
+.schedule-dot.full-day { background: rgb(var(--v-theme-skill-mentor)); }
+.schedule-dot.off { background: rgb(var(--v-theme-muted)); }
 
 /* Day View */
 .schedule-list-item {

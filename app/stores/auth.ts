@@ -126,8 +126,8 @@ export const useAuthStore = defineStore('auth', {
         console.log('[AuthStore] Profile fetched successfully:', data)
         this.profile = data as Profile
         return this.profile
-      } catch (err: any) {
-        this.error = err?.message || 'Failed to fetch profile'
+      } catch (err: unknown) {
+        this.error = err instanceof Error ? err.message : 'Failed to fetch profile'
         console.error('[AuthStore] Error:', err)
         return null
       } finally {
@@ -159,8 +159,8 @@ export const useAuthStore = defineStore('auth', {
         if (error) throw error
         this.profile = data as Profile
         return data
-      } catch (err: any) {
-        this.error = err?.message || 'Failed to update profile'
+      } catch (err: unknown) {
+        this.error = err instanceof Error ? err.message : 'Failed to update profile'
         throw err
       } finally {
         this.isLoading = false
@@ -207,7 +207,9 @@ export const useAuthStore = defineStore('auth', {
           { name: 'payroll', getter: () => usePayrollStore() },
           { name: 'operations', getter: () => useOperationsStore() },
           { name: 'integrations', getter: () => useIntegrationsStore() },
-          { name: 'academy', getter: () => useAcademyStore() },
+          { name: 'academy-courses', getter: () => useAcademyCoursesStore() },
+          { name: 'academy-progress', getter: () => useAcademyProgressStore() },
+          { name: 'academy-quiz', getter: () => useAcademyQuizStore() },
           { name: 'skillEngine', getter: () => useSkillEngineStore() },
           { name: 'user', getter: () => useUserStore() },
         ]
@@ -215,6 +217,11 @@ export const useAuthStore = defineStore('auth', {
         for (const { name, getter } of stores) {
           try {
             const store = getter()
+            // Clean up realtime subscriptions before resetting scheduleBuilder
+            // to prevent dangling Supabase channels (M31)
+            if (name === 'scheduleBuilder' && 'unsubscribeFromRealtime' in store) {
+              (store as ReturnType<typeof useScheduleBuilderStore>).unsubscribeFromRealtime()
+            }
             if (store && typeof store.$reset === 'function') {
               store.$reset()
               console.log(`[AuthStore] Reset ${name} store`)

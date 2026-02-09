@@ -11,31 +11,7 @@ definePageMeta({
   layout: 'default'
 })
 
-// Types
-interface Service {
-  id: string
-  name: string
-  code: string
-  color: string
-  icon: string
-  description: string | null
-  requires_dvm: boolean
-  min_staff_count: number
-  is_active: boolean
-  sort_order: number
-}
-
-interface StaffingRequirement {
-  id: string
-  service_id: string
-  role_category: string
-  role_label: string
-  min_count: number
-  max_count: number | null
-  is_required: boolean
-  priority: number
-  sort_order: number
-}
+import type { Service, StaffingRequirement } from '~/types/schedule.types'
 
 // Composables
 const supabase = useSupabaseClient()
@@ -397,7 +373,7 @@ onMounted(async () => {
     </div>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="d-flex justify-center align-center" style="min-height: 400px;">
+    <div v-if="isLoading" class="d-flex justify-center align-center min-h-400">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
 
@@ -439,7 +415,7 @@ onMounted(async () => {
               <template #append>
                 <v-menu>
                   <template #activator="{ props }">
-                    <v-btn icon="mdi-dots-vertical" variant="text" size="small" v-bind="props" />
+                    <v-btn icon="mdi-dots-vertical" variant="text" size="small" aria-label="More options" v-bind="props" />
                   </template>
                   <v-list density="compact">
                     <v-list-item @click="openEditService(service)">
@@ -526,8 +502,8 @@ onMounted(async () => {
                 </td>
                 <td class="text-center">{{ req.priority }}</td>
                 <td class="text-right">
-                  <v-btn icon="mdi-pencil" variant="text" size="small" @click="openEditRequirement(req)" />
-                  <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="confirmDeleteRequirement(req)" />
+                  <v-btn icon="mdi-pencil" variant="text" size="small" aria-label="Edit" @click="openEditRequirement(req)" />
+                  <v-btn icon="mdi-delete" variant="text" size="small" color="error" aria-label="Delete" @click="confirmDeleteRequirement(req)" />
                 </td>
               </tr>
             </tbody>

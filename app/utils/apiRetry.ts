@@ -186,18 +186,27 @@ export async function withRetry<T>(
   }
 }
 
+export interface BatchOptions extends RetryOptions {
+  /** Max number of items processed in parallel (default: 5) */
+  concurrency?: number
+}
+
 /**
- * Batch operations with individual retry logic
- * Useful for bulk updates where some may fail due to conflicts
+ * Batch operations with individual retry logic and concurrency control.
+ * Useful for bulk updates where some may fail due to conflicts.
+ *
+ * Items are processed in chunks of `concurrency` size using
+ * `Promise.allSettled`, each individual item retried via `withRetry`.
  * 
  * @example
  * ```ts
  * const results = await batchWithRetry(
  *   shiftIds,
- *   async (id) => supabase.from('shifts').update({ status: 'published' }).eq('id', id)
+ *   async (id) => supabase.from('shifts').update({ status: 'published' }).eq('id', id),
+ *   { concurrency: 10 }
  * )
  * 
- * const failed = results.filter(r => r.error)
+ * const failed = results.filter(r => r.result.error)
  * if (failed.length > 0) {
  *   toast.warning(`${failed.length} shifts failed to update`)
  * }
@@ -206,14 +215,38 @@ export async function withRetry<T>(
 export async function batchWithRetry<T, R>(
   items: T[],
   operation: (item: T) => Promise<R>,
-  options: RetryOptions = {}
+  options: BatchOptions = {}
 ): Promise<{ item: T; result: RetryResult<R> }[]> {
-  const results = await Promise.all(
-    items.map(async (item) => ({
-      item,
-      result: await withRetry(() => operation(item), options)
-    }))
-  )
+  const { concurrency = 5, ...retryOptions } = options
+  const results: { item: T; result: RetryResult<R> }[] = []
+
+  for (let i = 0; i < items.length; i += concurrency) {
+    const chunk = items.slice(i, i + concurrency)
+    const settled = await Promise.allSettled(
+      chunk.map(async (item) => ({
+        item,
+        result: await withRetry(() => operation(item), retryOptions)
+      }))
+    )
+
+    for (const outcome of settled) {
+      if (outcome.status === 'fulfilled') {
+        results.push(outcome.value)
+      } else {
+        // Should not happen since withRetry catches errors, but handle defensively
+        results.push({
+          item: chunk[settled.indexOf(outcome)],
+          result: {
+            data: null,
+            error: outcome.reason instanceof Error ? outcome.reason : new Error(String(outcome.reason)),
+            attempts: 1,
+            retriedErrors: []
+          }
+        })
+      }
+    }
+  }
+
   return results
 }
 

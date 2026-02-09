@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
   const adminClient = createAdminClient()
 
   // Create the intake link using the database function
-  const { data: linkResult, error: createError } = await adminClient
+  const { data: linkResult, error: rpcError } = await adminClient
     .rpc('create_intake_link', {
       p_link_type: body.linkType,
       p_prefill_email: body.prefillEmail || null,
@@ -77,8 +77,8 @@ export default defineEventHandler(async (event) => {
       p_internal_notes: body.internalNotes || null
     })
 
-  if (createError) {
-    console.error('Error creating intake link:', createError)
+  if (rpcError) {
+    logger.error('Error creating intake link', rpcError, 'intake/links')
     throw createError({
       statusCode: 500,
       message: 'Failed to create intake link'
@@ -98,7 +98,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (fetchError) {
-    console.error('Error fetching link details:', fetchError)
+    logger.error('Error fetching link details', fetchError, 'intake/links')
   }
 
   // Generate the full URL
@@ -136,9 +136,9 @@ export default defineEventHandler(async (event) => {
       .eq('id', linkResult[0].id)
     
     if (!emailResult.success) {
-      console.warn(`[Intake] Failed to send email to ${body.prefillEmail}: ${emailResult.error}`)
+      logger.warn('Failed to send email', 'Intake', { email: body.prefillEmail, error: emailResult.error })
     } else {
-      console.log(`[Intake] Email sent to ${body.prefillEmail} (ID: ${emailResult.messageId})`)
+      logger.info('Email sent', 'Intake', { email: body.prefillEmail, messageId: emailResult.messageId })
     }
   }
 

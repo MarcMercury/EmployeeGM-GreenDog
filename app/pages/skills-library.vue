@@ -47,8 +47,8 @@
           </v-col>
           <v-col cols="12" md="2" class="d-flex align-center">
             <v-btn-toggle v-model="viewMode" mandatory density="comfortable" color="primary">
-              <v-btn value="grid" icon="mdi-view-grid" />
-              <v-btn value="list" icon="mdi-format-list-bulleted" />
+              <v-btn value="grid" icon="mdi-view-grid" aria-label="Grid view" />
+              <v-btn value="list" icon="mdi-format-list-bulleted" aria-label="List view" />
             </v-btn-toggle>
           </v-col>
         </v-row>
@@ -87,8 +87,16 @@
       </v-expand-transition>
     </v-card>
 
+    <!-- Error State -->
+    <v-alert v-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="loadSkillLibrary()">Retry</v-btn>
+      </template>
+    </v-alert>
+
     <!-- Loading State -->
-    <template v-if="loading">
+    <template v-else-if="loading">
       <v-row>
         <v-col v-for="i in 6" :key="i" cols="12" md="6" lg="4">
           <v-card rounded="lg" class="mb-4">
@@ -119,7 +127,7 @@
               </v-chip>
             </v-card-title>
             <v-divider />
-            <v-card-text class="pa-0" style="max-height: 400px; overflow-y: auto;">
+            <v-card-text class="pa-0 scrollable-md">
               <v-list density="compact" class="py-0">
                 <v-list-item
                   v-for="skill in category.skills"
@@ -206,7 +214,7 @@
             </v-chip>
           </div>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="skillDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="skillDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-6">
@@ -276,36 +284,19 @@
 </template>
 
 <script setup lang="ts">
+import type { SkillLibraryItem, CategoryGroup, Course } from '~/types/skill.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
 })
-
-interface SkillLibraryItem {
-  id: string
-  name: string
-  category: string
-  description?: string | null
-  level_descriptions?: Record<string, string> | null
-  is_active?: boolean
-}
-
-interface CategoryGroup {
-  name: string
-  skills: SkillLibraryItem[]
-}
-
-interface Course {
-  id: string
-  title: string
-  skill_id?: string
-}
 
 const client = useSupabaseClient()
 const user = useSupabaseUser()
 
 // State
 const loading = ref(true)
+const pageError = ref<string | null>(null)
 const skillLibrary = ref<SkillLibraryItem[]>([])
 const courses = ref<Course[]>([])
 const searchQuery = ref('')
@@ -519,6 +510,7 @@ async function loadSkillLibrary() {
     }
   } catch (err) {
     console.error('Error loading skill library:', err)
+    pageError.value = err instanceof Error ? err.message : 'Failed to load skill library'
   } finally {
     loading.value = false
   }

@@ -86,12 +86,13 @@
 
     <!-- Leads Table -->
     <v-card variant="outlined">
-      <v-data-table
+      <v-data-table-virtual
         :headers="headers"
         :items="filteredLeads"
         :search="search"
         :loading="loading"
         hover
+        height="calc(100vh - 340px)"
       >
         <template #item.lead_name="{ item }">
           <div class="d-flex align-center py-2">
@@ -233,7 +234,7 @@
             class="py-8"
           />
         </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
 
     <!-- Add/Edit Lead Dialog -->
@@ -332,39 +333,18 @@
 </template>
 
 <script setup lang="ts">
+import type { Lead, MarketingEvent } from '~/types/marketing.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'marketing-admin']
 })
 
-interface Lead {
-  id: string
-  event_id: string | null
-  source_event_id: string | null
-  lead_name: string
-  email: string | null
-  phone: string | null
-  source: string | null
-  status: string
-  notes: string | null
-  created_at: string
-  source_event?: { id: string; name: string } | null
-  prize_inventory_item_id: string | null
-  prize_quantity: number | null
-  prize_location: string | null
-  prize_item?: { id: string; name: string } | null
-}
-
-interface Event {
-  id: string
-  name: string
-}
-
 const client = useSupabaseClient()
 
 // State
 const leads = ref<Lead[]>([])
-const events = ref<Event[]>([])
+const events = ref<MarketingEvent[]>([])
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)

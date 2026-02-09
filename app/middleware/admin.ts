@@ -1,29 +1,25 @@
 /**
  * Admin Middleware (Store-based)
- * Uses AuthStore for role checks with caching
- * 
+ * Uses AuthStore + SECTION_ACCESS for role checks with caching.
+ * Relies on auth.ts middleware having populated authStore.profile.
+ *
  * Allowed roles: super_admin, admin
  */
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const supabase = useSupabaseClient()
-  
-  // Verify session first
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session?.user) {
+  const authStore = useAuthStore()
+
+  // auth.ts should have populated the profile — fail closed if missing
+  if (!authStore.profile) {
     return navigateTo('/auth/login')
   }
-  
-  const authStore = useAuthStore()
-  
-  // Wait for profile to load if needed
-  if (!authStore.profile) {
-    await authStore.fetchProfile(session.user.id)
-  }
 
-  // Check if user is admin (includes super_admin)
-  if (!authStore.isAdmin) {
-    console.warn('[Middleware] Non-admin attempted to access:', to.path)
+  const role = (authStore.profile.role as UserRole) || 'user'
+
+  if (!SECTION_ACCESS.admin.includes(role)) {
+    console.warn('[Middleware:admin] Access denied for role:', role, 'to path:', to.path)
     return navigateTo('/')
   }
 })

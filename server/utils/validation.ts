@@ -120,6 +120,13 @@ export function validateParams<T extends ZodSchema>(
 export const uuidSchema = z.string().uuid('Invalid UUID format')
 
 /**
+ * UUID route param
+ */
+export const uuidParamSchema = z.object({
+  id: uuidSchema
+})
+
+/**
  * Pagination query params
  */
 export const paginationSchema = z.object({
@@ -206,3 +213,114 @@ export const scheduleEntrySchema = z.object({
 
 // Export z for convenience
 export { z }
+
+// ===================
+// Marketplace Schemas
+// ===================
+
+export const gigCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200),
+  description: z.string().min(1, 'Description is required').max(5000),
+  bounty_value: z.number().int().min(1, 'Bounty must be at least 1').max(10000),
+  duration_minutes: z.number().int().min(5).max(480).default(60),
+  flake_penalty: z.number().int().min(0).max(1000).default(0),
+  category: z.string().min(1).max(100).optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+  icon: z.string().max(50).default('mdi-star'),
+  max_claims: z.number().int().min(1).max(100).default(1),
+  is_recurring: z.boolean().default(false),
+})
+
+export const gigUpdateSchema = gigCreateSchema.partial()
+
+export const rewardCreateSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().max(5000).optional(),
+  cost: z.number().int().min(1).max(100000),
+  category: z.string().max(100).optional(),
+  icon: z.string().max(50).optional(),
+  stock_quantity: z.number().int().min(0).nullable().optional(),
+  is_active: z.boolean().default(true),
+  requires_approval: z.boolean().default(false),
+})
+
+export const rewardUpdateSchema = rewardCreateSchema.partial()
+
+// ===================
+// Compliance Schemas
+// ===================
+
+export const complianceResolveSchema = z.object({
+  alertId: uuidSchema,
+  notes: z.string().max(5000).optional(),
+})
+
+// ===================
+// User Admin Schemas
+// ===================
+
+export const userPatchSchema = z.object({
+  role: z.string().optional(),
+  is_active: z.boolean().optional(),
+  first_name: z.string().min(1).max(100).optional(),
+  last_name: z.string().min(1).max(100).optional(),
+  phone: z.string().max(50).optional(),
+})
+
+export const userCreateSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(128),
+  first_name: z.string().min(1).max(100),
+  last_name: z.string().min(1).max(100),
+  role: z.string().default('user'),
+  profile_id: uuidSchema.optional(),
+})
+
+// ===================
+// EzyVet Contact Schema
+// ===================
+
+export const ezyvetContactSchema = z.object({
+  ezyvet_contact_code: z.string().min(1),
+  first_name: z.string().max(200).optional().nullable(),
+  last_name: z.string().max(200).optional().nullable(),
+  email: z.string().max(300).optional().nullable(),
+  phone_mobile: z.string().max(50).optional().nullable(),
+  address_city: z.string().max(200).optional().nullable(),
+  address_zip: z.string().max(20).optional().nullable(),
+  division: z.string().max(200).optional().nullable(),
+  referral_source: z.string().max(200).optional().nullable(),
+  breed: z.string().max(200).optional().nullable(),
+  department: z.string().max(200).optional().nullable(),
+  revenue_ytd: z.coerce.number().min(0).max(10_000_000).default(0),
+  is_active: z.boolean().default(true),
+})
+
+export const ezyvetUpsertSchema = z.object({
+  contacts: z.array(ezyvetContactSchema).min(1, 'At least one contact required').max(10000, 'Maximum 10,000 contacts per batch'),
+})
+
+// ===================
+// Intake Link Schema
+// ===================
+
+export const intakeLinkSchema = z.object({
+  linkType: z.enum([
+    'job_application',
+    'student_enrollment',
+    'externship_signup',
+    'general_intake',
+    'referral_partner',
+    'event_registration'
+  ]),
+  prefillEmail: z.string().email().optional(),
+  prefillFirstName: z.string().max(100).optional(),
+  prefillLastName: z.string().max(100).optional(),
+  targetPositionId: uuidSchema.optional(),
+  targetDepartmentId: uuidSchema.optional(),
+  targetLocationId: uuidSchema.optional(),
+  targetEventId: uuidSchema.optional(),
+  expiresInDays: z.number().int().min(1).max(365).default(7),
+  internalNotes: z.string().max(5000).optional(),
+  sendEmail: z.boolean().default(false),
+})

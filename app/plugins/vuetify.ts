@@ -34,6 +34,11 @@ export default defineNuxtPlugin((nuxtApp) => {
             'on-secondary': '#FFFFFF',
             'on-surface': '#212121',
             'on-background': '#212121',
+            // Semantic tokens for borders, muted text, and surface variants
+            'surface-variant': '#FAFAFA',
+            'border': '#E0E0E0',
+            'text-secondary': '#666666',
+            'muted': '#9E9E9E',
             // Custom skill level colors
             'skill-learning': '#FF9800',    // 0-2: Learning
             'skill-competent': '#2196F3',   // 3-4: Competent
@@ -56,6 +61,11 @@ export default defineNuxtPlugin((nuxtApp) => {
             'on-secondary': '#000000',
             'on-surface': '#FFFFFF',
             'on-background': '#FFFFFF',
+            // Semantic tokens for dark theme
+            'surface-variant': '#2C2C2C',
+            'border': '#424242',
+            'text-secondary': '#B0B0B0',
+            'muted': '#757575',
             'skill-learning': '#FFB74D',
             'skill-competent': '#64B5F6',
             'skill-mentor': '#81C784'

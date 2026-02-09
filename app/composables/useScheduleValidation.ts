@@ -9,31 +9,9 @@
  * - overtime_threshold
  * - time_off conflicts
  */
+import type { ScheduleShift, ValidationViolation, ShiftValidationResult, EmployeeHoursSummary } from '~/types/schedule.types'
 
-export interface ValidationViolation {
-  rule: string
-  type: string
-  severity: 'error' | 'warning' | 'info'
-  message: string
-}
-
-export interface ValidationResult {
-  isValid: boolean
-  violations: ValidationViolation[]
-  hasErrors: boolean
-  hasWarnings: boolean
-  weeklyHours: number
-}
-
-export interface EmployeeHoursSummary {
-  employeeId: string
-  firstName: string
-  lastName: string
-  scheduledHours: number
-  isOvertime: boolean
-  isApproachingOvertime: boolean
-  shiftCount: number
-}
+export type { ValidationViolation, ShiftValidationResult, EmployeeHoursSummary }
 
 export function useScheduleValidation() {
   const supabase = useSupabaseClient()
@@ -49,7 +27,7 @@ export function useScheduleValidation() {
     endTime: string,   // HH:MM
     locationId?: string,
     excludeShiftId?: string
-  ): Promise<ValidationResult> {
+  ): Promise<ShiftValidationResult> {
     try {
       const { data, error } = await supabase.rpc('validate_shift_assignment', {
         p_employee_id: employeeId,
@@ -62,11 +40,16 @@ export function useScheduleValidation() {
       
       if (error) {
         console.error('Validation error:', error)
-        // Return valid with no violations on error (allow assignment)
+        // Fail-closed: reject the assignment when validation is unavailable
         return {
-          isValid: true,
-          violations: [],
-          hasErrors: false,
+          isValid: false,
+          violations: [{
+            rule: 'system',
+            type: 'validation_unavailable',
+            severity: 'error' as const,
+            message: 'Scheduling validation is temporarily unavailable. Please try again or contact an administrator.'
+          }],
+          hasErrors: true,
           hasWarnings: false,
           weeklyHours: 0
         }
@@ -84,10 +67,16 @@ export function useScheduleValidation() {
       }
     } catch (err) {
       console.error('Validation exception:', err)
+      // Fail-closed: reject the assignment when validation throws
       return {
-        isValid: true,
-        violations: [],
-        hasErrors: false,
+        isValid: false,
+        violations: [{
+          rule: 'system',
+          type: 'validation_unavailable',
+          severity: 'error' as const,
+          message: 'Scheduling validation encountered an error. Please try again or contact an administrator.'
+        }],
+        hasErrors: true,
         hasWarnings: false,
         weeklyHours: 0
       }
@@ -131,7 +120,7 @@ export function useScheduleValidation() {
    */
   async function getWeeklyHoursSummary(
     weekStart: Date,
-    shifts: any[]
+    shifts: ScheduleShift[]
   ): Promise<Map<string, EmployeeHoursSummary>> {
     const summary = new Map<string, EmployeeHoursSummary>()
     

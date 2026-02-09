@@ -35,14 +35,14 @@
     <v-card rounded="lg" class="mb-6">
       <v-card-text class="pa-4">
         <div class="d-flex align-center justify-space-between">
-          <v-btn icon="mdi-chevron-left" variant="text" @click="viewMode === 'month' ? previousMonth() : previousWeek()" />
+          <v-btn icon="mdi-chevron-left" variant="text" aria-label="Previous" @click="viewMode === 'month' ? previousMonth() : previousWeek()" />
           <div class="text-center">
             <h2 class="text-h5 font-weight-bold">{{ viewMode === 'month' ? currentMonthYear : currentWeekRange }}</h2>
             <v-btn variant="text" size="small" color="primary" @click="goToToday" class="mt-1">
               Today
             </v-btn>
           </div>
-          <v-btn icon="mdi-chevron-right" variant="text" @click="viewMode === 'month' ? nextMonth() : nextWeek()" />
+          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="viewMode === 'month' ? nextMonth() : nextWeek()" />
         </div>
       </v-card-text>
     </v-card>
@@ -294,7 +294,7 @@
       </div>
 
       <!-- Week Day Columns -->
-      <div class="calendar-body d-flex" style="min-height: 400px;">
+      <div class="calendar-body d-flex min-h-400">
         <div 
           v-for="day in currentWeekDays" 
           :key="day.date.toISOString()" 
@@ -389,7 +389,7 @@
     >
       <template v-if="selectedEvent">
         <v-toolbar color="primary">
-          <v-btn icon="mdi-close" variant="text" @click="drawer = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="drawer = false" />
           <v-toolbar-title>Event Details</v-toolbar-title>
           <v-spacer />
           <v-btn 
@@ -731,6 +731,8 @@
 </template>
 
 <script setup lang="ts">
+import type { ExternalLink, EventAttachment, MarketingEvent, CalendarNote } from '~/types/marketing.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'marketing-admin']
@@ -742,52 +744,6 @@ const { isAdmin } = useAppData()
 // Permission check for creating events (admin, manager, marketing_admin, hr_admin with manage access)
 const { can } = usePermissions()
 const hasCreateAccess = computed(() => can('manage:marketing'))
-
-interface ExternalLink {
-  title: string
-  url: string
-}
-
-interface EventAttachment {
-  name: string
-  url: string
-  type?: string
-}
-
-interface MarketingEvent {
-  id: string
-  name: string
-  description: string | null
-  event_date: string
-  start_time: string | null
-  end_time: string | null
-  location: string | null
-  staffing_status: string
-  staffing_needs: string | null
-  status: string
-  event_type: string | null
-  external_links: ExternalLink[] | null
-  attachments: EventAttachment[] | null
-  registration_link: string | null
-  registration_required: boolean | null
-  notes: string | null
-  contact_name: string | null
-  contact_phone: string | null
-  contact_email: string | null
-  budget: number | null
-  expected_attendance: number | null
-  supplies_needed: string | null
-}
-
-interface CalendarNote {
-  id: string
-  note_date: string
-  title: string
-  content: string | null
-  color: string
-  created_by: string | null
-  created_at: string
-}
 
 interface CalendarDay {
   date: Date

@@ -1,39 +1,24 @@
 /**
  * Schedule-Access Middleware
- * Restricts schedule management pages to users with schedule management permissions
- * 
+ * Uses AuthStore + SECTION_ACCESS.schedules_manage for role checks.
+ * Relies on auth.ts middleware having populated authStore.profile.
+ *
  * Allowed roles: super_admin, admin, manager, sup_admin, office_admin
- * 
- * Matches SECTION_ACCESS.schedules_manage from app/types/index.ts
  */
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const supabase = useSupabaseClient()
-  
-  // Get session directly
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session?.user) {
+  const authStore = useAuthStore()
+
+  if (!authStore.profile) {
     return navigateTo('/auth/login')
   }
-  
-  // Check role from database directly
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', session.user.id)
-    .single()
-  
-  // Handle errors gracefully - fail closed
-  if (error || !profile) {
-    console.error('[Middleware:schedule-access] Failed to fetch profile:', error?.message)
-    return navigateTo('/auth/login')
-  }
-  
-  // Allowed roles for schedule management - matches SECTION_ACCESS.schedules_manage
-  const allowedRoles = ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin']
-  
-  if (!allowedRoles.includes(profile.role)) {
-    console.warn('[Middleware:schedule-access] Access denied for role:', profile.role, 'to path:', to.path)
+
+  const role = (authStore.profile.role as UserRole) || 'user'
+
+  if (!SECTION_ACCESS.schedules_manage.includes(role)) {
+    console.warn('[Middleware:schedule-access] Access denied for role:', role, 'to path:', to.path)
     return navigateTo('/')
   }
 })

@@ -82,12 +82,7 @@
 </template>
 
 <script setup lang="ts">
-interface XPGain {
-  id: string
-  points: number
-  reason: string
-  source_type: 'achievement' | 'skill' | 'training' | 'manual' | 'attendance' | 'performance'
-}
+import type { XPGain } from '~/types/skill.types'
 
 interface Props {
   currentLevel: number

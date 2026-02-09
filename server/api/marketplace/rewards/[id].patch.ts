@@ -28,20 +28,16 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
-  const body = await readBody(event)
+  const body = await validateBody(event, rewardUpdateSchema.extend({
+    image_url: z.string().url().optional().nullable(),
+    fulfillment_notes: z.string().max(5000).optional().nullable(),
+  }))
 
+  // Build update object from validated fields (omit undefined)
   const updates: Record<string, any> = {}
-  
-  if (body.title !== undefined) updates.title = body.title
-  if (body.description !== undefined) updates.description = body.description
-  if (body.cost !== undefined) updates.cost = body.cost
-  if (body.stock_quantity !== undefined) updates.stock_quantity = body.stock_quantity
-  if (body.icon !== undefined) updates.icon = body.icon
-  if (body.image_url !== undefined) updates.image_url = body.image_url
-  if (body.category !== undefined) updates.category = body.category
-  if (body.is_active !== undefined) updates.is_active = body.is_active
-  if (body.requires_approval !== undefined) updates.requires_approval = body.requires_approval
-  if (body.fulfillment_notes !== undefined) updates.fulfillment_notes = body.fulfillment_notes
+  for (const [key, value] of Object.entries(body)) {
+    if (value !== undefined) updates[key] = value
+  }
 
   const { data: reward, error } = await client
     .from('marketplace_rewards')

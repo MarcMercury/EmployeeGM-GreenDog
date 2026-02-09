@@ -214,11 +214,12 @@
 
     <!-- Candidates Table View -->
     <v-card v-if="viewMode === 'table'" variant="outlined">
-      <v-data-table
+      <v-data-table-virtual
         :headers="tableHeaders"
         :items="filteredCandidates"
         :loading="loading"
         hover
+        height="calc(100vh - 340px)"
         @click:row="(_e, { item }) => openCandidateDetail(item)"
       >
         <template #item.name="{ item }">
@@ -268,17 +269,17 @@
 
         <template #item.actions="{ item }">
           <div class="d-flex align-center gap-1">
-            <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" @click.stop="openCandidateDetail(item)" />
+            <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" aria-label="View" @click.stop="openCandidateDetail(item)" />
             <v-btn size="x-small" variant="tonal" color="primary" title="Log Interview" @click.stop="openInterviewDialogFor(item)">
               <v-icon start size="small">mdi-account-voice</v-icon>
               Interview
             </v-btn>
-            <v-btn v-if="item.phone" icon="mdi-phone" size="x-small" variant="text" title="Call" :href="`tel:${item.phone}`" @click.stop />
-            <v-btn v-if="item.email" icon="mdi-email" size="x-small" variant="text" title="Email" :href="`mailto:${item.email}`" @click.stop />
-            <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" @click.stop="openEditDialog(item)" />
+            <v-btn v-if="item.phone" icon="mdi-phone" size="x-small" variant="text" title="Call" aria-label="Call" :href="`tel:${item.phone}`" @click.stop />
+            <v-btn v-if="item.email" icon="mdi-email" size="x-small" variant="text" title="Email" aria-label="Send email" :href="`mailto:${item.email}`" @click.stop />
+            <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" aria-label="Edit" @click.stop="openEditDialog(item)" />
           </div>
         </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
 
     <!-- Candidates Card Grid View -->
@@ -335,7 +336,7 @@
               Interview
             </v-btn>
             <v-spacer />
-            <v-btn icon size="x-small" variant="text" @click.stop="openEditDialog(candidate)">
+            <v-btn icon size="x-small" variant="text" aria-label="Edit" @click.stop="openEditDialog(candidate)">
               <v-icon size="16">mdi-pencil</v-icon>
             </v-btn>
           </v-card-actions>
@@ -384,7 +385,7 @@
                 <v-col cols="12" sm="6">
                   <v-text-field :model-value="selectedCandidate.resume_url ? 'View Resume' : 'No resume'" label="Resume" prepend-inner-icon="mdi-file-document" variant="outlined" density="compact" readonly>
                     <template #append-inner>
-                      <v-btn v-if="selectedCandidate.resume_url" icon="mdi-open-in-new" size="small" variant="text" :href="selectedCandidate.resume_url" target="_blank" />
+                      <v-btn v-if="selectedCandidate.resume_url" icon="mdi-open-in-new" size="small" variant="text" aria-label="Open in new tab" :href="selectedCandidate.resume_url" target="_blank" />
                     </template>
                   </v-text-field>
                 </v-col>
@@ -692,72 +693,13 @@
 </template>
 
 <script setup lang="ts">
+import type { Candidate, CandidateInterviewView, RecruitingEmployee, CandidateSkill } from '~/types/recruiting.types'
+import type { Skill } from '~/types/skill.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string | null
-  target_position_id: string | null
-  job_positions: { title: string } | null
-  location_id: string | null
-  location: { name: string } | null
-  department_id: string | null
-  department: { name: string } | null
-  resume_url: string | null
-  status: string
-  notes: string | null
-  applied_at: string
-  source: string | null
-  referral_source: string | null
-  experience_years: number | null
-  interview_status: string | null
-  candidate_type: string | null
-}
-
-interface CandidateInterview {
-  id: string
-  candidate_id: string
-  interview_type: string
-  scheduled_at: string | null
-  interviewer_employee_id: string | null
-  interviewer?: { first_name: string; last_name: string } | null
-  duration_minutes: number | null
-  overall_score: number | null
-  technical_score: number | null
-  communication_score: number | null
-  cultural_fit_score: number | null
-  notes: string | null
-  strengths: string | null
-  concerns: string | null
-  recommendation: string | null
-  status: string
-  round_number: number
-  created_at: string
-}
-
-interface Employee {
-  id: string
-  full_name: string
-  profile_id?: string
-}
-
-interface CandidateSkill {
-  id: string
-  candidate_id: string
-  skill_id: string
-  rating: number
-}
-
-interface Skill {
-  id: string
-  name: string
-}
 
 const client = useSupabaseClient()
 const route = useRoute()
@@ -797,10 +739,10 @@ const addForm = ref()
 
 // Interview dialog state
 const interviewDialogOpen = ref(false)
-const candidateInterviews = ref<CandidateInterview[]>([])
+const candidateInterviews = ref<CandidateInterviewView[]>([])
 const interviewsLoading = ref(false)
 const expandedInterview = ref<string | null>(null)
-const employeesList = ref<Employee[]>([])
+const employeesList = ref<RecruitingEmployee[]>([])
 
 const newCandidate = reactive({
   first_name: '',

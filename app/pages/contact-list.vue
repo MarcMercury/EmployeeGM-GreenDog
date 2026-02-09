@@ -12,29 +12,20 @@ definePageMeta({
   middleware: ['auth']  // No special access required - all authenticated users
 })
 
-const supabase = useSupabaseClient()
+import type { ContactEmployee } from '~/types/admin.types'
 
-interface ContactEmployee {
-  id: string
-  first_name: string
-  last_name: string
-  email: string | null
-  position_title: string | null
-  department_name: string | null
-  manager_first_name: string | null
-  manager_last_name: string | null
-  phone: string | null
-  employment_status: string
-}
+const supabase = useSupabaseClient()
 
 const employees = ref<ContactEmployee[]>([])
 const loading = ref(true)
+const fetchError = ref<string | null>(null)
 const searchQuery = ref('')
 const selectedDepartment = ref<string | null>(null)
 
 // Fetch all employees with their manager info
 async function fetchEmployees() {
   loading.value = true
+  fetchError.value = null
   
   const { data, error } = await supabase
     .from('employees')
@@ -55,6 +46,7 @@ async function fetchEmployees() {
   
   if (error) {
     console.error('Error fetching employees:', error)
+    fetchError.value = 'Failed to load contact list. Please try again.'
   } else {
     employees.value = (data || []).map(emp => ({
       id: emp.id,
@@ -111,13 +103,25 @@ function formatManager(emp: ContactEmployee): string {
   return '—'
 }
 
-onMounted(() => {
-  fetchEmployees()
+onMounted(async () => {
+  try {
+    await fetchEmployees()
+  } catch (err) {
+    console.error('Failed to load contacts:', err)
+    fetchError.value = 'An unexpected error occurred loading contacts.'
+  }
 })
 </script>
 
 <template>
   <div class="contact-list-page pa-4">
+    <!-- Error banner -->
+    <v-alert v-if="fetchError" type="error" variant="tonal" class="mb-4" closable @click:close="fetchError = null">
+      {{ fetchError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="fetchEmployees()">Retry</v-btn>
+      </template>
+    </v-alert>
     <!-- Header -->
     <div class="mb-6">
       <h1 class="text-h4 font-weight-bold mb-1">Contact List</h1>

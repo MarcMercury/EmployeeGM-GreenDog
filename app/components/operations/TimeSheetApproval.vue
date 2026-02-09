@@ -24,7 +24,7 @@
           hide-details
           style="max-width: 150px"
         />
-        <v-btn icon="mdi-refresh" variant="text" @click="loadEntries" />
+        <v-btn icon="mdi-refresh" variant="text" aria-label="Refresh" @click="loadEntries" />
       </div>
     </v-card-title>
     

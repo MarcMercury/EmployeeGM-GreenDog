@@ -10,8 +10,8 @@ import { createClient } from '@supabase/supabase-js'
 export default defineEventHandler(async (event) => {
   // Create service role client for database operations
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw createError({
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       data: data || []
     }
   } catch (err) {
-    console.error('Error fetching positions:', err)
+    logger.error('Error fetching positions', err instanceof Error ? err : null, 'public/positions')
     throw createError({
       statusCode: 500,
       message: 'Failed to fetch positions'

@@ -243,30 +243,12 @@
 </template>
 
 <script setup lang="ts">
+import type { Candidate } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  status: string
-  applied_at: string
-  onboarding_complete: boolean
-  target_position_id?: string
-  job_positions?: { title: string } | null
-  candidate_skills?: { rating: number }[]
-  onboarding_checklist?: {
-    contract_sent: boolean
-    contract_signed: boolean
-    background_check: boolean
-    uniform_ordered: boolean
-    email_created: boolean
-  }
-}
 
 const client = useSupabaseClient()
 const toast = useToast()

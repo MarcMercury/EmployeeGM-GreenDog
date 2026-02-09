@@ -85,7 +85,8 @@ export const candidateStatuses = [
   'offer',
   'hired',
   'rejected',
-  'withdrawn'
+  'withdrawn',
+  'converted'
 ] as const
 
 /**

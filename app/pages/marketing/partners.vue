@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Partner, PartnerNote, PartnerContact } from '~/types/marketing.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'marketing-admin']
@@ -47,83 +49,6 @@ const partnerImportFields = [
   { key: 'membership_end', label: 'Membership End Date' },
   { key: 'notes', label: 'Notes' }
 ]
-
-// Type definitions
-interface Partner {
-  id: string
-  name: string
-  partner_type: string
-  status: string
-  contact_name: string | null
-  contact_phone: string | null
-  contact_email: string | null
-  website: string | null
-  address: string | null
-  membership_level: string | null
-  membership_fee: number | null
-  membership_end: string | null
-  instagram_handle: string | null
-  facebook_url: string | null
-  tiktok_handle: string | null
-  services_provided: string | null
-  notes: string | null
-  proximity_to_location: string | null
-  created_at: string
-  updated_at?: string
-  last_contact_date?: string | null
-  // Account credentials
-  account_email?: string | null
-  account_password?: string | null
-  account_number?: string | null
-  category?: string | null
-  // Relationship fields
-  relationship_score?: number | null
-  relationship_status?: string | null
-  last_visit_date?: string | null
-  next_followup_date?: string | null
-  needs_followup?: boolean
-  visit_frequency?: string | null
-  preferred_contact_time?: string | null
-  preferred_visit_day?: string | null
-  best_contact_person?: string | null
-  partnership_value?: string | null
-  priority?: string | null
-  payment_status?: string | null
-  payment_amount?: number | null
-  payment_date?: string | null
-  // Combined list flag
-  _isInfluencer?: boolean
-}
-
-interface PartnerNote {
-  id: string
-  partner_id: string
-  note_type: string
-  content: string
-  is_pinned: boolean
-  created_by: string | null
-  created_by_name: string | null
-  author_initials: string | null
-  edited_at: string | null
-  edited_by: string | null
-  edited_by_initials: string | null
-  category: string | null
-  created_at: string
-  updated_at: string
-}
-
-interface PartnerContact {
-  id: string
-  partner_id: string
-  name: string
-  title: string | null
-  email: string | null
-  phone: string | null
-  is_primary: boolean
-  notes: string | null
-  category: string | null
-  created_at: string
-}
 
 // Filter state
 const searchQuery = ref('')
@@ -1269,7 +1194,7 @@ function getPriorityColor(priority: string | null | undefined): string {
             </v-card-text>
             <v-card-actions class="px-4 pb-3">
               <v-spacer />
-              <v-btn icon size="x-small" variant="text" color="error" @click.stop="handleDelete(partner)">
+              <v-btn icon size="x-small" variant="text" color="error" aria-label="Delete partner" @click.stop="handleDelete(partner)">
                 <v-icon size="16">mdi-delete</v-icon>
               </v-btn>
             </v-card-actions>
@@ -1301,7 +1226,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-icon class="mr-2">{{ editingPartner ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           {{ editingPartner ? 'Edit Partner' : 'Add Partner' }}
           <v-spacer />
-          <v-btn icon variant="text" @click="dialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="dialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
@@ -1524,7 +1449,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-chip :color="getStatusColor(selectedPartner.status)" size="small" class="mr-2">
             {{ selectedPartner.status }}
           </v-chip>
-          <v-btn icon variant="text" @click="profileDialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="profileDialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
@@ -1560,7 +1485,7 @@ function getPriorityColor(priority: string | null | undefined): string {
 
         <v-divider />
 
-        <v-card-text style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
+        <v-card-text class="min-h-400 scrollable-60vh">
           <v-tabs-window v-model="profileTab">
             <!-- Overview Tab -->
             <v-tabs-window-item value="overview">
@@ -1842,10 +1767,10 @@ function getPriorityColor(priority: string | null | undefined): string {
                     </v-list-item-subtitle>
 
                     <template #append>
-                      <v-btn icon variant="text" size="small" @click="openEditContactDialog(contact)">
+                      <v-btn icon variant="text" size="small" aria-label="Edit contact" @click="openEditContactDialog(contact)">
                         <v-icon size="small">mdi-pencil</v-icon>
                       </v-btn>
-                      <v-btn icon variant="text" size="small" color="error" @click="deleteContact(contact.id)">
+                      <v-btn icon variant="text" size="small" color="error" aria-label="Delete contact" @click="deleteContact(contact.id)">
                         <v-icon size="small">mdi-delete</v-icon>
                       </v-btn>
                     </template>

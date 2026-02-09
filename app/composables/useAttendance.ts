@@ -3,34 +3,8 @@
  * Handles attendance records, reliability scoring, and excused status conversions
  */
 
-interface AttendanceBreakdown {
-  status: string
-  count: number
-  penalty_sum: number
-}
-
-interface AttendanceRecord {
-  id: string
-  shift_date: string
-  scheduled_start: string | null
-  actual_start: string | null
-  minutes_late: number
-  notes: string | null
-  excuse_reason: string | null
-  excused_at: string | null
-  excused_by_name: string | null
-}
-
-interface AttendanceStats {
-  present: number
-  late: number
-  excused_late: number
-  absent: number
-  excused_absent: number
-  no_show: number
-  total: number
-  reliabilityScore: number
-}
+import type { AttendanceBreakdown } from '~/types/operations.types'
+import type { AttendanceDetailRecord as AttendanceRecord, AttendanceBreakdownStats as AttendanceStats } from '~/types'
 
 export function useAttendance() {
   const supabase = useSupabaseClient()
@@ -295,7 +269,7 @@ export function useAttendance() {
     attendanceId: string,
     excusingEmployeeId: string,
     excuseReason: string
-  ): Promise<{ success: boolean; error?: string; record?: any }> {
+  ): Promise<{ success: boolean; error?: string; record?: unknown }> {
     if (!excuseReason?.trim()) {
       return { success: false, error: 'Excuse reason is required' }
     }
@@ -312,7 +286,7 @@ export function useAttendance() {
       
       return { success: true, record: data }
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[useAttendance] Error converting to excused:', err)
       
       // Fallback: direct update
@@ -348,10 +322,10 @@ export function useAttendance() {
         
         return { success: true, record: updated }
         
-      } catch (fallbackErr: any) {
+      } catch (fallbackErr: unknown) {
         return { 
           success: false, 
-          error: fallbackErr.message || 'Failed to update attendance record' 
+          error: fallbackErr instanceof Error ? fallbackErr.message : 'Failed to update attendance record' 
         }
       }
     }

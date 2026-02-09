@@ -72,8 +72,8 @@
               class="mobile-only flex-shrink-0"
             />
             <v-btn-toggle v-model="viewMode" mandatory density="compact">
-              <v-btn value="grid" icon="mdi-view-grid" size="small" />
-              <v-btn value="list" icon="mdi-view-list" size="small" />
+              <v-btn value="grid" icon="mdi-view-grid" size="small" aria-label="Grid view" />
+              <v-btn value="list" icon="mdi-view-list" size="small" aria-label="List view" />
             </v-btn-toggle>
           </v-col>
         </v-row>
@@ -228,10 +228,10 @@
           </div>
         </template>
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="callResource(item)" />
-          <v-btn v-if="item.email" icon="mdi-email" size="small" variant="text" @click.stop="emailResource(item)" />
-          <v-btn v-if="item.website" icon="mdi-web" size="small" variant="text" @click.stop="visitWebsite(item)" />
-          <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" @click.stop="openEditDialog(item)" />
+          <v-btn icon="mdi-phone" size="small" variant="text" aria-label="Call" @click.stop="callResource(item)" />
+          <v-btn v-if="item.email" icon="mdi-email" size="small" variant="text" aria-label="Send email" @click.stop="emailResource(item)" />
+          <v-btn v-if="item.website" icon="mdi-web" size="small" variant="text" aria-label="Visit website" @click.stop="visitWebsite(item)" />
+          <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" aria-label="Edit resource" @click.stop="openEditDialog(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -256,7 +256,7 @@
               </div>
             </div>
           </div>
-          <v-btn icon="mdi-close" variant="text" @click="resourceDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="resourceDialog = false" />
         </v-card-title>
         
         <v-divider />
@@ -394,7 +394,7 @@
       <v-card>
         <v-card-title class="d-flex align-center justify-space-between">
           <span>{{ isEditing ? 'Edit Resource' : 'Add New Resource' }}</span>
-          <v-btn icon="mdi-close" variant="text" @click="closeEditDialog" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeEditDialog" />
         </v-card-title>
         
         <v-divider />

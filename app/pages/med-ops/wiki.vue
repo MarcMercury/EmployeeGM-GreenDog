@@ -175,7 +175,7 @@
       <v-card v-if="selectedArticle">
         <v-card-title class="d-flex align-center justify-space-between">
           <span>{{ selectedArticle.title }}</span>
-          <v-btn icon="mdi-close" variant="text" @click="articleDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="articleDialog = false" />
         </v-card-title>
         
         <v-divider />
@@ -370,9 +370,6 @@ async function search() {
   aiResponse.value = ''
   
   try {
-    // Simulate search
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
     // Filter topics based on search
     searchResults.value = popularTopics.filter(t =>
       t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
@@ -398,8 +395,7 @@ async function askAI() {
   searchResults.value = []
   
   try {
-    // Simulate AI response
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // TODO: Replace with real AI wiki endpoint call
     
     aiResponse.value = `Based on your query about "${searchQuery.value}", here's what I found:
 

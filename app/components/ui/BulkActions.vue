@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { BulkAction } from '~/types/ui.types'
+
 /**
  * BulkActions Component
  * 
@@ -8,16 +10,6 @@
  * - Bulk delete
  * - Select all matching filter
  */
-
-interface BulkAction {
-  id: string
-  label: string
-  icon: string
-  color?: string
-  permission?: string
-  confirm?: boolean
-  confirmMessage?: string
-}
 
 interface Props {
   selectedCount: number

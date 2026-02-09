@@ -1,19 +1,26 @@
-// Auth middleware - protects routes requiring authentication
+/**
+ * Auth Middleware — Base authentication check
+ * Uses getUser() for server-validated JWT verification (prevents token tampering).
+ * Populates the auth store profile for use by other middleware.
+ */
 export default defineNuxtRouteMiddleware(async (to) => {
   // Public routes that don't require auth
-  const publicPaths = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/confirm']
-  
-  // Allow access to public pages without checking
-  if (publicPaths.includes(to.path) || to.path.startsWith('/auth/') || to.path.startsWith('/public/')) {
+  if (to.path.startsWith('/auth/') || to.path.startsWith('/public/')) {
     return
   }
 
-  // Check session directly (more reliable than useSupabaseUser)
   const supabase = useSupabaseClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  // Redirect unauthenticated users to login
-  if (!session) {
+
+  // Use getUser() for server-side JWT validation (not getSession which only reads local storage)
+  const { data: { user }, error } = await supabase.auth.getUser()
+
+  if (error || !user) {
     return navigateTo('/auth/login')
+  }
+
+  // Ensure auth store has the profile loaded for downstream middleware
+  const authStore = useAuthStore()
+  if (!authStore.profile) {
+    await authStore.fetchProfile(user.id)
   }
 })

@@ -27,8 +27,8 @@ const SYNCED_PROFILE_FIELDS = ['first_name', 'last_name', 'email', 'phone', 'ava
 interface EditingCell {
   itemId: string | number | null
   field: string | null
-  value: any
-  originalValue: any
+  value: unknown
+  originalValue: unknown
 }
 
 interface SaveOptions {
@@ -53,7 +53,7 @@ export function useInlineEdit(options?: SaveOptions) {
   const pendingSave = ref(false)
   
   // Start editing a cell
-  function startEdit(itemId: string | number, field: string, currentValue: any) {
+  function startEdit(itemId: string | number, field: string, currentValue: unknown) {
     // Save any pending edit first
     if (editingCell.value.itemId !== null && hasChanges.value) {
       saveEdit()
@@ -88,7 +88,7 @@ export function useInlineEdit(options?: SaveOptions) {
   }
   
   // Save the edit to database
-  async function saveEdit(customHandler?: (itemId: string | number, field: string, value: any) => Promise<boolean>) {
+  async function saveEdit(customHandler?: (itemId: string | number, field: string, value: unknown) => Promise<boolean>) {
     if (!editingCell.value.itemId || !editingCell.value.field) {
       cancelEdit()
       return true
@@ -167,9 +167,9 @@ export function useInlineEdit(options?: SaveOptions) {
       cancelEdit()
       return true
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[InlineEdit] Save error:', err)
-      toast.error(err.message || 'Failed to save')
+      toast.error(err instanceof Error ? err.message : 'Failed to save')
       return false
     } finally {
       isSaving.value = false

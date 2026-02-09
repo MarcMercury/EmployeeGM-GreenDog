@@ -27,18 +27,7 @@
 </template>
 
 <script setup lang="ts">
-interface StatItem {
-  id?: string
-  value: number | string
-  label: string
-  color?: string
-  icon?: string
-  subtitle?: string
-  subtitleColor?: string
-  trend?: number
-  format?: 'number' | 'currency' | 'percent' | 'compact' | 'none'
-  onClick?: () => void
-}
+import type { StatItem } from '~/types/ui.types'
 
 interface Props {
   stats: StatItem[]

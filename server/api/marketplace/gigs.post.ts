@@ -19,11 +19,11 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !['admin', 'super_admin', 'hr_admin'].includes(profile.role)) {
+  if (!profile || !hasRole(profile.role, MARKETPLACE_ADMIN_ROLES)) {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
-  const body = await readBody(event)
+  const body = await validateBody(event, gigCreateSchema)
 
   const { data: gig, error } = await client
     .from('marketplace_gigs')
@@ -31,13 +31,13 @@ export default defineEventHandler(async (event) => {
       title: body.title,
       description: body.description,
       bounty_value: body.bounty_value,
-      duration_minutes: body.duration_minutes || 60,
-      flake_penalty: body.flake_penalty || 0,
+      duration_minutes: body.duration_minutes,
+      flake_penalty: body.flake_penalty,
       category: body.category,
-      difficulty: body.difficulty || 'medium',
-      icon: body.icon || 'mdi-star',
-      max_claims: body.max_claims || 1,
-      is_recurring: body.is_recurring || false,
+      difficulty: body.difficulty,
+      icon: body.icon,
+      max_claims: body.max_claims,
+      is_recurring: body.is_recurring,
       created_by: profile.id
     })
     .select()

@@ -69,6 +69,8 @@
 </template>
 
 <script setup lang="ts">
+import type { Interview } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
@@ -77,19 +79,6 @@ definePageMeta({
 useHead({
   title: 'Interviews'
 })
-
-interface Interview {
-  id: string
-  candidate_id: string
-  interview_type: string
-  scheduled_at: string | null
-  created_at: string
-  status: string
-  candidate?: {
-    first_name: string
-    last_name: string
-  }
-}
 
 const client = useSupabaseClient()
 

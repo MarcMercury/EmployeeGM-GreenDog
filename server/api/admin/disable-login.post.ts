@@ -8,8 +8,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-
-const LOCKED_PASSWORD = 'GDDGDD2026'
+import { randomUUID } from 'crypto'
 
 export default defineEventHandler(async (event) => {
   // Get request body
@@ -36,11 +35,11 @@ export default defineEventHandler(async (event) => {
 
   // Create Supabase client with service role for admin operations
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Disable Login] Missing credentials:', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
+    logger.error('Missing credentials', null, 'admin-disable-login', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
@@ -48,7 +47,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token and check if they're an admin
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -70,11 +69,11 @@ export default defineEventHandler(async (event) => {
 
   const { data: callerProfile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, id')
     .eq('auth_user_id', callerUser.id)
     .single()
 
-  if (profileError || !['super_admin', 'admin'].includes(callerProfile?.role)) {
+  if (profileError || !hasRole(callerProfile?.role, ADMIN_ROLES)) {
     throw createError({
       statusCode: 403,
       message: 'Forbidden - Admin access required'
@@ -89,22 +88,34 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Change the user's password to the locked password
-  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+  // Disable the user's login by setting a cryptographically random password
+  // and banning the user via Supabase admin API
+  const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
     authUserId,
-    { password: LOCKED_PASSWORD }
+    {
+      password: randomUUID() + randomUUID(),
+      ban_duration: '876000h' // ~100 years
+    }
   )
 
-  if (updateError) {
-    console.error('Error disabling login:', updateError)
+  if (banError) {
+    logger.error('Error disabling login', banError, 'admin-disable-login')
     throw createError({
       statusCode: 500,
-      message: `Failed to disable login: ${updateError.message}`
+      message: `Failed to disable login: ${banError.message}`
     })
   }
 
   // Log this action for audit purposes
-  console.log(`[AUDIT] Login disabled for user ${authUserId} by admin ${callerUser.id} at ${new Date().toISOString()}`)
+  logger.info('Login disabled', 'AUDIT', { authUserId, by: callerUser.id })
+
+  await createAuditLog({
+    action: 'user_login_disabled',
+    entityType: 'user',
+    entityId: authUserId,
+    actorProfileId: callerProfile.id,
+    metadata: {}
+  })
 
   return {
     success: true,

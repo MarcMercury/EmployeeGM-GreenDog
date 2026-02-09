@@ -852,7 +852,7 @@ async function submitSwapRequest() {
   if (!swapShift.value || !swapTargetEmployee.value) return
   isSubmittingChange.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // TODO: Replace with actual swap request API call
     snackbar.message = 'Swap request submitted successfully!'
     snackbar.color = 'success'
     snackbar.show = true
@@ -871,7 +871,7 @@ async function submitDropRequest() {
   if (!dropShift.value) return
   isSubmittingChange.value = true
   try {
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // TODO: Replace with actual drop request API call
     snackbar.message = 'Drop request submitted successfully!'
     snackbar.color = 'success'
     snackbar.show = true
@@ -916,15 +916,9 @@ async function fetchRequests() {
 async function fetchTimeOffTypes() {
   loadingTypes.value = true
   try {
-    // Only load active time off types (PTO, Unpaid Time Off, Other)
-    const { data, error } = await supabase
-      .from('time_off_types')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
-
-    if (error) throw error
-    timeOffTypes.value = data || []
+    // Use canonical source from operations store (M33 dedup)
+    await opsStore.fetchTimeOffTypes()
+    timeOffTypes.value = opsStore.timeOffTypes as any[]
     
     // Set default type if available - prefer PTO
     if (timeOffTypes.value.length > 0 && !form.type_id) {

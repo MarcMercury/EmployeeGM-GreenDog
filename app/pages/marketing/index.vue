@@ -6,7 +6,7 @@ definePageMeta({
 </script>
 
 <template>
-  <div class="d-flex justify-center align-center" style="min-height: 50vh">
+  <div class="d-flex justify-center align-center min-h-50vh">
     <v-progress-circular indeterminate color="primary" />
   </div>
 </template>

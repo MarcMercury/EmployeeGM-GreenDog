@@ -98,9 +98,9 @@
           </v-chip>
         </template>
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-account-plus" size="small" variant="text" color="primary" @click="openAssignDialog(item)" title="Assign Course" />
-          <v-btn icon="mdi-pencil" size="small" variant="text" @click="editCourse(item)" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDeleteCourse(item)" />
+          <v-btn icon="mdi-account-plus" size="small" variant="text" color="primary" aria-label="Add person" @click="openAssignDialog(item)" title="Assign Course" />
+          <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit" @click="editCourse(item)" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete" @click="confirmDeleteCourse(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -322,20 +322,12 @@
 </template>
 
 <script setup lang="ts">
-import type { TrainingCourse } from '~/types/database.types'
+import type { TrainingCourse, CourseWithSkill } from '~/types/academy.types'
 
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'gdu']
 })
-
-// Extended course type with skill linking fields
-interface CourseWithSkill extends TrainingCourse {
-  skill_id?: string | null
-  skill_level_awarded?: number | null
-  skill_name?: string
-  skill?: { name: string } | null
-}
 
 const authStore = useAuthStore()
 const uiStore = useUIStore()
@@ -589,11 +581,11 @@ async function assignCourse() {
   
   assigning.value = true
   try {
-    const academyStore = useAcademyStore()
+    const coursesStore = useAcademyCoursesStore()
     let assignedCount = 0
     
     if (assignmentType.value === 'everyone') {
-      assignedCount = await academyStore.assignCourseToAll(
+      assignedCount = await coursesStore.assignCourseToAll(
         courseToAssign.value.id,
         dueDays.value,
         requiresSignoff.value
@@ -603,14 +595,14 @@ async function assignCourse() {
         uiStore.showError('Please select a department')
         return
       }
-      assignedCount = await academyStore.assignCourseToDepartment(
+      assignedCount = await coursesStore.assignCourseToDepartment(
         courseToAssign.value.id,
         selectedDepartment.value,
         dueDays.value,
         requiresSignoff.value
       )
     } else if (assignmentType.value === 'smart') {
-      assignedCount = await academyStore.smartAssignCourse(
+      assignedCount = await coursesStore.smartAssignCourse(
         courseToAssign.value.id,
         3, // skill threshold
         dueDays.value,

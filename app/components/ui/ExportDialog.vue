@@ -5,7 +5,7 @@
         <v-icon start color="primary">mdi-file-export-outline</v-icon>
         Export Data
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" size="small" @click="close" />
+        <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" @click="close" />
       </v-card-title>
 
       <v-card-text>
@@ -155,11 +155,7 @@
 </template>
 
 <script setup lang="ts">
-interface ExportColumn {
-  key: string
-  title: string
-  format?: (value: any, row: any) => string
-}
+import type { ExportColumn } from '~/types/ui.types'
 
 interface Props {
   modelValue: boolean

@@ -361,14 +361,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAcademyStore } from '~/stores/academy'
+import { useAcademyQuizStore } from '~/stores/academyQuiz'
 import { useRouter } from 'vue-router'
 
 const props = defineProps<{
   quizId: string
 }>()
 
-const academyStore = useAcademyStore()
+const quizStore = useAcademyQuizStore()
 const router = useRouter()
 
 // State
@@ -384,9 +384,9 @@ const reviewPanel = ref<number | undefined>(undefined)
 const exitDialog = ref(false)
 
 // Computed
-const loading = computed(() => academyStore.loading)
-const quiz = computed(() => academyStore.currentQuiz)
-const questions = computed(() => academyStore.currentQuizQuestions)
+const loading = computed(() => quizStore.isLoading)
+const quiz = computed(() => quizStore.currentQuiz)
+const questions = computed(() => quizStore.currentQuizQuestions)
 
 const currentQuestion = computed(() => questions.value[currentQuestionIndex.value])
 
@@ -495,7 +495,7 @@ async function submitQuiz() {
   
   submitting.value = true
   try {
-    const result = await academyStore.submitQuizAnswers(props.quizId, answers.value)
+    const result = await quizStore.submitQuizAnswers(props.quizId, answers.value)
     
     score.value = result.score
     passed.value = result.passed
@@ -531,7 +531,7 @@ function goBack() {
 
 // Lifecycle
 onMounted(async () => {
-  await academyStore.startQuiz(props.quizId)
+  await quizStore.startQuiz(props.quizId)
 })
 </script>
 

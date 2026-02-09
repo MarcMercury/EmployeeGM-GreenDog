@@ -314,34 +314,12 @@
 </template>
 
 <script setup lang="ts">
+import type { OnboardingChecklist, Candidate } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface OnboardingChecklist {
-  id: string
-  candidate_id: string
-  contract_sent: boolean
-  contract_signed: boolean
-  background_check: boolean
-  uniform_ordered: boolean
-  email_created: boolean
-  start_date: string | null
-}
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string | null
-  target_position_id: string | null
-  status: string
-  onboarding_complete: boolean
-  job_positions?: { title: string }
-  onboarding_checklist?: OnboardingChecklist
-}
 
 const client = useSupabaseClient()
 

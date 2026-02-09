@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
   try {
     body = await readBody(event)
   } catch (parseErr) {
-    console.error('[ezyvet-upsert] Failed to parse request body:', parseErr)
+    logger.error('Failed to parse request body', parseErr instanceof Error ? parseErr : null, 'ezyvet-upsert')
     throw createError({
       statusCode: 400,
       message: 'Invalid request body'
@@ -41,13 +41,21 @@ export default defineEventHandler(async (event) => {
   
   const { contacts } = body || {}
 
-  console.log('[ezyvet-upsert] Received request with', contacts?.length || 0, 'contacts')
+  logger.info('Received request', 'ezyvet-upsert', { contactCount: contacts?.length || 0 })
 
   if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
-    console.error('[ezyvet-upsert] No contacts in request. Body:', JSON.stringify(body).slice(0, 200))
+    logger.error('No contacts in request', null, 'ezyvet-upsert', { body: JSON.stringify(body).slice(0, 200) })
     throw createError({
       statusCode: 400,
       message: 'No contacts provided'
+    })
+  }
+
+  // Enforce batch size limit to prevent memory exhaustion
+  if (contacts.length > 10000) {
+    throw createError({
+      statusCode: 400,
+      message: `Batch too large: ${contacts.length} contacts. Maximum 10,000 per request.`
     })
   }
 
@@ -105,7 +113,7 @@ export default defineEventHandler(async (event) => {
       .select('ezyvet_contact_code')
 
     if (error) {
-      console.error('Upsert error:', error)
+      logger.error('Upsert error', error, 'ezyvet-upsert')
       throw createError({
         statusCode: 500,
         message: `Database error: ${error.message}`
@@ -132,7 +140,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (err: any) {
-    console.error('Upsert batch error:', err)
+    logger.error('Upsert batch error', err, 'ezyvet-upsert')
     
     if (err.statusCode) throw err
 

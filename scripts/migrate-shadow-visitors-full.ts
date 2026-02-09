@@ -6,9 +6,12 @@
  * 3. DELETE the migrated records from education_visitors (not just mark inactive)
  * 
  * Run with: npx tsx scripts/migrate-shadow-visitors-full.ts
+ * Dry run:  npx tsx scripts/migrate-shadow-visitors-full.ts --dry-run
  */
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
+
+const DRY_RUN = process.argv.includes('--dry-run')
 
 const supabaseUrl = process.env.SUPABASE_URL!
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY!
@@ -16,6 +19,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABAS
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function migrateShadowVisitors() {
+  if (DRY_RUN) console.log('🏜️  DRY RUN — no data will be modified\n')
   console.log('🔍 Finding all shadow interview visitors in Visitor CRM...\n')
 
   // Step 1: Find all shadow interview visitors
@@ -77,6 +81,11 @@ async function migrateShadowVisitors() {
         resume_url: visitor.file_link || null
       }
 
+      if (DRY_RUN) {
+        console.log(`   🏜️  Would add: ${visitor.first_name} ${visitor.last_name}`)
+        continue
+      }
+
       const { error: insertError } = await supabase
         .from('candidates')
         .insert(candidateData)
@@ -91,6 +100,12 @@ async function migrateShadowVisitors() {
 
   // Step 4: DELETE all shadow visitors from education_visitors
   console.log(`\n🗑️  Deleting ${shadowVisitors.length} shadow visitors from Visitor CRM...`)
+
+  if (DRY_RUN) {
+    console.log(`   🏜️  Would delete ${shadowVisitors.length} visitors (dry run — skipped)`)
+    console.log('\n🏜️  DRY RUN complete. Re-run without --dry-run to apply changes.')
+    return
+  }
 
   const visitorIds = shadowVisitors.map(v => v.id)
 

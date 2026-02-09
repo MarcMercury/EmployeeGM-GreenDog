@@ -34,36 +34,7 @@ const exportColumns = [
 const saving = ref(false)
 const deleting = ref<string | null>(null)
 
-// Types
-interface Visitor {
-  id: string
-  first_name: string
-  last_name: string
-  email: string | null
-  phone: string | null
-  visitor_type: string
-  organization_name: string | null
-  school_of_origin: string | null
-  program_name: string | null
-  visit_start_date: string | null
-  visit_end_date: string | null
-  lead_source: string | null
-  referral_name: string | null
-  notes: string | null
-  is_active: boolean
-  ce_event_id: string | null
-  created_at: string
-  // New fields from PDF data
-  coordinator: string | null
-  first_greeter: string | null
-  mentor: string | null
-  location: string | null
-  visit_status: string | null
-  recruitment_announced: boolean
-  recruitment_channel: string | null
-  file_link: string | null
-  reason_for_visit: string | null
-}
+import type { Visitor } from '~/types/gdu.types'
 
 // Filter state
 const searchQuery = ref('')
@@ -546,7 +517,7 @@ async function postVisitorToSlack() {
   <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" to="/gdu" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" to="/gdu" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
@@ -800,7 +771,7 @@ async function postVisitorToSlack() {
           <v-icon class="mr-2">{{ editingVisitor ? 'mdi-pencil' : 'mdi-account-plus' }}</v-icon>
           {{ editingVisitor ? 'Edit Visitor' : 'Add Visitor' }}
           <v-spacer />
-          <v-btn icon variant="text" @click="dialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="dialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>

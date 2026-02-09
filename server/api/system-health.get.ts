@@ -127,7 +127,7 @@ function checkEnvironment(): HealthCheck {
     return {
       name: 'environment',
       status: 'error',
-      message: `Missing required: ${missingRequired.join(', ')}`
+      message: 'Required environment variables missing'
     }
   }
   
@@ -135,7 +135,7 @@ function checkEnvironment(): HealthCheck {
     return {
       name: 'environment',
       status: 'degraded',
-      message: `Missing optional: ${missingOptional.join(', ')}`
+      message: 'Some optional services not configured'
     }
   }
   

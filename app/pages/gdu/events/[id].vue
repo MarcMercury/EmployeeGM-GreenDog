@@ -13,7 +13,7 @@ const eventId = route.params.id as string
 const tab = ref('overview')
 
 // Fetch event data
-const { data: event, refresh: refreshEvent } = await useAsyncData(`ce-event-${eventId}`, async () => {
+const { data: event, refresh: refreshEvent, error: eventError } = await useAsyncData(`ce-event-${eventId}`, async () => {
   const { data, error } = await supabase
     .from('ce_events')
     .select('*')
@@ -335,14 +335,18 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
 
 <template>
   <div>
-    <div v-if="!event">
+    <div v-if="eventError">
+      <v-alert type="error" class="mb-4">Failed to load event. {{ eventError.message }}</v-alert>
+      <v-btn to="/gdu/events">Back to Events</v-btn>
+    </div>
+    <div v-else-if="!event">
       <v-alert type="error">Event not found</v-alert>
     </div>
     
     <template v-else>
       <!-- Header -->
       <div class="d-flex align-center mb-4">
-        <v-btn icon variant="text" to="/gdu/events" class="mr-2">
+        <v-btn icon variant="text" aria-label="Go back" to="/gdu/events" class="mr-2">
           <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
         <div class="flex-grow-1">
@@ -763,7 +767,7 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
                     />
                   </td>
                   <td>
-                    <v-btn icon variant="text" size="small" color="error" @click="removeAttendee(att)">
+                    <v-btn icon variant="text" size="small" color="error" aria-label="Delete" @click="removeAttendee(att)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </td>

@@ -1,37 +1,24 @@
 /**
  * GDU (Green Dog University) Access Middleware
- * Allows: super_admin, admin, manager, hr_admin, sup_admin, marketing_admin
- * Use for: GDU Dashboard, Visitor CRM, CE Events, Education Content
- * 
- * Note: Both hr_admin (can create courses), sup_admin (supervisor), and marketing_admin (content management) have access
+ * Uses AuthStore + SECTION_ACCESS.education for role checks.
+ * Relies on auth.ts middleware having populated authStore.profile.
+ *
+ * Allowed roles: super_admin, admin, manager, hr_admin, sup_admin, marketing_admin
  */
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const supabase = useSupabaseClient()
-  
-  // Get session directly
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session?.user) {
+  const authStore = useAuthStore()
+
+  if (!authStore.profile) {
     return navigateTo('/auth/login')
   }
-  
-  // Check role from database
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', session.user.id)
-    .single()
-  
-  // Handle errors gracefully - fail closed
-  if (error || !profile) {
-    console.error('[Middleware] Failed to fetch profile:', error?.message)
-    return navigateTo('/auth/login')
-  }
-  
-  const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin']
-  
-  if (!allowedRoles.includes(profile.role)) {
-    console.warn('[Middleware] User without GDU access attempted:', to.path)
+
+  const role = (authStore.profile.role as UserRole) || 'user'
+
+  if (!SECTION_ACCESS.education.includes(role)) {
+    console.warn('[Middleware:gdu] Access denied for role:', role, 'to path:', to.path)
     return navigateTo('/')
   }
 })

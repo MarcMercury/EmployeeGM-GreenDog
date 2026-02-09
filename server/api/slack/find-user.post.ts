@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const body = await readBody(event)
   
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
   
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (error: any) {
-    console.error('Slack lookup error:', error)
+    logger.error('Slack lookup error', error, 'slack/find-user')
     return { ok: false, error: error.message }
   }
 })

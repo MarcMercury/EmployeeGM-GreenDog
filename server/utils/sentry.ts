@@ -30,7 +30,7 @@ export function captureException(error: Error | unknown, context?: Record<string
     })
   }
   // Always log to console for debugging
-  console.error('[Server Error]', error, context)
+  logger.error('Server Error', error instanceof Error ? error : null, 'Sentry', context)
 }
 
 /**
@@ -40,7 +40,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
   if (config.sentryDsn) {
     Sentry.captureMessage(message, level)
   }
-  console.log(`[Sentry ${level}]`, message)
+  logger.info(message, `Sentry ${level}`)
 }
 
 /**

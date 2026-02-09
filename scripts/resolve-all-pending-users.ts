@@ -9,13 +9,25 @@
  * 5. Create/update profile record
  * 6. Set needs_user_account = false
  * 7. Clean up any duplicate profiles
+ * 
+ * Usage: npx tsx scripts/resolve-all-pending-users.ts
+ * Dry run: npx tsx scripts/resolve-all-pending-users.ts --dry-run
  */
 
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
 
-// Supabase credentials from docs/SUPABASE_CREDENTIALS.md
-const SUPABASE_URL = 'https://uekumyupkhnpjpdcjfxb.supabase.co'
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4'
+dotenv.config()
+
+const DRY_RUN = process.argv.includes('--dry-run')
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: {
@@ -24,8 +36,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   }
 })
 
-// Default password for new accounts
-const DEFAULT_PASSWORD = 'GreenDog2026!'
+// Default password for new accounts — should be changed by user on first login
+const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || `GDD-${crypto.randomUUID().slice(0, 8)}`
 
 interface PendingEmployee {
   id: string
@@ -55,6 +67,7 @@ async function main() {
   console.log('=' .repeat(60))
   console.log('RESOLVING ALL PENDING USERS')
   console.log('=' .repeat(60))
+  if (DRY_RUN) console.log('🏜️  DRY RUN — no data will be modified')
   console.log()
 
   // Step 1: Get all pending employees
@@ -148,6 +161,14 @@ async function main() {
         authUserId = existingAuthUser.id
         result.action = 'linked_existing_auth'
       } else {
+        if (DRY_RUN) {
+          console.log(`  🏜️  Would create auth user for ${emailToUse}`)
+          result.action = 'would_create_new_auth'
+          result.success = true
+          results.push(result)
+          continue
+        }
+
         // Create new auth user
         console.log(`  Creating new auth user...`)
         const { data: newAuth, error: createError } = await supabase.auth.admin.createUser({
@@ -170,6 +191,14 @@ async function main() {
       }
 
       result.auth_user_id = authUserId
+
+      if (DRY_RUN) {
+        console.log(`  🏜️  Would link auth ${authUserId} to profile/employee (dry run — skipped)`)
+        result.action += '_dry_run'
+        result.success = true
+        results.push(result)
+        continue
+      }
 
       // Step 2b: Handle profile - prefer employee's existing profile
       if (employee.profile_id) {
@@ -280,6 +309,13 @@ async function main() {
       console.log(`  ✅ SUCCESS\n`)
 
     } catch (error: any) {
+      // Rollback: if we created a new auth user but subsequent steps failed, clean up
+      if (result.action === 'created_new_auth' && result.auth_user_id) {
+        console.log(`  🔄 Rolling back: deleting orphaned auth user ${result.auth_user_id}`)
+        await supabase.auth.admin.deleteUser(result.auth_user_id).catch(() => {
+          console.log(`  ⚠️  Rollback failed — orphaned auth user ${result.auth_user_id} may remain`)
+        })
+      }
       result.success = false
       result.error = error.message
       console.log(`  ❌ ERROR: ${error.message}\n`)

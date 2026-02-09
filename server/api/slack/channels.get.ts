@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
   
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured', channels: [] }
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
 
     return { ok: true, channels }
   } catch (error: any) {
-    console.error('Slack list channels error:', error)
+    logger.error('Slack list channels error', error, 'slack/channels')
     return { ok: false, error: error.message, channels: [] }
   }
 })

@@ -6,7 +6,7 @@
  * Requires authentication.
  */
 
-import { serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseUser, serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   // Require authentication
@@ -15,10 +15,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
+  // Verify caller has management/admin role
+  const client = await serverSupabaseClient(event)
+  const { data: profile } = await client
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+  
+  if (!profile || !hasRole(profile.role, SLACK_ADMIN_ROLES)) {
+    throw createError({ statusCode: 403, message: 'Insufficient permissions' })
+  }
+
   const config = useRuntimeConfig()
   const body = await readBody(event)
   
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
   
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
@@ -82,7 +94,7 @@ export default defineEventHandler(async (event) => {
       return response
     }
   } catch (error: any) {
-    console.error('Slack API error:', error)
+    logger.error('Slack API error', error, 'slack/send')
     return { ok: false, error: error.message }
   }
 })

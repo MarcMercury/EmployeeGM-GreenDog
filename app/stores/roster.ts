@@ -116,12 +116,13 @@ export const useRosterStore = defineStore('roster', {
 
         if (error) throw error
 
-        // Fetch latest clock status for all employees
+        // Fetch supplementary data in parallel (independent queries)
         const employeeIds = (data || []).map(e => e.id)
-        const clockStatusMap = await this.fetchClockStatuses(employeeIds)
-        
-        // Fetch certification counts
-        const certCountMap = await this.fetchCertificationCounts(employeeIds)
+        const [clockStatusMap, certCountMap] = await Promise.all([
+          this.fetchClockStatuses(employeeIds),
+          this.fetchCertificationCounts(employeeIds),
+          this.fetchFilterOptions() // filter options are also independent
+        ])
 
         // Transform to RosterCardProps
         this.employees = (data || []).map(emp => {
@@ -148,7 +149,7 @@ export const useRosterStore = defineStore('roster', {
           const playerLevel = this.calculatePlayerLevel(totalSkills, avgLevel, masteredCount)
           
           return {
-            id: emp.profile?.id || emp.id,
+            id: emp.id,
             employee_id: emp.id,
             profile_id: emp.profile_id,
             first_name: emp.first_name,
@@ -189,9 +190,6 @@ export const useRosterStore = defineStore('roster', {
             certifications_expiring_soon: certCountMap.get(emp.id)?.expiring || 0
           } as RosterCardProps
         })
-
-        // Also fetch departments and positions for filters
-        await this.fetchFilterOptions()
 
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to fetch roster'
@@ -248,19 +246,16 @@ export const useRosterStore = defineStore('roster', {
             .single()
           managerData = manager
         }
-        ;(emp as any).manager = managerData
+        const empWithManager = emp as typeof emp & { manager: typeof managerData }
+        empWithManager.manager = managerData
 
-        // Fetch certifications
-        const certifications = await this.fetchEmployeeCertifications(employeeId)
-        
-        // Fetch upcoming shifts
-        const upcomingShifts = await this.fetchUpcomingShifts(employeeId)
-        
-        // Fetch recent time punches
-        const recentPunches = await this.fetchRecentPunches(employeeId)
-
-        // Get clock status
-        const clockStatusMap = await this.fetchClockStatuses([employeeId])
+        // Fetch supplementary detail data in parallel (all independent)
+        const [certifications, upcomingShifts, recentPunches, clockStatusMap] = await Promise.all([
+          this.fetchEmployeeCertifications(employeeId),
+          this.fetchUpcomingShifts(employeeId),
+          this.fetchRecentPunches(employeeId),
+          this.fetchClockStatuses([employeeId])
+        ])
 
         // Transform skills
         const skills = (emp.employee_skills || []).map(es => ({
@@ -280,7 +275,7 @@ export const useRosterStore = defineStore('roster', {
         const masteredCount = skills.filter(s => s.level === 5).length
 
         this.selectedEmployee = {
-          id: emp.profile?.id || emp.id,
+          id: emp.id,
           employee_id: emp.id,
           profile_id: emp.profile_id,
           first_name: emp.first_name,

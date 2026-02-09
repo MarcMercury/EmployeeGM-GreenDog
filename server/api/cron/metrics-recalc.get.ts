@@ -20,9 +20,18 @@ export default defineEventHandler(async (event) => {
   
   // Verify cron secret for security
   const authHeader = getHeader(event, 'authorization')
-  const cronSecret = process.env.CRON_SECRET
+  const config = useRuntimeConfig()
+  const cronSecret = config.cronSecret
   
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    logger.error('[MetricsCron] CRON_SECRET not configured - rejecting request')
+    throw createError({
+      statusCode: 500,
+      message: 'Server configuration error'
+    })
+  }
+  
+  if (authHeader !== `Bearer ${cronSecret}`) {
     logger.warn('[MetricsCron] Unauthorized cron attempt')
     throw createError({
       statusCode: 401,

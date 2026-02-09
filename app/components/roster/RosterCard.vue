@@ -271,12 +271,12 @@ function adjustColor(hex: string, percent: number): string {
 }
 
 .clock-dot--in {
-  background: #4CAF50;
+  background: rgb(var(--v-theme-skill-mentor));
   animation: pulse 2s infinite;
 }
 
 .clock-dot--out {
-  background: #9E9E9E;
+  background: rgb(var(--v-theme-muted));
 }
 
 .clock-dot--unknown {
@@ -367,7 +367,7 @@ function adjustColor(hex: string, percent: number): string {
   display: block;
   font-size: 9px;
   font-weight: 600;
-  color: #666;
+  color: rgb(var(--v-theme-text-secondary));
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;

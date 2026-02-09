@@ -1,6 +1,20 @@
 <template>
   <div>
     <v-container fluid class="pa-6">
+      <!-- Loading State -->
+      <div v-if="loading" class="d-flex justify-center align-center min-h-50vh">
+        <v-progress-circular indeterminate color="amber-darken-2" size="48" />
+      </div>
+
+      <!-- Error State -->
+      <v-alert v-else-if="fetchError" type="error" variant="tonal" class="mb-6" closable @click:close="fetchError = null">
+        {{ fetchError }}
+        <template #append>
+          <v-btn variant="text" size="small" @click="fetchData()">Retry</v-btn>
+        </template>
+      </v-alert>
+
+      <template v-else>
       <!-- Header with Wallet Widget -->
       <v-row align="center" class="mb-6">
         <v-col cols="12" md="8">
@@ -437,10 +451,10 @@
                   </span>
                 </template>
                 <template #item.actions="{ item }">
-                  <v-btn size="x-small" icon variant="text" @click="openGigDialog(item)">
+                  <v-btn size="x-small" icon variant="text" aria-label="Edit" @click="openGigDialog(item)">
                     <v-icon>mdi-pencil</v-icon>
                   </v-btn>
-                  <v-btn size="x-small" icon variant="text" color="error" @click="deleteGig(item)">
+                  <v-btn size="x-small" icon variant="text" color="error" aria-label="Delete" @click="deleteGig(item)">
                     <v-icon>mdi-delete</v-icon>
                   </v-btn>
                 </template>
@@ -510,7 +524,7 @@
                   <span class="font-weight-bold text-purple">{{ item.cost }}</span>
                 </template>
                 <template #item.actions="{ item }">
-                  <v-btn size="x-small" icon variant="text" @click="openRewardDialog(item)">
+                  <v-btn size="x-small" icon variant="text" aria-label="Edit" @click="openRewardDialog(item)">
                     <v-icon>mdi-pencil</v-icon>
                   </v-btn>
                 </template>
@@ -557,6 +571,7 @@
           </v-window>
         </v-window-item>
       </v-window>
+      </template>
     </v-container>
 
     <!-- Gig Detail Dialog -->
@@ -566,7 +581,7 @@
           <v-icon class="ml-4">{{ selectedGig.icon }}</v-icon>
           <v-toolbar-title class="ml-2">{{ selectedGig.title }}</v-toolbar-title>
           <v-spacer />
-          <v-btn icon @click="showGigDetail = false">
+          <v-btn icon aria-label="Close" @click="showGigDetail = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-toolbar>
@@ -688,7 +703,7 @@
         <v-toolbar color="primary" dark>
           <v-toolbar-title>{{ editingGig ? 'Edit Gig' : 'Create New Gig' }}</v-toolbar-title>
           <v-spacer />
-          <v-btn icon @click="showGigFormDialog = false">
+          <v-btn icon aria-label="Close" @click="showGigFormDialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-toolbar>
@@ -789,7 +804,7 @@
         <v-toolbar color="purple" dark>
           <v-toolbar-title>{{ editingReward ? 'Edit Reward' : 'Create New Reward' }}</v-toolbar-title>
           <v-spacer />
-          <v-btn icon @click="showRewardFormDialog = false">
+          <v-btn icon aria-label="Close" @click="showRewardFormDialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-toolbar>
@@ -913,6 +928,7 @@ const activeTab = ref('gigs')
 const adminSubTab = ref('all-gigs')
 const loading = ref(false)
 const saving = ref(false)
+const fetchError = ref<string | null>(null)
 
 // Data
 const wallet = ref<any>(null)
@@ -1093,6 +1109,7 @@ const fetchData = async () => {
     await $fetch('/api/marketplace/check-expired', { method: 'POST' })
   } catch (err: any) {
     console.error('Failed to load marketplace data:', err)
+    fetchError.value = err?.message || 'Failed to load marketplace data'
   } finally {
     loading.value = false
   }

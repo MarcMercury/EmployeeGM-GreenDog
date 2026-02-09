@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, notificationId: data.id }
 
   } catch (error: any) {
-    console.error('Error queuing notification:', error)
+    logger.error('Error queuing notification', error, 'slack/notifications/queue')
     return { ok: false, error: error.message }
   }
 })

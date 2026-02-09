@@ -12,7 +12,17 @@ const props = defineProps<{
   error: NuxtError
 }>()
 
+const isDev = process.dev
+
 const handleError = () => clearError({ redirect: '/' })
+
+// Auto-redirect to login for auth errors
+onMounted(() => {
+  const code = props.error?.statusCode
+  if (code === 401) {
+    clearError({ redirect: '/auth/login' })
+  }
+})
 
 const errorMessages: Record<number, { title: string; message: string; emoji: string }> = {
   401: {
@@ -101,10 +111,10 @@ const isAuthError = computed(() =>
         </button>
       </div>
       
-      <!-- Technical Details (collapsed on mobile) -->
-      <details v-if="error?.stack" class="mt-8 text-left">
+      <!-- Technical Details (only in development) -->
+      <details v-if="isDev && error?.stack" class="mt-8 text-left">
         <summary class="text-xs text-slate-400 cursor-pointer hover:text-slate-600 text-center">
-          Technical Details
+          Technical Details (dev only)
         </summary>
         <pre class="mt-4 p-4 bg-slate-900 text-slate-300 rounded-lg text-xs overflow-x-auto max-h-48">{{ error.stack }}</pre>
       </details>

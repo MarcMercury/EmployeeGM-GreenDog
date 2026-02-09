@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { EmailTemplate } from '~/types/admin.types'
+
 /**
  * System Health & Settings Dashboard
  * 
@@ -185,16 +187,6 @@ const recentMigrations = [
 ]
 
 // Email templates
-interface EmailTemplate {
-  id: string
-  name: string
-  category: string
-  icon: string
-  subject: string
-  body: string
-  is_active: boolean
-}
-
 const emailTemplates = ref<EmailTemplate[]>([
   { 
     id: 'student_invite', 
@@ -1585,8 +1577,8 @@ onUnmounted(() => {
               <v-chip size="small" variant="tonal">{{ item.employee_count }} employees</v-chip>
             </template>
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-pencil" size="small" variant="text" @click="editDepartment(item)" />
-              <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteDepartment(item)" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit department" @click="editDepartment(item)" />
+              <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete department" @click="deleteDepartment(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -1627,10 +1619,11 @@ onUnmounted(() => {
                 variant="text" 
                 color="primary"
                 title="Manage Required Skills"
+                aria-label="Manage required skills"
                 @click="openPositionSkillsDialog(item)" 
               />
-              <v-btn icon="mdi-pencil" size="small" variant="text" @click="editPosition(item)" />
-              <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deletePosition(item)" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit position" @click="editPosition(item)" />
+              <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete position" @click="deletePosition(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -1656,8 +1649,8 @@ onUnmounted(() => {
               </v-chip>
             </template>
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-pencil" size="small" variant="text" @click="editLocation(item)" />
-              <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteLocation(item)" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit location" @click="editLocation(item)" />
+              <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete location" @click="deleteLocation(item)" />
             </template>
           </v-data-table>
         </v-card>
@@ -1994,7 +1987,7 @@ onUnmounted(() => {
           <v-icon start color="primary">mdi-school</v-icon>
           Required Skills: {{ selectedPositionForSkills?.title }}
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="closePositionSkillsDialog" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closePositionSkillsDialog" />
         </v-card-title>
         <v-divider />
         

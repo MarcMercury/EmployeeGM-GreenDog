@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const config = useRuntimeConfig()
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
 
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured', users: [] }
@@ -66,7 +66,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, users }
 
   } catch (error: any) {
-    console.error('Error fetching Slack users:', error)
+    logger.error('Error fetching Slack users', error, 'slack/sync/users')
     return { ok: false, error: error.message, users: [] }
   }
 })

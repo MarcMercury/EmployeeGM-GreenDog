@@ -148,8 +148,8 @@
                 <v-list-item-title>{{ dept.name }}</v-list-item-title>
                 <v-list-item-subtitle>{{ dept.description }}</v-list-item-subtitle>
                 <template #append>
-                  <v-btn icon="mdi-pencil" size="small" variant="text" @click="editDepartment(dept)" />
-                  <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDeleteDepartment(dept)" />
+                  <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit" @click="editDepartment(dept)" />
+                  <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete" @click="confirmDeleteDepartment(dept)" />
                 </template>
               </v-list-item>
             </v-list>

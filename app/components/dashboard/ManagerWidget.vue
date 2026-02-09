@@ -202,8 +202,8 @@ onMounted(fetchData)
             </v-list-item-subtitle>
             
             <template #append>
-              <v-btn icon="mdi-check" size="x-small" color="success" variant="text" @click="approveRequest(request)" />
-              <v-btn icon="mdi-close" size="x-small" color="error" variant="text" @click="denyRequest(request)" />
+              <v-btn icon="mdi-check" size="x-small" color="success" variant="text" aria-label="Approve" @click="approveRequest(request)" />
+              <v-btn icon="mdi-close" size="x-small" color="error" variant="text" aria-label="Deny" @click="denyRequest(request)" />
             </template>
           </v-list-item>
         </v-list>

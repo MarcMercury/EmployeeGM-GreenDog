@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, triggers: data || [] }
 
   } catch (error: any) {
-    console.error('Error fetching triggers:', error)
+    logger.error('Error fetching triggers', error, 'slack/notifications/triggers')
     return { ok: false, error: error.message, triggers: [] }
   }
 })

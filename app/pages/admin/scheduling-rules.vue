@@ -6,28 +6,11 @@
  */
 
 definePageMeta({
-  middleware: ['auth', 'admin-only'],
+  middleware: ['auth', 'admin'],
   layout: 'default'
 })
 
-// Types
-interface SchedulingRule {
-  id: string
-  name: string
-  description: string | null
-  rule_type: string
-  parameters: Record<string, any>
-  location_id: string | null
-  department_id: string | null
-  position_id: string | null
-  is_active: boolean
-  severity: 'error' | 'warning' | 'info'
-  created_at: string
-  updated_at: string
-  location?: { id: string; name: string }
-  department?: { id: string; name: string }
-  position?: { id: string; title: string }
-}
+import type { SchedulingRule } from '~/types/schedule.types'
 
 // Composables
 const supabase = useSupabaseClient()

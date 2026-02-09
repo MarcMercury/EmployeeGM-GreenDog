@@ -24,7 +24,7 @@
             </span>
           </div>
         </div>
-        <v-btn icon="mdi-close" variant="text" @click="close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="close" />
       </v-card-title>
 
       <v-card-text class="pa-4">

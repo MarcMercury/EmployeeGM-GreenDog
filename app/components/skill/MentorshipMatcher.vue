@@ -288,36 +288,7 @@
 </template>
 
 <script setup lang="ts">
-interface GoalSkill {
-  id: string
-  skill_id: string
-  name: string
-  level: number
-}
-
-interface PotentialMentor {
-  id: string
-  employee_id: string
-  first_name: string
-  last_name: string
-  avatar_url: string | null
-  skill_level: number
-  department: string | null
-  position: string | null
-}
-
-interface MentorshipRequest {
-  id: string
-  skill_id: string
-  skill_name: string
-  mentee_id: string
-  mentee_name: string
-  mentor_id: string
-  mentor_name: string
-  status: 'pending' | 'active' | 'completed' | 'cancelled'
-  started_at: string
-  mentee_avatar: string | null
-}
+import type { GoalSkill, PotentialMentor, MentorshipRequest } from '~/types/skill.types'
 
 interface Props {
   goalSkills: GoalSkill[]

@@ -135,10 +135,7 @@
 
 <script setup lang="ts">
 import type { EmployeeSkill, Skill, SkillLevel } from '~/types/database.types'
-
-interface EmployeeSkillWithSkill extends EmployeeSkill {
-  skill: Skill
-}
+import type { EmployeeSkillWithSkill } from '~/types/skill.types'
 
 interface Props {
   employeeSkills: EmployeeSkillWithSkill[]

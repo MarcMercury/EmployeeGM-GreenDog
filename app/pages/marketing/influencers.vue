@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Influencer, InfluencerNote, Campaign } from '~/types/marketing.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'marketing-admin']
@@ -7,135 +9,6 @@ definePageMeta({
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const { showSuccess, showError } = useToast()
-
-// =====================================================
-// TYPE DEFINITIONS
-// =====================================================
-interface Influencer {
-  id: string
-  contact_name: string
-  pet_name: string | null
-  phone: string | null
-  email: string | null
-  status: string
-  tier: string | null
-  promo_code: string | null
-  content_niche: string | null
-  
-  // Social handles
-  instagram_handle: string | null
-  instagram_url: string | null
-  tiktok_handle: string | null
-  youtube_url: string | null
-  facebook_url: string | null
-  
-  // Platform-specific followers
-  instagram_followers: number | null
-  tiktok_followers: number | null
-  youtube_subscribers: number | null
-  facebook_followers: number | null
-  follower_count: number | null
-  highest_platform: string | null
-  
-  // Engagement metrics
-  engagement_rate: number | null
-  avg_likes: number | null
-  avg_comments: number | null
-  avg_views: number | null
-  
-  // Relationship
-  relationship_status: string | null
-  relationship_score: number | null
-  last_contact_date: string | null
-  next_followup_date: string | null
-  needs_followup: boolean
-  priority: string | null
-  
-  // Collaboration
-  collaboration_type: string | null
-  compensation_type: string | null
-  compensation_rate: number | null
-  total_paid: number | null
-  total_value_generated: number | null
-  
-  // Campaign performance
-  total_campaigns: number | null
-  posts_completed: number
-  stories_completed: number
-  reels_completed: number
-  total_impressions: number | null
-  total_conversions: number | null
-  roi: number | null
-  
-  // Pet info
-  pet_breed: string | null
-  pet_age: string | null
-  pet_type: string | null
-  pet_instagram: string | null
-  
-  // Content
-  content_rights: string | null
-  preferred_content_types: string[] | null
-  content_guidelines: string | null
-  brand_alignment_score: number | null
-  
-  // Audience
-  audience_age_range: string | null
-  audience_gender_split: string | null
-  audience_location: string | null
-  
-  // Other
-  location: string | null
-  agreement_details: string | null
-  bio: string | null
-  notes: string | null
-  media_kit_url: string | null
-  profile_image_url: string | null
-  source: string | null
-  tags: string[] | null
-  
-  // Dates
-  contract_start_date: string | null
-  contract_end_date: string | null
-  created_at: string
-  updated_at: string | null
-}
-
-interface InfluencerNote {
-  id: string
-  influencer_id: string
-  note_type: string
-  content: string
-  is_pinned: boolean
-  created_by: string | null
-  created_by_name: string | null
-  author_initials: string | null
-  created_at: string
-}
-
-interface Campaign {
-  id: string
-  influencer_id: string
-  campaign_name: string
-  campaign_type: string | null
-  status: string
-  start_date: string | null
-  end_date: string | null
-  posts_required: number
-  stories_required: number
-  reels_required: number
-  posts_delivered: number
-  stories_delivered: number
-  reels_delivered: number
-  impressions: number
-  clicks: number
-  conversions: number
-  compensation_amount: number | null
-  compensation_type: string | null
-  payment_status: string
-  notes: string | null
-  created_at: string
-}
 
 // =====================================================
 // STATE
@@ -1084,7 +957,7 @@ async function updateInfluencerField(field: string, value: any) {
               High Priority
             </v-chip>
             <v-spacer />
-            <v-btn icon size="x-small" variant="text" color="error" @click.stop="deleteInfluencer(influencer.id)">
+            <v-btn icon size="x-small" variant="text" color="error" aria-label="Delete influencer" @click.stop="deleteInfluencer(influencer.id)">
               <v-icon size="16">mdi-delete</v-icon>
             </v-btn>
           </v-card-actions>
@@ -1137,7 +1010,7 @@ async function updateInfluencerField(field: string, value: any) {
                 <v-chip v-if="influencer.engagement_rate" size="x-small" variant="tonal">
                   {{ influencer.engagement_rate }}% eng
                 </v-chip>
-                <v-btn icon variant="text" size="small" color="error" @click.stop="deleteInfluencer(influencer.id)">
+                <v-btn icon variant="text" size="small" color="error" aria-label="Delete influencer" @click.stop="deleteInfluencer(influencer.id)">
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
               </div>
@@ -1171,14 +1044,14 @@ async function updateInfluencerField(field: string, value: any) {
           <v-icon class="mr-2">{{ editingInfluencer ? 'mdi-pencil' : 'mdi-account-star' }}</v-icon>
           {{ editingInfluencer ? 'Edit Influencer' : 'Add Influencer' }}
           <v-spacer />
-          <v-btn icon variant="text" @click="addDialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="addDialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
         
         <v-divider />
         
-        <v-card-text style="max-height: 70vh; overflow-y: auto;">
+        <v-card-text class="scrollable-70vh">
           <v-row>
             <!-- Basic Info -->
             <v-col cols="12">
@@ -1334,7 +1207,7 @@ async function updateInfluencerField(field: string, value: any) {
           <v-chip :color="getTierColor(selectedInfluencer.tier)" size="small" variant="tonal" class="mr-2">
             {{ selectedInfluencer.tier || 'unknown' }}
           </v-chip>
-          <v-btn icon variant="text" @click="profileDialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="profileDialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
@@ -1359,7 +1232,7 @@ async function updateInfluencerField(field: string, value: any) {
 
         <v-divider />
 
-        <v-card-text style="min-height: 400px; max-height: 60vh; overflow-y: auto;">
+        <v-card-text class="min-h-400 scrollable-60vh">
           <v-tabs-window v-model="profileTab">
             <!-- Overview Tab -->
             <v-tabs-window-item value="overview">
@@ -1556,7 +1429,7 @@ async function updateInfluencerField(field: string, value: any) {
                           </template>
                           <v-list-item-title>{{ formatFollowers(selectedInfluencer.youtube_subscribers) }} subscribers</v-list-item-title>
                           <template #append v-if="selectedInfluencer.youtube_url">
-                            <v-btn icon size="x-small" variant="text" :href="selectedInfluencer.youtube_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.youtube_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
                         </v-list-item>
                         <v-list-item v-if="selectedInfluencer.facebook_url">
@@ -1565,7 +1438,7 @@ async function updateInfluencerField(field: string, value: any) {
                           </template>
                           <v-list-item-title>Facebook</v-list-item-title>
                           <template #append>
-                            <v-btn icon size="x-small" variant="text" :href="selectedInfluencer.facebook_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.facebook_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
                         </v-list-item>
                       </v-list>
@@ -1667,7 +1540,7 @@ async function updateInfluencerField(field: string, value: any) {
                     </v-list-item-title>
                     <v-list-item-subtitle class="text-wrap mt-1">{{ note.content }}</v-list-item-subtitle>
                     <template #append>
-                      <v-btn icon variant="text" size="small" color="error" @click="deleteNote(note.id)">
+                      <v-btn icon variant="text" size="small" color="error" aria-label="Delete note" @click="deleteNote(note.id)">
                         <v-icon size="small">mdi-delete</v-icon>
                       </v-btn>
                     </template>

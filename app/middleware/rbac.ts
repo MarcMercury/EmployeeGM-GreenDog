@@ -1,120 +1,80 @@
 /**
  * RBAC Middleware - Role-Based Access Control
  * 
- * This is a unified middleware factory that handles all route-level permission checks.
- * It replaces the individual role-specific middlewares for a cleaner architecture.
- * 
+ * Unified middleware that handles all route-level permission checks.
+ * Relies on auth.ts middleware having populated authStore.profile.
+ * Uses SECTION_ACCESS from ~/types as the single source of truth.
+ *
  * Usage in pages:
  * definePageMeta({
  *   middleware: ['auth', 'rbac'],
  *   requiredSection: 'hr'  // or 'marketing', 'recruiting', etc.
  * })
- * 
- * Sections:
- * - hr: Employee profiles, skills, reviews
- * - recruiting: Candidates, pipelines, onboarding
- * - marketing: CRM, campaigns, leads, partners
- * - education: GDU, courses, CE events
- * - schedules_manage: Create/edit schedules
- * - schedules_view: Read-only schedule access
- * - admin: System settings, integrations
+ *
+ * Sections: hr, recruiting, marketing, education, schedules_manage, schedules_view, admin, crm_analytics
  */
 
 import { SECTION_ACCESS } from '~/types'
 import type { UserRole } from '~/types'
 
+// Path-based section mapping for routes without requiredSection meta.
+// Paths use trailing-slash or end-of-string to prevent over-matching
+// (e.g. '/admin' should not match '/admin-tools').
+const PATH_SECTION_MAP: Array<{ pattern: RegExp; section: string }> = [
+  { pattern: /^\/admin(\/|$)/, section: 'admin' },
+  { pattern: /^\/settings(\/|$)/, section: 'admin' },
+  { pattern: /^\/recruiting(\/|$)/, section: 'recruiting' },
+  { pattern: /^\/marketing(\/|$)/, section: 'marketing' },
+  { pattern: /^\/growth(\/|$)/, section: 'marketing' },
+  { pattern: /^\/gdu(\/|$)/, section: 'education' },
+  { pattern: /^\/academy(\/|$)/, section: 'education' },
+  { pattern: /^\/schedule\/builder(\/|$)/, section: 'schedules_manage' },
+  { pattern: /^\/schedule\/templates(\/|$)/, section: 'schedules_manage' },
+  // HR routes — roster, people, employees with sub-paths
+  { pattern: /^\/roster(\/|$)/, section: 'hr' },
+  { pattern: /^\/people(\/|$)/, section: 'hr' },
+  { pattern: /^\/employees\/[^/]+/, section: 'hr' },
+]
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const supabase = useSupabaseClient()
-  
-  // Get session
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session?.user) {
+  const authStore = useAuthStore()
+
+  // auth.ts should have populated the profile — fail closed if missing
+  if (!authStore.profile) {
     return navigateTo('/auth/login')
   }
-  
-  // Get user role from database
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', session.user.id)
-    .single()
-  
-  if (error || !profile) {
-    console.error('[RBAC] Failed to fetch profile:', error?.message)
-    return navigateTo('/auth/login')
-  }
-  
-  const userRole = (profile.role as UserRole) || 'user'
-  
-  // Super admin and admin always have access
-  if (['super_admin', 'admin'].includes(userRole)) {
-    return // Allow access
-  }
-  
-  // Check route-level section requirement
+
+  const userRole = (authStore.profile.role as UserRole) || 'user'
+
+  // 1. Check route-level section requirement (explicit meta takes priority)
   const requiredSection = to.meta.requiredSection as string | undefined
-  
+
   if (requiredSection && SECTION_ACCESS[requiredSection]) {
-    const allowedRoles = SECTION_ACCESS[requiredSection]
-    
-    if (!allowedRoles.includes(userRole)) {
-      console.warn(`[RBAC] Access denied to ${to.path} for role ${userRole}. Required: ${allowedRoles.join(', ')}`)
+    if (!SECTION_ACCESS[requiredSection].includes(userRole)) {
+      console.warn(`[RBAC] Access denied to ${to.path} for role ${userRole}. Required section: ${requiredSection}`)
       return navigateTo('/')
     }
+    return // Explicit section matched and passed — allow access
   }
-  
-  // Route path-based checks (fallback for pages without requiredSection meta)
+
+  // 2. Path-based fallback for pages without requiredSection meta
   const path = to.path
-  
-  // HR routes: /roster/*, /people/*, /employees/*
-  if (path.startsWith('/roster/') || path.startsWith('/people/') || path.match(/^\/employees\/[^/]+/)) {
-    // View is allowed for most, edit requires HR access
-    if (to.query.edit === 'true' && !SECTION_ACCESS.hr.includes(userRole)) {
-      console.warn(`[RBAC] HR edit access denied for ${userRole}`)
-      return navigateTo('/')
+
+  for (const { pattern, section } of PATH_SECTION_MAP) {
+    if (pattern.test(path)) {
+      if (!SECTION_ACCESS[section].includes(userRole)) {
+        console.warn(`[RBAC] Access denied to ${path} for role ${userRole}. Matched section: ${section}`)
+        return navigateTo('/')
+      }
+      return // Matched a path rule and passed — allow access
     }
   }
-  
-  // Recruiting routes: /recruiting/*
-  if (path.startsWith('/recruiting')) {
-    if (!SECTION_ACCESS.recruiting.includes(userRole)) {
-      console.warn(`[RBAC] Recruiting access denied for ${userRole}`)
-      return navigateTo('/')
-    }
-  }
-  
-  // Marketing routes: /marketing/*, /growth/*
-  if (path.startsWith('/marketing') || path.startsWith('/growth')) {
-    if (!SECTION_ACCESS.marketing.includes(userRole)) {
-      console.warn(`[RBAC] Marketing access denied for ${userRole}`)
-      return navigateTo('/')
-    }
-  }
-  
-  // GDU/Education routes: /gdu/*, /academy/*
-  if (path.startsWith('/gdu') || path.startsWith('/academy')) {
-    if (!SECTION_ACCESS.education.includes(userRole)) {
-      console.warn(`[RBAC] Education access denied for ${userRole}`)
-      return navigateTo('/')
-    }
-  }
-  
-  // Schedule management routes: /schedule/builder, /schedule/templates
-  if (path.includes('/schedule/builder') || path.includes('/schedule/templates')) {
-    if (!SECTION_ACCESS.schedules_manage.includes(userRole)) {
-      console.warn(`[RBAC] Schedule management access denied for ${userRole}`)
-      return navigateTo('/')
-    }
-  }
-  
-  // Admin routes: /admin/*, /settings/*
-  if (path.startsWith('/admin') || path.startsWith('/settings')) {
-    if (!SECTION_ACCESS.admin.includes(userRole)) {
-      console.warn(`[RBAC] Admin access denied for ${userRole}`)
-      return navigateTo('/')
-    }
-  }
-  
-  // Allow access by default for routes not covered above
+
+  // 3. Fail-closed: routes not covered by meta or path rules are denied.
+  // Only my_workspace and med_ops routes (which are accessible to all authenticated users)
+  // should be reachable without explicit section assignment.
+  // If a route reaches here, it has no section mapping — deny by default.
+  // To whitelist a route, add requiredSection: 'my_workspace' or 'med_ops' in definePageMeta.
+  console.warn(`[RBAC] No section mapping for ${path} — denying access for role ${userRole}. Add requiredSection meta to the page.`)
+  return navigateTo('/')
 })

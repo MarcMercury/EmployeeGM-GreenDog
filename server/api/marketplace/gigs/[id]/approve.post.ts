@@ -91,7 +91,7 @@ export default defineEventHandler(async (event) => {
       })
 
     if (txError) {
-      console.error('Transaction log error:', txError)
+      logger.error('Transaction log error', txError, 'marketplace/gigs/approve')
     }
 
     // Mark gig as completed

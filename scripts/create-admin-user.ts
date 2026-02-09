@@ -25,14 +25,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   }
 })
 
-// User details
+// User details — password must be set via DEFAULT_USER_PASSWORD env var
 const USER = {
-  email: 'RenDVM@gmail.com',
-  password: 'Rugby',
+  email: process.env.ADMIN_EMAIL || 'RenDVM@gmail.com',
+  password: process.env.DEFAULT_USER_PASSWORD,
   firstName: 'Ren',
   lastName: 'Garcia',
   position: 'CEO',
   role: 'admin'
+}
+
+if (!USER.password) {
+  console.error('❌ DEFAULT_USER_PASSWORD environment variable is required')
+  process.exit(1)
 }
 
 async function createAdminUser() {

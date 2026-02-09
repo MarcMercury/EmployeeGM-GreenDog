@@ -12,8 +12,8 @@ import type { H3Event } from 'h3'
  */
 export function createAdminClient() {
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw new Error('Missing Supabase configuration')
@@ -32,8 +32,8 @@ export function createAdminClient() {
  */
 export function createUserClient(token: string) {
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseKey = config.public.supabaseKey
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase configuration')

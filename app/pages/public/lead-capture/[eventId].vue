@@ -232,16 +232,12 @@
 </template>
 
 <script setup lang="ts">
+import type { PrizeItem } from '~/types/marketing.types'
+
 definePageMeta({
   layout: false,
   auth: false // Public page - no auth required
 })
-
-interface PrizeItem {
-  id: string
-  name: string
-  category: string
-}
 
 const route = useRoute()
 const supabase = useSupabaseClient()

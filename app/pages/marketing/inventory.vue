@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { InventoryItem } from '~/types/marketing.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'marketing-admin']
@@ -6,30 +8,6 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
-
-// Type definitions
-interface InventoryItem {
-  id: string
-  item_name: string
-  category: string
-  description: string | null
-  quantity_venice: number
-  quantity_sherman_oaks: number
-  quantity_valley: number
-  quantity_mpmv: number
-  quantity_offsite: number
-  boxes_on_hand: number | null
-  units_per_box: number | null
-  total_quantity: number
-  reorder_point: number
-  is_low_stock: boolean
-  last_ordered: string | null
-  order_quantity: number | null
-  supplier: string | null
-  unit_cost: number | null
-  notes: string | null
-  created_at: string
-}
 
 // Filter state
 const searchQuery = ref('')
@@ -90,7 +68,7 @@ const inventoryByCategory = computed(() => {
 })
 
 // Fetch inventory
-const { data: inventory, pending, refresh } = await useAsyncData('inventory', async () => {
+const { data: inventory, pending, refresh, error: inventoryError } = await useAsyncData('inventory', async () => {
   const { data, error } = await supabase
     .from('marketing_inventory')
     .select('*')
@@ -312,9 +290,14 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 
 <template>
   <div>
+    <!-- Data loading error -->
+    <v-alert v-if="inventoryError" type="error" variant="tonal" class="mb-4" closable>
+      Failed to load inventory data. Please try refreshing.
+    </v-alert>
+
     <!-- Header -->
     <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" to="/marketing/command-center" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" to="/marketing/command-center" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
@@ -666,7 +649,7 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
           <v-icon class="mr-2">{{ editingItem ? 'mdi-pencil' : 'mdi-package-variant-plus' }}</v-icon>
           {{ editingItem ? 'Edit Item' : 'Add Inventory Item' }}
           <v-spacer />
-          <v-btn icon variant="text" @click="dialogOpen = false">
+          <v-btn icon variant="text" aria-label="Close" @click="dialogOpen = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>

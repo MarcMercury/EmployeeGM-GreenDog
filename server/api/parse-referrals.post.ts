@@ -160,7 +160,7 @@ function parseStatisticsCSV(csvText: string): ParsedStatisticsEntry[] {
   if (lastReferralIdx === -1) lastReferralIdx = 2
   if (total12MonthsIdx === -1) total12MonthsIdx = 6
   
-  console.log('[parse-referrals] Statistics CSV columns - Clinic:', clinicNameIdx, 'LastRef:', lastReferralIdx, '12Mo:', total12MonthsIdx)
+  logger.debug('Statistics CSV columns', 'parse-referrals', { clinicNameIdx, lastReferralIdx, total12MonthsIdx })
   
   // Parse data rows
   for (let i = 1; i < lines.length; i++) {
@@ -294,7 +294,7 @@ export default defineEventHandler(async (event) => {
     // Get supabase client
     const supabase = await serverSupabaseClient(event)
     
-    console.log('[parse-referrals] Looking up profile for auth_user_id:', userId)
+    logger.debug('Looking up profile', 'parse-referrals', { authUserId: userId })
     
     // Check if user has appropriate role
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -312,7 +312,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, message: `Admin or Marketing Admin access required. Your role: ${profile?.role || 'unknown'}` })
     }
     
-    console.log('[parse-referrals] Access granted for role:', profile.role)
+    logger.info('Access granted', 'parse-referrals', { role: profile.role })
     
     // Read multipart form data
     const formData = await readMultipartFormData(event)
@@ -325,7 +325,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, message: 'No file found in upload' })
     }
     
-    console.log('[parse-referrals] File received:', file.filename, 'size:', file.data.length, 'bytes')
+    logger.info('File received', 'parse-referrals', { filename: file.filename, size: file.data.length })
     
     // Check file type - accept CSV
     const filename = file.filename?.toLowerCase() || ''
@@ -335,11 +335,11 @@ export default defineEventHandler(async (event) => {
     
     // Parse CSV content
     const csvText = Buffer.from(file.data).toString('utf-8')
-    console.log('[parse-referrals] Parsing CSV, total chars:', csvText.length)
+    logger.debug('Parsing CSV', 'parse-referrals', { totalChars: csvText.length })
     
     // Detect report type from header
     const reportType = detectReportType(csvText)
-    console.log('[parse-referrals] Detected report type:', reportType)
+    logger.info('Detected report type', 'parse-referrals', { reportType })
     
     // Fetch all partners for matching
     // The table uses 'name' column (aliased from hospital_name in views/queries)
@@ -351,7 +351,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, message: 'Failed to fetch partners' })
     }
     
-    console.log('[parse-referrals] Found', partners.length, 'partners to match against')
+    logger.info('Found partners to match', 'parse-referrals', { count: partners.length })
     
     // Initialize result
     const result: SyncResult = {
@@ -369,7 +369,7 @@ export default defineEventHandler(async (event) => {
       // REVENUE REPORT - Update revenue totals
       // ========================================
       const entries = parseRevenueCSV(csvText)
-      console.log('[parse-referrals] Parsed', entries.length, 'revenue entries')
+      logger.info('Parsed revenue entries', 'parse-referrals', { count: entries.length })
       
       if (entries.length === 0) {
         throw createError({ 
@@ -380,39 +380,34 @@ export default defineEventHandler(async (event) => {
       
       // Aggregate by clinic
       const aggregated = aggregateRevenueByClinic(entries)
-      console.log('[parse-referrals] Aggregated to', aggregated.length, 'unique clinics')
+      logger.info('Aggregated to unique clinics', 'parse-referrals', { count: aggregated.length })
       
       const csvTotalVisits = aggregated.reduce((sum, a) => sum + a.totalVisits, 0)
       const csvTotalRevenue = aggregated.reduce((sum, a) => sum + a.totalRevenue, 0)
-      console.log(`[parse-referrals] Revenue CSV Totals: ${csvTotalVisits} visits, $${csvTotalRevenue.toFixed(2)} revenue`)
+      logger.info('Revenue CSV Totals', 'parse-referrals', { visits: csvTotalVisits, revenue: csvTotalRevenue.toFixed(2) })
       
-      // Match and update (ONLY revenue, not visit counts)
+      // Match and batch-update (ONLY revenue, not visit counts)
+      const revenueUpdates: { id: string; total_revenue_all_time: number; last_sync_date: string }[] = []
+      const syncDate = new Date().toISOString()
+
       for (const agg of aggregated) {
         const match = findBestMatch(agg.clinicName, partners)
         
         if (match) {
-          // Update ONLY revenue (replace, don't add)
-          const { error } = await supabase
-            .from('referral_partners')
-            .update({
-              total_revenue_all_time: agg.totalRevenue,
-              last_sync_date: new Date().toISOString()
-            })
-            .eq('id', match.id)
-          
-          if (!error) {
-            result.updated++
-            result.revenueAdded += agg.totalRevenue
-            result.details.push({
-              clinicName: agg.clinicName,
-              matched: true,
-              matchedTo: match.name,
-              visits: agg.totalVisits,
-              revenue: agg.totalRevenue
-            })
-          } else {
-            console.error('[parse-referrals] Update error for', match.name, ':', error.message)
-          }
+          revenueUpdates.push({
+            id: match.id,
+            total_revenue_all_time: agg.totalRevenue,
+            last_sync_date: syncDate
+          })
+          result.updated++
+          result.revenueAdded += agg.totalRevenue
+          result.details.push({
+            clinicName: agg.clinicName,
+            matched: true,
+            matchedTo: match.name,
+            visits: agg.totalVisits,
+            revenue: agg.totalRevenue
+          })
         } else {
           result.notMatched++
           result.details.push({
@@ -423,13 +418,24 @@ export default defineEventHandler(async (event) => {
           })
         }
       }
+
+      // Batch upsert all matched revenue updates in one DB call
+      if (revenueUpdates.length > 0) {
+        const { error: batchError } = await supabase
+          .from('referral_partners')
+          .upsert(revenueUpdates, { onConflict: 'id' })
+
+        if (batchError) {
+          logger.error('Batch revenue update error', null, 'parse-referrals', { message: batchError.message })
+        }
+      }
       
     } else {
       // ========================================
       // STATISTICS REPORT - Update visit counts and last visit date (NOT revenue)
       // ========================================
       const entries = parseStatisticsCSV(csvText)
-      console.log('[parse-referrals] Parsed', entries.length, 'statistics entries')
+      logger.info('Parsed statistics entries', 'parse-referrals', { count: entries.length })
       
       if (entries.length === 0) {
         throw createError({ 
@@ -439,45 +445,39 @@ export default defineEventHandler(async (event) => {
       }
       
       const csvTotalVisits = entries.reduce((sum, e) => sum + e.totalReferrals12Months, 0)
-      console.log(`[parse-referrals] Statistics CSV Total: ${csvTotalVisits} visits (12 months)`)
+      logger.info('Statistics CSV Total', 'parse-referrals', { visits: csvTotalVisits })
       
-      // Match and update (ONLY visit counts and last date, NOT revenue)
+      // Match and batch-update (ONLY visit counts and last date, NOT revenue)
+      const statsUpdates: Record<string, any>[] = []
+      const syncDate = new Date().toISOString()
+
       for (const entry of entries) {
         const match = findBestMatch(entry.clinicName, partners)
         
         if (match) {
-          // Build update object - only update visit count and last date (NOT revenue)
+          // Build update object
           const updateData: any = {
+            id: match.id,
             total_referrals_all_time: entry.totalReferrals12Months,
-            last_sync_date: new Date().toISOString()
+            last_sync_date: syncDate
           }
           
-          // Update last_referral_date (when their referred client visited us) from EzyVet report
-          // This is separate from last_visit_date which tracks when WE visited THEM
           if (entry.lastReferralDate) {
             updateData.last_referral_date = entry.lastReferralDate
             updateData.last_contact_date = entry.lastReferralDate
           }
-          
-          const { error } = await supabase
-            .from('referral_partners')
-            .update(updateData)
-            .eq('id', match.id)
-          
-          if (!error) {
-            result.updated++
-            result.visitorsAdded += entry.totalReferrals12Months
-            result.details.push({
-              clinicName: entry.clinicName,
-              matched: true,
-              matchedTo: match.name,
-              visits: entry.totalReferrals12Months,
-              revenue: 0, // Not updating revenue
-              lastVisitDate: entry.lastReferralDate || undefined
-            })
-          } else {
-            console.error('[parse-referrals] Update error for', match.name, ':', error.message)
-          }
+
+          statsUpdates.push(updateData)
+          result.updated++
+          result.visitorsAdded += entry.totalReferrals12Months
+          result.details.push({
+            clinicName: entry.clinicName,
+            matched: true,
+            matchedTo: match.name,
+            visits: entry.totalReferrals12Months,
+            revenue: 0,
+            lastVisitDate: entry.lastReferralDate || undefined
+          })
         } else {
           result.notMatched++
           result.details.push({
@@ -487,6 +487,17 @@ export default defineEventHandler(async (event) => {
             revenue: 0,
             lastVisitDate: entry.lastReferralDate || undefined
           })
+        }
+      }
+
+      // Batch upsert all matched statistics updates in one DB call
+      if (statsUpdates.length > 0) {
+        const { error: batchError } = await supabase
+          .from('referral_partners')
+          .upsert(statsUpdates, { onConflict: 'id' })
+
+        if (batchError) {
+          logger.error('Batch statistics update error', null, 'parse-referrals', { message: batchError.message })
         }
       }
     }
@@ -510,15 +521,15 @@ export default defineEventHandler(async (event) => {
     })
     
     // Recalculate all partner metrics (Tier, Priority, Relationship Health, Overdue)
-    console.log('[parse-referrals] Recalculating partner metrics...')
+    logger.info('Recalculating partner metrics...', 'parse-referrals')
     const { error: recalcError } = await supabase.rpc('recalculate_partner_metrics')
     if (recalcError) {
-      console.warn('[parse-referrals] Warning: Failed to recalculate metrics:', recalcError.message)
+      logger.warn('Failed to recalculate metrics', 'parse-referrals', { message: recalcError.message })
     } else {
-      console.log('[parse-referrals] Partner metrics recalculated successfully')
+      logger.info('Partner metrics recalculated successfully', 'parse-referrals')
     }
     
-    console.log('[parse-referrals] Sync complete:', result.updated, 'updated,', result.notMatched, 'not matched')
+    logger.info('Sync complete', 'parse-referrals', { updated: result.updated, notMatched: result.notMatched })
     
     return {
       success: true,
@@ -535,7 +546,7 @@ export default defineEventHandler(async (event) => {
     }
     
   } catch (error: any) {
-    console.error('[parse-referrals] Error:', error)
+    logger.error('Error', error, 'parse-referrals')
     throw createError({
       statusCode: error.statusCode || 500,
       message: error.message || 'Failed to parse CSV'

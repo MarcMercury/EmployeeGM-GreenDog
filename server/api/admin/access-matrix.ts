@@ -18,16 +18,16 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient(event)
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-  console.log('[access-matrix] User check via getUser:', user?.id || 'no user', 'error:', userError?.message)
+  logger.debug('User check via getUser', 'access-matrix', { userId: user?.id || 'no user', error: userError?.message })
 
   if (!user) {
     // Try to get session from cookies directly
     const cookies = parseCookies(event)
     const accessToken = cookies['sb-access-token'] || cookies['sb-uekumyupkhnpjpdcjfxb-auth-token']
-    console.log('[access-matrix] Cookie tokens available:', !!cookies['sb-access-token'], !!cookies['sb-uekumyupkhnpjpdcjfxb-auth-token'])
+    logger.debug('Cookie tokens available', 'access-matrix', { sbAccessToken: !!cookies['sb-access-token'], sbAuthToken: !!cookies['sb-uekumyupkhnpjpdcjfxb-auth-token'] })
     
     if (!accessToken) {
-      console.log('[access-matrix] No user session found')
+      logger.warn('No user session found', 'access-matrix')
       throw createError({ statusCode: 401, message: 'Unauthorized - no session' })
     }
   }
@@ -40,11 +40,11 @@ export default defineEventHandler(async (event) => {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, id')
     .eq('auth_user_id', authUserId)
     .single()
 
-  console.log('[access-matrix] Profile check:', profile?.role, 'error:', profileError?.message)
+  logger.debug('Profile check', 'access-matrix', { role: profile?.role, error: profileError?.message })
 
   if (profileError || !profile) {
     throw createError({ statusCode: 401, message: 'Profile not found' })
@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
         .order('tier', { ascending: false })
 
       if (rolesError) {
-        console.error('Error fetching roles:', rolesError)
+        logger.error('Error fetching roles', rolesError, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to fetch roles' })
       }
 
@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
         .order('sort_order')
 
       if (pagesError) {
-        console.error('Error fetching pages:', pagesError)
+        logger.error('Error fetching pages', pagesError, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to fetch pages' })
       }
 
@@ -89,7 +89,7 @@ export default defineEventHandler(async (event) => {
         .select('*')
 
       if (accessError) {
-        console.error('Error fetching access:', accessError)
+        logger.error('Error fetching access', accessError, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to fetch access levels' })
       }
 
@@ -102,7 +102,7 @@ export default defineEventHandler(async (event) => {
         }
       }
     } catch (error) {
-      console.error('Error in GET /api/admin/access-matrix:', error)
+      logger.error('Error in GET /api/admin/access-matrix', error, 'access-matrix')
       throw createError({ statusCode: 500, message: 'Internal server error' })
     }
   }
@@ -136,9 +136,17 @@ export default defineEventHandler(async (event) => {
         .single()
 
       if (error) {
-        console.error('Error updating access:', error)
+        logger.error('Error updating access', error, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to update access level' })
       }
+
+      await createAuditLog({
+        action: 'access_matrix_updated',
+        entityType: 'access_matrix',
+        entityId: page_id,
+        actorProfileId: profile.id,
+        metadata: { page_id, role_key, access_level }
+      })
 
       return {
         success: true,
@@ -147,7 +155,7 @@ export default defineEventHandler(async (event) => {
       }
     } catch (error: any) {
       if (error.statusCode) throw error
-      console.error('Error in POST /api/admin/access-matrix:', error)
+      logger.error('Error in POST /api/admin/access-matrix', error, 'access-matrix')
       throw createError({ statusCode: 500, message: 'Internal server error' })
     }
   }
@@ -186,7 +194,7 @@ export default defineEventHandler(async (event) => {
         .single()
 
       if (error) {
-        console.error('Error upserting role:', error)
+        logger.error('Error upserting role', error, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to save role' })
       }
 
@@ -197,7 +205,7 @@ export default defineEventHandler(async (event) => {
       }
     } catch (error: any) {
       if (error.statusCode) throw error
-      console.error('Error in PUT /api/admin/access-matrix:', error)
+      logger.error('Error in PUT /api/admin/access-matrix', error, 'access-matrix')
       throw createError({ statusCode: 500, message: 'Internal server error' })
     }
   }
@@ -246,7 +254,7 @@ export default defineEventHandler(async (event) => {
         .eq('role_key', role_key)
 
       if (error) {
-        console.error('Error deleting role:', error)
+        logger.error('Error deleting role', error, 'access-matrix')
         throw createError({ statusCode: 500, message: 'Failed to delete role' })
       }
 
@@ -256,7 +264,7 @@ export default defineEventHandler(async (event) => {
       }
     } catch (error: any) {
       if (error.statusCode) throw error
-      console.error('Error in DELETE /api/admin/access-matrix:', error)
+      logger.error('Error in DELETE /api/admin/access-matrix', error, 'access-matrix')
       throw createError({ statusCode: 500, message: 'Internal server error' })
     }
   }

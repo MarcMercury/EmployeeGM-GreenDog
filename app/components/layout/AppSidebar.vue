@@ -152,8 +152,8 @@
       </v-list-group>
       <v-list-item v-else-if="hasMarketingAccess" to="/marketing/calendar" prepend-icon="mdi-bullhorn" title="Marketing" rounded="lg" class="nav-item mb-1" />
 
-      <!-- ===== CRM & Analytics Group - Database-driven Access ===== -->
-      <v-list-group v-if="hasSectionAccess('CRM & Analytics') && !rail" value="crm-analytics">
+      <!-- ===== CRM & Analytics Group - SECTION_ACCESS driven ===== -->
+      <v-list-group v-if="hasCrmAccess && !rail" value="crm-analytics">
         <template #activator="{ props: activatorProps }">
           <v-list-item
             v-bind="activatorProps"
@@ -266,6 +266,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { UserRole } from '~/types'
+import { SECTION_ACCESS } from '~/types'
 
 // PAGE-LEVEL ACCESS - Extracted directly from database page_access table
 // Each path maps to the roles that have 'full' or 'view' access
@@ -400,15 +401,16 @@ function hasSectionAccess(sectionName: string): boolean {
   return pages.some(page => hasPageAccess(page))
 }
 
-// Section access computed properties
+// Section access computed properties — use SECTION_ACCESS from ~/types as single source of truth
 const isAdmin = computed(() => authStore.isAdmin)
 const isManager = computed(() => userRole.value === 'manager')
 const isSupervisor = computed(() => userRole.value === 'sup_admin')
-const hasMedOpsAccess = computed(() => hasSectionAccess('Med Ops'))
-const hasHrAccess = computed(() => hasSectionAccess('HR'))
-const hasMarketingAccess = computed(() => hasSectionAccess('Marketing'))
-const hasEducationAccess = computed(() => hasSectionAccess('GDU'))
-const hasAdminAccess = computed(() => hasSectionAccess('Admin Ops'))
+const hasMedOpsAccess = computed(() => SECTION_ACCESS.med_ops.includes(userRole.value))
+const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value))
+const hasMarketingAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value))
+const hasEducationAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value))
+const hasAdminAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value))
+const hasCrmAccess = computed(() => SECTION_ACCESS.crm_analytics.includes(userRole.value))
 
 async function handleSignOut() {
   await authStore.signOut()

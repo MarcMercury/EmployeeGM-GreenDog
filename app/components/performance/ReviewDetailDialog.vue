@@ -8,7 +8,7 @@
     <v-card v-if="review">
       <!-- Dialog Header -->
       <v-toolbar color="primary">
-        <v-btn icon="mdi-close" @click="$emit('close')" />
+        <v-btn icon="mdi-close" aria-label="Close" @click="$emit('close')" />
         <v-toolbar-title>
           {{ viewMode === 'employee' ? 'My Review' : `Review: ${getFullName(review.employee)}` }}
         </v-toolbar-title>

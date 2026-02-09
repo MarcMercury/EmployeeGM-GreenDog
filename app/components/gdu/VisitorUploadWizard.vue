@@ -9,12 +9,12 @@
           <div class="text-caption">Bulk import visitors from CSV file</div>
         </div>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="close" :disabled="uploading" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="close" :disabled="uploading" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pa-0" style="max-height: 70vh; overflow-y: auto;">
+      <v-card-text class="pa-0 scrollable-70vh">
         <v-stepper v-model="step" flat>
           <v-stepper-header class="elevation-0 border-b">
             <v-stepper-item :value="1" :complete="step > 1" title="Upload File" />
@@ -294,26 +294,9 @@
 </template>
 
 <script setup lang="ts">
-// Define visitor interface locally since table may not be in typed client
-interface VisitorInsert {
-  first_name: string
-  last_name: string
-  email?: string | null
-  phone?: string | null
-  visitor_type?: 'intern' | 'extern' | 'student' | 'ce_attendee' | 'shadow' | 'other'
-  organization_name?: string | null
-  school_of_origin?: string | null
-  program_name?: string | null
-  visit_start_date?: string | null
-  visit_end_date?: string | null
-  location?: string | null
-  visit_status?: string | null
-  coordinator?: string | null
-  mentor?: string | null
-  notes?: string | null
-  is_active?: boolean
-}
+import type { VisitorInsert } from '~/types/gdu.types'
 
+// Define visitor interface locally since table may not be in typed client
 const props = defineProps<{
   modelValue: boolean
 }>()

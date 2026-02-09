@@ -143,15 +143,15 @@ export const useEmployeeStore = defineStore('employee', {
               skill:skill_library (*)
             )
           `)
-          .eq('profile_id', id)
+          .eq('id', id)
           .single()
 
         if (error) throw error
         
-        // Transform to ProfileWithSkills format
+        // Transform to ProfileWithSkills format — id is employee table PK
         const emp = data
         this.selectedEmployee = {
-          id: emp.profile?.id || emp.id,
+          id: emp.id,
           email: emp.profile?.email || emp.email_work || '',
           first_name: emp.first_name,
           last_name: emp.last_name,
@@ -196,7 +196,7 @@ export const useEmployeeStore = defineStore('employee', {
     },
 
     async updateEmployeeSkill(
-      profileId: string, 
+      employeeId: string, 
       skillId: string, 
       level: SkillLevel,
       notes?: string
@@ -207,11 +207,12 @@ export const useEmployeeStore = defineStore('employee', {
       this.isLoading = true
 
       try {
-        // Check if skill exists
+        this.error = null
+        // Check if skill exists for this employee
         const { data: existing } = await supabase
           .from('employee_skills')
           .select('id')
-          .eq('profile_id', profileId)
+          .eq('employee_id', employeeId)
           .eq('skill_id', skillId)
           .single()
 
@@ -234,7 +235,7 @@ export const useEmployeeStore = defineStore('employee', {
           const { error } = await supabase
             .from('employee_skills')
             .insert({
-              profile_id: profileId,
+              employee_id: employeeId,
               skill_id: skillId,
               level,
               notes,
@@ -245,8 +246,8 @@ export const useEmployeeStore = defineStore('employee', {
           if (error) throw error
         }
 
-        // Refresh employee data
-        await this.fetchEmployee(profileId)
+        // Refresh employee data (fetchEmployee still queries by profile_id)
+        await this.fetchEmployee(employeeId)
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Failed to update skill'
         throw err
@@ -259,6 +260,7 @@ export const useEmployeeStore = defineStore('employee', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         const { data, error } = await supabase
           .from('skill_library')
           .insert(skill)

@@ -162,7 +162,7 @@
                 >
                   Action Required
                 </v-chip>
-                <v-btn icon="mdi-chevron-right" variant="text" size="small" />
+                <v-btn icon="mdi-chevron-right" variant="text" size="small" aria-label="Next" />
               </div>
             </template>
           </v-list-item>
@@ -179,7 +179,7 @@
       <v-card v-if="selectedReview">
         <!-- Dialog Header -->
         <v-toolbar color="primary">
-          <v-btn icon="mdi-close" @click="closeReview" />
+          <v-btn icon="mdi-close" aria-label="Close" @click="closeReview" />
           <v-toolbar-title>
             {{ viewMode === 'employee' ? 'My Review' : `Review: ${getFullName(selectedReview.employee)}` }}
           </v-toolbar-title>

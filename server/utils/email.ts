@@ -10,18 +10,39 @@ let resend: Resend | null = null
 
 function getResendClient(): Resend {
   if (!resend) {
-    const apiKey = process.env.RESEND_API_KEY
+    const config = useRuntimeConfig()
+    const apiKey = config.resendApiKey
     if (!apiKey) {
-      throw new Error('RESEND_API_KEY environment variable is not set')
+      throw new Error('RESEND_API_KEY is not configured in runtimeConfig')
     }
     resend = new Resend(apiKey)
   }
   return resend
 }
 
-// Default sender configuration
-const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'Green Dog Veterinary <noreply@greendog.vet>'
-const APP_URL = process.env.APP_URL || 'https://employeegm.greendog.vet'
+/**
+ * Escape HTML special characters to prevent XSS in email templates.
+ * Use on any user-supplied string before interpolating into HTML.
+ */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+// Default sender configuration (resolved lazily via runtimeConfig)
+function getDefaultFrom(): string {
+  const config = useRuntimeConfig()
+  return config.resendFromEmail || 'Green Dog Veterinary <noreply@greendog.vet>'
+}
+
+function getEmailAppUrl(): string {
+  const config = useRuntimeConfig()
+  return config.public.appUrl || 'https://employeegm.greendog.vet'
+}
 
 export interface IntakeEmailOptions {
   to: string
@@ -70,9 +91,9 @@ function getSubjectLine(linkType: string, firstName?: string): string {
  */
 function getEmailBody(options: IntakeEmailOptions): string {
   const { firstName, lastName, linkType, token, expiresAt, customMessage, targetPositionTitle, targetClinicName } = options
-  const name = firstName || 'there'
-  const fullName = firstName && lastName ? `${firstName} ${lastName}` : firstName || ''
-  const intakeUrl = `${APP_URL}/intake/${token}`
+  const name = firstName ? escapeHtml(firstName) : 'there'
+  const fullName = firstName && lastName ? `${escapeHtml(firstName)} ${escapeHtml(lastName)}` : firstName ? escapeHtml(firstName) : ''
+  const intakeUrl = `${getEmailAppUrl()}/intake/${encodeURIComponent(token)}`
   const expiresFormatted = new Date(expiresAt).toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -88,8 +109,8 @@ function getEmailBody(options: IntakeEmailOptions): string {
     case 'job_application':
       intro = `We're excited about your interest in joining the Green Dog Veterinary team!`
       if (targetPositionTitle) {
-        intro += ` We'd love to learn more about you for the <strong>${targetPositionTitle}</strong> position`
-        if (targetClinicName) intro += ` at <strong>${targetClinicName}</strong>`
+        intro += ` We'd love to learn more about you for the <strong>${escapeHtml(targetPositionTitle)}</strong> position`
+        if (targetClinicName) intro += ` at <strong>${escapeHtml(targetClinicName)}</strong>`
         intro += '.'
       }
       ctaText = 'Complete Your Application'
@@ -164,7 +185,7 @@ function getEmailBody(options: IntakeEmailOptions): string {
               ${customMessage ? `
               <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px 20px; margin: 20px 0;">
                 <p style="margin: 0; color: #166534; font-size: 14px; line-height: 1.5;">
-                  ${customMessage}
+                  ${escapeHtml(customMessage)}
                 </p>
               </div>
               ` : ''}
@@ -225,8 +246,8 @@ function getEmailBody(options: IntakeEmailOptions): string {
  */
 export async function sendIntakeLinkEmail(options: IntakeEmailOptions): Promise<EmailResult> {
   // Check if Resend is configured
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured - email will not be sent')
+  if (!useRuntimeConfig().resendApiKey) {
+    logger.warn('RESEND_API_KEY not configured - email will not be sent', 'email')
     return {
       success: false,
       error: 'Email service not configured. Set RESEND_API_KEY environment variable.'
@@ -235,14 +256,14 @@ export async function sendIntakeLinkEmail(options: IntakeEmailOptions): Promise<
 
   try {
     const result = await getResendClient().emails.send({
-      from: DEFAULT_FROM,
+      from: getDefaultFrom(),
       to: options.to,
       subject: getSubjectLine(options.linkType, options.firstName),
       html: getEmailBody(options),
     })
 
     if (result.error) {
-      console.error('Resend error:', result.error)
+      logger.error('Resend error', null, 'email', { error: result.error })
       return {
         success: false,
         error: result.error.message
@@ -254,7 +275,7 @@ export async function sendIntakeLinkEmail(options: IntakeEmailOptions): Promise<
       messageId: result.data?.id
     }
   } catch (error: any) {
-    console.error('Email send error:', error)
+    logger.error('Email send error', error, 'email')
     return {
       success: false,
       error: error.message || 'Failed to send email'
@@ -284,13 +305,16 @@ export async function sendBatchIntakeEmails(
 
 /**
  * Send a simple notification email
+ * 
+ * WARNING: The `body` parameter is interpolated directly into HTML.
+ * Callers MUST escape any user-supplied content with escapeHtml() before passing it.
  */
 export async function sendNotificationEmail(
   to: string,
   subject: string,
   body: string
 ): Promise<EmailResult> {
-  if (!process.env.RESEND_API_KEY) {
+  if (!useRuntimeConfig().resendApiKey) {
     return {
       success: false,
       error: 'Email service not configured'
@@ -299,7 +323,7 @@ export async function sendNotificationEmail(
 
   try {
     const result = await getResendClient().emails.send({
-      from: DEFAULT_FROM,
+      from: getDefaultFrom(),
       to,
       subject,
       html: `

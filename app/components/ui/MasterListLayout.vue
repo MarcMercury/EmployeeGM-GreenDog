@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { StatCard, TabItem } from '~/types/ui.types'
+
 /**
  * MasterListLayout Component
  * 
@@ -12,21 +14,6 @@
  * - Tab navigation support
  * - Responsive design
  */
-
-interface StatCard {
-  label: string
-  value: string | number
-  color?: string
-  icon?: string
-  variant?: 'default' | 'warning' | 'success' | 'error'
-}
-
-interface TabItem {
-  key: string
-  label: string
-  icon?: string
-  count?: number
-}
 
 interface Props {
   // Header

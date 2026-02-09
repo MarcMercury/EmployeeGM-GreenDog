@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, conflicts: data || [] }
 
   } catch (error: any) {
-    console.error('Error fetching conflicts:', error)
+    logger.error('Error fetching conflicts', error, 'slack/sync/conflicts')
     return { ok: false, error: error.message, conflicts: [] }
   }
 })

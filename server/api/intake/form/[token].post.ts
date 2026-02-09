@@ -38,8 +38,8 @@ export default defineEventHandler(async (event) => {
 
   // Create service role client for database operations
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw createError({
@@ -129,7 +129,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (submissionError) {
-    console.error('Error creating submission:', submissionError)
+    logger.error('Error creating submission', submissionError, 'intake/form')
     throw createError({
       statusCode: 500,
       message: 'Failed to submit form'
@@ -144,7 +144,7 @@ export default defineEventHandler(async (event) => {
       })
 
     if (processError) {
-      console.error('Error processing submission:', processError)
+      logger.error('Error processing submission', processError, 'intake/form')
       // Don't fail the request - mark as needs_review
       await adminClient
         .from('intake_submissions')
@@ -165,7 +165,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (err) {
-    console.error('Processing error:', err)
+    logger.error('Processing error', err instanceof Error ? err : null, 'intake/form')
     
     // Update submission to needs_review
     await adminClient

@@ -13,22 +13,10 @@ const currentStep = ref(1)
 const totalSteps = 5
 const saving = ref(false)
 
+import type { GDUInventoryItem, SelectedInventoryItem } from '~/types/gdu.types'
+
 // Inventory types and state
-interface InventoryItem {
-  id: string
-  item_name: string
-  category: string
-  total_quantity: number
-}
-
-interface SelectedInventoryItem {
-  inventory_item_id: string
-  item_name: string
-  quantity_used: number
-  location: string
-}
-
-const inventoryItems = ref<InventoryItem[]>([])
+const inventoryItems = ref<GDUInventoryItem[]>([])
 const selectedInventoryItems = ref<SelectedInventoryItem[]>([])
 
 const locationOptions = [
@@ -406,7 +394,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
   <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" to="/gdu/events" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" to="/gdu/events" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
@@ -866,7 +854,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                     />
                   </v-col>
                   <v-col cols="12" md="2" class="d-flex align-center justify-center">
-                    <v-btn icon variant="text" size="small" color="error" @click="removeSpeaker(index)">
+                    <v-btn icon variant="text" size="small" color="error" aria-label="Delete" @click="removeSpeaker(index)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </v-col>
@@ -939,7 +927,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                     />
                   </v-col>
                   <v-col cols="12" md="2" class="d-flex align-center justify-center">
-                    <v-btn icon variant="text" size="small" color="error" @click="removeSponsor(index)">
+                    <v-btn icon variant="text" size="small" color="error" aria-label="Delete" @click="removeSponsor(index)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </v-col>
@@ -1016,7 +1004,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
                     />
                   </v-col>
                   <v-col cols="3" md="1" class="d-flex align-center justify-center">
-                    <v-btn icon variant="text" size="small" color="error" @click="removeSelectedInventoryItem(index)">
+                    <v-btn icon variant="text" size="small" color="error" aria-label="Delete" @click="removeSelectedInventoryItem(index)">
                       <v-icon>mdi-delete</v-icon>
                     </v-btn>
                   </v-col>

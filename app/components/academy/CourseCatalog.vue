@@ -252,10 +252,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAcademyStore } from '~/stores/academy'
+import { useAcademyCoursesStore } from '~/stores/academyCourses'
+import { useAcademyProgressStore } from '~/stores/academyProgress'
 import { useRouter } from 'vue-router'
 
-const academyStore = useAcademyStore()
+const coursesStore = useAcademyCoursesStore()
+const progressStore = useAcademyProgressStore()
 const router = useRouter()
 
 // State
@@ -266,20 +268,20 @@ const showMandatoryOnly = ref(false)
 const enrollingId = ref<string | null>(null)
 
 // Computed
-const loading = computed(() => academyStore.loading)
+const loading = computed(() => coursesStore.isLoading)
 
 const categories = computed(() => {
-  const cats = new Set(academyStore.courses.map(c => c.category).filter(Boolean))
+  const cats = new Set(coursesStore.courses.map(c => c.category).filter(Boolean))
   return Array.from(cats).sort()
 })
 
-const totalCourses = computed(() => academyStore.courses.length)
-const enrolledCount = computed(() => academyStore.enrolledCourses.length)
-const completedCount = computed(() => academyStore.completedCourses.length)
-const dueCount = computed(() => academyStore.dueCoursesCount)
+const totalCourses = computed(() => coursesStore.courses.length)
+const enrolledCount = computed(() => coursesStore.enrolledCourses.length)
+const completedCount = computed(() => coursesStore.completedCourses.length)
+const dueCount = computed(() => coursesStore.dueCoursesCount)
 
 const filteredCourses = computed(() => {
-  let courses = [...academyStore.courses]
+  let courses = [...coursesStore.courses]
 
   // Search filter
   if (searchQuery.value) {
@@ -325,15 +327,15 @@ const filteredCourses = computed(() => {
 
 // Methods
 function getEnrollment(courseId: string) {
-  return academyStore.enrollments.find(e => e.course_id === courseId)
+  return coursesStore.enrollments.find(e => e.course_id === courseId)
 }
 
 function getCourseProgress(courseId: string): number {
-  return academyStore.courseProgress(courseId)
+  return progressStore.courseProgress(courseId)
 }
 
 function getLessonCount(courseId: string): number {
-  return academyStore.lessons.filter(l => l.course_id === courseId).length || '?'
+  return progressStore.lessons.filter(l => l.course_id === courseId).length || '?'
 }
 
 function isOverdue(course: any): boolean {
@@ -402,7 +404,7 @@ function getCategoryIcon(category: string): string {
 async function handleEnroll(course: any) {
   enrollingId.value = course.id
   try {
-    await academyStore.enrollInCourseSimple(course.id)
+    await coursesStore.enrollInCourseSimple(course.id)
   } finally {
     enrollingId.value = null
   }
@@ -415,8 +417,8 @@ function viewCourse(course: any) {
 // Lifecycle
 onMounted(async () => {
   await Promise.all([
-    academyStore.fetchCourses(),
-    academyStore.fetchEnrollments()
+    coursesStore.fetchCourses(),
+    coursesStore.fetchEnrollments()
   ])
 })
 </script>

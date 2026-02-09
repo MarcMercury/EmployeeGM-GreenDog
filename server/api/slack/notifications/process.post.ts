@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const body = await readBody(event)
 
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
 
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
@@ -107,7 +107,7 @@ export default defineEventHandler(async (event) => {
         successCount++
 
       } catch (error: any) {
-        console.error(`Failed to send notification ${notification.id}:`, error)
+        logger.error('Failed to send notification', error, 'slack/notifications/process', { notificationId: notification.id })
         
         const newRetryCount = (notification.retry_count || 0) + 1
         const shouldRetry = newRetryCount < (notification.max_retries || 3)
@@ -133,7 +133,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    console.error('Error processing notification queue:', error)
+    logger.error('Error processing notification queue', error, 'slack/notifications/process')
     return { ok: false, error: error.message }
   }
 })

@@ -35,17 +35,26 @@ export default defineEventHandler(async (event) => {
   
   // Verify cron secret for security
   const authHeader = getHeader(event, 'authorization')
-  const cronSecret = process.env.CRON_SECRET
+  const config = useRuntimeConfig()
+  const cronSecret = config.cronSecret
   
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    console.warn('[CredentialExpiryCron] Unauthorized cron attempt')
+  if (!cronSecret) {
+    logger.error('CRON_SECRET not configured - rejecting request', undefined, 'CredentialExpiryCron')
+    throw createError({
+      statusCode: 500,
+      message: 'Server configuration error'
+    })
+  }
+  
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    logger.warn('Unauthorized cron attempt', 'CredentialExpiryCron')
     throw createError({
       statusCode: 401,
       message: 'Unauthorized'
     })
   }
 
-  console.log('[CredentialExpiryCron] Started at', new Date().toISOString())
+  logger.cron('credential-expiry-check', 'started')
 
   const supabase = await serverSupabaseServiceRole(event)
   
@@ -61,7 +70,7 @@ export default defineEventHandler(async (event) => {
   try {
     // 1. Call the database function to create notifications
     // Note: This RPC function is created by the credential_expiration_notifications migration
-    console.log('[CredentialExpiryCron] Calling create_credential_expiration_notifications()...')
+    logger.debug('Calling create_credential_expiration_notifications()', 'CredentialExpiryCron')
     
     // Use type assertion since the RPC function isn't in generated types yet
     const { data, error } = await (supabase.rpc as any)('create_credential_expiration_notifications') as {
@@ -70,16 +79,16 @@ export default defineEventHandler(async (event) => {
     }
     
     if (error) {
-      console.error('[CredentialExpiryCron] Error calling notification function:', error)
+      logger.error('Error calling notification function', error as Error, 'CredentialExpiryCron')
       results.errors.push(`Database function error: ${error.message}`)
     } else if (data && Array.isArray(data) && data.length > 0) {
       results.notificationsCreated = data[0].notifications_created || 0
       results.licensesProcessed = data[0].licenses_processed || 0
       results.certificationsProcessed = data[0].certifications_processed || 0
       
-      console.log('[CredentialExpiryCron] Notifications created:', results.notificationsCreated)
-      console.log('[CredentialExpiryCron] Licenses processed:', results.licensesProcessed)
-      console.log('[CredentialExpiryCron] Certifications processed:', results.certificationsProcessed)
+      logger.info('Notifications created', 'CredentialExpiryCron', { notificationsCreated: results.notificationsCreated })
+      logger.info('Licenses processed', 'CredentialExpiryCron', { licensesProcessed: results.licensesProcessed })
+      logger.info('Certifications processed', 'CredentialExpiryCron', { certificationsProcessed: results.certificationsProcessed })
     }
 
     // 2. Get count of expiring credentials for summary
@@ -124,7 +133,7 @@ export default defineEventHandler(async (event) => {
               targetChannel = generalSettings?.value as string | null
             }
           } catch {
-            console.log('[CredentialExpiryCron] Could not fetch Slack channel settings')
+            logger.warn('Could not fetch Slack channel settings', 'CredentialExpiryCron')
           }
           
           if (targetChannel) {
@@ -147,18 +156,18 @@ export default defineEventHandler(async (event) => {
               
               if (slackResponse) {
                 results.slackNotificationsSent = 1
-                console.log('[CredentialExpiryCron] Slack notification sent successfully')
+                logger.info('Slack notification sent successfully', 'CredentialExpiryCron')
               }
             } catch (slackFetchErr: unknown) {
               const errMsg = slackFetchErr instanceof Error ? slackFetchErr.message : 'Unknown error'
-              console.error('[CredentialExpiryCron] Slack notification failed:', slackFetchErr)
+              logger.error('Slack notification failed', slackFetchErr instanceof Error ? slackFetchErr : new Error(errMsg), 'CredentialExpiryCron')
               results.errors.push(`Slack notification failed: ${errMsg}`)
             }
           }
         }
       } catch (slackErr: unknown) {
         const errMsg = slackErr instanceof Error ? slackErr.message : 'Unknown error'
-        console.error('[CredentialExpiryCron] Error sending Slack notification:', slackErr)
+        logger.error('Error sending Slack notification', slackErr instanceof Error ? slackErr : new Error(errMsg), 'CredentialExpiryCron')
         results.errors.push(`Slack error: ${errMsg}`)
       }
     }
@@ -178,19 +187,19 @@ export default defineEventHandler(async (event) => {
           duration_ms: Date.now() - startTime
         }
       })
-      console.log('[CredentialExpiryCron] Audit log created')
+      logger.debug('Audit log created', 'CredentialExpiryCron')
     } catch (auditErr: unknown) {
-      console.error('[CredentialExpiryCron] Failed to create audit log:', auditErr)
+      logger.error('Failed to create audit log', auditErr instanceof Error ? auditErr : new Error(String(auditErr)), 'CredentialExpiryCron')
     }
 
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[CredentialExpiryCron] Fatal error:', err)
+    logger.cron('credential-expiry-check', 'failed', { error: errMsg })
     results.errors.push(`Fatal error: ${errMsg}`)
   }
 
   const duration = Date.now() - startTime
-  console.log(`[CredentialExpiryCron] Completed in ${duration}ms`, results)
+  logger.cron('credential-expiry-check', 'completed', { duration_ms: duration, ...results })
 
   return {
     success: results.errors.length === 0,

@@ -5,71 +5,7 @@
  * and notification management in the Employee GM application.
  */
 
-interface SyncStatus {
-  lastSync: {
-    id: string
-    sync_type: string
-    status: string
-    started_at: string
-    completed_at: string | null
-    matched_count: number
-    new_links_count: number
-    deactivated_count: number
-    errors_count: number
-    pending_review_count: number
-  } | null
-  recentLogs: any[]
-  pendingConflicts: number
-  stats: {
-    total: number
-    linked: number
-    unlinked: number
-    deactivated: number
-    pending_review: number
-  }
-}
-
-interface SyncConflict {
-  id: string
-  employee_id: string | null
-  profile_id: string | null
-  conflict_type: string
-  employee_email: string | null
-  slack_user_id: string | null
-  slack_email: string | null
-  slack_display_name: string | null
-  status: string
-  details: any
-  created_at: string
-  employee?: {
-    id: string
-    first_name: string
-    last_name: string
-    email_work: string
-    employment_status: string
-  }
-}
-
-interface SlackUser {
-  id: string
-  name: string
-  real_name: string
-  display_name: string
-  email: string
-  is_active: boolean
-  avatar: string
-}
-
-interface NotificationTrigger {
-  id: string
-  name: string
-  description: string | null
-  event_type: string
-  is_active: boolean
-  channel_target: string | null
-  send_dm: boolean
-  message_template: string | null
-}
+import type { SyncStatus, SyncConflict, SlackUser, NotificationTrigger } from '~/types/integrations.types'
 
 export const useSlackSync = () => {
   // Reactive state
@@ -101,8 +37,8 @@ export const useSlackSync = () => {
       } else {
         error.value = response.error
       }
-    } catch (err: any) {
-      error.value = err.message
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : String(err)
       console.error('Failed to fetch sync status:', err)
     } finally {
       isLoading.value = false
@@ -131,10 +67,10 @@ export const useSlackSync = () => {
         error.value = response.error
         return { ok: false, error: response.error }
       }
-    } catch (err: any) {
-      error.value = err.message
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : String(err)
       console.error('Sync failed:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: error.value }
     } finally {
       isSyncing.value = false
     }
@@ -152,7 +88,7 @@ export const useSlackSync = () => {
       if (response.ok) {
         conflicts.value = response.conflicts
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch conflicts:', err)
     }
   }
@@ -180,9 +116,9 @@ export const useSlackSync = () => {
       } else {
         return { ok: false, error: response.error }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to resolve conflict:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 
@@ -206,9 +142,9 @@ export const useSlackSync = () => {
       } else {
         return { ok: false, error: response.error }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to link employee:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 
@@ -222,7 +158,7 @@ export const useSlackSync = () => {
       if (response.ok) {
         slackUsers.value = response.users
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch Slack users:', err)
     }
   }
@@ -237,7 +173,7 @@ export const useSlackSync = () => {
       if (response.ok) {
         triggers.value = response.triggers
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch triggers:', err)
     }
   }
@@ -262,9 +198,9 @@ export const useSlackSync = () => {
       } else {
         return { ok: false, error: response.error }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update trigger:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 
@@ -284,9 +220,9 @@ export const useSlackSync = () => {
       })
 
       return response
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to send notification:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 
@@ -300,9 +236,9 @@ export const useSlackSync = () => {
       })
 
       return response
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to process notifications:', err)
-      return { ok: false, error: err.message }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 

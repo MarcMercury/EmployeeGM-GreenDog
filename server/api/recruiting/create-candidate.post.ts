@@ -101,7 +101,7 @@ export default defineEventHandler(async (event) => {
       status: 'new'
     }
 
-    console.log('[create-candidate] Inserting:', candidate.email)
+    logger.info('Inserting candidate', 'create-candidate', { email: candidate.email })
 
     const { data, error } = await supabaseAdmin
       .from('candidates')
@@ -110,11 +110,11 @@ export default defineEventHandler(async (event) => {
       .single()
 
     if (error) {
-      console.error('[create-candidate] Insert error:', error)
+      logger.error('Insert error', error, 'create-candidate')
       throw createError({ statusCode: 500, message: error.message })
     }
 
-    console.log('[create-candidate] Created:', data.id)
+    logger.info('Created candidate', 'create-candidate', { id: data.id })
 
     return {
       success: true,
@@ -122,7 +122,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (err: any) {
-    console.error('[create-candidate] Error:', err.message)
+    logger.error('Error', err, 'create-candidate')
     if (err.statusCode) throw err
     throw createError({ statusCode: 500, message: err.message || 'Failed to create candidate' })
   }

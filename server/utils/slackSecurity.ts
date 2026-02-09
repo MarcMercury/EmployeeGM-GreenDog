@@ -14,6 +14,10 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Rate limiting state (in-memory, resets on server restart)
+// ⚠️ SERVERLESS NOTE: This rate limiter is per-instance only and resets on cold starts.
+// For Slack API calls this is acceptable — worst case is slightly exceeding the limit
+// before Slack's own 429 response kicks in. For critical rate limiting (e.g. auth),
+// use a persistent store (Vercel KV, Redis, or Supabase table).
 const rateLimitState = {
   lastReset: Date.now(),
   callCount: 0,
@@ -45,7 +49,8 @@ export function checkRateLimit(): { allowed: boolean; retryAfter?: number } {
  * Get Slack bot token from environment (server-side only)
  */
 export function getSlackBotToken(): string | null {
-  return process.env.SLACK_BOT_TOKEN || null
+  const config = useRuntimeConfig()
+  return config.slackBotToken || null
 }
 
 /**
@@ -65,8 +70,9 @@ export async function logSlackApiCall(
   success: boolean,
   details?: Record<string, any>
 ): Promise<void> {
-  const SUPABASE_URL = process.env.SUPABASE_URL
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const config = useRuntimeConfig()
+  const SUPABASE_URL = config.public.supabaseUrl
+  const SUPABASE_SERVICE_ROLE_KEY = config.supabaseServiceRoleKey
   
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return
   
@@ -83,7 +89,7 @@ export async function logSlackApiCall(
       }
     })
   } catch (error) {
-    console.error('Failed to log Slack API call:', error)
+    logger.error('Failed to log Slack API call', error instanceof Error ? error : null, 'slackSecurity')
   }
 }
 

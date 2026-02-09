@@ -22,35 +22,46 @@ interface ApplicationBody {
   target_position_id?: string | null
 }
 
-// Simple in-memory rate limiting
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+// Rate limiting via Supabase — checks recent candidate submissions.
+// This is serverless-safe (persisted to DB) unlike in-memory Maps.
+// Falls back to allowing the request if the rate limit check itself fails.
+async function checkApplicationRateLimit(
+  supabase: ReturnType<typeof createClient>,
+  email: string,
+  clientIP: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
 
-function checkRateLimit(key: string, limit: number, windowMs: number): boolean {
-  const now = Date.now()
-  const record = rateLimitMap.get(key)
-  
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs })
-    return true
-  }
-  
-  if (record.count >= limit) {
-    return false
-  }
-  
-  record.count++
-  return true
-}
+  try {
+    // Check by email (5 per hour)
+    const { count: emailCount } = await supabase
+      .from('candidates')
+      .select('*', { count: 'exact', head: true })
+      .eq('email', email.toLowerCase())
+      .gte('created_at', oneHourAgo)
 
-// Clean up old entries every 10 minutes
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, value] of rateLimitMap.entries()) {
-    if (now > value.resetAt) {
-      rateLimitMap.delete(key)
+    if ((emailCount || 0) >= 5) {
+      return { allowed: false, reason: 'Too many applications from this email address. Please try again later.' }
     }
+
+    // Check by IP via application metadata (10 per hour) — stored in notes field
+    // This is a best-effort check since IP is not a dedicated column
+    const { count: ipCount } = await supabase
+      .from('candidates')
+      .select('*', { count: 'exact', head: true })
+      .ilike('notes', `%[ip:${clientIP}]%`)
+      .gte('created_at', oneHourAgo)
+
+    if ((ipCount || 0) >= 10) {
+      return { allowed: false, reason: 'Too many applications from this network. Please try again later.' }
+    }
+
+    return { allowed: true }
+  } catch {
+    // If rate limit check fails, allow the request (fail-open for UX)
+    return { allowed: true }
   }
-}, 10 * 60 * 1000)
+}
 
 export default defineEventHandler(async (event) => {
   // Get client identifiers for rate limiting
@@ -58,15 +69,6 @@ export default defineEventHandler(async (event) => {
                    getHeader(event, 'x-real-ip') ||
                    event.node.req.socket?.remoteAddress || 
                    'unknown'
-  
-  // Rate limit by IP: 10 requests per hour
-  const ipKey = `apply:ip:${clientIP}`
-  if (!checkRateLimit(ipKey, 10, 60 * 60 * 1000)) {
-    throw createError({
-      statusCode: 429,
-      message: 'Too many applications from this location. Please try again later.'
-    })
-  }
   
   const body = await readBody<ApplicationBody>(event)
 
@@ -86,22 +88,13 @@ export default defineEventHandler(async (event) => {
       message: 'Invalid email format'
     })
   }
-  
-  // Rate limit by email: 5 requests per hour
-  const emailKey = `apply:email:${body.email.toLowerCase()}`
-  if (!checkRateLimit(emailKey, 5, 60 * 60 * 1000)) {
-    throw createError({
-      statusCode: 429,
-      message: 'Too many applications with this email. Please try again later.'
-    })
-  }
 
   const userAgent = getHeader(event, 'user-agent') || null
 
   // Create service role client for database operations
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw createError({
@@ -111,6 +104,15 @@ export default defineEventHandler(async (event) => {
   }
 
   const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+
+  // Serverless-safe rate limiting via Supabase (replaces in-memory Map)
+  const rateLimitResult = await checkApplicationRateLimit(adminClient, body.email, clientIP)
+  if (!rateLimitResult.allowed) {
+    throw createError({
+      statusCode: 429,
+      message: rateLimitResult.reason || 'Too many requests. Please try again later.'
+    })
+  }
 
   try {
     // Check for duplicate applications (same email)
@@ -130,7 +132,7 @@ export default defineEventHandler(async (event) => {
           phone: body.phone || null,
           resume_url: body.resume_url || existingCandidate.resume_url,
           experience_years: body.experience_years || null,
-          notes: body.notes ? `[${new Date().toISOString()}] ${body.notes}\n\n${existingCandidate.notes || ''}` : existingCandidate.notes,
+          notes: `[ip:${clientIP}] [${new Date().toISOString()}] ${body.notes || 'resubmission'}\n\n${existingCandidate.notes || ''}`.trim(),
           source: body.source || 'website',
           updated_at: new Date().toISOString()
         })
@@ -160,7 +162,7 @@ export default defineEventHandler(async (event) => {
         phone: body.phone || null,
         resume_url: body.resume_url || null,
         experience_years: body.experience_years || null,
-        notes: body.notes || null,
+        notes: `[ip:${clientIP}]${body.notes ? ' ' + body.notes : ''}`.trim(),
         source: body.source || 'website',
         referral_source: 'Public Careers Page',
         target_position_id: body.target_position_id || null,
@@ -192,10 +194,10 @@ export default defineEventHandler(async (event) => {
 
       if (personError) {
         // Log but don't fail - candidate was created
-        console.warn('Failed to create unified_persons record:', personError)
+        logger.warn('Failed to create unified_persons record', 'public/apply', { error: personError })
       }
     } catch (personErr) {
-      console.warn('Error creating unified_persons:', personErr)
+      logger.warn('Error creating unified_persons', 'public/apply', { error: personErr })
     }
 
     return {
@@ -207,7 +209,7 @@ export default defineEventHandler(async (event) => {
       }
     }
   } catch (err: any) {
-    console.error('Error creating candidate:', err)
+    logger.error('Error creating candidate', err, 'public/apply')
     throw createError({
       statusCode: 500,
       message: err.message || 'Failed to submit application'

@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js'
 export default defineEventHandler(async (event) => {
   const userId = getRouterParam(event, 'id')
   
-  console.log('[Admin Users PATCH] Starting request for userId:', userId)
+  logger.debug('Starting request', 'admin-users-patch', { userId })
   
   if (!userId) {
     throw createError({
@@ -21,13 +21,22 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Parse request body
+  // Validate userId is a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuidRegex.test(userId)) {
+    throw createError({
+      statusCode: 400,
+      message: 'Invalid user ID format — expected UUID'
+    })
+  }
+
+  // Parse and validate request body
   let body: Record<string, any>
   try {
     body = await readBody(event)
-    console.log('[Admin Users PATCH] Request body:', JSON.stringify(body))
+    logger.debug('Request body', 'admin-users-patch', { body })
   } catch (e) {
-    console.error('[Admin Users PATCH] Failed to parse body:', e)
+    logger.error('Failed to parse body', e, 'admin-users-patch')
     throw createError({
       statusCode: 400,
       message: 'Invalid request body'
@@ -37,7 +46,7 @@ export default defineEventHandler(async (event) => {
   // Verify authorization header
   const authHeader = getHeader(event, 'authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    console.log('[Admin Users PATCH] No auth header')
+    logger.warn('No auth header', 'admin-users-patch')
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - No token provided'
@@ -48,11 +57,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Users PATCH] Missing credentials:', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
+    logger.error('Missing credentials', null, 'admin-users-patch', { hasUrl: !!supabaseUrl, hasServiceKey: !!supabaseServiceKey })
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
@@ -60,13 +69,13 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
   
   if (authError || !callerUser) {
-    console.log('[Admin Users PATCH] Auth error:', authError?.message)
+    logger.warn('Auth error', 'admin-users-patch', { error: authError?.message })
     throw createError({
       statusCode: 401,
       message: 'Unauthorized - Invalid token'
@@ -89,7 +98,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (profileError) {
-    console.error('[Admin Users PATCH] Profile fetch error:', profileError)
+    logger.error('Profile fetch error', profileError, 'admin-users-patch')
     throw createError({
       statusCode: 500,
       message: 'Failed to fetch caller profile'
@@ -97,7 +106,7 @@ export default defineEventHandler(async (event) => {
   }
 
   if (callerProfile?.role !== 'super_admin') {
-    console.log('[Admin Users PATCH] Access denied - role is:', callerProfile?.role)
+    logger.warn('Access denied', 'admin-users-patch', { role: callerProfile?.role })
     throw createError({
       statusCode: 403,
       message: 'Forbidden - Super Admin access required'
@@ -116,7 +125,7 @@ export default defineEventHandler(async (event) => {
   const allowedFields = ['role', 'is_active', 'first_name', 'last_name', 'phone']
   
   // Fetch valid roles from the database (role_definitions table)
-  let validRoles: string[] = ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'marketing_admin', 'sup_admin', 'user']
+  let validRoles: string[] = [...ALL_VALID_ROLES]
   
   try {
     const { data: roleData, error: roleError } = await supabaseAdmin
@@ -124,13 +133,13 @@ export default defineEventHandler(async (event) => {
       .select('role_key')
     
     if (roleError) {
-      console.warn('[Admin Users PATCH] Could not fetch roles from DB, using defaults:', roleError.message)
+      logger.warn('Could not fetch roles from DB, using defaults', 'admin-users-patch', { error: roleError.message })
     } else if (roleData && roleData.length > 0) {
       validRoles = roleData.map(r => r.role_key)
-      console.log('[Admin Users PATCH] Loaded', validRoles.length, 'roles from database')
+      logger.debug('Loaded roles from database', 'admin-users-patch', { count: validRoles.length })
     }
   } catch (e: any) {
-    console.warn('[Admin Users PATCH] Exception fetching roles, using defaults:', e.message)
+    logger.warn('Exception fetching roles, using defaults', 'admin-users-patch', { error: e.message })
   }
   
   // validRoles already has defaults, no need for else block
@@ -141,7 +150,7 @@ export default defineEventHandler(async (event) => {
       // Validate role if changing it
       if (field === 'role') {
         if (!validRoles.includes(body[field])) {
-          console.log('[Admin Users PATCH] Invalid role:', body[field], 'Valid roles:', validRoles)
+          logger.warn('Invalid role', 'admin-users-patch', { role: body[field], validRoles })
           throw createError({
             statusCode: 400,
             message: `Invalid role: ${body[field]}. Valid roles are: ${validRoles.join(', ')}`
@@ -161,7 +170,7 @@ export default defineEventHandler(async (event) => {
 
   updateData.updated_at = new Date().toISOString()
 
-  console.log('[Admin Users PATCH] Updating profile', userId, 'with:', updateData)
+  logger.info('Updating profile', 'admin-users-patch', { userId, updateData })
 
   // Update the profile
   const { data: updatedProfile, error: updateError } = await supabaseAdmin
@@ -172,7 +181,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (updateError) {
-    console.error('[Admin Users PATCH] Update error:', updateError)
+    logger.error('Update error', updateError, 'admin-users-patch')
     throw createError({
       statusCode: 500,
       message: `Failed to update user: ${updateError.message}`
@@ -180,7 +189,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // Log this action for audit purposes
-  console.log(`[AUDIT] User ${userId} updated by super_admin ${callerUser.id} at ${new Date().toISOString()}:`, updateData)
+  logger.info('User updated', 'AUDIT', { userId, by: callerUser.id, updateData })
+
+  await createAuditLog({
+    action: 'user_updated',
+    entityType: 'user',
+    entityId: userId,
+    actorProfileId: callerProfile.id,
+    metadata: { fields: Object.keys(updateData).filter(k => k !== 'updated_at') }
+  })
 
   return {
     success: true,

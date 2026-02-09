@@ -1,16 +1,12 @@
 <script setup lang="ts">
+import type { ExportColumn } from '~/types/ui.types'
+
 /**
  * ExportMenu Component
  * 
  * One-click export dropdown for tables
  * Supports Excel, CSV, and PDF exports
  */
-
-interface ExportColumn {
-  key: string
-  title: string
-  format?: (value: any, row: any) => string
-}
 
 interface Props {
   data: any[]

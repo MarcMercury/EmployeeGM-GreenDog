@@ -2,8 +2,18 @@
  * Apply EzyVet CRM Migration via direct SQL execution
  */
 
-const SUPABASE_URL = 'https://uekumyupkhnpjpdcjfxb.supabase.co'
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4'
+import * as dotenv from 'dotenv'
+
+dotenv.config()
+
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_MANAGEMENT_TOKEN = process.env.SUPABASE_MANAGEMENT_TOKEN
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('\u274c Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY')
+  process.exit(1)
+}
 
 async function executeSql(sql: string, label: string) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/`, {
@@ -25,9 +35,13 @@ async function main() {
   console.log('=' .repeat(60))
   console.log()
 
-  // Use the management API to execute SQL
-  const managementUrl = 'https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/database/query'
-  const accessToken = 'sbp_f8af710de6c6cd3cc8d230e31f14e684fddb8e39'
+  const managementUrl = `https://api.supabase.com/v1/projects/${SUPABASE_URL?.split('//')[1]?.split('.')[0]}/database/query`
+  const accessToken = SUPABASE_MANAGEMENT_TOKEN
+
+  if (!accessToken) {
+    console.error('\u274c Missing SUPABASE_MANAGEMENT_TOKEN environment variable')
+    process.exit(1)
+  }
 
   const statements = [
     // 1. Create contacts table

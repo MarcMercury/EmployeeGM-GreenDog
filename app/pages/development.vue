@@ -15,9 +15,17 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="d-flex justify-center align-center" style="min-height: 50vh;">
+    <div v-if="loading" class="d-flex justify-center align-center min-h-50vh">
       <v-progress-circular indeterminate color="primary" size="64" />
     </div>
+
+    <!-- Error State -->
+    <v-alert v-else-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="loadPageData()">Retry</v-btn>
+      </template>
+    </v-alert>
 
     <template v-else>
       <!-- Main Tab Navigation -->
@@ -609,7 +617,7 @@
                       >
                         Action Required
                       </v-chip>
-                      <v-btn icon="mdi-chevron-right" variant="text" size="small" />
+                      <v-btn icon="mdi-chevron-right" variant="text" size="small" aria-label="Next" />
                     </div>
                   </template>
                 </v-list-item>
@@ -725,7 +733,7 @@
           <v-icon start color="primary">mdi-clipboard-plus</v-icon>
           Request Performance Review
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="showRequestReviewDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showRequestReviewDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-6">
@@ -857,6 +865,7 @@ const { employees, isAdmin } = useAppData()
 // STATE
 // ============================================
 const loading = ref(true)
+const pageError = ref<string | null>(null)
 
 // Handle query param for initial tab (from redirects)
 const getInitialTab = () => {
@@ -1596,7 +1605,12 @@ async function fetchMentorshipRequests() {
 // LIFECYCLE
 // ============================================
 onMounted(async () => {
+  await loadPageData()
+})
+
+async function loadPageData() {
   loading.value = true
+  pageError.value = null
   try {
     await fetchCurrentEmployee()
     await Promise.all([
@@ -1607,10 +1621,12 @@ onMounted(async () => {
       performanceStore.fetchGoals(),
       performanceStore.fetchMyReviews()
     ])
+  } catch (err) {
+    pageError.value = err instanceof Error ? err.message : 'Failed to load development data'
   } finally {
     loading.value = false
   }
-})
+}
 </script>
 
 <style scoped>

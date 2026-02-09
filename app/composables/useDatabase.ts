@@ -56,8 +56,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 /**
  * Get user-friendly error message from database error
  */
-const getFriendlyError = (error: any): string => {
-  const message = error?.message || String(error)
+const getFriendlyError = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error)
   
   // Check for known error patterns
   for (const [pattern, friendlyMessage] of Object.entries(ERROR_MESSAGES)) {
@@ -131,16 +131,16 @@ export const useDatabase = () => {
         error: null,
         success: true
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const friendlyError = getFriendlyError(err)
       
       // Log detailed error for debugging
       console.error(`[Database] ${errorMessage}:`, {
         error: err,
-        message: err?.message,
-        code: err?.code,
-        details: err?.details,
-        hint: err?.hint
+        message: err instanceof Error ? err.message : String(err),
+        code: (err as Record<string, unknown>)?.code,
+        details: (err as Record<string, unknown>)?.details,
+        hint: (err as Record<string, unknown>)?.hint
       })
 
       if (!silent && showToast) {

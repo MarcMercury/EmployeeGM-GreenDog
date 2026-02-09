@@ -198,12 +198,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useOperationsStore, type TimePunch } from '~/stores/operations'
 import { useUserStore } from '~/stores/user'
-
-interface AllowedLocation {
-  id: string
-  name: string
-  address: string
-}
+import type { AllowedLocation } from '~/types/operations.types'
 
 // Stores
 const opsStore = useOperationsStore()

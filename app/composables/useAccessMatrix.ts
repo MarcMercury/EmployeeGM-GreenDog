@@ -169,9 +169,9 @@ export function useAccessMatrix() {
         pages.value = response.data.pages
         accessRecords.value = response.data.access
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load access matrix:', err)
-      error.value = err.message || 'Failed to load access matrix'
+      error.value = err instanceof Error ? err.message : 'Failed to load access matrix'
       
       // Fallback: Try direct database query
       await loadFromDatabase()
@@ -194,7 +194,7 @@ export function useAccessMatrix() {
       if (accessRes.data) accessRecords.value = accessRes.data
       
       error.value = null
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load from database:', err)
       error.value = 'Failed to load access data'
     }
@@ -237,9 +237,9 @@ export function useAccessMatrix() {
       }
       
       return false
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update access:', err)
-      error.value = err.message || 'Failed to update access'
+      error.value = err instanceof Error ? err.message : 'Failed to update access'
       return false
     } finally {
       saving.value = false
@@ -273,9 +273,9 @@ export function useAccessMatrix() {
       }
       
       return false
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save role:', err)
-      error.value = err.message || 'Failed to save role'
+      error.value = err instanceof Error ? err.message : 'Failed to save role'
       return false
     } finally {
       saving.value = false
@@ -300,9 +300,9 @@ export function useAccessMatrix() {
       }
       
       return false
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete role:', err)
-      error.value = err.message || 'Failed to delete role'
+      error.value = err instanceof Error ? err.message : 'Failed to delete role'
       return false
     } finally {
       saving.value = false

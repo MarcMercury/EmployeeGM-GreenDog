@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
   const { data: persons, error, count } = await dbQuery
 
   if (error) {
-    console.error('Error fetching persons:', error)
+    logger.error('Error fetching persons', error, 'intake/persons')
     throw createError({
       statusCode: 500,
       message: 'Failed to fetch persons'

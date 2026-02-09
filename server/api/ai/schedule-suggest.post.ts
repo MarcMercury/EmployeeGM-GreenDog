@@ -73,12 +73,12 @@ export default defineEventHandler(async (event) => {
     .single()
 
   // Log for debugging
-  console.log('[AI Schedule] User ID:', user.id)
-  console.log('[AI Schedule] Profile:', profile)
-  console.log('[AI Schedule] Profile Error:', profileError)
+  logger.debug('User ID', 'AI Schedule', { userId: user.id })
+  logger.debug('Profile', 'AI Schedule', { profile })
+  logger.debug('Profile Error', 'AI Schedule', { profileError })
 
   if (profileError) {
-    console.error('[AI Schedule] Failed to fetch profile:', profileError)
+    logger.error('Failed to fetch profile', profileError, 'AI Schedule')
     throw createError({ statusCode: 500, message: 'Failed to verify access: ' + profileError.message })
   }
 
@@ -95,7 +95,7 @@ export default defineEventHandler(async (event) => {
 
   // Get OpenAI API key
   const config = useRuntimeConfig()
-  const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
+  const openaiKey = config.openaiApiKey
 
   if (!openaiKey) {
     throw createError({ 
@@ -114,14 +114,14 @@ export default defineEventHandler(async (event) => {
     const prompt = buildSchedulingPrompt(employees, requirements, recentSchedules, weekStart)
 
     // 3. Call OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openaiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
+        model: config.openaiScheduleModel,
         messages: [
           {
             role: 'system',
@@ -147,7 +147,7 @@ Always respond with valid JSON matching the requested schema.`
 
     if (!response.ok) {
       const error = await response.json()
-      console.error('[AI Schedule] OpenAI error:', error)
+      logger.error('OpenAI error', null, 'AI Schedule', error)
       throw createError({ 
         statusCode: 503, 
         message: 'AI service temporarily unavailable' 
@@ -161,19 +161,23 @@ Always respond with valid JSON matching the requested schema.`
     const validatedSuggestion = validateSuggestion(suggestion, employees, requirements)
 
     // 5. Log the AI usage for auditing
-    await logAIUsage(client, {
-      userId: user.id,
-      feature: 'schedule_suggest',
-      weekStart,
-      departmentId,
-      shiftsGenerated: validatedSuggestion.shifts.length,
-      model: 'gpt-4-turbo-preview'
+    await createAuditLog({
+      action: 'generate',
+      entityType: 'ai_feature',
+      entityId: 'schedule_suggest',
+      actorProfileId: profile.id,
+      metadata: {
+        weekStart,
+        departmentId,
+        shiftsGenerated: validatedSuggestion.shifts.length,
+        model: config.openaiScheduleModel
+      }
     })
 
     return validatedSuggestion
 
   } catch (err: any) {
-    console.error('[AI Schedule] Error:', err)
+    logger.error('Error', err, 'AI Schedule')
     
     if (err.statusCode) {
       throw err
@@ -212,7 +216,7 @@ async function getAvailableEmployees(client: any, departmentId?: string, locatio
   const { data, error } = await query
 
   if (error) {
-    console.error('[AI Schedule] Employee fetch error:', error)
+    logger.error('Employee fetch error', error, 'AI Schedule')
     return []
   }
 
@@ -415,26 +419,7 @@ function validateSuggestion(
   return suggestion
 }
 
-async function logAIUsage(client: any, data: any) {
-  try {
-    await client.from('audit_log').insert({
-      actor_id: data.userId,
-      entity_type: 'ai_feature',
-      entity_name: data.feature,
-      action: 'generate',
-      action_category: 'ai',
-      new_values: {
-        weekStart: data.weekStart,
-        departmentId: data.departmentId,
-        shiftsGenerated: data.shiftsGenerated,
-        model: data.model
-      }
-    })
-  } catch (err) {
-    console.error('[AI Schedule] Audit log error:', err)
-    // Don't fail the request if audit logging fails
-  }
-}
+// logAIUsage removed — now uses createAuditLog() (auto-imported utility that writes to audit_logs)
 
 function getWeekDays(weekStart: string): string[] {
   const days: string[] = []

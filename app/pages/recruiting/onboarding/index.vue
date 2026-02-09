@@ -321,46 +321,12 @@
 </template>
 
 <script setup lang="ts">
+import type { Candidate, OnboardingRecord, Template } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string | null
-  target_position_id: string | null
-  status: string
-  applied_at: string
-  onboarding_complete: boolean
-  job_positions?: { title: string }
-}
-
-interface OnboardingRecord {
-  id: string
-  candidate_id: string
-  template_id: string
-  current_stage_id: string
-  status: string
-  started_at: string
-  completed_at: string | null
-  target_start_date: string | null
-  actual_start_date: string | null
-  candidates?: Candidate & { job_positions?: { title: string } }
-  current_stage?: { name: string; icon: string }
-  total_tasks?: number
-  completed_tasks?: number
-}
-
-interface Template {
-  id: string
-  name: string
-  description: string
-  is_default: boolean
-}
 
 const client = useSupabaseClient()
 const userStore = useUserStore()

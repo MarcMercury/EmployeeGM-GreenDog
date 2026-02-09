@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { SelectOption } from '~/types/ui.types'
+
 /**
  * InlineEditCell Component
  * 
@@ -7,12 +9,6 @@
  */
 
 type FieldType = 'text' | 'phone' | 'email' | 'select' | 'number' | 'textarea' | 'date'
-
-interface SelectOption {
-  value: string | number
-  title: string
-  color?: string
-}
 
 interface Props {
   modelValue: any

@@ -5,7 +5,7 @@
         <v-icon class="mr-3" color="white">mdi-file-export</v-icon>
         <span class="text-white font-weight-bold">Export {{ entityLabel }}</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="close" :disabled="exporting" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="close" :disabled="exporting" />
       </v-card-title>
 
       <v-divider />
@@ -89,11 +89,7 @@
 </template>
 
 <script setup lang="ts">
-interface ExportColumn {
-  key: string
-  title: string
-  format?: (value: any, row?: any) => string
-}
+import type { ExportColumn } from '~/types/ui.types'
 
 const props = defineProps<{
   modelValue: boolean

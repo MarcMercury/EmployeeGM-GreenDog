@@ -64,7 +64,7 @@
             
             <v-divider />
             
-            <v-card-text class="pa-2 overflow-y-auto" style="max-height: 600px;">
+            <v-card-text class="pa-2 scrollable-lg">
               <!-- Patient Cards -->
               <div
                 v-for="patient in getColumnPatients(column.id)"
@@ -129,7 +129,7 @@
               <div class="text-caption text-grey">{{ selectedPatient.species }} • {{ selectedPatient.breed }}</div>
             </div>
           </div>
-          <v-btn icon="mdi-close" variant="text" @click="patientDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="patientDialog = false" />
         </v-card-title>
         
         <v-divider />

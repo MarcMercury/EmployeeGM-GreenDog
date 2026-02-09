@@ -201,21 +201,12 @@
 </template>
 
 <script setup lang="ts">
+import type { SkillRating } from '~/types/skill.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'admin']
 })
-
-interface SkillRating {
-  skill_id: string
-  skill_name: string
-  skill_description?: string
-  category: string
-  level: number
-  originalLevel: number
-  isDirty: boolean
-  saving: boolean
-}
 
 const client = useSupabaseClient()
 const toast = useToast()

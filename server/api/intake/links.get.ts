@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   const { data: links, error, count } = await dbQuery
 
   if (error) {
-    console.error('Error fetching intake links:', error)
+    logger.error('Error fetching intake links', error, 'intake/links')
     throw createError({
       statusCode: 500,
       message: 'Failed to fetch intake links'

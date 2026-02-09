@@ -134,14 +134,7 @@
 
 <script setup lang="ts">
 import SkeletonTable from './SkeletonTable.vue'
-
-interface Header {
-  title: string
-  key: string
-  sortable?: boolean
-  width?: string | number
-  align?: 'start' | 'center' | 'end'
-}
+import type { Header } from '~/types/ui.types'
 
 interface Props {
   items: any[]

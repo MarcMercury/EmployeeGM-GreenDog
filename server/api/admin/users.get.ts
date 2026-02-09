@@ -21,11 +21,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Users API] Missing credentials:', { 
+    logger.error('Missing credentials', null, 'admin-users-get', { 
       hasUrl: !!supabaseUrl, 
       hasServiceKey: !!supabaseServiceKey,
       envKeys: Object.keys(process.env).filter(k => k.includes('SUPABASE')).join(', ')
@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -71,8 +71,15 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Fetch all profiles with auth accounts
-  const { data: profiles, error: fetchError } = await supabaseAdmin
+  // Pagination parameters
+  const query = getQuery(event)
+  const page = parseInt(query.page as string) || 1
+  const perPageProfiles = parseInt(query.perPage as string) || 100
+  const from = (page - 1) * perPageProfiles
+  const to = from + perPageProfiles - 1
+
+  // Fetch profiles with pagination
+  const { data: profiles, count: totalProfiles, error: fetchError } = await supabaseAdmin
     .from('profiles')
     .select(`
       id,
@@ -87,12 +94,13 @@ export default defineEventHandler(async (event) => {
       last_login_at,
       created_at,
       updated_at
-    `)
+    `, { count: 'exact' })
     .not('auth_user_id', 'is', null)
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   if (fetchError) {
-    console.error('Error fetching users:', fetchError)
+    logger.error('Error fetching users', fetchError, 'admin-users-get')
     throw createError({
       statusCode: 500,
       message: `Failed to fetch users: ${fetchError.message}`
@@ -112,7 +120,7 @@ export default defineEventHandler(async (event) => {
     })
 
     if (authFetchError) {
-      console.error('Error fetching auth users:', authFetchError)
+      logger.error('Error fetching auth users', authFetchError, 'admin-users-get')
       break
     }
 
@@ -142,6 +150,11 @@ export default defineEventHandler(async (event) => {
   return {
     success: true,
     users: usersWithDetails,
-    total: usersWithDetails.length
+    pagination: {
+      page: parseInt(query.page as string) || 1,
+      perPage: perPageProfiles,
+      total: totalProfiles || 0,
+      totalPages: Math.ceil((totalProfiles || 0) / perPageProfiles)
+    }
   }
 })

@@ -43,11 +43,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Create User API] Missing credentials:', { 
+    logger.error('Missing credentials', null, 'admin-create-user', { 
       hasUrl: !!supabaseUrl, 
       hasServiceKey: !!supabaseServiceKey
     })
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
   // Check if caller is admin
   const { data: callerProfile, error: profileError } = await supabaseAdmin
     .from('profiles')
-    .select('role')
+    .select('role, id')
     .eq('auth_user_id', callerUser.id)
     .single()
 
@@ -115,9 +115,19 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Check if email already exists in auth
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const existingAuthUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === body.email.toLowerCase())
+    // Check if email already exists in auth using a targeted lookup
+    // NOTE: listUsers() without pagination only returns page 1 (50 users) and misses duplicates.
+    // Instead, use the profiles table (which has all auth_user_ids) and a targeted query.
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name, email, auth_user_id')
+      .eq('email', body.email.toLowerCase())
+      .not('auth_user_id', 'is', null)
+      .maybeSingle()
+
+    const existingAuthUser = existingProfile?.auth_user_id
+      ? (await supabaseAdmin.auth.admin.getUserById(existingProfile.auth_user_id)).data?.user
+      : null
     
     if (existingAuthUser) {
       // Check if this auth user is linked to another profile
@@ -135,7 +145,7 @@ export default defineEventHandler(async (event) => {
         })
       } else {
         // Auth user exists but not linked to any profile - we can link it!
-        console.log(`[Admin Create User API] Found orphaned auth user for ${body.email}, linking to profile`)
+        logger.info('Found orphaned auth user, linking to profile', 'admin-create-user', { email: body.email })
         
         // Link existing auth user to this profile
         const { error: profileUpdateError } = await supabaseAdmin
@@ -148,7 +158,7 @@ export default defineEventHandler(async (event) => {
           .eq('id', body.profile_id)
 
         if (profileUpdateError) {
-          console.error('[Admin Create User API] Profile update error:', profileUpdateError)
+          logger.error('Profile update error', profileUpdateError, 'admin-create-user')
           throw createError({
             statusCode: 500,
             message: `Failed to link existing auth user: ${profileUpdateError.message}`
@@ -179,6 +189,14 @@ export default defineEventHandler(async (event) => {
           hr_only: true
         })
 
+        await createAuditLog({
+          action: 'user_created',
+          entityType: 'user',
+          entityId: existingAuthUser.id,
+          actorProfileId: callerProfile.id,
+          metadata: { email: body.email, role: body.role, linked: true }
+        })
+
         return {
           success: true,
           linked: true,
@@ -203,7 +221,16 @@ export default defineEventHandler(async (event) => {
     })
 
     if (createAuthError) {
-      console.error('[Admin Create User API] Auth creation error:', createAuthError)
+      // If the user already exists (missed by profile lookup — e.g. orphaned auth user),
+      // surface a clear message instead of a generic 400.
+      const msg = createAuthError.message || ''
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('duplicate')) {
+        throw createError({
+          statusCode: 409,
+          message: `The email "${body.email}" is already registered in authentication. Please use a different email or contact support to link the existing account.`
+        })
+      }
+      logger.error('Auth creation error', createAuthError, 'admin-create-user')
       throw createError({
         statusCode: 400,
         message: `Failed to create auth user: ${createAuthError.message}`
@@ -221,7 +248,7 @@ export default defineEventHandler(async (event) => {
       .eq('id', body.profile_id)
 
     if (profileUpdateError) {
-      console.error('[Admin Create User API] Profile update error:', profileUpdateError)
+      logger.error('Profile update error', profileUpdateError, 'admin-create-user')
       // Try to clean up the auth user we just created
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       throw createError({
@@ -247,7 +274,7 @@ export default defineEventHandler(async (event) => {
       .eq('id', body.employee_id)
 
     if (empError) {
-      console.error('[Admin Create User API] Employee update error:', empError)
+      logger.error('Employee update error', empError, 'admin-create-user')
       // Non-fatal - user was created successfully
     }
 
@@ -257,6 +284,14 @@ export default defineEventHandler(async (event) => {
       note: `User account created with role: ${body.role}. Email: ${body.email}`,
       note_type: 'system',
       hr_only: true
+    })
+
+    await createAuditLog({
+      action: 'user_created',
+      entityType: 'user',
+      entityId: authData.user.id,
+      actorProfileId: callerProfile.id,
+      metadata: { email: body.email, role: body.role }
     })
 
     return {
@@ -272,7 +307,7 @@ export default defineEventHandler(async (event) => {
       throw error
     }
     
-    console.error('[Admin Create User API] Unexpected error:', error)
+    logger.error('Unexpected error', error instanceof Error ? error : null, 'admin-create-user')
     throw createError({
       statusCode: 500,
       message: error instanceof Error ? error.message : 'Failed to create user'

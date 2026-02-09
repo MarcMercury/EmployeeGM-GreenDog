@@ -4,6 +4,8 @@
  * 
  * SAFETY: Uses UPSERT for influencers, partners, inventory (preserves existing data)
  * DESTRUCTIVE: Deletes all events (confirmed mock data) and rebuilds from CSVs
+ * 
+ * Dry run: npx tsx scripts/marketing-data-migration/run-migration.ts --dry-run
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -11,6 +13,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { parse } from 'csv-parse/sync';
+
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,6 +103,11 @@ async function purgeMockEvents(): Promise<void> {
     .select('*', { count: 'exact', head: true });
   
   console.log(`  Current events in database: ${beforeCount || 0}`);
+
+  if (DRY_RUN) {
+    console.log(`  🏜️  Would delete ${beforeCount || 0} events and associated leads (dry run — skipped)`);
+    return;
+  }
   
   // Delete all events (confirmed mock data)
   const { error: deleteError } = await supabase
@@ -729,11 +738,19 @@ async function verifyImport(): Promise<void> {
 async function main() {
   console.log('═'.repeat(60));
   console.log('MARKETING DATA MIGRATION');
+  if (DRY_RUN) console.log('🏜️  DRY RUN — no data will be modified');
   console.log('═'.repeat(60));
   console.log(`Started: ${new Date().toISOString()}`);
   
   try {
     await purgeMockEvents();
+
+    if (DRY_RUN) {
+      console.log('\n🏜️  DRY RUN complete. Remaining phases (insert/upsert) skipped.');
+      console.log('    Re-run without --dry-run to apply changes.');
+      return;
+    }
+
     await createParentEvents();
     await importCompletedEvents();
     await importScheduledEvents();

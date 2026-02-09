@@ -56,7 +56,7 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="loading" class="d-flex justify-center align-center" style="min-height: 400px;">
+    <div v-if="loading" class="d-flex justify-center align-center min-h-400">
       <v-progress-circular indeterminate color="primary" size="48" />
     </div>
 
@@ -136,32 +136,19 @@
 
 <script setup lang="ts">
 import { format, parseISO, isSameWeek } from 'date-fns'
+import type { ScheduleLocation, ScheduleDraft } from '~/types/schedule.types'
 
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'schedule-access']
 })
 
-interface Location {
-  id: string
-  name: string
-  code?: string
-}
-
-interface ScheduleDraft {
-  id: string
-  location_id: string
-  week_start: string
-  status: string
-  published_at?: string
-}
-
 const supabase = useSupabaseClient()
 const router = useRouter()
 
 // State
 const loading = ref(true)
-const locations = ref<Location[]>([])
+const locations = ref<ScheduleLocation[]>([])
 const scheduleDrafts = ref<ScheduleDraft[]>([])
 
 // Snackbar

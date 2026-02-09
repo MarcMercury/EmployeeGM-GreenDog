@@ -94,11 +94,7 @@
 </template>
 
 <script setup lang="ts">
-interface RadarCategory {
-  category: string
-  value: number
-  fullMark: number
-}
+import type { RadarCategory } from '~/types/skill.types'
 
 interface Props {
   categories: RadarCategory[]

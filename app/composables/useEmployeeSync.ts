@@ -18,75 +18,7 @@
  *   await updateEmployee(employeeId, { first_name: 'John', last_name: 'Doe' })
  */
 
-interface EmployeeUpdateData {
-  // Basic Info
-  first_name?: string
-  last_name?: string
-  preferred_name?: string
-  employee_number?: string
-  
-  // Contact
-  email_work?: string
-  email_personal?: string
-  phone_work?: string
-  phone_mobile?: string
-  
-  // Address
-  address_street?: string
-  address_city?: string
-  address_state?: string
-  address_zip?: string
-  
-  // Emergency Contact
-  emergency_contact_name?: string
-  emergency_contact_phone?: string
-  emergency_contact_relationship?: string
-  
-  // Employment
-  department_id?: string | null
-  position_id?: string | null
-  location_id?: string | null
-  manager_employee_id?: string | null
-  employment_type?: string
-  employment_status?: string
-  hire_date?: string | null
-  termination_date?: string | null
-  date_of_birth?: string | null
-  notes_internal?: string
-  
-  // Slack
-  slack_user_id?: string | null
-  slack_username?: string | null
-  slack_avatar_url?: string | null
-}
-
-interface ProfileUpdateData {
-  first_name?: string
-  last_name?: string
-  email?: string
-  phone?: string
-  bio?: string
-  avatar_url?: string
-  role?: string
-  is_active?: boolean
-}
-
-interface CompensationUpdateData {
-  pay_type?: string
-  pay_rate?: number
-  employment_status?: string
-  benefits_enrolled?: boolean
-  bonus_plan_details?: string
-  ce_budget_total?: number
-  ce_budget_used?: number
-  effective_date?: string
-}
-
-interface SyncResult {
-  success: boolean
-  error?: string
-  updatedTables: string[]
-}
+import type { EmployeeUpdateData, ProfileUpdateData, CompensationUpdateData, SyncResult } from '~/types/operations.types'
 
 export function useEmployeeSync() {
   const supabase = useSupabaseClient()
@@ -173,9 +105,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Update employee failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 
@@ -235,9 +167,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Update profile failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 
@@ -274,9 +206,9 @@ export function useEmployeeSync() {
       }
       
       return { success: true, updatedTables: ['employee_compensation'] }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Update compensation failed:', error)
-      return { success: false, error: error.message, updatedTables: [] }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables: [] }
     }
   }
 
@@ -316,9 +248,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Sync email failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 
@@ -350,9 +282,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Full update failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 
@@ -391,9 +323,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Deactivate failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 
@@ -432,9 +364,9 @@ export function useEmployeeSync() {
       }
 
       return { success: true, updatedTables }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[EmployeeSync] Reactivate failed:', error)
-      return { success: false, error: error.message, updatedTables }
+      return { success: false, error: error instanceof Error ? error.message : String(error), updatedTables }
     }
   }
 

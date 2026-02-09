@@ -1,5 +1,16 @@
 // Re-export all types
 export * from './database.types'
+export * from './schedule.types'
+export * from './marketing.types'
+export * from './recruiting.types'
+export * from './skill.types'
+export * from './academy.types'
+export * from './operations.types'
+export * from './performance.types'
+export * from './integrations.types'
+export * from './gdu.types'
+export * from './ui.types'
+export * from './admin.types'
 
 // =====================================================
 // ROLE-BASED ACCESS CONTROL TYPES

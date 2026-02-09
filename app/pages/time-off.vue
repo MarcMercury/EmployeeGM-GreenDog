@@ -1,5 +1,19 @@
 <template>
   <div>
+    <!-- Loading State -->
+    <div v-if="pageLoading" class="d-flex justify-center align-center min-h-50vh">
+      <v-progress-circular indeterminate color="primary" size="48" />
+    </div>
+
+    <!-- Error State -->
+    <v-alert v-else-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="loadData()">Retry</v-btn>
+      </template>
+    </v-alert>
+
+    <template v-else>
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
@@ -141,6 +155,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    </template>
   </div>
 </template>
 
@@ -169,24 +184,37 @@ const form = reactive({
   reason: ''
 })
 
+const pageLoading = ref(true)
+const pageError = ref<string | null>(null)
+
 // Get current user's employee record
 const currentEmployee = ref<{ id: string } | null>(null)
-onMounted(async () => {
-  // Fetch current user's employee record
-  if (authStore.profile?.id) {
-    const { data } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('profile_id', authStore.profile.id)
-      .single()
-    currentEmployee.value = data
-  }
 
-  await Promise.all([
-    scheduleStore.fetchTimeOffRequests(),
-    scheduleStore.fetchTimeOffTypes()
-  ])
-})
+async function loadData() {
+  pageLoading.value = true
+  pageError.value = null
+  try {
+    if (authStore.profile?.id) {
+      const { data } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('profile_id', authStore.profile.id)
+        .single()
+      currentEmployee.value = data
+    }
+
+    await Promise.all([
+      scheduleStore.fetchTimeOffRequests(),
+      scheduleStore.fetchTimeOffTypes()
+    ])
+  } catch (err) {
+    pageError.value = err instanceof Error ? err.message : 'Failed to load time off data'
+  } finally {
+    pageLoading.value = false
+  }
+}
+
+onMounted(() => loadData())
 
 const allRequests = computed(() => scheduleStore.timeOffRequests)
 const pendingRequests = computed(() => allRequests.value.filter(r => r.status === 'pending'))

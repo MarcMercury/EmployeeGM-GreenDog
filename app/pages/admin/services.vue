@@ -7,7 +7,7 @@
 import { format } from 'date-fns'
 
 definePageMeta({
-  middleware: ['auth', 'admin-only'],
+  middleware: ['auth', 'admin'],
   layout: 'default'
 })
 

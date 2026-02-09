@@ -31,6 +31,19 @@
       </div>
     </div>
 
+    <!-- Loading State -->
+    <div v-if="loadingFiles && loadingFolders" class="d-flex justify-center align-center" style="min-height: 30vh;">
+      <v-progress-circular indeterminate color="primary" size="48" />
+    </div>
+
+    <!-- Error State -->
+    <v-alert v-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="loadFolders(); loadFiles()">Retry</v-btn>
+      </template>
+    </v-alert>
+
     <!-- File Library Content -->
     <div>
         <!-- Breadcrumb Navigation -->
@@ -79,8 +92,8 @@
               </v-col>
               <v-col cols="12" md="2">
                 <v-btn-toggle v-model="libraryViewMode" mandatory variant="outlined" density="compact">
-                  <v-btn icon="mdi-view-grid" value="grid" size="small" />
-                  <v-btn icon="mdi-view-list" value="list" size="small" />
+                  <v-btn icon="mdi-view-grid" value="grid" size="small" aria-label="Grid view" />
+                  <v-btn icon="mdi-view-list" value="list" size="small" aria-label="List view" />
                 </v-btn-toggle>
               </v-col>
               <v-col v-if="isAdmin" cols="12" md="2" class="text-right">
@@ -129,7 +142,7 @@
                 <div v-if="isAdmin" class="position-absolute" style="top: 8px; right: 8px;">
                   <v-menu>
                     <template #activator="{ props }">
-                      <v-btn icon="mdi-dots-vertical" size="x-small" variant="text" v-bind="props" @click.prevent.stop />
+                      <v-btn icon="mdi-dots-vertical" size="x-small" variant="text" aria-label="More options" v-bind="props" @click.prevent.stop />
                     </template>
                     <v-list density="compact">
                       <v-list-item prepend-icon="mdi-pencil" @click.prevent.stop="editExternalResource(resource)">
@@ -237,8 +250,8 @@
                 {{ formatFileSize(item.file_size) }}
               </template>
               <template #item.actions="{ item }">
-                <v-btn icon="mdi-download" size="x-small" variant="text" color="primary" @click="downloadFile(item)" />
-                <v-btn v-if="isAdmin" icon="mdi-delete" size="x-small" variant="text" color="error" @click="deleteFile(item)" />
+                <v-btn icon="mdi-download" size="x-small" variant="text" color="primary" aria-label="Download" @click="downloadFile(item)" />
+                <v-btn v-if="isAdmin" icon="mdi-delete" size="x-small" variant="text" color="error" aria-label="Delete file" @click="deleteFile(item)" />
               </template>
             </v-data-table>
           </v-card>
@@ -497,6 +510,7 @@ const currentPath = ref('')
 const loadingFiles = ref(false)
 const loadingFolders = ref(false)
 const uploading = ref(false)
+const pageError = ref<string | null>(null)
 
 // Library state
 const librarySearch = ref('')
@@ -551,6 +565,7 @@ async function loadFolders() {
     dbFolders.value = data || []
   } catch (err: any) {
     console.error('Error loading folders:', err)
+    pageError.value = err?.message || 'Failed to load folders'
   } finally {
     loadingFolders.value = false
   }

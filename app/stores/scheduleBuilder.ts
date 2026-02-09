@@ -8,40 +8,8 @@
  * - Realtime subscription for live updates
  */
 import { defineStore } from 'pinia'
-import type { ScheduleShift, ScheduleEmployee } from '~/composables/useScheduleRules'
+import type { ScheduleShift, ScheduleEmployee, ShiftTemplate, ShiftWithVersion, ScheduleBuilderState } from '~/types/schedule.types'
 import { withRetry, VersionConflictError, isVersionConflict } from '~/utils/apiRetry'
-
-interface ShiftTemplate {
-  start_time: string // e.g., "09:00"
-  end_time: string   // e.g., "17:00"
-  role_required: string | null
-}
-
-// Extended shift with version for optimistic locking
-interface ShiftWithVersion extends ScheduleShift {
-  version?: number
-}
-
-interface ScheduleBuilderState {
-  // Draft shifts (local state, not saved)
-  draftShifts: ShiftWithVersion[]
-  // Original shifts from database (for comparison)
-  dbShifts: ShiftWithVersion[]
-  // Selected week
-  selectedWeekStart: string // ISO date string
-  // Loading states
-  isLoading: boolean
-  isSaving: boolean
-  isPublishing: boolean
-  // Error
-  error: string | null
-  // Version conflict info (for user resolution)
-  versionConflicts: { shiftId: string; serverVersion: number }[]
-  // Realtime channel reference
-  realtimeChannel: any | null
-  // Default shift templates per location
-  defaultShiftTemplates: ShiftTemplate[]
-}
 
 export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
   state: (): ScheduleBuilderState => ({
@@ -197,8 +165,8 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         // Subscribe to realtime changes for this week
         this.subscribeToRealtimeChanges(weekStart, weekEnd)
 
-      } catch (e: any) {
-        this.error = e.message || 'Failed to load shifts'
+      } catch (e: unknown) {
+        this.error = e instanceof Error ? e.message : 'Failed to load shifts'
         console.error('[ScheduleBuilder] Load error:', e)
       } finally {
         this.isLoading = false
@@ -228,10 +196,10 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
             table: 'shifts',
             // Filter is handled client-side since Supabase doesn't support date range filters
           },
-          (payload: any) => {
+          (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
             console.log('[ScheduleBuilder Realtime] Shift change:', payload.eventType)
             
-            const shiftDate = payload.new?.start_at || payload.old?.start_at
+            const shiftDate = (payload.new as Record<string, unknown>)?.start_at || (payload.old as Record<string, unknown>)?.start_at
             if (!shiftDate) return
 
             // Check if the change is in our current week
@@ -249,7 +217,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     /**
      * Handle realtime changes from other users
      */
-    handleRealtimeChange(payload: any) {
+    handleRealtimeChange(payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) {
       const { eventType, new: newRecord, old: oldRecord } = payload
       
       switch (eventType) {
@@ -351,6 +319,15 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
     },
 
     /**
+     * Full cleanup: unsubscribe realtime and reset state.
+     * Call this from onBeforeUnmount() in components, or before $reset().
+     */
+    cleanup() {
+      this.unsubscribeFromRealtime()
+      this.$reset()
+    },
+
+    /**
      * Resolve a version conflict by accepting server version
      */
     resolveConflictWithServer(shiftId: string) {
@@ -443,7 +420,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         }
 
         return addedCount
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('[ScheduleBuilder] Generate from templates error:', e)
         throw e
       }
@@ -542,7 +519,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
 
       try {
         // 1. Insert new shifts with retry logic
-        const newShifts = this.draftShifts.filter(s => (s as any).is_new)
+        const newShifts = this.draftShifts.filter(s => s.is_new)
         if (newShifts.length > 0) {
           const insertData = newShifts.map(shift => ({
             location_id: shift.location_id,
@@ -569,7 +546,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
               if (insertResult.data[idx]) {
                 shift.id = insertResult.data[idx].id
                 shift.version = 1
-                ;(shift as any).is_new = false
+                shift.is_new = false
               }
             })
           }
@@ -577,7 +554,7 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
 
         // 2. Update changed existing shifts
         const changedShifts = this.draftShifts.filter(draft => {
-          if ((draft as any).is_new) return false
+          if (draft.is_new) return false
           const db = this.dbShifts.find(s => s.id === draft.id)
           if (!db) return false
           return draft.employee_id !== db.employee_id ||
@@ -610,8 +587,8 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         this.dbShifts = JSON.parse(JSON.stringify(this.draftShifts))
 
         return true
-      } catch (e: any) {
-        this.error = e.message || 'Failed to save'
+      } catch (e: unknown) {
+        this.error = e instanceof Error ? e.message : 'Failed to save'
         console.error('[ScheduleBuilder] Save error:', e)
         return false
       } finally {
@@ -671,8 +648,8 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
         }
 
         return true
-      } catch (e: any) {
-        this.error = e.message || 'Failed to publish'
+      } catch (e: unknown) {
+        this.error = e instanceof Error ? e.message : 'Failed to publish'
         console.error('[ScheduleBuilder] Publish error:', e)
         return false
       } finally {

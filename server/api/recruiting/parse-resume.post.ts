@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
 
     // Get OpenAI key
     const config = useRuntimeConfig()
-    const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
+    const openaiKey = config.openaiApiKey
 
     if (!openaiKey) {
       throw createError({ statusCode: 503, message: 'AI service not configured' })
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
     const mimeType = fileField.type || 'application/pdf'
     const fileData = fileField.data
 
-    console.log('[parse-resume] Processing file, type:', mimeType, 'size:', fileData.length)
+    logger.info('Processing file', 'parse-resume', { mimeType, size: fileData.length })
 
     // Get available positions
     const { data: positions } = await supabase
@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
       textContent = extractRawText(fileData)
     }
 
-    console.log('[parse-resume] Extracted text length:', textContent.length)
+    logger.debug('Extracted text length', 'parse-resume', { length: textContent.length })
 
     if (textContent.length < 30) {
       throw createError({ 
@@ -111,7 +111,7 @@ export default defineEventHandler(async (event) => {
     return { success: true, data: parsed }
 
   } catch (err: any) {
-    console.error('[parse-resume] Error:', err.message, err.stack)
+    logger.error('Error', err, 'parse-resume')
     if (err.statusCode) throw err
     throw createError({ statusCode: 500, message: err.message || 'Failed to parse resume' })
   }
@@ -147,7 +147,7 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     // Extract text from PDF
     const result = await extractText(data, { mergePages: true })
     
-    console.log('[parse-resume] PDF extracted, text length:', result.text?.length || 0)
+    logger.debug('PDF extracted', 'parse-resume', { textLength: result.text?.length || 0 })
     
     // Handle the result - unpdf returns { text: string, totalPages: number }
     if (result.text && result.text.length > 0) {
@@ -155,10 +155,10 @@ async function extractPdfText(buffer: Buffer): Promise<string> {
     }
     
     // If unpdf fails, try fallback
-    console.log('[parse-resume] unpdf returned empty, trying fallback')
+    logger.debug('unpdf returned empty, trying fallback', 'parse-resume')
     return extractRawText(buffer)
   } catch (err: any) {
-    console.error('[parse-resume] PDF extraction failed:', err.message)
+    logger.error('PDF extraction failed', err, 'parse-resume')
     // Fall back to raw extraction
     return extractRawText(buffer)
   }
@@ -216,14 +216,15 @@ Return this exact JSON structure:
   "suggested_position": "best matching position from list or null"
 }`
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const config = useRuntimeConfig()
+  const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: config.openaiModel,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Parse this resume text:\n\n${text.substring(0, 12000)}` }
@@ -236,7 +237,7 @@ Return this exact JSON structure:
 
   if (!response.ok) {
     const err = await response.text()
-    console.error('[parse-resume] OpenAI error:', response.status, err)
+    logger.error('OpenAI error', null, 'parse-resume', { status: response.status, body: err })
     throw new Error('AI service temporarily unavailable')
   }
 
@@ -250,7 +251,7 @@ Return this exact JSON structure:
   try {
     return JSON.parse(content) as ParsedResume
   } catch {
-    console.error('[parse-resume] Failed to parse AI response:', content)
+    logger.error('Failed to parse AI response', null, 'parse-resume', { content })
     throw new Error('AI returned invalid format')
   }
 }

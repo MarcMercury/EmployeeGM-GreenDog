@@ -93,13 +93,11 @@
 
     <!-- Data Table -->
     <v-card rounded="lg" elevation="0" border>
-      <v-data-table
+      <v-data-table-virtual
         :headers="headers"
         :items="filteredEmployees"
         :search="search"
         :loading="loading"
-        :items-per-page="50"
-        :items-per-page-options="[25, 50, 100, -1]"
         density="compact"
         hover
         fixed-header
@@ -199,7 +197,7 @@
             <p class="text-body-2 text-grey mt-2">No employees found</p>
           </div>
         </template>
-      </v-data-table>
+      </v-data-table-virtual>
     </v-card>
 
     <!-- Master Edit Dialog -->
@@ -209,7 +207,7 @@
           <v-icon start>mdi-account-edit</v-icon>
           Edit Employee: {{ editingEmployee?.full_name }}
           <v-spacer />
-          <v-btn icon variant="text" color="white" @click="editDialog = false">
+          <v-btn icon variant="text" color="white" aria-label="Close" @click="editDialog = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-card-title>
@@ -764,85 +762,12 @@
 </template>
 
 <script setup lang="ts">
+import type { RosterEmployee, RosterDepartment, RosterPosition, RosterLocation } from '~/types/admin.types'
+
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'admin']
 })
-
-interface Employee {
-  id: string
-  profile_id: string | null
-  employee_number: string | null
-  first_name: string
-  last_name: string
-  preferred_name: string | null
-  full_name: string
-  email_work: string | null
-  email_personal: string | null
-  phone_work: string | null
-  phone_mobile: string | null
-  department_id: string | null
-  position_id: string | null
-  manager_employee_id: string | null
-  location_id: string | null
-  employment_type: string | null
-  employment_status: string | null
-  hire_date: string | null
-  termination_date: string | null
-  date_of_birth: string | null
-  notes_internal: string | null
-  address_street: string | null
-  address_city: string | null
-  address_state: string | null
-  address_zip: string | null
-  emergency_contact_name: string | null
-  emergency_contact_phone: string | null
-  emergency_contact_relationship: string | null
-  department: { id: string; name: string } | null
-  position: { id: string; title: string } | null
-  location: { id: string; name: string } | null
-  compensation: {
-    id: string
-    pay_type: string | null
-    pay_rate: number | null
-    employment_status: string | null
-    benefits_enrolled: boolean
-    ce_budget_total: number | null
-    ce_budget_used: number | null
-    effective_date: string | null
-  } | null
-  profile: {
-    id: string
-    role: string
-    is_active: boolean
-    email: string
-    auth_user_id: string | null
-  } | null
-  time_off_balances: {
-    id: string
-    time_off_type_id: string
-    accrued_hours: number
-    used_hours: number
-    pending_hours: number
-    carryover_hours: number
-    period_year: number
-  }[] | null
-}
-
-interface Department {
-  id: string
-  name: string
-}
-
-interface Position {
-  id: string
-  title: string
-}
-
-interface Location {
-  id: string
-  name: string
-}
 
 const supabase = useSupabaseClient()
 const authStore = useAuthStore()
@@ -854,16 +779,16 @@ const saving = ref(false)
 const search = ref('')
 const statusFilter = ref<string | null>(null)
 const deptFilter = ref<string | null>(null)
-const employees = ref<Employee[]>([])
-const departments = ref<Department[]>([])
-const positions = ref<Position[]>([])
-const locations = ref<Location[]>([])
+const employees = ref<RosterEmployee[]>([])
+const departments = ref<RosterDepartment[]>([])
+const positions = ref<RosterPosition[]>([])
+const locations = ref<RosterLocation[]>([])
 const timeOffTypes = ref<{ id: string; name: string; code: string }[]>([])
 
 // Dialog
 const editDialog = ref(false)
 const editDialogTab = ref('info') // 'info' | 'compensation' | 'pto' | 'history'
-const editingEmployee = ref<Employee | null>(null)
+const editingEmployee = ref<RosterEmployee | null>(null)
 const originalFormData = ref<any>(null) // For change tracking
 const formValid = ref(false)
 
@@ -1032,7 +957,7 @@ const getChangeColor = (tableName: string) => {
   return colors[tableName] || 'grey'
 }
 
-const formatPay = (comp: Employee['compensation']) => {
+const formatPay = (comp: RosterEmployee['compensation']) => {
   if (!comp?.pay_rate) return '—'
   const rate = comp.pay_rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return comp.pay_type === 'Salary' ? `$${rate}/yr` : `$${rate}/hr`
@@ -1102,7 +1027,7 @@ const fetchAllData = async () => {
   }
 }
 
-const openEditDialog = async (employee: Employee) => {
+const openEditDialog = async (employee: RosterEmployee) => {
   editingEmployee.value = employee
   editDialogTab.value = 'info'
   
@@ -1469,7 +1394,7 @@ const exportCSV = () => {
 }
 
 // Disable Login Functions
-const canDisableLogin = (employee: Employee) => {
+const canDisableLogin = (employee: RosterEmployee) => {
   // Can disable if employee has a profile with auth_user_id linked
   // Don't show for current user (handled in API too)
   return employee.profile?.id

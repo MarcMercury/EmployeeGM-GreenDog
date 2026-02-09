@@ -1,44 +1,8 @@
 import { defineStore } from 'pinia'
-
-interface DashboardStats {
-  totalStaff: number
-  onShiftToday: number
-  pendingRequests: number
-  activeMentorships: number
-}
-
-interface TeamHealth {
-  compliant: number
-  expired: number
-  percentage: number
-}
-
-interface MentorshipMatch {
-  id: string
-  learnerName: string
-  skillName: string
-  mentorName: string
-  status: string
-}
-
-interface GrowthStats {
-  leadsThisWeek: number
-  weeklyGoal: number
-  conversionRate: number
-  upcomingEvents: number
-}
-
-interface UpcomingShift {
-  id: string
-  date: string
-  time: string
-  employee: { name: string; initials: string } | null
-  role: string
-  location: string
-}
+import type { StoreDashboardStats, TeamHealth, MentorshipMatch, GrowthStats, UpcomingShift } from '~/types/admin.types'
 
 interface DashboardState {
-  stats: DashboardStats
+  stats: StoreDashboardStats
   teamHealth: TeamHealth
   pendingMentorships: MentorshipMatch[]
   growthStats: GrowthStats
@@ -179,7 +143,7 @@ export const useDashboardStore = defineStore('dashboard', {
     /**
      * Get count of employees currently clocked in
      */
-    async getClockedInCount(supabase: any): Promise<number> {
+    async getClockedInCount(supabase: ReturnType<typeof useSupabaseClient>): Promise<number> {
       const today = new Date().toISOString().split('T')[0]
       
       const { data } = await supabase
@@ -209,7 +173,7 @@ export const useDashboardStore = defineStore('dashboard', {
     /**
      * Get certification compliance stats
      */
-    async getCertificationStats(supabase: any): Promise<TeamHealth> {
+    async getCertificationStats(supabase: ReturnType<typeof useSupabaseClient>): Promise<TeamHealth> {
       const { data: employees } = await supabase
         .from('employees')
         .select(`
@@ -232,7 +196,7 @@ export const useDashboardStore = defineStore('dashboard', {
 
       for (const emp of employees) {
         const certs = emp.employee_certifications || []
-        const hasExpired = certs.some((c: any) => {
+        const hasExpired = certs.some((c: { status?: string; expiration_date?: string }) => {
           if (c.status === 'expired') return true
           if (c.expiration_date && new Date(c.expiration_date) < today) return true
           return false
@@ -254,7 +218,7 @@ export const useDashboardStore = defineStore('dashboard', {
     /**
      * Get upcoming shifts for next 48 hours
      */
-    async getUpcomingShifts(supabase: any): Promise<{ shifts: UpcomingShift[]; openCount: number }> {
+    async getUpcomingShifts(supabase: ReturnType<typeof useSupabaseClient>): Promise<{ shifts: UpcomingShift[]; openCount: number }> {
       const now = new Date()
       const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000)
 
@@ -278,7 +242,7 @@ export const useDashboardStore = defineStore('dashboard', {
       if (!data) return { shifts: [], openCount: 0 }
 
       let openCount = 0
-      const shifts: UpcomingShift[] = data.map((shift: any) => {
+      const shifts: UpcomingShift[] = data.map((shift: Record<string, unknown>) => {
         const startDate = new Date(shift.start_at)
         const endDate = new Date(shift.end_at)
         const isToday = startDate.toDateString() === now.toDateString()
@@ -309,7 +273,7 @@ export const useDashboardStore = defineStore('dashboard', {
     /**
      * Get leads count for this week
      */
-    async getLeadsThisWeek(supabase: any): Promise<number> {
+    async getLeadsThisWeek(supabase: ReturnType<typeof useSupabaseClient>): Promise<number> {
       const now = new Date()
       const startOfWeek = new Date(now)
       startOfWeek.setDate(now.getDate() - now.getDay()) // Sunday

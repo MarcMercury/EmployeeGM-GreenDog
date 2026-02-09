@@ -4,30 +4,9 @@ definePageMeta({
   middleware: ['auth', 'gdu']
 })
 
-const supabase = useSupabaseClient()
+import type { CEEvent } from '~/types/gdu.types'
 
-// Types
-interface CEEvent {
-  id: string
-  title: string
-  description: string | null
-  event_date_start: string
-  event_date_end: string | null
-  location_name: string | null
-  format: string
-  status: string
-  ce_hours_offered: number
-  speaker_name: string | null
-  race_provider_status: string
-  race_course_number: string | null
-  max_attendees: number | null
-  current_attendees: number
-  created_at: string
-  task_stats?: {
-    total: number
-    completed: number
-  }
-}
+const supabase = useSupabaseClient()
 
 // Filter state
 const searchQuery = ref('')
@@ -45,7 +24,7 @@ const statusOptions = [
 ]
 
 // Fetch events with task stats
-const { data: events, pending, refresh } = await useAsyncData('ce-events', async () => {
+const { data: events, pending, refresh, error: eventsError } = await useAsyncData('ce-events', async () => {
   const { data: eventsData, error } = await supabase
     .from('ce_events')
     .select('*')
@@ -114,12 +93,18 @@ const stats = computed(() => {
 async function deleteEvent(id: string) {
   if (!confirm('Are you sure you want to delete this event? This will also delete all associated tasks.')) return
   
-  await supabase
-    .from('ce_events')
-    .delete()
-    .eq('id', id)
-  
-  refresh()
+  try {
+    const { error } = await supabase
+      .from('ce_events')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+    refresh()
+  } catch (err) {
+    console.error('Failed to delete event:', err)
+    alert('Failed to delete event. Please try again.')
+  }
 }
 
 async function duplicateEvent(event: CEEvent) {
@@ -189,9 +174,14 @@ function getTaskProgress(event: CEEvent): number {
 
 <template>
   <div>
+    <!-- Data loading error -->
+    <v-alert v-if="eventsError" type="error" variant="tonal" class="mb-4" closable>
+      Failed to load events. Please try refreshing.
+    </v-alert>
+
     <!-- Header -->
     <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" to="/gdu" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" to="/gdu" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>

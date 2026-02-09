@@ -63,7 +63,7 @@ export default defineEventHandler(async (event): Promise<SyncResult> => {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
   
-  const SLACK_BOT_TOKEN = config.slackBotToken || process.env.SLACK_BOT_TOKEN
+  const SLACK_BOT_TOKEN = config.slackBotToken
   
   if (!SLACK_BOT_TOKEN) {
     return { ok: false, error: 'Slack bot token not configured' }
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event): Promise<SyncResult> => {
     .single()
 
   if (syncLogError) {
-    console.error('Failed to create sync log:', syncLogError)
+    logger.error('Failed to create sync log', syncLogError, 'slack/sync/run')
   }
 
   const syncLogId = syncLog?.id
@@ -299,7 +299,7 @@ export default defineEventHandler(async (event): Promise<SyncResult> => {
     }
 
   } catch (error: any) {
-    console.error('Sync failed:', error)
+    logger.error('Sync failed', error, 'slack/sync/run')
     
     // Update sync log with failure
     if (syncLogId) {

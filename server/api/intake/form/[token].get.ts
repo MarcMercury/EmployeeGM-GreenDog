@@ -25,8 +25,8 @@ export default defineEventHandler(async (event) => {
 
   // Create anonymous client for public access
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseAnonKey = config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseAnonKey = config.public.supabaseKey
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw createError({
@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
   // Mark as opened if first time
   if (link.status === 'pending' || link.status === 'sent') {
     // Use service role to update
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const serviceKey = config.supabaseServiceRoleKey
     if (serviceKey) {
       const adminClient = createClient(supabaseUrl, serviceKey)
       await adminClient
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
   let locationInfo = null
 
   if (link.target_position_id || link.target_department_id || link.target_location_id) {
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const serviceKey = config.supabaseServiceRoleKey
     if (serviceKey) {
       const adminClient = createClient(supabaseUrl, serviceKey)
       

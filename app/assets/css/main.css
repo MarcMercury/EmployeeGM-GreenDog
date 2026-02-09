@@ -16,7 +16,7 @@ html, body {
   padding: 0;
   min-height: 100vh;
   min-height: -webkit-fill-available; /* iOS Safari fix */
-  background-color: #F5F5F5;
+  background-color: rgb(var(--v-theme-background));
   font-size: 16px;
   line-height: 1.5;
   /* Prevent pull-to-refresh on mobile */
@@ -104,7 +104,7 @@ input, select, textarea {
 }
 
 .baseball-card-header {
-  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), #1B5E20);
   color: white;
   padding: 20px;
   text-align: center;
@@ -141,15 +141,15 @@ input, select, textarea {
 }
 
 .skill-dot.learning {
-  color: #FF9800;
+  color: rgb(var(--v-theme-skill-learning));
 }
 
 .skill-dot.competent {
-  color: #2196F3;
+  color: rgb(var(--v-theme-skill-competent));
 }
 
 .skill-dot.mentor {
-  color: #4CAF50;
+  color: rgb(var(--v-theme-skill-mentor));
 }
 
 /* Skill Level Badges */
@@ -176,7 +176,7 @@ input, select, textarea {
 
 .skill-badge.mentor {
   background-color: rgba(76, 175, 80, 0.15);
-  color: #2E7D32;
+  color: rgb(var(--v-theme-primary));
 }
 
 /* Role Badges */
@@ -223,12 +223,12 @@ input, select, textarea {
 .stat-value {
   font-size: 2rem;
   font-weight: 700;
-  color: #2E7D32;
+  color: rgb(var(--v-theme-primary));
 }
 
 .stat-label {
   font-size: 0.875rem;
-  color: #666;
+  color: rgb(var(--v-theme-text-secondary));
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 4px;
@@ -282,7 +282,7 @@ input, select, textarea {
 
 .schedule-day.today {
   background: rgba(46, 125, 50, 0.1);
-  border: 2px solid #2E7D32;
+  border: 2px solid rgb(var(--v-theme-primary));
 }
 
 .schedule-day.scheduled {
@@ -320,7 +320,7 @@ input, select, textarea {
   background: linear-gradient(
     90deg,
     #f0f0f0 25%,
-    #e0e0e0 50%,
+    rgb(var(--v-theme-border)) 50%,
     #f0f0f0 75%
   );
   background-size: 200% 100%;
@@ -392,7 +392,7 @@ input, select, textarea {
 
 /* Gradient text */
 .text-gradient {
-  background: linear-gradient(135deg, #2E7D32, #66BB6A);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), #66BB6A);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -418,7 +418,7 @@ input, select, textarea {
   inset: -2px;
   border-radius: inherit;
   padding: 2px;
-  background: linear-gradient(135deg, #2E7D32, #66BB6A, #2E7D32);
+  background: linear-gradient(135deg, rgb(var(--v-theme-primary)), #66BB6A, rgb(var(--v-theme-primary)));
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
   -webkit-mask: 
@@ -494,7 +494,7 @@ input, select, textarea {
   justify-content: space-between;
   padding: 12px 24px;
   background: white;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid rgb(var(--v-theme-border));
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
   z-index: 100;
   transform: translateY(0);
@@ -509,7 +509,7 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #FF9800;
+  color: rgb(var(--v-theme-skill-learning));
   font-weight: 500;
 }
 
@@ -534,7 +534,7 @@ input, select, textarea {
 /* Button Consistency                 */
 /* ================================== */
 .btn-add {
-  background-color: #2E7D32 !important;
+  background-color: rgb(var(--v-theme-primary)) !important;
   color: white !important;
 }
 
@@ -543,7 +543,7 @@ input, select, textarea {
 }
 
 .btn-save {
-  background-color: #2E7D32 !important;
+  background-color: rgb(var(--v-theme-primary)) !important;
   color: white !important;
 }
 
@@ -553,12 +553,40 @@ input, select, textarea {
 
 /* Success state buttons */
 .btn-success-action {
-  background-color: #388E3C !important;
+  background-color: rgb(var(--v-theme-success)) !important;
   color: white !important;
 }
 
 /* Danger buttons */
 .btn-danger {
-  background-color: #D32F2F !important;
+  background-color: rgb(var(--v-theme-error)) !important;
   color: white !important;
 }
+
+/* ============================================
+   REUSABLE UTILITY CLASSES
+   Replace inline style="" attributes with these
+   ============================================ */
+
+/* White-space preservation (replaces style="white-space: pre-wrap") */
+.whitespace-pre-wrap { white-space: pre-wrap; }
+
+/* Scrollable containers (replaces style="max-height: Npx; overflow-y: auto") */
+.scrollable-sm  { max-height: 200px; overflow-y: auto; }
+.scrollable-md  { max-height: 400px; overflow-y: auto; }
+.scrollable-lg  { max-height: 600px; overflow-y: auto; }
+.scrollable-xl  { max-height: 800px; overflow-y: auto; }
+.scrollable-50vh { max-height: 50vh; overflow-y: auto; }
+.scrollable-60vh { max-height: 60vh; overflow-y: auto; }
+.scrollable-70vh { max-height: 70vh; overflow-y: auto; }
+
+/* Min-height for loading states (replaces style="min-height: Xpx|vh") */
+.min-h-200 { min-height: 200px; }
+.min-h-300 { min-height: 300px; }
+.min-h-400 { min-height: 400px; }
+.min-h-50vh { min-height: 50vh; }
+.min-h-60vh { min-height: 60vh; }
+.min-h-70vh { min-height: 70vh; }
+
+/* Cursor utility */
+.clickable { cursor: pointer; }

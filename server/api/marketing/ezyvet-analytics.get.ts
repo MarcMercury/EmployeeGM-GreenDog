@@ -36,15 +36,22 @@ export default defineEventHandler(async (event) => {
   const endDate = query.endDate as string | undefined
 
   try {
-    // First, get total count to know how many records exist
-    const { count: totalCount, error: countError } = await supabase
-      .from('ezyvet_crm_contacts')
-      .select('*', { count: 'exact', head: true })
-    
-    console.log('[ezyvet-analytics] Total count in DB:', totalCount)
+    // Build base query with ALL filters pushed to the DB
+    // This avoids fetching the entire table into server memory.
+    function buildFilteredQuery(selectExpr: string = '*') {
+      let q = supabase.from('ezyvet_crm_contacts').select(selectExpr)
+      if (division) q = q.eq('division', division)
+      if (startDate) q = q.gte('last_visit', startDate)
+      if (endDate) q = q.lte('last_visit', endDate)
+      return q
+    }
 
-    // Fetch ALL contacts using pagination to bypass 1000 row limit
-    let allContacts: any[] = []
+    // Get filtered count first
+    const { count: filteredCount } = await buildFilteredQuery('*')
+      .select('*', { count: 'exact', head: true })
+
+    // Fetch filtered contacts with pagination (only matching rows)
+    let filteredContacts: any[] = []
     let page = 0
     const pageSize = 1000
     let hasMore = true
@@ -52,33 +59,19 @@ export default defineEventHandler(async (event) => {
     while (hasMore) {
       const from = page * pageSize
       const to = from + pageSize - 1
-      
-      console.log(`[ezyvet-analytics] Fetching page ${page + 1}, range ${from}-${to}`)
-      
-      let pageQuery = supabase
-        .from('ezyvet_crm_contacts')
-        .select('*')
-        .range(from, to)
-      
-      // Division filter always applies
-      if (division) {
-        pageQuery = pageQuery.eq('division', division)
-      }
 
-      const { data: pageData, error } = await pageQuery
+      const { data: pageData, error } = await buildFilteredQuery()
+        .range(from, to)
 
       if (error) {
-        console.error('[ezyvet-analytics] Page error:', error)
         throw createError({
           statusCode: 500,
           message: `Database error: ${error.message}`
         })
       }
 
-      console.log(`[ezyvet-analytics] Page ${page + 1} returned ${pageData?.length || 0} rows`)
-
       if (pageData && pageData.length > 0) {
-        allContacts = allContacts.concat(pageData)
+        filteredContacts = filteredContacts.concat(pageData)
         hasMore = pageData.length === pageSize
         page++
       } else {
@@ -86,29 +79,46 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    console.log(`[ezyvet-analytics] Total fetched: ${allContacts.length} contacts`)
+    logger.info('Fetched filtered contacts', 'ezyvet-analytics', { count: filteredContacts.length })
 
-    // Apply date range filter on last_visit AFTER fetching all data
-    let filteredContacts = allContacts
-    if (startDate || endDate) {
-      filteredContacts = allContacts.filter(c => {
-        if (!c.last_visit) return false
-        const visitDate = new Date(c.last_visit)
-        if (startDate && visitDate < new Date(startDate)) return false
-        if (endDate && visitDate > new Date(endDate)) return false
-        return true
-      })
-      console.log(`[ezyvet-analytics] After date filter: ${filteredContacts.length} contacts`)
-    }
+    // For recency analysis, we also need total count and unfiltered recency buckets
+    // Use targeted count queries instead of fetching all rows
+    const now = new Date()
+    const threeMonthsAgo = new Date(now)
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+    const sixMonthsAgo = new Date(now)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    const twelveMonthsAgo = new Date(now)
+    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1)
+    const twoYearsAgo = new Date(now)
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+    const oneYearAgo = twelveMonthsAgo
 
-    // Define "Active" as having activity within the last 12 months
-    const oneYearAgo = new Date()
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    // Run recency count queries in parallel (pushed to DB)
+    let baseQ = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true })
+    if (division) baseQ = baseQ.eq('division', division)
+
+    const [
+      { count: totalInDb },
+      { count: zeroToThreeCount },
+      { count: threeToSixCount },
+      { count: sixToTwelveCount },
+      { count: oneToTwoCount },
+      { count: overTwoCount },
+      { count: neverVisitedCount }
+    ] = await Promise.all([
+      supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', threeMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', sixMonthsAgo.toISOString()).lt('last_visit', threeMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twelveMonthsAgo.toISOString()).lt('last_visit', sixMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twoYearsAgo.toISOString()).lt('last_visit', twelveMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).lt('last_visit', twoYearsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
+      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).is('last_visit', null); if (division) q = q.eq('division', division); return q })()
+    ])
     
     const activeContacts = filteredContacts.filter(c => {
       if (!c.last_visit) return false
-      const lastVisit = new Date(c.last_visit)
-      return lastVisit >= oneYearAgo
+      return new Date(c.last_visit) >= oneYearAgo
     })
 
     // For ARPU calculation, only include contacts with revenue >= $25
@@ -186,50 +196,15 @@ export default defineEventHandler(async (event) => {
       .slice(0, 10)
 
     // ========================================
-    // RECENCY ANALYSIS - New buckets: 0-3mo, 3-6mo, 6-12mo, 1-2yr, 2yr+
+    // RECENCY ANALYSIS - Using DB-pushed count queries (already computed above)
     // ========================================
-    const now = new Date()
-    const threeMonthsAgo = new Date(now)
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-    const sixMonthsAgo = new Date(now)
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const twelveMonthsAgo = new Date(now)
-    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1)
-    const twoYearsAgo = new Date(now)
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-
-    // Use ALL contacts (not just filtered) for recency to match CRM total
-    function countByRecency(contacts: any[], minDate: Date, maxDate: Date | null = null) {
-      return contacts.filter(c => {
-        if (!c.last_visit) return false
-        const visitDate = new Date(c.last_visit)
-        if (maxDate) {
-          return visitDate >= minDate && visitDate < maxDate
-        }
-        return visitDate >= minDate
-      }).length
-    }
-
-    // Count contacts with no last_visit date
-    const neverVisited = allContacts.filter(c => !c.last_visit).length
-    
-    // Count by recency buckets (use allContacts so total matches CRM)
-    const zeroToThreeMonths = countByRecency(allContacts, threeMonthsAgo, null)
-    const threeToSixMonths = countByRecency(allContacts, sixMonthsAgo, threeMonthsAgo)
-    const sixToTwelveMonths = countByRecency(allContacts, twelveMonthsAgo, sixMonthsAgo)
-    const oneToTwoYears = countByRecency(allContacts, twoYearsAgo, twelveMonthsAgo)
-    const overTwoYears = allContacts.filter(c => {
-      if (!c.last_visit) return false
-      return new Date(c.last_visit) < twoYearsAgo
-    }).length
-
     const recencyAnalysis = {
-      zeroToThreeMonths,
-      threeToSixMonths,
-      sixToTwelveMonths,
-      oneToTwoYears,
-      overTwoYears,
-      neverVisited
+      zeroToThreeMonths: zeroToThreeCount || 0,
+      threeToSixMonths: threeToSixCount || 0,
+      sixToTwelveMonths: sixToTwelveCount || 0,
+      oneToTwoYears: oneToTwoCount || 0,
+      overTwoYears: overTwoCount || 0,
+      neverVisited: neverVisitedCount || 0
     }
 
     // Chart-ready format
@@ -307,7 +282,7 @@ export default defineEventHandler(async (event) => {
       divisionBreakdown,
       departmentBreakdown,
       divisions,
-      totalContactsInDb: allContacts.length,
+      totalContactsInDb: totalInDb || 0,
       filters: {
         division: division || null,
         startDate: startDate || null,
@@ -316,7 +291,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (err: any) {
-    console.error('Analytics error:', err)
+    logger.error('Analytics error', err, 'ezyvet-analytics')
     
     if (err.statusCode) throw err
 

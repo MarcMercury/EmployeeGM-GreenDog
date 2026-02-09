@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
     // Get supabase client
     const supabase = await serverSupabaseClient(event)
     
-    console.log('[clear-referral-stats] Looking up profile for auth_user_id:', userId)
+    logger.debug('Looking up profile', 'clear-referral-stats', { authUserId: userId })
     
     // Check if user has appropriate role (super_admin only for this destructive operation)
     const { data: profile, error: profileError } = await supabaseAdmin
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 403, message: `Super Admin or Admin access required for this operation. Your role: ${profile?.role || 'unknown'}` })
     }
     
-    console.log('[clear-referral-stats] Access granted for role:', profile.role)
+    logger.info('Access granted', 'clear-referral-stats', { role: profile.role })
     
     // Get current counts for logging
     const { data: partners, error: countError } = await supabase
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
     const totalReferralsBefore = partners?.reduce((sum, p) => sum + (p.total_referrals_all_time || 0), 0) || 0
     const totalRevenueBefore = partners?.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0) || 0
     
-    console.log(`[clear-referral-stats] Before: ${partnersWithData.length} partners with data, ${totalReferralsBefore} referrals, $${totalRevenueBefore.toFixed(2)} revenue`)
+    logger.info('Before clear', 'clear-referral-stats', { partnersWithData: partnersWithData.length, referrals: totalReferralsBefore, revenue: totalRevenueBefore.toFixed(2) })
     
     // Clear all referral stats
     const { error: updateError, count } = await supabase
@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, message: `Failed to clear stats: ${updateError.message}` })
     }
     
-    console.log(`[clear-referral-stats] Cleared stats for all partners`)
+    logger.info('Cleared stats for all partners', 'clear-referral-stats')
     
     // Also clear the sync history so we can re-upload
     const { error: historyError } = await supabase
@@ -90,9 +90,9 @@ export default defineEventHandler(async (event) => {
       .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
     
     if (historyError) {
-      console.warn('[clear-referral-stats] Could not clear sync history:', historyError.message)
+      logger.warn('Could not clear sync history', 'clear-referral-stats', { message: historyError.message })
     } else {
-      console.log('[clear-referral-stats] Cleared sync history')
+      logger.info('Cleared sync history', 'clear-referral-stats')
     }
     
     return {
@@ -106,7 +106,7 @@ export default defineEventHandler(async (event) => {
     }
     
   } catch (error: any) {
-    console.error('[clear-referral-stats] Error:', error)
+    logger.error('Error', error, 'clear-referral-stats')
     throw createError({
       statusCode: error.statusCode || 500,
       message: error.message || 'Failed to clear referral stats'

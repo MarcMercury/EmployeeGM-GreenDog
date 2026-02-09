@@ -51,8 +51,8 @@
           </v-col>
           <v-col cols="12" md="3">
             <v-btn-toggle v-model="viewMode" mandatory density="compact">
-              <v-btn value="grid" icon="mdi-view-grid" />
-              <v-btn value="list" icon="mdi-view-list" />
+              <v-btn value="grid" icon="mdi-view-grid" aria-label="Grid view" />
+              <v-btn value="list" icon="mdi-view-list" aria-label="List view" />
             </v-btn-toggle>
           </v-col>
         </v-row>
@@ -142,10 +142,10 @@
           <div class="text-caption text-grey">{{ item.phone }}</div>
         </template>
         <template #item.actions="{ item }">
-          <v-btn icon="mdi-pencil" size="small" variant="text" @click.stop="openEditDialog(item)" />
-          <v-btn icon="mdi-phone" size="small" variant="text" @click.stop="callPartner(item)" />
-          <v-btn icon="mdi-email" size="small" variant="text" @click.stop="emailPartner(item)" />
-          <v-btn icon="mdi-web" size="small" variant="text" @click.stop="visitWebsite(item)" />
+          <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit partner" @click.stop="openEditDialog(item)" />
+          <v-btn icon="mdi-phone" size="small" variant="text" aria-label="Call" @click.stop="callPartner(item)" />
+          <v-btn icon="mdi-email" size="small" variant="text" aria-label="Send email" @click.stop="emailPartner(item)" />
+          <v-btn icon="mdi-web" size="small" variant="text" aria-label="Visit website" @click.stop="visitWebsite(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -168,7 +168,7 @@
               </div>
             </div>
           </div>
-          <v-btn icon="mdi-close" variant="text" @click="partnerDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="partnerDialog = false" />
         </v-card-title>
         
         <v-divider />
@@ -263,7 +263,7 @@
                     </div>
                     <v-menu>
                       <template #activator="{ props }">
-                        <v-btn icon="mdi-dots-vertical" size="small" variant="text" v-bind="props" />
+                        <v-btn icon="mdi-dots-vertical" size="small" variant="text" aria-label="More options" v-bind="props" />
                       </template>
                       <v-list density="compact">
                         <v-list-item prepend-icon="mdi-pencil" @click="openEditContactDialog(contact)">
@@ -565,7 +565,7 @@
       <v-card>
         <v-card-title class="d-flex align-center justify-space-between">
           <span>{{ isEditing ? 'Edit Partner' : 'Add New Partner' }}</span>
-          <v-btn icon="mdi-close" variant="text" @click="closeFormDialog" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeFormDialog" />
         </v-card-title>
         <v-divider />
         <v-card-text>

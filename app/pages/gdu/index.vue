@@ -7,7 +7,7 @@ definePageMeta({
 const supabase = useSupabaseClient()
 
 // Fetch dashboard stats
-const { data: stats } = await useAsyncData('gdu-stats', async () => {
+const { data: stats, error: statsError } = await useAsyncData('gdu-stats', async () => {
   // Get visitor counts by type
   const { data: visitors } = await supabase
     .from('education_visitors')
@@ -45,7 +45,7 @@ const { data: stats } = await useAsyncData('gdu-stats', async () => {
 })
 
 // Recent visitors
-const { data: recentVisitors } = await useAsyncData('recent-visitors', async () => {
+const { data: recentVisitors, error: visitorsError } = await useAsyncData('recent-visitors', async () => {
   const { data } = await supabase
     .from('education_visitors')
     .select('*')
@@ -55,7 +55,7 @@ const { data: recentVisitors } = await useAsyncData('recent-visitors', async () 
 })
 
 // Upcoming events
-const { data: upcomingEvents } = await useAsyncData('upcoming-events', async () => {
+const { data: upcomingEvents, error: eventsError } = await useAsyncData('upcoming-events', async () => {
   const { data } = await supabase
     .from('ce_events')
     .select('*')
@@ -88,10 +88,16 @@ function getVisitorTypeIcon(type: string): string {
   }
   return icons[type] || 'mdi-account'
 }
+const pageError = computed(() => statsError.value || visitorsError.value || eventsError.value)
 </script>
 
 <template>
   <div>
+    <!-- Data loading error -->
+    <v-alert v-if="pageError" type="error" variant="tonal" class="mb-4" closable>
+      Failed to load GDU dashboard data. Please reload the page.
+    </v-alert>
+
     <!-- Header -->
     <div class="d-flex align-center mb-6">
       <div>

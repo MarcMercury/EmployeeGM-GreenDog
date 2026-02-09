@@ -133,7 +133,7 @@
           </v-icon>
           {{ detailsStatus ? getStatusInfo(detailsStatus).label : 'Details' }} Events
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="detailsDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" aria-label="Close" @click="detailsDialog = false" />
         </v-card-title>
         
         <v-divider />
@@ -147,7 +147,7 @@
           <p class="text-body-2 text-grey mt-2">No records found</p>
         </v-card-text>
         
-        <v-card-text v-else class="pa-0" style="max-height: 400px; overflow-y: auto;">
+        <v-card-text v-else class="pa-0 scrollable-md">
           <v-list density="compact">
             <v-list-item
               v-for="record in detailRecords"

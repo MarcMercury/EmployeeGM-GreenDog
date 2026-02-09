@@ -4,7 +4,7 @@
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
         <div class="d-flex align-center gap-2 mb-1">
-          <v-btn icon="mdi-arrow-left" variant="text" size="small" @click="navigateTo('/academy/course-manager')" />
+          <v-btn icon="mdi-arrow-left" variant="text" size="small" aria-label="Go back" @click="navigateTo('/academy/course-manager')" />
           <h1 class="text-h4 font-weight-bold">Course Creator</h1>
         </div>
         <p class="text-body-1 text-grey-darken-1 ml-10">
@@ -221,8 +221,8 @@
                       </div>
                       
                       <div class="d-flex gap-1">
-                        <v-btn icon="mdi-pencil" size="small" variant="text" @click="editModule(element)" />
-                        <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="deleteModule(element)" />
+                        <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit" @click="editModule(element)" />
+                        <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete" @click="deleteModule(element)" />
                       </div>
                     </v-card-text>
                   </v-card>
@@ -532,7 +532,7 @@
           </v-avatar>
           {{ editingModule ? 'Edit' : 'Add' }} {{ moduleForm.module_type?.replace('_', ' ') }} Module
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="moduleModal = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="moduleModal = false" />
         </v-card-title>
         
         <v-divider />

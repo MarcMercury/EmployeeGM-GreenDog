@@ -12,48 +12,13 @@
  * - Shifts created reference service_id and staffing_requirement_id
  */
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
+import { useSchedulePrint } from '~/composables/useSchedulePrint'
+import type { Service, StaffingRequirement, ShiftRow, ScheduleTimeOffRequest, ScheduleWeek } from '~/types/schedule.types'
 
 definePageMeta({
   middleware: ['auth', 'schedule-access'],
   layout: 'default'
 })
-
-// Types
-interface Service {
-  id: string
-  name: string
-  code: string
-  color: string
-  icon?: string
-  sort_order: number
-  is_active: boolean
-}
-
-interface StaffingRequirement {
-  id: string
-  service_id: string
-  role_category: string
-  role_label: string
-  min_count: number
-  max_count: number
-  is_required: boolean
-  priority: number
-  sort_order: number
-}
-
-interface ShiftRow {
-  id: string
-  service_id: string
-  staffing_requirement_id: string | null
-  role_label: string
-  role_category: string
-  start_time: string
-  end_time: string
-  raw_shift: string
-  color: string
-  isBreak?: boolean
-  service_code?: string
-}
 
 // Composables
 const { employees, locations, positions } = useAppData()
@@ -65,27 +30,22 @@ const {
   shouldBlockAssignment,
   showValidationToast 
 } = useScheduleValidation()
+const { printSchedule } = useSchedulePrint()
 
-// Types for Time Off
-interface TimeOffRequest {
-  id: string
-  employee_id: string
-  start_date: string
-  end_date: string
-  status: 'pending' | 'approved' | 'denied' | 'cancelled'
-  employees?: { first_name: string; last_name: string }
-}
+// Template refs for child components
+const aiSuggestRef = ref<InstanceType<typeof ScheduleAISuggestDialog> | null>(null)
+const templateDialogsRef = ref<InstanceType<typeof ScheduleTemplateDialogs> | null>(null)
+const publishDialogRef = ref<InstanceType<typeof SchedulePublishDialog> | null>(null)
 
-// Types for Schedule Week
-interface ScheduleWeek {
-  id: string
-  location_id: string
-  week_start: string
-  status: 'draft' | 'review' | 'published' | 'locked'
-  published_at: string | null
-  published_by: string | null
-  total_shifts: number
-  filled_shifts: number
+// Selected location for AI suggest
+const selectedLocationId = computed(() => locations.value?.[0]?.id || null)
+
+// Notification bridge for child components
+function showNotification(message: string, color: string = 'success') {
+  if (color === 'error') toast.error(message)
+  else if (color === 'warning') toast.warning(message)
+  else if (color === 'info') toast.info(message)
+  else toast.success(message)
 }
 
 // State
@@ -94,7 +54,7 @@ const services = ref<Service[]>([])
 const staffingRequirements = ref<StaffingRequirement[]>([])
 const shiftRows = ref<ShiftRow[]>([]) // Built from services + requirements
 const shifts = ref<any[]>([])
-const timeOffRequests = ref<TimeOffRequest[]>([])
+const timeOffRequests = ref<ScheduleTimeOffRequest[]>([])
 const scheduleWeek = ref<ScheduleWeek | null>(null)
 const isLoading = ref(true)
 const employeeHours = ref(new Map<string, { hours: number; shiftCount: number }>())
@@ -126,58 +86,6 @@ const editForm = ref({
   end_time: '',
   color: '#f5f5f5'
 })
-
-// Publishing state
-const isPublishing = ref(false)
-const publishDialog = ref(false)
-const sendSlackNotifications = ref(true)
-
-// Template state
-interface ScheduleTemplate {
-  id: string
-  name: string
-  description: string | null
-  location_id: string | null
-  location_name: string | null
-  shift_count: number
-  created_by_name: string | null
-  created_at: string
-}
-const templates = ref<ScheduleTemplate[]>([])
-const saveTemplateDialog = ref(false)
-const applyTemplateDialog = ref(false)
-const isSavingTemplate = ref(false)
-const isApplyingTemplate = ref(false)
-const templateForm = ref({
-  name: '',
-  description: ''
-})
-const selectedTemplateId = ref<string | null>(null)
-const clearExistingOnApply = ref(false)
-
-// AI Suggestions state (Phase 5C)
-interface AISuggestedShift {
-  employeeId: string
-  employeeName: string
-  date: string
-  startTime: string
-  endTime: string
-  role: string
-  confidence: number
-  reasoning: string
-  selected: boolean
-}
-interface AISuggestionResult {
-  shifts: AISuggestedShift[]
-  coverage: { date: string; filled: number; required: number; status: string }[]
-  warnings: string[]
-  summary: string
-}
-const aiSuggestDialog = ref(false)
-const isLoadingAISuggestions = ref(false)
-const aiSuggestions = ref<AISuggestionResult | null>(null)
-const aiError = ref<string | null>(null)
-const isApplyingAISuggestions = ref(false)
 
 // Default shift times by role category
 const defaultShiftTimes: Record<string, { start: string, end: string, display: string }> = {
@@ -368,105 +276,6 @@ async function saveRowEdit() {
   editingRow.value = null
 }
 
-// PUBLISH WEEK - commits all draft shifts to employee schedules
-async function publishWeek() {
-  // Check if week is already published
-  if (scheduleWeek.value?.status === 'published' || scheduleWeek.value?.status === 'locked') {
-    toast.warning('This week is already published')
-    return
-  }
-  
-  const draftShifts = shifts.value.filter(s => s.status === 'draft')
-  
-  if (draftShifts.length === 0) {
-    toast.warning('No draft shifts to publish')
-    return
-  }
-  
-  publishDialog.value = true
-}
-
-async function confirmPublish() {
-  isPublishing.value = true
-  
-  try {
-    // Ensure we have a schedule_week record
-    if (!scheduleWeek.value?.id) {
-      await loadOrCreateScheduleWeek()
-    }
-    
-    if (!scheduleWeek.value?.id) {
-      throw new Error('Failed to create schedule week record')
-    }
-    
-    // Link all shifts to this schedule_week
-    const { error: linkError } = await supabase
-      .from('shifts')
-      .update({ schedule_week_id: scheduleWeek.value.id })
-      .is('schedule_week_id', null)
-      .gte('start_at', currentWeekStart.value.toISOString())
-      .lt('start_at', addDays(currentWeekStart.value, 7).toISOString())
-    
-    if (linkError) {
-      console.warn('Link error:', linkError)
-    }
-    
-    // Call RPC to publish (handles status + in-app notifications)
-    const { error: rpcError } = await supabase.rpc('publish_schedule_week', {
-      p_schedule_week_id: scheduleWeek.value.id
-    })
-    
-    if (rpcError) throw rpcError
-    
-    // Update local state
-    shifts.value = shifts.value.map(s => 
-      s.status === 'draft' ? { ...s, status: 'published', is_published: true } : s
-    )
-    scheduleWeek.value = { ...scheduleWeek.value, status: 'published', published_at: new Date().toISOString() }
-    
-    // Send Slack notifications if enabled
-    if (sendSlackNotifications.value) {
-      await sendScheduleSlackNotification()
-    }
-    
-    toast.success(`Published ${shifts.value.length} shifts! Employees have been notified.`)
-    publishDialog.value = false
-  } catch (err) {
-    console.error('Publish error:', err)
-    toast.error('Failed to publish week')
-  } finally {
-    isPublishing.value = false
-  }
-}
-
-// Send Slack notification for published schedule
-async function sendScheduleSlackNotification() {
-  try {
-    const weekLabel = `${format(currentWeekStart.value, 'MMM d')} - ${format(addDays(currentWeekStart.value, 6), 'MMM d, yyyy')}`
-    
-    // Get unique employees with shifts this week
-    const employeeIds = [...new Set(shifts.value.map(s => s.employee_id).filter(Boolean))]
-    
-    await $fetch('/api/slack/notifications/queue', {
-      method: 'POST',
-      body: {
-        triggerType: 'schedule_published',
-        channel: '#schedule',
-        message: `📅 Schedule Published for ${weekLabel}\n\n${employeeIds.length} team members have shifts scheduled this week. Check your schedule in EmployeeGM!`,
-        metadata: {
-          week_start: format(currentWeekStart.value, 'yyyy-MM-dd'),
-          schedule_week_id: scheduleWeek.value?.id,
-          shift_count: shifts.value.length,
-          employee_count: employeeIds.length
-        }
-      }
-    })
-  } catch (err) {
-    console.warn('Slack notification failed:', err)
-    // Don't fail the publish for notification errors
-  }
-}
-
 // Load or create schedule_week record for current week
 async function loadOrCreateScheduleWeek() {
   try {
@@ -510,454 +319,6 @@ async function loadOrCreateScheduleWeek() {
   }
 }
 
-// ============================================================================
-// TEMPLATE FUNCTIONS (Phase 5B)
-// ============================================================================
-
-// Load available templates
-async function loadTemplates() {
-  try {
-    const { data, error } = await supabase.rpc('get_schedule_templates')
-    
-    if (error) {
-      // Fallback to direct query if RPC doesn't exist yet
-      const { data: fallbackData } = await supabase
-        .from('schedule_templates')
-        .select(`
-          id, name, description, location_id, created_at, is_active,
-          locations:location_id(name)
-        `)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-      
-      if (fallbackData) {
-        templates.value = fallbackData.map((t: any) => ({
-          id: t.id,
-          name: t.name,
-          description: t.description,
-          location_id: t.location_id,
-          location_name: t.locations?.name || null,
-          shift_count: 0, // Can't get count in fallback
-          created_by_name: null,
-          created_at: t.created_at
-        }))
-      }
-      return
-    }
-    
-    templates.value = data || []
-  } catch (err) {
-    console.error('Failed to load templates:', err)
-  }
-}
-
-// Open save template dialog
-function openSaveTemplateDialog() {
-  if (shifts.value.length === 0) {
-    toast.warning('No shifts to save as template')
-    return
-  }
-  templateForm.value = {
-    name: `Week of ${format(currentWeekStart.value, 'MMM d, yyyy')}`,
-    description: ''
-  }
-  saveTemplateDialog.value = true
-}
-
-// Save current week as template
-async function saveAsTemplate() {
-  if (!templateForm.value.name.trim()) {
-    toast.warning('Template name is required')
-    return
-  }
-  
-  isSavingTemplate.value = true
-  
-  try {
-    // Try RPC first
-    const { data: templateId, error: rpcError } = await supabase.rpc('save_week_as_template', {
-      p_template_name: templateForm.value.name.trim(),
-      p_template_description: templateForm.value.description.trim() || null,
-      p_week_start: format(currentWeekStart.value, 'yyyy-MM-dd'),
-      p_location_id: null // All locations
-    })
-    
-    if (rpcError) {
-      // Fallback: manual save
-      const { data: newTemplate, error: insertError } = await supabase
-        .from('schedule_templates')
-        .insert({
-          name: templateForm.value.name.trim(),
-          description: templateForm.value.description.trim() || null
-        })
-        .select()
-        .single()
-      
-      if (insertError) throw insertError
-      
-      // Copy shifts to template_shifts
-      const templateShifts = shifts.value.map(s => ({
-        template_id: newTemplate.id,
-        day_of_week: new Date(s.start_at).getDay(),
-        start_time: format(new Date(s.start_at), 'HH:mm:ss'),
-        end_time: format(new Date(s.end_at), 'HH:mm:ss'),
-        role_required: s.role_required,
-        location_id: s.location_id,
-        service_id: s.service_id,
-        staffing_requirement_id: s.staffing_requirement_id
-      }))
-      
-      const { error: shiftsError } = await supabase
-        .from('schedule_template_shifts')
-        .insert(templateShifts)
-      
-      if (shiftsError) {
-        console.warn('Failed to save template shifts:', shiftsError)
-      }
-    }
-    
-    toast.success(`Template "${templateForm.value.name}" saved!`)
-    saveTemplateDialog.value = false
-    await loadTemplates()
-  } catch (err) {
-    console.error('Save template error:', err)
-    toast.error('Failed to save template')
-  } finally {
-    isSavingTemplate.value = false
-  }
-}
-
-// Open apply template dialog
-async function openApplyTemplateDialog() {
-  await loadTemplates()
-  if (templates.value.length === 0) {
-    toast.info('No templates available. Save a week as a template first.')
-    return
-  }
-  selectedTemplateId.value = null
-  clearExistingOnApply.value = false
-  applyTemplateDialog.value = true
-}
-
-// Apply selected template to current week
-async function applyTemplate() {
-  if (!selectedTemplateId.value) {
-    toast.warning('Select a template to apply')
-    return
-  }
-  
-  isApplyingTemplate.value = true
-  
-  try {
-    // Try RPC first
-    const { data, error: rpcError } = await supabase.rpc('apply_template_to_week', {
-      p_template_id: selectedTemplateId.value,
-      p_week_start: format(currentWeekStart.value, 'yyyy-MM-dd'),
-      p_clear_existing: clearExistingOnApply.value
-    })
-    
-    if (rpcError) {
-      // Fallback: manual apply
-      if (clearExistingOnApply.value) {
-        // Delete existing draft shifts
-        await supabase
-          .from('shifts')
-          .delete()
-          .eq('status', 'draft')
-          .gte('start_at', currentWeekStart.value.toISOString())
-          .lt('start_at', addDays(currentWeekStart.value, 7).toISOString())
-      }
-      
-      // Get template shifts
-      const { data: templateShifts } = await supabase
-        .from('schedule_template_shifts')
-        .select('*')
-        .eq('template_id', selectedTemplateId.value)
-      
-      if (templateShifts && templateShifts.length > 0) {
-        // Create new shifts from template
-        const newShifts = templateShifts.map(ts => {
-          const targetDate = addDays(currentWeekStart.value, ts.day_of_week)
-          const dateStr = format(targetDate, 'yyyy-MM-dd')
-          return {
-            location_id: ts.location_id,
-            start_at: `${dateStr}T${ts.start_time}`,
-            end_at: `${dateStr}T${ts.end_time}`,
-            role_required: ts.role_required,
-            service_id: ts.service_id,
-            staffing_requirement_id: ts.staffing_requirement_id,
-            status: 'draft',
-            assignment_source: 'template'
-          }
-        })
-        
-        await supabase.from('shifts').insert(newShifts)
-      }
-      
-      toast.success(`Applied template with ${templateShifts?.length || 0} shift slots`)
-    } else {
-      toast.success(`Applied template: ${data?.[0]?.shifts_created || 0} shifts created, ${data?.[0]?.shifts_skipped || 0} skipped`)
-    }
-    
-    applyTemplateDialog.value = false
-    await loadShifts()
-  } catch (err) {
-    console.error('Apply template error:', err)
-    toast.error('Failed to apply template')
-  } finally {
-    isApplyingTemplate.value = false
-  }
-}
-
-// Delete a template
-async function deleteTemplate(templateId: string) {
-  try {
-    const { error } = await supabase
-      .from('schedule_templates')
-      .update({ is_active: false })
-      .eq('id', templateId)
-    
-    if (error) throw error
-    
-    templates.value = templates.value.filter(t => t.id !== templateId)
-    toast.success('Template deleted')
-  } catch (err) {
-    console.error('Delete template error:', err)
-    toast.error('Failed to delete template')
-  }
-}
-
-// ============================================================================
-// AI SUGGESTIONS (Phase 5C)
-// ============================================================================
-
-// Request AI schedule suggestions
-async function requestAISuggestions() {
-  isLoadingAISuggestions.value = true
-  aiError.value = null
-  aiSuggestions.value = null
-  aiSuggestDialog.value = true
-  
-  try {
-    const result = await $fetch('/api/ai/schedule-suggest', {
-      method: 'POST',
-      body: {
-        weekStart: format(currentWeekStart.value, 'yyyy-MM-dd'),
-        locationId: locations.value?.[0]?.id || null
-      }
-    })
-    
-    // Mark all suggestions as selected by default
-    aiSuggestions.value = {
-      ...result as AISuggestionResult,
-      shifts: ((result as AISuggestionResult).shifts || []).map(s => ({ ...s, selected: true }))
-    }
-  } catch (err: any) {
-    console.error('AI suggest error:', err)
-    aiError.value = err?.data?.message || err?.message || 'Failed to get AI suggestions'
-  } finally {
-    isLoadingAISuggestions.value = false
-  }
-}
-
-// Toggle selection of a suggested shift
-function toggleSuggestionSelection(index: number) {
-  if (aiSuggestions.value?.shifts[index]) {
-    aiSuggestions.value.shifts[index].selected = !aiSuggestions.value.shifts[index].selected
-  }
-}
-
-// Select/deselect all suggestions
-function selectAllSuggestions(selected: boolean) {
-  if (aiSuggestions.value?.shifts) {
-    aiSuggestions.value.shifts = aiSuggestions.value.shifts.map(s => ({ ...s, selected }))
-  }
-}
-
-// Count of selected suggestions
-const selectedSuggestionsCount = computed(() => {
-  return aiSuggestions.value?.shifts.filter(s => s.selected).length || 0
-})
-
-// Apply selected AI suggestions
-async function applyAISuggestions() {
-  if (!aiSuggestions.value || selectedSuggestionsCount.value === 0) {
-    toast.warning('No suggestions selected')
-    return
-  }
-  
-  isApplyingAISuggestions.value = true
-  
-  try {
-    const selectedShifts = aiSuggestions.value.shifts.filter(s => s.selected)
-    
-    // Create shifts from suggestions
-    const newShifts = selectedShifts.map(s => ({
-      employee_id: s.employeeId,
-      location_id: locations.value?.[0]?.id,
-      start_at: `${s.date}T${s.startTime}:00`,
-      end_at: `${s.date}T${s.endTime}:00`,
-      role_required: s.role,
-      status: 'draft',
-      ai_suggested: true,
-      ai_confidence: s.confidence,
-      ai_reasoning: s.reasoning,
-      assignment_source: 'ai_suggested'
-    }))
-    
-    const { error } = await supabase.from('shifts').insert(newShifts)
-    
-    if (error) throw error
-    
-    toast.success(`Applied ${selectedShifts.length} AI-suggested shifts!`)
-    aiSuggestDialog.value = false
-    aiSuggestions.value = null
-    await loadShifts()
-  } catch (err) {
-    console.error('Apply AI suggestions error:', err)
-    toast.error('Failed to apply suggestions')
-  } finally {
-    isApplyingAISuggestions.value = false
-  }
-}
-
-// Get confidence color
-function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.8) return 'success'
-  if (confidence >= 0.6) return 'warning'
-  return 'error'
-}
-
-// Print schedule
-function printSchedule() {
-  // Create a printable version of the schedule
-  const printWindow = window.open('', '_blank', 'width=1200,height=800')
-  if (!printWindow) {
-    alert('Please allow popups to print the schedule')
-    return
-  }
-  
-  // Build schedule HTML
-  const weekStartFormatted = format(currentWeekStart.value, 'MMM d, yyyy')
-  const weekEndFormatted = format(addDays(currentWeekStart.value, 6), 'MMM d, yyyy')
-  
-  // Build shift rows by employee
-  const employeeShifts = new Map<string, { name: string; shifts: any[] }>()
-  
-  // Initialize with all employees
-  employees.value.forEach(emp => {
-    employeeShifts.set(emp.id, {
-      name: `${emp.first_name} ${emp.last_name}`,
-      shifts: []
-    })
-  })
-  
-  // Group shifts by employee
-  shifts.value.forEach(shift => {
-    if (shift.employee_id) {
-      const empData = employeeShifts.get(shift.employee_id)
-      if (empData) {
-        empData.shifts.push(shift)
-      }
-    }
-  })
-  
-  // Generate day headers
-  const dayHeaders = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(currentWeekStart.value, i)
-    return format(date, 'EEE M/d')
-  })
-  
-  // Generate rows
-  let rows = ''
-  employeeShifts.forEach((empData, empId) => {
-    const cells = dayHeaders.map((_, dayIndex) => {
-      const dayDate = addDays(currentWeekStart.value, dayIndex)
-      const dayStart = dayDate.getTime()
-      const dayEnd = addDays(dayDate, 1).getTime()
-      
-      const dayShifts = empData.shifts.filter(s => {
-        const shiftStart = new Date(s.start_at).getTime()
-        return shiftStart >= dayStart && shiftStart < dayEnd
-      })
-      
-      if (dayShifts.length === 0) return '<td class="cell">-</td>'
-      
-      const shiftTexts = dayShifts.map(s => {
-        const start = format(new Date(s.start_at), 'h:mma')
-        const end = format(new Date(s.end_at), 'h:mma')
-        return `${start}-${end}`
-      }).join('<br>')
-      
-      return `<td class="cell">${shiftTexts}</td>`
-    }).join('')
-    
-    // Calculate total hours for this employee
-    const totalHours = empData.shifts.reduce((sum, s) => {
-      const start = new Date(s.start_at).getTime()
-      const end = new Date(s.end_at).getTime()
-      return sum + (end - start) / (1000 * 60 * 60)
-    }, 0)
-    
-    rows += `<tr>
-      <td class="name-cell">${empData.name}</td>
-      ${cells}
-      <td class="cell total">${totalHours.toFixed(1)}h</td>
-    </tr>`
-  })
-  
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Schedule: ${weekStartFormatted} - ${weekEndFormatted}</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h1 { font-size: 18px; margin-bottom: 5px; }
-    .subtitle { color: #666; margin-bottom: 20px; }
-    table { border-collapse: collapse; width: 100%; font-size: 11px; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: center; }
-    th { background: #f5f5f5; font-weight: bold; }
-    .name-cell { text-align: left; font-weight: 500; white-space: nowrap; }
-    .cell { min-width: 80px; }
-    .total { background: #f0f0f0; font-weight: bold; }
-    .status { margin-top: 10px; font-size: 12px; color: #666; }
-    @media print {
-      body { padding: 0; }
-      button { display: none; }
-    }
-  </style>
-</head>
-<body>
-  <h1>Weekly Schedule</h1>
-  <div class="subtitle">${weekStartFormatted} - ${weekEndFormatted} | Status: ${weekStatusLabel.value}</div>
-  <table>
-    <thead>
-      <tr>
-        <th class="name-cell">Employee</th>
-        ${dayHeaders.map(d => `<th>${d}</th>`).join('')}
-        <th>Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows}
-    </tbody>
-  </table>
-  <div class="status">
-    <strong>Draft shifts:</strong> ${draftShiftCount.value} | 
-    <strong>Published shifts:</strong> ${publishedShiftCount.value} |
-    <strong>Total employees:</strong> ${employees.value.length}
-  </div>
-  <br>
-  <button onclick="window.print()">Print</button>
-  <button onclick="window.close()">Close</button>
-</body>
-</html>`
-  
-  printWindow.document.write(html)
-  printWindow.document.close()
-}
-
 // Get count of shifts by status
 const draftShiftCount = computed(() => shifts.value.filter(s => s.status === 'draft').length)
 const publishedShiftCount = computed(() => shifts.value.filter(s => s.status === 'published').length)
@@ -975,6 +336,18 @@ const weekStatusColor = computed(() => {
   if (status === 'review') return 'warning'
   return 'grey'
 })
+
+// Print bridge
+function handlePrint() {
+  printSchedule({
+    currentWeekStart: currentWeekStart.value,
+    shifts: shifts.value,
+    employees: employees.value,
+    weekStatusLabel: weekStatusLabel.value,
+    draftShiftCount: draftShiftCount.value,
+    publishedShiftCount: publishedShiftCount.value
+  })
+}
 
 // Load shifts for current week
 async function loadShifts() {
@@ -1025,18 +398,13 @@ async function loadTimeOffRequests() {
 }
 
 // Check if employee has time off on a specific date
-function hasTimeOffOnDate(employeeId: string, date: Date): TimeOffRequest | null {
+function hasTimeOffOnDate(employeeId: string, date: Date): ScheduleTimeOffRequest | null {
   const dateStr = format(date, 'yyyy-MM-dd')
   return timeOffRequests.value.find(req => 
     req.employee_id === employeeId &&
     dateStr >= req.start_date &&
     dateStr <= req.end_date
   ) || null
-}
-
-// Get time off status badge color
-function getTimeOffBadgeColor(status: string): string {
-  return status === 'approved' ? 'error' : 'warning'
 }
 
 // Get cell key
@@ -1289,7 +657,7 @@ onMounted(async () => {
           size="small" 
           variant="tonal" 
           color="grey"
-          @click="printSchedule"
+          @click="handlePrint"
         >
           <v-icon start>mdi-printer</v-icon>
           Print
@@ -1300,9 +668,8 @@ onMounted(async () => {
           size="small" 
           variant="tonal" 
           color="purple"
-          :loading="isLoadingAISuggestions"
           :disabled="isWeekPublished"
-          @click="requestAISuggestions"
+          @click="aiSuggestRef?.open()"
         >
           <v-icon start>mdi-robot</v-icon>
           AI Suggest
@@ -1318,10 +685,10 @@ onMounted(async () => {
             </v-btn>
           </template>
           <v-list density="compact">
-            <v-list-item prepend-icon="mdi-content-save" @click="openSaveTemplateDialog">
+            <v-list-item prepend-icon="mdi-content-save" @click="templateDialogsRef?.openSave()">
               <v-list-item-title>Save Week as Template</v-list-item-title>
             </v-list-item>
-            <v-list-item prepend-icon="mdi-file-import" @click="openApplyTemplateDialog">
+            <v-list-item prepend-icon="mdi-file-import" @click="templateDialogsRef?.openApply()">
               <v-list-item-title>Apply Template to Week</v-list-item-title>
             </v-list-item>
           </v-list>
@@ -1341,7 +708,7 @@ onMounted(async () => {
           size="small" 
           variant="flat"
           :disabled="draftShiftCount === 0"
-          @click="publishWeek"
+          @click="publishDialogRef?.open()"
         >
           <v-icon start>mdi-send</v-icon>
           PUBLISH WEEK
@@ -1352,10 +719,10 @@ onMounted(async () => {
         </v-chip>
       </div>
       <div class="header-nav">
-        <v-btn icon size="small" variant="text" @click="prevWeek"><v-icon>mdi-chevron-left</v-icon></v-btn>
+        <v-btn icon size="small" variant="text" aria-label="Previous" @click="prevWeek"><v-icon>mdi-chevron-left</v-icon></v-btn>
         <v-btn size="small" variant="tonal" @click="goToday">TODAY</v-btn>
         <span class="week-label">Week {{ weekNum }} • {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}</span>
-        <v-btn icon size="small" variant="text" @click="nextWeek"><v-icon>mdi-chevron-right</v-icon></v-btn>
+        <v-btn icon size="small" variant="text" aria-label="Next" @click="nextWeek"><v-icon>mdi-chevron-right</v-icon></v-btn>
       </div>
     </header>
 
@@ -1597,305 +964,34 @@ onMounted(async () => {
       </v-card>
     </v-dialog>
 
-    <!-- Publish Confirmation Dialog -->
-    <v-dialog v-model="publishDialog" max-width="500">
-      <v-card>
-        <v-card-title class="text-h6">
-          <v-icon color="success" class="mr-2">mdi-send</v-icon>
-          Publish Week Schedule
-        </v-card-title>
-        <v-card-text>
-          <p class="mb-3">You are about to publish <strong>{{ shifts.length }}</strong> shifts for:</p>
-          <p class="text-subtitle-1 font-weight-bold mb-3">
-            Week {{ weekNum }}: {{ format(currentWeekStart, 'MMM d') }} - {{ format(addDays(currentWeekStart, 6), 'MMM d, yyyy') }}
-          </p>
-          
-          <v-alert type="info" density="compact" variant="tonal" class="mb-4">
-            <strong>This will:</strong>
-            <ul class="mt-1 mb-0 pl-4">
-              <li>Make shifts visible on employee schedules</li>
-              <li>Enable attendance tracking for these shifts</li>
-              <li>Allow clock-in/out for reliability scoring</li>
-              <li>Lock the week status to "published"</li>
-            </ul>
-          </v-alert>
-          
-          <v-divider class="my-3" />
-          
-          <div class="d-flex align-center justify-space-between">
-            <div>
-              <div class="text-subtitle-2">Notify team via Slack</div>
-              <div class="text-caption text-grey">Post to #schedule channel</div>
-            </div>
-            <v-switch 
-              v-model="sendSlackNotifications" 
-              color="primary" 
-              hide-details 
-              density="compact"
-            />
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="publishDialog = false" :disabled="isPublishing">Cancel</v-btn>
-          <v-btn 
-            color="success" 
-            variant="flat" 
-            @click="confirmPublish"
-            :loading="isPublishing"
-          >
-            <v-icon start>mdi-send</v-icon>
-            Publish Schedule
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Publish Dialog -->
+    <SchedulePublishDialog
+      ref="publishDialogRef"
+      :week-start="currentWeekStart"
+      :week-num="weekNum"
+      :shifts="shifts"
+      :schedule-week="scheduleWeek"
+      @published="loadShifts(); loadOrCreateScheduleWeek()"
+      @notify="showNotification($event.message, $event.color)"
+    />
 
-    <!-- Save Template Dialog -->
-    <v-dialog v-model="saveTemplateDialog" max-width="450">
-      <v-card>
-        <v-card-title class="text-h6">
-          <v-icon color="primary" class="mr-2">mdi-content-save</v-icon>
-          Save Week as Template
-        </v-card-title>
-        <v-card-text>
-          <p class="mb-4 text-body-2">
-            Save the current week's {{ shifts.length }} shifts as a reusable template.
-          </p>
-          
-          <v-text-field
-            v-model="templateForm.name"
-            label="Template Name"
-            placeholder="e.g., Standard Week, Holiday Week"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-            :rules="[(v: string) => !!v.trim() || 'Name is required']"
-          />
-          
-          <v-textarea
-            v-model="templateForm.description"
-            label="Description (optional)"
-            placeholder="Notes about when to use this template..."
-            variant="outlined"
-            density="compact"
-            rows="2"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="saveTemplateDialog = false" :disabled="isSavingTemplate">
-            Cancel
-          </v-btn>
-          <v-btn 
-            color="primary" 
-            variant="flat" 
-            @click="saveAsTemplate"
-            :loading="isSavingTemplate"
-          >
-            <v-icon start>mdi-content-save</v-icon>
-            Save Template
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Template Dialogs (Save & Apply) -->
+    <ScheduleTemplateDialogs
+      ref="templateDialogsRef"
+      :week-start="currentWeekStart"
+      :shifts="shifts"
+      @applied="loadShifts()"
+      @notify="showNotification($event.message, $event.color)"
+    />
 
-    <!-- Apply Template Dialog -->
-    <v-dialog v-model="applyTemplateDialog" max-width="550">
-      <v-card>
-        <v-card-title class="text-h6">
-          <v-icon color="primary" class="mr-2">mdi-file-import</v-icon>
-          Apply Template
-        </v-card-title>
-        <v-card-text>
-          <p class="mb-4 text-body-2">
-            Apply a saved template to the week of {{ format(currentWeekStart, 'MMM d, yyyy') }}.
-          </p>
-          
-          <v-list v-if="templates.length > 0" density="compact" class="template-list">
-            <v-list-item
-              v-for="tpl in templates"
-              :key="tpl.id"
-              :value="tpl.id"
-              :active="selectedTemplateId === tpl.id"
-              @click="selectedTemplateId = tpl.id"
-              rounded="lg"
-              class="mb-1"
-            >
-              <template #prepend>
-                <v-radio-group v-model="selectedTemplateId" hide-details>
-                  <v-radio :value="tpl.id" />
-                </v-radio-group>
-              </template>
-              <v-list-item-title>{{ tpl.name }}</v-list-item-title>
-              <v-list-item-subtitle>
-                {{ tpl.description || 'No description' }}
-                <span v-if="tpl.shift_count" class="ml-2">• {{ tpl.shift_count }} shifts</span>
-              </v-list-item-subtitle>
-              <template #append>
-                <v-btn 
-                  icon 
-                  size="small" 
-                  variant="text" 
-                  color="error"
-                  @click.stop="deleteTemplate(tpl.id)"
-                >
-                  <v-icon size="small">mdi-delete</v-icon>
-                </v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
-          
-          <v-alert v-else type="info" density="compact" variant="tonal">
-            No templates saved yet. Save a week as a template first.
-          </v-alert>
-          
-          <v-divider class="my-4" />
-          
-          <v-checkbox
-            v-model="clearExistingOnApply"
-            label="Clear existing draft shifts first"
-            density="compact"
-            hide-details
-            color="warning"
-          />
-          <p class="text-caption text-grey ml-8 mt-1">
-            If checked, existing draft shifts will be removed before applying the template.
-          </p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="applyTemplateDialog = false" :disabled="isApplyingTemplate">
-            Cancel
-          </v-btn>
-          <v-btn 
-            color="primary" 
-            variant="flat" 
-            @click="applyTemplate"
-            :loading="isApplyingTemplate"
-            :disabled="!selectedTemplateId"
-          >
-            <v-icon start>mdi-file-import</v-icon>
-            Apply Template
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- AI Suggestions Dialog -->
-    <v-dialog v-model="aiSuggestDialog" max-width="700" scrollable>
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon color="purple" class="mr-2">mdi-robot</v-icon>
-          AI Schedule Suggestions
-          <v-spacer />
-          <v-chip v-if="aiSuggestions" color="purple" size="small" variant="tonal">
-            {{ selectedSuggestionsCount }}/{{ aiSuggestions.shifts.length }} selected
-          </v-chip>
-        </v-card-title>
-        
-        <v-card-text class="pa-0">
-          <!-- Loading state -->
-          <div v-if="isLoadingAISuggestions" class="text-center py-8">
-            <v-progress-circular indeterminate color="purple" size="48" />
-            <p class="mt-4 text-body-2 text-grey">Analyzing team availability and generating suggestions...</p>
-            <p class="text-caption text-grey">This may take 10-30 seconds</p>
-          </div>
-          
-          <!-- Error state -->
-          <v-alert v-else-if="aiError" type="error" variant="tonal" class="ma-4">
-            <v-alert-title>Failed to get suggestions</v-alert-title>
-            {{ aiError }}
-          </v-alert>
-          
-          <!-- Suggestions list -->
-          <div v-else-if="aiSuggestions" class="suggestions-content">
-            <!-- Summary -->
-            <div class="pa-4 bg-grey-lighten-4">
-              <p class="text-body-2 mb-2">{{ aiSuggestions.summary }}</p>
-              <div v-if="aiSuggestions.warnings.length" class="mt-2">
-                <v-chip 
-                  v-for="(warning, i) in aiSuggestions.warnings" 
-                  :key="i" 
-                  color="warning" 
-                  size="small" 
-                  variant="tonal"
-                  class="mr-1 mb-1"
-                >
-                  <v-icon start size="small">mdi-alert</v-icon>
-                  {{ warning }}
-                </v-chip>
-              </div>
-            </div>
-            
-            <!-- Select all controls -->
-            <div class="d-flex align-center pa-3 border-b">
-              <v-btn size="small" variant="text" @click="selectAllSuggestions(true)">Select All</v-btn>
-              <v-btn size="small" variant="text" @click="selectAllSuggestions(false)">Deselect All</v-btn>
-            </div>
-            
-            <!-- Shifts list -->
-            <v-list density="compact" class="suggestions-list">
-              <v-list-item
-                v-for="(shift, idx) in aiSuggestions.shifts"
-                :key="idx"
-                :class="{ 'bg-purple-lighten-5': shift.selected }"
-                @click="toggleSuggestionSelection(idx)"
-              >
-                <template #prepend>
-                  <v-checkbox-btn 
-                    :model-value="shift.selected" 
-                    color="purple"
-                    @click.stop="toggleSuggestionSelection(idx)"
-                  />
-                </template>
-                
-                <v-list-item-title class="d-flex align-center gap-2">
-                  <span class="font-weight-medium">{{ shift.employeeName }}</span>
-                  <v-chip size="x-small" variant="outlined">{{ shift.role }}</v-chip>
-                </v-list-item-title>
-                
-                <v-list-item-subtitle>
-                  {{ format(new Date(shift.date), 'EEE, MMM d') }} • {{ shift.startTime }} - {{ shift.endTime }}
-                </v-list-item-subtitle>
-                
-                <template #append>
-                  <v-tooltip :text="shift.reasoning" location="left">
-                    <template #activator="{ props }">
-                      <v-chip 
-                        v-bind="props"
-                        :color="getConfidenceColor(shift.confidence)" 
-                        size="small" 
-                        variant="tonal"
-                      >
-                        {{ Math.round(shift.confidence * 100) }}%
-                      </v-chip>
-                    </template>
-                  </v-tooltip>
-                </template>
-              </v-list-item>
-            </v-list>
-          </div>
-        </v-card-text>
-        
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="aiSuggestDialog = false" :disabled="isApplyingAISuggestions">
-            Cancel
-          </v-btn>
-          <v-btn 
-            color="purple" 
-            variant="flat" 
-            @click="applyAISuggestions"
-            :loading="isApplyingAISuggestions"
-            :disabled="!aiSuggestions || selectedSuggestionsCount === 0"
-          >
-            <v-icon start>mdi-check</v-icon>
-            Apply {{ selectedSuggestionsCount }} Suggestions
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- AI Suggest Dialog -->
+    <ScheduleAISuggestDialog
+      ref="aiSuggestRef"
+      :week-start="currentWeekStart"
+      :location-id="selectedLocationId"
+      @applied="loadShifts()"
+      @notify="showNotification($event.message, $event.color)"
+    />
   </div>
 </template>
 

@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
     })
 
   if (uploadError) {
-    console.error('Upload error:', uploadError)
+    logger.error('Upload error', uploadError, 'intake/upload')
     throw createError({ 
       statusCode: 500, 
       statusMessage: `Upload failed: ${uploadError.message}` 

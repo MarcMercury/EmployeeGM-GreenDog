@@ -1,102 +1,12 @@
 // Re-export all types
 export * from './database.types'
 
-// Additional app-level types
-
 // =====================================================
-// RBAC Role Types
+// RBAC Role Types — Re-exported from app/types/index.ts
+// (single source of truth for role definitions)
 // =====================================================
-
-/**
- * User roles in order of hierarchy (highest to lowest access)
- * 
- * super_admin (200): Full access, superuser bypass
- * admin (100): Full access to all features
- * manager (80): HR + Marketing + Recruiting + Schedules + Education
- * hr_admin (60): HR + Recruiting + Schedules + Education
- * sup_admin (55): Supervisor - HR + Recruiting + Schedules
- * office_admin (50): Roster, Schedules, Time Off, Med Ops
- * marketing_admin (40): Marketing + GDU + Schedules (view only)
- * user (10): Dashboard, Own Profile, Own Schedule, Med Ops
- */
-export type UserRole = 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'sup_admin' | 'office_admin' | 'marketing_admin' | 'user'
-
-/**
- * Role hierarchy levels for access comparison
- */
-export const ROLE_HIERARCHY: Record<UserRole, number> = {
-  super_admin: 200,
-  admin: 100,
-  manager: 80,
-  hr_admin: 60,
-  sup_admin: 55,
-  office_admin: 50,
-  marketing_admin: 40,
-  user: 10
-}
-
-/**
- * Role display names for UI
- */
-export const ROLE_DISPLAY_NAMES: Record<UserRole, string> = {
-  super_admin: '👑 Master Admin',
-  admin: '⭐ System Admin',
-  manager: '👔 Manager',
-  hr_admin: '👥 HR Admin',
-  sup_admin: '🧑‍💼 Supervisor',
-  office_admin: '🏢 Office Admin',
-  marketing_admin: '📣 Marketing Admin',
-  user: 'Team Member'
-}
-
-/**
- * SECTION ACCESS MATRIX
- * This controls sidebar visibility. Database page_access controls page-level access.
- * 
- * SECTIONS ARE ORDERED TO MATCH THE NAVIGATION BAR:
- * 1. Activity Hub (always visible)
- * 2. Marketplace (always visible)
- * 3. My Workspace (always visible)
- * 4. Management (management section - some items conditional)
- * 5. Med Ops (med_ops section - everyone)
- * 6. HR (hr section - hr/manager access)
- * 7. Marketing (marketing section - marketing access)
- * 8. CRM & Analytics (crm_analytics section - marketing access)
- * 9. GDU (education section - education access)
- * 10. Admin Ops (admin section - admin only)
- */
-export const SECTION_ACCESS: Record<string, UserRole[]> = {
-  // === My Workspace === Always visible to all authenticated users
-  my_workspace: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  
-  // === Management === Roster, Skills Library, Facilities (everyone); Skill Stats (HR+); Course Manager (admin+)
-  management: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  
-  // === Med Ops === Wiki, Calculators, Boards, Partners - everyone has access
-  med_ops: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  
-  // === HR === Schedule, Time Off, Recruiting, Payroll, Master Roster
-  hr: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
-  
-  // === Recruiting === Recruiting Pipeline (sub-item of HR section)
-  recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
-  
-  // === Marketing === Calendar, Events, Leads, Partners, Influencers, Inventory, Resources, Referral CRM
-  marketing: ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  
-  // === CRM & Analytics === EzyVet CRM, EzyVet Analytics, List Hygiene
-  crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin'],
-  
-  // === GDU (Education) === GDU Dash, Student CRM, Visitor CRM, CE Events
-  education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
-  
-  // === Admin Ops === User Management, Email Templates, Skills Management, System Settings
-  admin: ['super_admin', 'admin'],
-  
-  // === Schedule Permissions (granular) ===
-  schedules_manage: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin'],
-  schedules_view: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user']
-}
+export { ROLE_HIERARCHY, ROLE_DISPLAY_NAMES, SECTION_ACCESS } from '../app/types'
+export type { UserRole, SectionPermissions, RolePermissions, RoleDefinition } from '../app/types'
 
 export interface NavItem {
   title: string

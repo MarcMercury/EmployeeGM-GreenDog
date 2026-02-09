@@ -222,6 +222,8 @@
 </template>
 
 <script setup lang="ts">
+import type { SignoffItem } from '~/types/academy.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
@@ -231,26 +233,8 @@ useHead({
   title: 'Training Sign-Offs'
 })
 
-const academyStore = useAcademyStore()
+const coursesStore = useAcademyCoursesStore()
 const uiStore = useUIStore()
-
-interface SignoffItem {
-  enrollment_id: string
-  course_id: string
-  course_title: string
-  skill_id: string | null
-  skill_name: string | null
-  skill_level_awarded: number | null
-  employee_id: string
-  employee_name: string
-  completed_at: string
-  progress_percent: number
-  requires_signoff: boolean
-  signoff_by: string | null
-  signoff_at: string | null
-  department: string | null
-  manager_id: string | null
-}
 
 const loading = ref(true)
 const pendingSignoffs = ref<SignoffItem[]>([])
@@ -309,7 +293,7 @@ function viewDetails(item: SignoffItem) {
 async function fetchData() {
   loading.value = true
   try {
-    const data = await academyStore.fetchPendingSignoffs()
+    const data = await coursesStore.fetchPendingSignoffs()
     pendingSignoffs.value = data as SignoffItem[]
   } catch (err) {
     console.error('Failed to fetch signoffs:', err)
@@ -324,7 +308,7 @@ async function submitSignOff() {
   
   submitting.value = true
   try {
-    const result = await academyStore.signOffCompletion(
+    const result = await coursesStore.signOffCompletion(
       selectedItem.value.enrollment_id,
       signOffNotes.value || undefined
     )

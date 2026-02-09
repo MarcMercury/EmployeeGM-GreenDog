@@ -1,5 +1,19 @@
 <template>
   <div>
+    <!-- Loading State -->
+    <div v-if="pageLoading" class="d-flex justify-center align-center min-h-50vh">
+      <v-progress-circular indeterminate color="primary" size="48" />
+    </div>
+
+    <!-- Error State -->
+    <v-alert v-else-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="loadPageData()">Retry</v-btn>
+      </template>
+    </v-alert>
+
+    <template v-else>
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
@@ -143,6 +157,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    </template>
 
     <!-- Success Snackbar -->
     <v-snackbar v-model="showSuccess" color="success" location="top">
@@ -172,6 +187,8 @@ const supabase = useSupabaseClient()
 const toast = useToast()
 
 // State
+const pageLoading = ref(true)
+const pageError = ref<string | null>(null)
 const ptoBalances = ref<{ accrued_hours: number; used_hours: number; pending_hours: number }[]>([])
 const swapDialog = ref(false)
 const dropDialog = ref(false)
@@ -195,13 +212,13 @@ const todayFormatted = computed(() => {
 
 const currentGreeting = computed(() => {
   const hour = new Date().getHours()
-  const name = userStore.currentEmployee?.profile?.first_name || 'there'
+  const name = userStore.employee?.preferred_name || userStore.employee?.first_name || 'there'
   if (hour < 12) return `Good morning, ${name}`
   if (hour < 17) return `Good afternoon, ${name}`
   return `Good evening, ${name}`
 })
 
-const employeeId = computed(() => userStore.currentEmployee?.id)
+const employeeId = computed(() => userStore.employee?.id)
 
 const upcomingShiftCount = computed(() => {
   if (!employeeId.value) return 0
@@ -316,30 +333,40 @@ async function submitDropRequest() {
 }
 
 // Lifecycle
-onMounted(async () => {
-  await Promise.all([
-    employeeStore.fetchEmployees(),
-    opsStore.fetchGeofences()
-  ])
+async function loadPageData() {
+  pageLoading.value = true
+  pageError.value = null
+  try {
+    await Promise.all([
+      employeeStore.fetchEmployees(),
+      opsStore.fetchGeofences()
+    ])
 
-  if (employeeId.value) {
-    const now = new Date()
-    const weekAgo = new Date()
-    weekAgo.setDate(weekAgo.getDate() - 7)
-    
-    await opsStore.fetchTimeEntries(
-      weekAgo.toISOString(),
-      now.toISOString(),
-      employeeId.value
-    )
-    
-    // Fetch PTO balances for current employee
-    const { data: balances } = await supabase
-      .from('employee_time_off_balances')
-      .select('accrued_hours, used_hours, pending_hours')
-      .eq('employee_id', employeeId.value)
-    
-    ptoBalances.value = balances || []
+    if (employeeId.value) {
+      const now = new Date()
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      
+      await opsStore.fetchTimeEntries(
+        weekAgo.toISOString(),
+        now.toISOString(),
+        employeeId.value
+      )
+      
+      // Fetch PTO balances for current employee
+      const { data: balances } = await supabase
+        .from('employee_time_off_balances')
+        .select('accrued_hours, used_hours, pending_hours')
+        .eq('employee_id', employeeId.value)
+      
+      ptoBalances.value = balances || []
+    }
+  } catch (err) {
+    pageError.value = err instanceof Error ? err.message : 'Failed to load operations data'
+  } finally {
+    pageLoading.value = false
   }
-})
+}
+
+onMounted(() => loadPageData())
 </script>

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { useOperationsStore } from '~/stores/operations'
 
 // Types that match actual database schema
 interface Schedule {
@@ -123,21 +124,11 @@ export const useScheduleStore = defineStore('schedule', {
     },
 
     async fetchTimeOffTypes() {
-      const supabase = useSupabaseClient()
-      
-      try {
-        // Only load active time off types (PTO, Unpaid Time Off, Other)
-        const { data, error } = await supabase
-          .from('time_off_types')
-          .select('id, name, code')
-          .eq('is_active', true)
-          .order('name')
-
-        if (error) throw error
-        this.timeOffTypes = data || []
-      } catch (err) {
-        console.error('Error fetching time off types:', err)
-      }
+      // Delegate to canonical source in operations store (M33 dedup)
+      const opsStore = useOperationsStore()
+      await opsStore.fetchTimeOffTypes()
+      // Sync local state so consumers reading scheduleStore.timeOffTypes still work
+      this.timeOffTypes = opsStore.timeOffTypes.map(t => ({ id: t.id, name: t.name, code: t.code || '' }))
     },
 
     async fetchTimeOffRequests(status?: TimeOffStatus) {
@@ -146,6 +137,7 @@ export const useScheduleStore = defineStore('schedule', {
       this.isLoading = true
 
       try {
+        this.error = null
         let query = supabase
           .from('time_off_requests')
           .select('*')
@@ -169,6 +161,7 @@ export const useScheduleStore = defineStore('schedule', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         const { data, error } = await supabase
           .from('schedules')
           .insert(schedule as any)
@@ -188,6 +181,7 @@ export const useScheduleStore = defineStore('schedule', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         const { data, error } = await supabase
           .from('schedules')
           .update({
@@ -215,6 +209,7 @@ export const useScheduleStore = defineStore('schedule', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         const { error } = await supabase
           .from('schedules')
           .delete()
@@ -238,6 +233,7 @@ export const useScheduleStore = defineStore('schedule', {
       const supabase = useSupabaseClient()
       
       try {
+        this.error = null
         // Get default time off type if not loaded
         if (this.timeOffTypes.length === 0) {
           await this.fetchTimeOffTypes()
@@ -277,6 +273,7 @@ export const useScheduleStore = defineStore('schedule', {
       const authStore = useAuthStore()
       
       try {
+        this.error = null
         // Get current user's employee record
         const { data: empData } = await supabase
           .from('employees')

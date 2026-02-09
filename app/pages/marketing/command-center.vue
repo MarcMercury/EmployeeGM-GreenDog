@@ -10,7 +10,7 @@ const supabase = useSupabaseClient()
 const refreshKey = ref(0)
 
 // Fetch summary stats with watch for real-time updates
-const { data: partnerStats, refresh: refreshPartners } = await useAsyncData('partner-stats', async () => {
+const { data: partnerStats, refresh: refreshPartners, error: partnerError } = await useAsyncData('partner-stats', async () => {
   const { data: partners } = await supabase
     .from('marketing_partners')
     .select('id, status, partner_type')
@@ -90,14 +90,19 @@ const isRefreshing = ref(false)
 async function refreshAll() {
   isRefreshing.value = true
   refreshKey.value++
-  await Promise.all([
-    refreshPartners(),
-    refreshInfluencers(),
-    refreshInventory(),
-    refreshReferrals(),
-    refreshEvents()
-  ])
-  isRefreshing.value = false
+  try {
+    await Promise.all([
+      refreshPartners(),
+      refreshInfluencers(),
+      refreshInventory(),
+      refreshReferrals(),
+      refreshEvents()
+    ])
+  } catch (err) {
+    console.error('Refresh failed:', err)
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
 // Auto-refresh every 60 seconds when page is visible
@@ -196,6 +201,11 @@ const quickActions = [
 
 <template>
   <div>
+    <!-- Data loading error -->
+    <v-alert v-if="partnerError" type="error" variant="tonal" class="mb-4" closable>
+      Failed to load dashboard data. Please try refreshing.
+    </v-alert>
+
     <!-- Compact Header -->
     <div class="d-flex align-center mb-4">
       <div>

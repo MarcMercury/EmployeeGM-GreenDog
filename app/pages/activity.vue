@@ -415,7 +415,7 @@
             <div class="text-h6">{{ selectedNotification.title }}</div>
           </div>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="detailDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="detailDialog = false" />
         </v-card-title>
         
         <v-divider />
@@ -488,6 +488,7 @@
 
 <script setup lang="ts">
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ActivityNotification } from '~/types/integrations.types'
 
 definePageMeta({
   layout: 'default',
@@ -638,24 +639,6 @@ async function fetchPersonalData() {
 
 // ============= NOTIFICATIONS SECTION =============
 
-// Types
-interface Notification {
-  id: string
-  profile_id: string
-  type: string
-  title: string
-  body: string
-  data: Record<string, any> | null
-  is_read: boolean
-  read_at: string | null
-  closed_at: string | null
-  created_at: string
-  category: string
-  requires_action: boolean
-  action_url: string | null
-  action_label: string | null
-}
-
 // Categories configuration
 const categories = [
   { value: 'schedule', label: 'Schedule', icon: 'mdi-calendar', color: 'blue', emoji: '📅' },
@@ -672,12 +655,12 @@ const categories = [
 const loadingNotifications = ref(true)
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
-const notifications = ref<Notification[]>([])
+const notifications = ref<ActivityNotification[]>([])
 const selectedCategories = ref<string[]>([])
 const showPriorityOnly = ref(false)
 const showClosed = ref(false)
 const detailDialog = ref(false)
-const selectedNotification = ref<Notification | null>(null)
+const selectedNotification = ref<ActivityNotification | null>(null)
 const page = ref(1)
 const pageSize = 30
 const hasMore = ref(true)
@@ -767,7 +750,7 @@ const loadMore = async () => {
   }
 }
 
-const enrichNotification = (n: any): Notification => {
+const enrichNotification = (n: any): ActivityNotification => {
   const category = n.category || n.type?.split('_')[0] || 'system'
   const actionTypes = ['approval_needed', 'response_required', 'urgent', 'action_required']
   const requires_action = n.requires_action || actionTypes.some(t => n.type?.includes(t)) || n.data?.requires_action
@@ -777,7 +760,7 @@ const enrichNotification = (n: any): Notification => {
   return { ...n, category, requires_action, action_url, action_label }
 }
 
-const openNotification = async (notification: Notification) => {
+const openNotification = async (notification: ActivityNotification) => {
   selectedNotification.value = notification
   detailDialog.value = true
   
@@ -786,7 +769,7 @@ const openNotification = async (notification: Notification) => {
   }
 }
 
-const markAsRead = async (notification: Notification) => {
+const markAsRead = async (notification: ActivityNotification) => {
   try {
     await supabase
       .from('notifications')
@@ -829,7 +812,7 @@ const markAllAsRead = async () => {
   }
 }
 
-const closeNotification = async (notification: Notification) => {
+const closeNotification = async (notification: ActivityNotification) => {
   try {
     const closedAt = new Date().toISOString()
     await supabase
@@ -852,7 +835,7 @@ const closeNotification = async (notification: Notification) => {
   }
 }
 
-const reopenNotification = async (notification: Notification) => {
+const reopenNotification = async (notification: ActivityNotification) => {
   try {
     await supabase
       .from('notifications')

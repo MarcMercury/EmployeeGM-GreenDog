@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { ContactNote } from '~/types/ui.types'
+
 /**
  * ContactNotes - Unified Notes Component
  * 
@@ -12,24 +14,6 @@
  *   :enrollment-id="student.enrollment_id"
  * />
  */
-
-interface ContactNote {
-  id: string
-  contact_type: string
-  contact_id: string
-  enrollment_id?: string
-  note: string
-  note_type: string
-  author_id?: string
-  author_initials?: string
-  author_name?: string
-  visibility: string
-  is_pinned: boolean
-  created_at: string
-  edited_at?: string
-  edited_by_initials?: string
-  transferred_from?: string
-}
 
 const props = defineProps<{
   contactType: 'student' | 'candidate' | 'employee' | 'partner' | 'visitor' | 'influencer' | 'referral'

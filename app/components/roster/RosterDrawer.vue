@@ -788,7 +788,7 @@ function adjustColor(hex: string, percent: number): string {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #666;
+  color: rgb(var(--v-theme-text-secondary));
   display: flex;
   align-items: center;
   margin-bottom: 12px;
@@ -809,7 +809,7 @@ function adjustColor(hex: string, percent: number): string {
 
 .stat-card__label {
   font-size: 11px;
-  color: #666;
+  color: rgb(var(--v-theme-text-secondary));
   margin-top: 4px;
 }
 
@@ -852,7 +852,7 @@ function adjustColor(hex: string, percent: number): string {
 .skill-bar {
   width: 60px;
   height: 8px;
-  background: #e0e0e0;
+  background: rgb(var(--v-theme-border));
   border-radius: 4px;
   overflow: hidden;
 }
@@ -894,7 +894,7 @@ function adjustColor(hex: string, percent: number): string {
 .drawer-footer {
   padding: 16px;
   background: #f8f9fa;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid rgb(var(--v-theme-border));
   position: sticky;
   bottom: 0;
 }

@@ -60,16 +60,16 @@ export async function useSafeFetch<T = any>(
       } finally {
         clearTimeout(timeoutId)
       }
-    } catch (error: any) {
-      lastError = error
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error : new Error(String(error))
 
       // Check if it's a timeout
-      if (error.name === 'AbortError') {
+      if (lastError.name === 'AbortError') {
         lastError = new Error(`Request timeout after ${timeout}ms`)
       }
 
       // Don't retry on client errors (4xx)
-      const status = error?.response?.status || error?.statusCode
+      const status = (error as Record<string, unknown> & { response?: { status?: number }; statusCode?: number })?.response?.status || (error as Record<string, unknown> & { statusCode?: number })?.statusCode
       if (status && status >= 400 && status < 500) {
         break
       }
@@ -82,12 +82,12 @@ export async function useSafeFetch<T = any>(
   }
 
   // Extract error details
-  const errorMessage = lastError?.data?.message 
+  const errorMessage = (lastError as Record<string, unknown> & { data?: { message?: string } })?.data?.message 
     || lastError?.message 
     || 'An unexpected error occurred'
 
-  const statusCode = lastError?.response?.status 
-    || lastError?.statusCode 
+  const statusCode = (lastError as Record<string, unknown> & { response?: { status?: number }; statusCode?: number })?.response?.status 
+    || (lastError as Record<string, unknown> & { statusCode?: number })?.statusCode 
     || null
 
   // Show toast notification if enabled
@@ -121,9 +121,9 @@ export async function useSafeFetchThrow<T = any>(
 /**
  * POST request helper
  */
-export function useSafePost<T = any>(
+export function useSafePost<T = unknown>(
   url: string,
-  body: any,
+  body: unknown,
   options: SafeFetchOptions = {}
 ): Promise<SafeFetchResult<T>> {
   return useSafeFetch<T>(url, {
@@ -140,9 +140,9 @@ export function useSafePost<T = any>(
 /**
  * PUT request helper
  */
-export function useSafePut<T = any>(
+export function useSafePut<T = unknown>(
   url: string,
-  body: any,
+  body: unknown,
   options: SafeFetchOptions = {}
 ): Promise<SafeFetchResult<T>> {
   return useSafeFetch<T>(url, {

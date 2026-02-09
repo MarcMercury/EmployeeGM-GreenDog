@@ -31,7 +31,7 @@
     <!-- Notifications -->
     <v-menu v-if="showNotifications">
       <template #activator="{ props }">
-        <v-btn icon v-bind="props" class="mr-2">
+        <v-btn icon v-bind="props" class="mr-2" aria-label="Notifications">
           <v-badge 
             :content="notificationCount" 
             :model-value="notificationCount > 0"
@@ -64,7 +64,7 @@
     </v-menu>
 
     <!-- Theme Toggle -->
-    <v-btn icon class="mr-2" @click="toggleTheme">
+    <v-btn icon class="mr-2" aria-label="Toggle theme" @click="toggleTheme">
       <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
     </v-btn>
 

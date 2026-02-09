@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
     return { ok: true, notificationId: notification.id }
 
   } catch (error: any) {
-    console.error('Error sending event notification:', error)
+    logger.error('Error sending event notification', error, 'slack/notifications/send-event')
     return { ok: false, error: error.message }
   }
 })

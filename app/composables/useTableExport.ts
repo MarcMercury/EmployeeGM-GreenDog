@@ -1,3 +1,5 @@
+import type { ExportColumn } from '~/types/ui.types'
+
 /**
  * useTableExport Composable
  * 
@@ -9,12 +11,6 @@
  * exportToExcel(data, columns, 'roster-export')
  * exportToPdf(data, columns, 'Team Roster', 'roster-export')
  */
-
-interface ExportColumn {
-  key: string
-  title: string
-  format?: (value: any, row: any) => string
-}
 
 interface ExportOptions {
   filename?: string
@@ -29,7 +25,7 @@ export function useTableExport() {
   const toast = useToast()
   
   // Format value for export (handles dates, arrays, objects)
-  function formatValue(value: any, format?: (v: any, r: any) => string, row?: any): string {
+  function formatValue(value: unknown, format?: (v: unknown, r: unknown) => string, row?: unknown): string {
     if (format) {
       return format(value, row)
     }
@@ -44,9 +40,10 @@ export function useTableExport() {
     
     if (typeof value === 'object') {
       // Handle common nested objects
-      if (value.name) return value.name
-      if (value.title) return value.title
-      if (value.label) return value.label
+      const obj = value as Record<string, unknown>
+      if (obj.name) return String(obj.name)
+      if (obj.title) return String(obj.title)
+      if (obj.label) return String(obj.label)
       return JSON.stringify(value)
     }
     
@@ -70,7 +67,7 @@ export function useTableExport() {
   }
   
   // Generate CSV content
-  function generateCsv(data: any[], columns: ExportColumn[]): string {
+  function generateCsv(data: Record<string, unknown>[], columns: ExportColumn[]): string {
     // Header row
     const headers = columns.map(col => `"${col.title.replace(/"/g, '""')}"`).join(',')
     
@@ -88,7 +85,7 @@ export function useTableExport() {
   
   // Export to CSV
   async function exportToCsv(
-    data: any[], 
+    data: Record<string, unknown>[], 
     columns: ExportColumn[], 
     options: ExportOptions = {}
   ): Promise<boolean> {
@@ -118,7 +115,7 @@ export function useTableExport() {
   
   // Export to Excel (using CSV format that Excel can open)
   async function exportToExcel(
-    data: any[], 
+    data: Record<string, unknown>[], 
     columns: ExportColumn[], 
     options: ExportOptions = {}
   ): Promise<boolean> {
@@ -152,7 +149,7 @@ export function useTableExport() {
   
   // Export to PDF (using browser print)
   async function exportToPdf(
-    data: any[], 
+    data: Record<string, unknown>[], 
     columns: ExportColumn[], 
     options: ExportOptions = {}
   ): Promise<boolean> {

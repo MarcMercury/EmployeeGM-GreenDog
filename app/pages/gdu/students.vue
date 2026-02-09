@@ -33,58 +33,7 @@ const exportColumns = [
 const loading = ref(true)
 const saving = ref(false)
 
-// Types
-interface StudentEnrollment {
-  enrollment_id: string
-  person_id: string
-  first_name: string
-  last_name: string
-  preferred_name: string | null
-  display_name: string
-  email: string
-  phone_mobile: string | null
-  avatar_url: string | null
-  lifecycle_stage: string
-  program_type: string
-  enrollment_status: string
-  program_name: string | null
-  cohort_identifier: string | null
-  start_date: string | null
-  end_date: string | null
-  expected_graduation_date: string | null
-  school_of_origin: string | null
-  school_program: string | null
-  assigned_location_id: string | null
-  location_name: string | null
-  assigned_mentor_id: string | null
-  mentor_name: string | null
-  coordinator_name: string | null
-  schedule_type: string | null
-  scheduled_hours_per_week: number | null
-  is_paid: boolean
-  stipend_amount: number | null
-  hours_completed: number | null
-  hours_required: number | null
-  completion_percentage: number | null
-  overall_performance_rating: string | null
-  eligible_for_employment: boolean | null
-  employment_interest_level: string | null
-  converted_to_employee: boolean
-  time_status: string
-  created_at: string
-  updated_at: string
-}
-
-interface Location {
-  id: string
-  name: string
-}
-
-interface Employee {
-  id: string
-  first_name: string
-  last_name: string
-}
+import type { StudentEnrollment, GDULocation, GDUEmployee } from '~/types/gdu.types'
 
 // Filter state
 const searchQuery = ref('')
@@ -125,8 +74,8 @@ const timeStatusOptions = [
 
 // Fetch data
 const students = ref<StudentEnrollment[]>([])
-const locations = ref<Location[]>([])
-const employees = ref<Employee[]>([])
+const locations = ref<GDULocation[]>([])
+const employees = ref<GDUEmployee[]>([])
 
 async function fetchStudents() {
   loading.value = true
@@ -1019,7 +968,7 @@ function formatStatus(status: string): string {
           <v-icon class="mr-2">mdi-account-plus</v-icon>
           Invite Student
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="showInviteWizard = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showInviteWizard = false" />
         </v-card-title>
 
         <v-divider />

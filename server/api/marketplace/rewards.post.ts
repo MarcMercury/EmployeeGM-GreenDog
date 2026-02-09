@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
-  const body = await readBody(event)
+  const body = await validateBody(event, rewardCreateSchema)
 
   const { data: reward, error } = await client
     .from('marketplace_rewards')
@@ -33,10 +33,8 @@ export default defineEventHandler(async (event) => {
       cost: body.cost,
       stock_quantity: body.stock_quantity,
       icon: body.icon || 'mdi-gift',
-      image_url: body.image_url,
       category: body.category,
-      requires_approval: body.requires_approval !== false,
-      fulfillment_notes: body.fulfillment_notes,
+      requires_approval: body.requires_approval,
       created_by: profile.id
     })
     .select()

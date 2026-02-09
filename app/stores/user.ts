@@ -1,50 +1,7 @@
 import { defineStore } from 'pinia'
+import type { UserProfile, UserEmployee, UserData } from '~/types/admin.types'
 
-export interface UserProfile {
-  // From profiles table
-  id: string
-  auth_user_id: string | null
-  email: string
-  first_name: string | null
-  last_name: string | null
-  preferred_name: string | null
-  phone: string | null
-  avatar_url: string | null
-  role: 'super_admin' | 'admin' | 'manager' | 'hr_admin' | 'office_admin' | 'marketing_admin' | 'user'
-  is_active: boolean
-  bio: string | null
-  created_at: string
-  updated_at: string
-}
-
-export interface UserEmployee {
-  id: string
-  profile_id: string
-  employee_number: string | null
-  first_name: string
-  last_name: string
-  preferred_name: string | null
-  email_work: string | null
-  phone_mobile: string | null
-  department_id: string | null
-  position_id: string | null
-  location_id: string | null
-  manager_employee_id: string | null
-  employment_type: string | null
-  employment_status: string | null
-  hire_date: string | null
-  created_at: string
-  updated_at: string
-  // Joined data
-  department?: { id: string; name: string; code: string | null } | null
-  position?: { id: string; title: string; code: string | null; is_manager: boolean } | null
-  location?: { id: string; name: string; city: string | null } | null
-}
-
-export interface UserData {
-  profile: UserProfile | null
-  employee: UserEmployee | null
-}
+export type { UserProfile, UserEmployee, UserData }
 
 interface UserState {
   profile: UserProfile | null

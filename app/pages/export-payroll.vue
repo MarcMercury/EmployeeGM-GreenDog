@@ -1,5 +1,19 @@
 <template>
   <div class="export-payroll-page">
+    <!-- Loading State -->
+    <div v-if="pageLoading" class="d-flex justify-center align-center min-h-50vh">
+      <v-progress-circular indeterminate color="primary" size="48" />
+    </div>
+
+    <!-- Error State -->
+    <v-alert v-else-if="pageError" type="error" variant="tonal" class="mb-4" closable @click:close="pageError = null">
+      {{ pageError }}
+      <template #append>
+        <v-btn variant="text" size="small" @click="initPage()">Retry</v-btn>
+      </template>
+    </v-alert>
+
+    <template v-else>
     <!-- Page Header -->
     <div class="d-flex align-center justify-space-between mb-6">
       <div>
@@ -230,7 +244,7 @@
               <v-list-item-title class="text-body-2">{{ exp.filename }}</v-list-item-title>
               <v-list-item-subtitle class="text-caption">{{ exp.date }}</v-list-item-subtitle>
               <template #append>
-                <v-btn icon="mdi-download" size="x-small" variant="text" />
+                <v-btn icon="mdi-download" size="x-small" variant="text" aria-label="Download" />
               </template>
             </v-list-item>
           </v-list>
@@ -243,7 +257,7 @@
       <v-card>
         <v-card-title class="d-flex align-center justify-space-between">
           <span>Payroll Preview</span>
-          <v-btn icon="mdi-close" variant="text" @click="previewDialog = false" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="previewDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-data-table
@@ -268,6 +282,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
     </v-snackbar>
+    </template>
   </div>
 </template>
 
@@ -292,6 +307,8 @@ const formRef = ref()
 const exporting = ref(false)
 const previewing = ref(false)
 const previewDialog = ref(false)
+const pageLoading = ref(true)
+const pageError = ref<string | null>(null)
 const previewData = ref<any[]>([])
 
 const snackbar = reactive({
@@ -519,18 +536,28 @@ async function exportPayroll() {
 }
 
 // Initialize
-onMounted(async () => {
-  // Sync payroll store period with export config
-  payrollStore.setPeriod(exportConfig.startDate, exportConfig.endDate)
-  
-  await Promise.all([
-    loadDepartments(),
-    payrollStore.fetchPayrollSummary()
-  ])
-  
-  // Calculate stats after payroll data is loaded
-  await calculateStats()
-})
+async function initPage() {
+  pageLoading.value = true
+  pageError.value = null
+  try {
+    // Sync payroll store period with export config
+    payrollStore.setPeriod(exportConfig.startDate, exportConfig.endDate)
+    
+    await Promise.all([
+      loadDepartments(),
+      payrollStore.fetchPayrollSummary()
+    ])
+    
+    // Calculate stats after payroll data is loaded
+    await calculateStats()
+  } catch (err) {
+    pageError.value = err instanceof Error ? err.message : 'Failed to load payroll data'
+  } finally {
+    pageLoading.value = false
+  }
+}
+
+onMounted(() => initPage())
 
 // Watch for date changes and update payroll store
 watch(() => [exportConfig.startDate, exportConfig.endDate], ([start, end]) => {

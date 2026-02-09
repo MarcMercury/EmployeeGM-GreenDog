@@ -164,32 +164,12 @@
 </template>
 
 <script setup lang="ts">
+import type { SkillLibraryItem, EmployeeSkillRating, MergedSkill } from '~/types/skill.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth']
 })
-
-interface SkillLibraryItem {
-  id: string
-  name: string
-  category: string
-  description?: string
-  level_descriptions?: Record<string, string> | null
-}
-
-interface EmployeeSkillRating {
-  skill_id: string
-  rating: number
-}
-
-interface MergedSkill {
-  skillId: string
-  name: string
-  category: string
-  description?: string
-  level_descriptions?: Record<string, string> | null
-  rating: number
-}
 
 const client = useSupabaseClient()
 const user = useSupabaseUser()

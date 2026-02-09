@@ -262,7 +262,7 @@
           <v-icon start color="primary">mdi-account-plus</v-icon>
           <span>Add New Employee</span>
           <v-spacer />
-          <v-btn icon="mdi-close" variant="text" @click="closeAddDialog" />
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="closeAddDialog" />
         </v-card-title>
         <v-divider />
         
@@ -506,8 +506,14 @@ const { canViewProfile } = usePermissions()
 
 const isAdmin = computed(() => authStore.isAdmin)
 
-// Get own profile ID for access control
-const ownProfileId = computed(() => authStore.profile?.id)
+// Get own employee ID for access control (use employee table PK, not profile ID)
+const ownProfileId = computed(() => {
+  const { employees } = useAppData()
+  const profileId = authStore.profile?.id
+  if (!profileId) return null
+  const own = employees.value?.find((e: any) => e.profile_id === profileId)
+  return own?.id ?? null
+})
 
 // Check if user can click on profiles (full access to roster)
 // Uses the 'manage:roster' permission which maps to full access

@@ -8,6 +8,7 @@
  * 3. Link the auth user to their profile record
  * 
  * Usage: npm run seed:users
+ * Dry run: npx tsx scripts/create_users.ts --dry-run
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -15,6 +16,8 @@ import * as dotenv from 'dotenv'
 
 // Load environment variables
 dotenv.config()
+
+const DRY_RUN = process.argv.includes('--dry-run')
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -34,8 +37,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   }
 })
 
-// Default password for all new users
-const DEFAULT_PASSWORD = 'GreenDog2025!'
+// Default password for all new users — should be changed on first login
+const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || `GDD-${crypto.randomUUID().slice(0, 8)}`
+if (!process.env.DEFAULT_USER_PASSWORD) {
+  console.warn('⚠️  DEFAULT_USER_PASSWORD not set — using random password:', DEFAULT_PASSWORD)
+}
 
 interface Employee {
   id: string
@@ -57,6 +63,7 @@ interface Profile {
 async function main() {
   console.log('\n🐕 Green Dog Employee User Creation Script')
   console.log('==========================================\n')
+  if (DRY_RUN) console.log('🏜️  DRY RUN — no data will be modified\n')
 
   // Step A: Fetch all employees
   console.log('📋 Step 1: Fetching employees from database...')
@@ -108,10 +115,16 @@ async function main() {
         console.log(`   ⏭️  EXISTS: ${fullName} (${email})`)
         
         // Still need to link profile if not linked
-        if (employee.profile_id) {
+        if (employee.profile_id && !DRY_RUN) {
           await linkProfileToAuth(employee.profile_id, existingUser.id, email, employee)
         }
         skipped++
+        continue
+      }
+
+      if (DRY_RUN) {
+        console.log(`   🏜️  Would create: ${fullName} (${email})`)
+        created++
         continue
       }
 

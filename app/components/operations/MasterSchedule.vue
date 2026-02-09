@@ -3,9 +3,9 @@
     <!-- Header -->
     <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2 pa-4">
       <div class="d-flex align-center ga-2">
-        <v-btn icon="mdi-chevron-left" variant="text" size="small" @click="navigatePrevious" />
+        <v-btn icon="mdi-chevron-left" variant="text" size="small" aria-label="Previous" @click="navigatePrevious" />
         <span class="text-h6">{{ headerTitle }}</span>
-        <v-btn icon="mdi-chevron-right" variant="text" size="small" @click="navigateNext" />
+        <v-btn icon="mdi-chevron-right" variant="text" size="small" aria-label="Next" @click="navigateNext" />
       </div>
 
       <div class="d-flex align-center ga-2 flex-wrap">

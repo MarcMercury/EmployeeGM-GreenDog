@@ -80,13 +80,15 @@ export function formatNoteTimestamp(
       parts.push(d.toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'America/Los_Angeles'
       }))
     } else {
       parts.push(d.toLocaleDateString('en-US', {
         month: '2-digit',
         day: '2-digit',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'America/Los_Angeles'
       }))
     }
   }
@@ -95,7 +97,8 @@ export function formatNoteTimestamp(
     parts.push(d.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'America/Los_Angeles'
     }))
   }
   

@@ -33,3 +33,7 @@ logs
 data/marketing/parsed/resources_passwords.csv
 .vercel
 .env*.local
+# Data files — prevent PII/business data from being committed
+public/*.csv
+scripts/archive/*.csv
+scripts/archive/*.json

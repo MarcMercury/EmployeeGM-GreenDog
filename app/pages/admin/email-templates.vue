@@ -235,7 +235,7 @@
                 placeholder="<p>Hello {{first_name}},</p><p>Your content here...</p>"
                 :rules="[v => !!v || 'Required']"
               />
-              <v-card v-else variant="outlined" class="pa-4" style="min-height: 300px">
+              <v-card v-else variant="outlined" class="pa-4 min-h-300">
                 <div v-html="editForm.body" class="email-preview" />
               </v-card>
             </v-col>
@@ -314,20 +314,11 @@
 </template>
 
 <script setup lang="ts">
-interface EmailTemplate {
-  id: string
-  name: string
-  category: string
-  subject: string
-  body: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
+import type { EmailTemplate } from '~/types/admin.types'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'admin-only']
+  middleware: ['auth', 'admin']
 })
 
 useHead({

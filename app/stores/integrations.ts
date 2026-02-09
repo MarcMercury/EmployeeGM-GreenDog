@@ -1,87 +1,14 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
-
-// =====================================================
-// TYPES
-// =====================================================
-
-export interface Notification {
-  id: string
-  profile_id: string
-  type: string | null
-  title: string | null
-  body: string | null
-  data: NotificationData | null
-  is_read: boolean
-  read_at: string | null
-  created_at: string
-}
-
-export interface NotificationData {
-  entity_type?: string
-  entity_id?: string
-  action_url?: string
-  action_label?: string
-  secondary_action_url?: string
-  secondary_action_label?: string
-  metadata?: Record<string, any>
-}
-
-export interface ActionItem {
-  id: string
-  type: 'shift_swap' | 'time_off' | 'review' | 'training' | 'mentorship' | 'timesheet' | 'promotion'
-  title: string
-  description: string
-  entity_id: string
-  entity_type: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'pending' | 'completed' | 'dismissed'
-  action_url?: string
-  action_label?: string
-  secondary_action_label?: string
-  created_at: string
-  due_date?: string
-  from_employee?: {
-    id: string
-    first_name: string
-    last_name: string
-  }
-}
-
-export interface PromotionCriteria {
-  employee_id: string
-  employee_name: string
-  current_position: string
-  current_position_id: string
-  recommended_position?: string
-  recommended_position_id?: string
-  current_hourly_rate?: number
-  recommended_hourly_rate?: number
-  rating: number
-  meets_criteria: boolean
-  criteria_details: {
-    rating_met: boolean
-    tenure_met: boolean
-    skills_met: boolean
-  }
-}
-
-export interface SkillRequirement {
-  skill_id: string
-  skill_name: string
-  required_level: number
-  current_level: number | null
-  is_met: boolean
-  course_id?: string
-  course_title?: string
-}
+import type { IntegrationNotification, NotificationData, ActionItem, PromotionCriteria, SkillRequirement } from '~/types/integrations.types'
+export type { IntegrationNotification, NotificationData, ActionItem, PromotionCriteria, SkillRequirement }
 
 // =====================================================
 // STATE
 // =====================================================
 
 interface IntegrationsState {
-  notifications: Notification[]
+  notifications: IntegrationNotification[]
   unreadCount: number
   actionItems: ActionItem[]
   loading: boolean
@@ -132,22 +59,23 @@ export const useIntegrationsStore = defineStore('integrations', {
 
     async fetchNotifications() {
       const authStore = useAuthStore()
-      if (!authStore.user?.id) return
+      if (!authStore.profile?.id) return
 
       const supabase = useSupabaseClient()
       this.loading = true
 
       try {
+        this.error = null
         const { data, error } = await supabase
           .from('notifications')
           .select('*')
-          .eq('profile_id', authStore.user.id)
+          .eq('profile_id', authStore.profile?.id)
           .order('created_at', { ascending: false })
           .limit(50)
 
         if (error) throw error
 
-        this.notifications = data as Notification[]
+        this.notifications = data as IntegrationNotification[]
         this.unreadCount = data.filter(n => !n.is_read).length
       } catch (err) {
         console.error('fetchNotifications error:', err)
@@ -181,7 +109,7 @@ export const useIntegrationsStore = defineStore('integrations', {
 
     async markAllAsRead() {
       const authStore = useAuthStore()
-      if (!authStore.user?.id) return
+      if (!authStore.profile?.id) return
 
       const supabase = useSupabaseClient()
 
@@ -189,7 +117,7 @@ export const useIntegrationsStore = defineStore('integrations', {
         const { error } = await supabase
           .from('notifications')
           .update({ is_read: true, read_at: new Date().toISOString() })
-          .eq('profile_id', authStore.user.id)
+          .eq('profile_id', authStore.profile?.id)
           .eq('is_read', false)
 
         if (error) throw error
@@ -229,7 +157,7 @@ export const useIntegrationsStore = defineStore('integrations', {
           .single()
 
         if (error) throw error
-        return notification as Notification
+        return notification as IntegrationNotification
       } catch (err) {
         console.error('createNotification error:', err)
         return null
@@ -393,7 +321,7 @@ export const useIntegrationsStore = defineStore('integrations', {
 
         // 6. Log to audit
         await supabase.from('audit_logs').insert({
-          actor_profile_id: authStore.user?.id,
+          actor_profile_id: authStore.profile?.id,
           action: 'promotion_applied',
           entity_type: 'employee',
           entity_id: employeeId,
@@ -533,7 +461,7 @@ export const useIntegrationsStore = defineStore('integrations', {
 
         // 4. Log action
         await supabase.from('audit_logs').insert({
-          actor_profile_id: authStore.user?.id,
+          actor_profile_id: authStore.profile?.id,
           action: 'fast_track_training_assigned',
           entity_type: 'training_enrollment',
           entity_id: enrollment.id,
@@ -578,7 +506,7 @@ export const useIntegrationsStore = defineStore('integrations', {
         const { data: managerEmployee } = await supabase
           .from('employees')
           .select('id')
-          .eq('profile_id', authStore.user?.id)
+          .eq('profile_id', authStore.profile?.id)
           .single()
 
         // 2. Insert feedback record
@@ -690,17 +618,18 @@ export const useIntegrationsStore = defineStore('integrations', {
 
     async fetchActionItems() {
       const authStore = useAuthStore()
-      if (!authStore.user?.id) return
+      if (!authStore.profile?.id) return
 
       const supabase = useSupabaseClient()
       this.loading = true
 
       try {
+        this.error = null
         // Get manager's employee ID
         const { data: manager } = await supabase
           .from('employees')
           .select('id')
-          .eq('profile_id', authStore.user.id)
+          .eq('profile_id', authStore.profile?.id)
           .single()
 
         if (!manager) {

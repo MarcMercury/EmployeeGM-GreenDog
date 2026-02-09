@@ -9,22 +9,27 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
   // Verify this is a cron request
-  const cronSecret = process.env.CRON_SECRET
+  const cronSecret = config.cronSecret
   const authHeader = getHeader(event, 'authorization')
-  const isVercelCron = getHeader(event, 'x-vercel-cron') === '1'
   
-  // Allow Vercel's internal cron calls or manual calls with secret
-  if (!isVercelCron && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    throw createError({
+      statusCode: 500,
+      message: 'CRON_SECRET not configured'
+    })
+  }
+  
+  if (authHeader !== `Bearer ${cronSecret}`) {
     throw createError({
       statusCode: 401,
       message: 'Unauthorized'
     })
   }
 
-  const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
     throw createError({
@@ -41,7 +46,7 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    console.log('[Cron] Starting daily session reset at', new Date().toISOString())
+    logger.cron('session-reset', 'started')
     
     // Get all users with pagination
     let allUsers: any[] = []
@@ -55,7 +60,7 @@ export default defineEventHandler(async (event) => {
       })
 
       if (error) {
-        console.error('[Cron] Error listing users:', error)
+        logger.error('Error listing users', error as Error, 'SessionResetCron')
         break
       }
 
@@ -65,27 +70,28 @@ export default defineEventHandler(async (event) => {
       page++
     }
 
-    console.log(`[Cron] Found ${allUsers.length} users to sign out`)
+    logger.info('Found users to sign out', 'SessionResetCron', { count: allUsers.length })
 
-    // Sign out each user (invalidates their refresh tokens)
+    // Sign out users in parallel chunks (avoids N+1 sequential API calls)
     let signedOut = 0
     let errors = 0
+    const CHUNK_SIZE = 20
 
-    for (const user of allUsers) {
-      try {
-        const { error } = await supabaseAdmin.auth.admin.signOut(user.id, 'global')
-        if (error) {
-          console.warn(`[Cron] Failed to sign out ${user.email}:`, error.message)
-          errors++
-        } else {
+    for (let i = 0; i < allUsers.length; i += CHUNK_SIZE) {
+      const chunk = allUsers.slice(i, i + CHUNK_SIZE)
+      const results = await Promise.allSettled(
+        chunk.map(user => supabaseAdmin.auth.admin.signOut(user.id, 'global'))
+      )
+      for (const r of results) {
+        if (r.status === 'fulfilled' && !r.value.error) {
           signedOut++
+        } else {
+          errors++
         }
-      } catch (err) {
-        errors++
       }
     }
 
-    console.log(`[Cron] Session reset complete: ${signedOut} signed out, ${errors} errors`)
+    logger.cron('session-reset', 'completed', { signedOut, errors, totalUsers: allUsers.length })
 
     return {
       success: true,
@@ -99,7 +105,7 @@ export default defineEventHandler(async (event) => {
     }
 
   } catch (error: any) {
-    console.error('[Cron] Session reset failed:', error)
+    logger.cron('session-reset', 'failed', { error: error.message || 'Unknown error' })
     throw createError({
       statusCode: 500,
       message: error.message || 'Session reset failed'

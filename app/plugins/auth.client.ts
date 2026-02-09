@@ -173,7 +173,7 @@ export default defineNuxtPlugin({
             
             // Redirect to login
             const router = useRouter()
-            router.push('/login')
+            router.push('/auth/login')
           }
         } catch (err) {
           console.error('[AuthPlugin] Session check failed:', err)

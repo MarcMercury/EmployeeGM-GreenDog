@@ -17,8 +17,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-
-const LOCKED_PASSWORD = 'GDDGDD2026_DISABLED'
+import { randomUUID } from 'crypto'
 
 interface DeactivationRequest {
   employeeId: string
@@ -52,11 +51,11 @@ export default defineEventHandler(async (event) => {
 
   // Get Supabase configuration
   const config = useRuntimeConfig()
-  const supabaseUrl = config.public.supabaseUrl || process.env.SUPABASE_URL || process.env.NUXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = config.supabaseServiceRoleKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.service_role || process.env.SUPABASE_SECRET_KEY
+  const supabaseUrl = config.public.supabaseUrl
+  const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('[Admin Deactivate Employee] Missing credentials')
+    logger.error('Missing credentials', null, 'admin-deactivate-employee')
     throw createError({
       statusCode: 500,
       message: 'Server configuration error - missing Supabase credentials'
@@ -64,7 +63,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Create regular client to verify the calling user
-  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || process.env.NUXT_PUBLIC_SUPABASE_KEY || '')
+  const supabaseClient = createClient(supabaseUrl, config.public.supabaseKey || '')
   
   // Verify the caller's token
   const { data: { user: callerUser }, error: authError } = await supabaseClient.auth.getUser(token)
@@ -91,7 +90,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', callerUser.id)
     .single()
 
-  if (profileError || !['super_admin', 'admin', 'hr_admin', 'manager'].includes(callerProfile?.role)) {
+  if (profileError || !hasRole(callerProfile?.role, DEACTIVATE_ROLES)) {
     throw createError({
       statusCode: 403,
       message: 'Forbidden - Admin, HR, or Manager access required'
@@ -131,7 +130,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (empError || !employee) {
-    console.error('Error fetching employee:', empError)
+    logger.error('Error fetching employee', empError, 'admin-deactivate-employee')
     throw createError({
       statusCode: 404,
       message: 'Employee not found'
@@ -156,7 +155,7 @@ export default defineEventHandler(async (event) => {
     .eq('id', employeeId)
 
   if (empUpdateError) {
-    console.error('Error updating employee status:', empUpdateError)
+    logger.error('Error updating employee status', empUpdateError, 'admin-deactivate-employee')
     throw createError({
       statusCode: 500,
       message: `Failed to update employee status: ${empUpdateError.message}`
@@ -174,7 +173,7 @@ export default defineEventHandler(async (event) => {
       .eq('id', profileData.id)
 
     if (profileUpdateError) {
-      console.error('Error updating profile:', profileUpdateError)
+      logger.error('Error updating profile', profileUpdateError, 'admin-deactivate-employee')
       // Don't fail - continue with the rest
     }
   }
@@ -183,11 +182,14 @@ export default defineEventHandler(async (event) => {
   if (!skipPasswordLock && profileData?.auth_user_id) {
     const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
       profileData.auth_user_id,
-      { password: LOCKED_PASSWORD }
+      {
+        password: randomUUID() + randomUUID(),
+        ban_duration: '876000h' // ~100 years
+      }
     )
 
     if (authUpdateError) {
-      console.error('Error locking password:', authUpdateError)
+      logger.error('Error locking password', authUpdateError, 'admin-deactivate-employee')
       // Don't fail - the profile is already deactivated
     }
   }
@@ -266,7 +268,7 @@ export default defineEventHandler(async (event) => {
         .insert(notifications)
 
       if (notifError) {
-        console.error('Error creating notifications:', notifError)
+        logger.error('Error creating notifications', notifError, 'admin-deactivate-employee')
         // Don't fail - notifications are secondary
       }
     }
@@ -290,15 +292,23 @@ export default defineEventHandler(async (event) => {
       }
     }).catch(() => {
       // Slack not configured or failed - that's okay
-      console.log('[Deactivate Employee] Slack notification skipped or failed')
+      logger.warn('Slack notification skipped or failed', 'admin-deactivate-employee')
     })
   } catch (slackError) {
     // Slack notifications are optional
-    console.log('[Deactivate Employee] Slack notification error:', slackError)
+    logger.warn('Slack notification error', 'admin-deactivate-employee', { error: slackError })
   }
 
   // Log this action for audit purposes
-  console.log(`[AUDIT] Employee ${employeeId} (${employeeName}) deactivated by ${callerUser.id} at ${new Date().toISOString()}. Reason: ${reason || 'Not specified'}`)
+  logger.info('Employee deactivated', 'AUDIT', { employeeId, employeeName, by: callerUser.id, reason: reason || 'Not specified' })
+
+  await createAuditLog({
+    action: 'employee_deactivated',
+    entityType: 'employee',
+    entityId: employeeId,
+    actorProfileId: callerProfile.id,
+    metadata: { employeeName, reason: reason || 'Not specified' }
+  })
 
   return {
     success: true,

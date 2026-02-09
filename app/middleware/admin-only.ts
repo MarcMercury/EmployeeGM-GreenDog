@@ -1,37 +1,26 @@
 /**
  * Admin-Only Middleware
- * Blocks non-admin users from accessing protected routes
- * 
+ * Blocks non-admin users from accessing protected routes.
+ * Relies on auth.ts middleware having populated authStore.profile.
+ * Uses SECTION_ACCESS.admin for the canonical role list.
+ *
  * Allowed roles: super_admin, admin
  */
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 export default defineNuxtRouteMiddleware(async (to) => {
-  const supabase = useSupabaseClient()
-  
-  // Get session directly
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session?.user) {
+  const authStore = useAuthStore()
+
+  // auth.ts should have populated the profile — fail closed if missing
+  if (!authStore.profile) {
     return navigateTo('/auth/login')
   }
-  
-  // Check admin role from database directly
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', session.user.id)
-    .single()
-  
-  // Handle errors gracefully - fail closed
-  if (error || !profile) {
-    console.error('[Middleware] Failed to fetch profile:', error?.message)
-    return navigateTo('/auth/login')
-  }
-  
-  // Admin roles include both super_admin and admin
-  const adminRoles = ['super_admin', 'admin']
-  
-  if (!adminRoles.includes(profile.role)) {
-    console.warn('[Middleware] Non-admin attempted to access:', to.path)
+
+  const role = (authStore.profile.role as UserRole) || 'user'
+
+  if (!SECTION_ACCESS.admin.includes(role)) {
+    console.warn('[Middleware:admin-only] Access denied for role:', role, 'to path:', to.path)
     return navigateTo('/')
   }
 })

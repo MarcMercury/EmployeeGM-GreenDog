@@ -2,7 +2,7 @@
   <div>
     <!-- Header with Navigation -->
     <div class="d-flex align-center gap-2 mb-4">
-      <v-btn icon="mdi-arrow-left" variant="text" @click="navigateTo('/recruiting')" />
+      <v-btn icon="mdi-arrow-left" variant="text" aria-label="Go back" @click="navigateTo('/recruiting')" />
       <div>
         <div class="d-flex align-center gap-2">
           <h1 class="text-h5 font-weight-bold">Shadow Profile</h1>
@@ -337,29 +337,12 @@
 </template>
 
 <script setup lang="ts">
+import type { Candidate, CandidateSkill } from '~/types/recruiting.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'management']
 })
-
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  phone: string
-  status: string
-  applied_at: string
-  notes: string
-  target_position_id: string
-  job_positions?: { title: string }
-}
-
-interface CandidateSkill {
-  id: string
-  skill_level: number
-  skill_library?: { name: string; category: string }
-}
 
 const route = useRoute()
 const client = useSupabaseClient()

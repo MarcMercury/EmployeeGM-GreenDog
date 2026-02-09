@@ -14,12 +14,12 @@
         <v-chip :color="getStatusColor(candidate?.status)" variant="elevated" size="small" class="mr-2">
           {{ formatStatus(candidate?.status) }}
         </v-chip>
-        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="close" />
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" aria-label="Close" @click="close" />
       </v-card-title>
 
       <v-divider />
 
-      <v-card-text class="pa-6" style="max-height: 70vh; overflow-y: auto;">
+      <v-card-text class="pa-6 scrollable-70vh">
         <!-- Interview Details Section -->
         <div class="mb-6">
           <h3 class="text-subtitle-1 font-weight-bold mb-4">
@@ -321,44 +321,12 @@
 </template>
 
 <script setup lang="ts">
-interface Candidate {
-  id: string
-  first_name: string
-  last_name: string
-  email: string
-  status: string
-  job_positions?: { title: string } | null
-  target_position_id?: string | null
-}
-
-interface Employee {
-  id: string
-  full_name: string
-  profile_id?: string
-}
-
-interface InterviewForm {
-  interview_type: string
-  scheduled_at: string
-  interviewer_employee_id: string | null
-  duration_minutes: number
-  location: string
-  video_link: string
-  overall_score: number
-  technical_score: number
-  communication_score: number
-  cultural_fit_score: number
-  notes: string
-  strengths: string
-  concerns: string
-  recommendation: string
-  status: string
-}
+import type { Candidate, RecruitingEmployee, InterviewForm } from '~/types/recruiting.types'
 
 const props = defineProps<{
   modelValue: boolean
   candidate: Candidate | null
-  employees: Employee[]
+  employees: RecruitingEmployee[]
   showForward?: boolean
 }>()
 

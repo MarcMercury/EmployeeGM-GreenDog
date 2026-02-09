@@ -407,20 +407,12 @@
 </template>
 
 <script setup lang="ts">
+import type { Skill } from '~/types/skill.types'
+
 definePageMeta({
   layout: 'default',
   middleware: ['auth', 'admin']
 })
-
-interface Skill {
-  id: string
-  name: string
-  category: string
-  description?: string
-  is_core?: boolean
-  employee_count?: number
-  avg_level?: number
-}
 
 const client = useSupabaseClient()
 const toast = useToast()

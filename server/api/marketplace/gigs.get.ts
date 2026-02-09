@@ -16,6 +16,10 @@ export default defineEventHandler(async (event) => {
   const status = query.status as string | undefined
   const category = query.category as string | undefined
   const includeCompleted = query.includeCompleted === 'true'
+  const page = parseInt(query.page as string) || 1
+  const perPage = parseInt(query.perPage as string) || 50
+  const from = (page - 1) * perPage
+  const to = from + perPage - 1
 
   let queryBuilder = client
     .from('marketplace_gigs')
@@ -24,8 +28,9 @@ export default defineEventHandler(async (event) => {
       claimed_employee:employees!claimed_by(id, first_name, last_name),
       creator:profiles!created_by(id, full_name),
       approver:profiles!approved_by(id, full_name)
-    `)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   if (status) {
     queryBuilder = queryBuilder.eq('status', status)
@@ -37,11 +42,18 @@ export default defineEventHandler(async (event) => {
     queryBuilder = queryBuilder.eq('category', category)
   }
 
-  const { data: gigs, error } = await queryBuilder
+  const { data: gigs, count: totalGigs, error } = await queryBuilder
 
   if (error) {
     throw createError({ statusCode: 500, message: error.message })
   }
 
-  return { gigs }
-})
+  return {
+    gigs,
+    pagination: {
+      page,
+      perPage,
+      total: totalGigs || 0,
+      totalPages: Math.ceil((totalGigs || 0) / perPage)
+    }
+  }

@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
       headerMapping = providedMapping
     } else if (useAIMapping) {
       const config = useRuntimeConfig()
-      const openaiKey = config.openaiApiKey || process.env.OPENAI_API_KEY
+      const openaiKey = config.openaiApiKey
       
       if (openaiKey) {
         headerMapping = await mapHeadersWithAI(openaiKey, headers)
@@ -206,7 +206,7 @@ export default defineEventHandler(async (event) => {
         .insert(candidatesToInsert)
 
       if (insertError) {
-        console.error('[bulk-import] Insert error:', insertError)
+        logger.error('Insert error', insertError, 'bulk-import')
         throw createError({ statusCode: 500, message: 'Failed to insert candidates: ' + insertError.message })
       }
 
@@ -216,7 +216,7 @@ export default defineEventHandler(async (event) => {
     return result
 
   } catch (err: any) {
-    console.error('[bulk-import] Error:', err.message)
+    logger.error('Error', err, 'bulk-import')
     if (err.statusCode) throw err
     throw createError({ statusCode: 500, message: err.message || 'Import failed' })
   }
@@ -256,14 +256,15 @@ function mapHeadersManually(headers: string[]): Record<string, string> {
 }
 
 async function mapHeadersWithAI(apiKey: string, headers: string[]): Promise<Record<string, string>> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const config = useRuntimeConfig()
+  const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: config.openaiModel,
       messages: [
         {
           role: 'system',
