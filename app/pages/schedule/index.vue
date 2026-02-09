@@ -9,8 +9,8 @@
         </p>
       </div>
       <div class="d-flex flex-wrap align-center gap-2">
-        <!-- Quick Actions Menu -->
-        <v-menu>
+        <!-- Quick Actions Menu (schedule managers only) -->
+        <v-menu v-if="canManageSchedule">
           <template #activator="{ props }">
             <v-btn variant="outlined" size="small" v-bind="props">
               <v-icon start>mdi-plus</v-icon>
@@ -136,15 +136,24 @@
 
 <script setup lang="ts">
 import { format, parseISO, isSameWeek } from 'date-fns'
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
 import type { ScheduleLocation, ScheduleDraft } from '~/types/schedule.types'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'schedule-access']
+  middleware: ['auth', 'management']
 })
 
 const supabase = useSupabaseClient()
 const router = useRouter()
+const authStore = useAuthStore()
+
+// Schedule management permission check
+const canManageSchedule = computed(() => {
+  const role = (authStore.profile?.role as UserRole) || 'user'
+  return SECTION_ACCESS.schedules_manage.includes(role)
+})
 
 // State
 const loading = ref(true)

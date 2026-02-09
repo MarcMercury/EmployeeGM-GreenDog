@@ -59,8 +59,11 @@ const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || 
 const hasManagementAccess = computed(() => SECTION_ACCESS.management.includes(userRole.value as UserRole))
 const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value as UserRole))
 const hasMarketingEditAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value as UserRole))
+const hasMarketingViewAccess = computed(() => SECTION_ACCESS.marketing_view?.includes(userRole.value as UserRole) ?? false)
+const hasCrmAnalyticsAccess = computed(() => SECTION_ACCESS.crm_analytics.includes(userRole.value as UserRole))
 const hasGduAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value as UserRole))
 const hasAdminOpsAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value as UserRole))
+const hasScheduleManageAccess = computed(() => SECTION_ACCESS.schedules_manage.includes(userRole.value as UserRole))
 
 // Display helpers
 const firstName = computed(() => profile.value?.first_name || 'User')
@@ -331,7 +334,7 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
                   Skill Library
                 </NuxtLink>
-                <NuxtLink to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink v-if="isAdmin" to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
                   Skill Stats
                 </NuxtLink>
@@ -339,7 +342,7 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
                   Facilities Resources
                 </NuxtLink>
-                <NuxtLink to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink v-if="hasGduAccess" to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎓</div>
                   Course Manager
                 </NuxtLink>
@@ -364,7 +367,7 @@ const closeMobileMenu = () => {
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="section-content" :class="{ 'section-open': sections.hr }">
-                <NuxtLink to="/schedule" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink v-if="hasScheduleManageAccess" to="/schedule" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📅</div>
                   Team Schedule
                 </NuxtLink>
@@ -376,11 +379,11 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
                   Recruiting Pipeline
                 </NuxtLink>
-                <NuxtLink to="/export-payroll" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink v-if="isAdmin" to="/export-payroll" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
                 </NuxtLink>
-                <NuxtLink to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink v-if="isAdmin" to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
                   Master Roster
                 </NuxtLink>
@@ -420,7 +423,8 @@ const closeMobileMenu = () => {
             </div>
           </div>
 
-          <!-- Section: Marketing (Collapsible) - ALL USERS (view), admin/marketing_admin (edit) -->
+          <!-- Section: Marketing (Collapsible) — visible to marketing_view roles -->
+          <template v-if="hasMarketingViewAccess">
           <div class="pt-2">
             <button 
               @click="toggleSection('marketing')"
@@ -478,9 +482,10 @@ const closeMobileMenu = () => {
               </template>
             </div>
           </div>
+          </template>
 
-          <!-- Section: CRM & Analytics (Collapsible) - admin/marketing_admin only -->
-          <template v-if="hasMarketingEditAccess">
+          <!-- Section: CRM & Analytics (Collapsible) - crm_analytics access roles -->
+          <template v-if="hasCrmAnalyticsAccess">
             <div class="pt-2">
               <button 
                 @click="toggleSection('crmAnalytics')"

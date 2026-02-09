@@ -63,7 +63,7 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // === My Workspace === Always visible to all authenticated users
   my_workspace: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
-  // === Management === Roster, Skills Library, Facilities (everyone); Skill Stats (HR+); Course Manager (admin+)
+  // === Management === Roster, Skills Library, Facilities (everyone); Skill Stats (admin+); Course Manager (gdu+)
   management: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
   // === Med Ops === Wiki, Calculators, Boards, Partners - everyone has access
@@ -75,8 +75,11 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // === Recruiting === Recruiting Pipeline (sub-item of HR section)
   recruiting: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
   
-  // === Marketing === Calendar, Events, Leads, Partners, Influencers, Inventory, Resources, Referral CRM
+  // === Marketing (full edit) === Events, Leads, Partners, Influencers, Inventory, Referral CRM
   marketing: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
+  
+  // === Marketing (view) === Calendar, Resources — everyone except hr_admin
+  marketing_view: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
   // === CRM & Analytics === EzyVet CRM, EzyVet Analytics, List Hygiene
   crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
