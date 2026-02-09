@@ -14,6 +14,23 @@ const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const showLowStockOnly = ref(false)
 
+// Track collapsed category sections
+const collapsedCategories = ref<Set<string>>(new Set())
+
+function toggleCategory(category: string) {
+  const newSet = new Set(collapsedCategories.value)
+  if (newSet.has(category)) {
+    newSet.delete(category)
+  } else {
+    newSet.add(category)
+  }
+  collapsedCategories.value = newSet
+}
+
+function isCategoryCollapsed(category: string): boolean {
+  return collapsedCategories.value.has(category)
+}
+
 // Check URL for filter
 onMounted(() => {
   if (route.query.filter === 'low_stock') {
@@ -422,20 +439,27 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
           <tbody>
             <template v-for="group in inventoryByCategory" :key="group.category">
               <!-- Category Header Row -->
-              <tr class="category-header">
+              <tr class="category-header" style="cursor: pointer;" @click="toggleCategory(group.category)">
                 <td colspan="11" class="py-2 px-4 bg-grey-lighten-3">
                   <div class="d-flex align-center">
+                    <v-icon size="20" class="mr-2">
+                      {{ isCategoryCollapsed(group.category) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
+                    </v-icon>
                     <v-avatar :color="getCategoryColor(group.category)" size="28" class="mr-3">
                       <v-icon size="16" color="white">{{ getCategoryIcon(group.category) }}</v-icon>
                     </v-avatar>
                     <span class="text-subtitle-1 font-weight-bold">{{ getCategoryLabel(group.category) }}</span>
                     <v-chip size="x-small" class="ml-2" variant="tonal">{{ group.items.length }}</v-chip>
+                    <v-chip v-if="isCategoryCollapsed(group.category)" size="x-small" class="ml-2" color="info" variant="tonal">
+                      Total: {{ group.items.reduce((sum, i) => sum + i.total_quantity, 0) }}
+                    </v-chip>
                   </div>
                 </td>
               </tr>
               <!-- Items in this category -->
               <tr
                 v-for="item in group.items"
+                v-show="!isCategoryCollapsed(group.category)"
                 :key="item.id"
                 :class="{ 'bg-error-lighten-5': item.is_low_stock }"
                 style="cursor: pointer;"
@@ -914,6 +938,11 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
 
 .category-header {
   background: #eeeeee;
+  user-select: none;
+}
+
+.category-header:hover {
+  background: #e0e0e0;
 }
 
 .category-header td {
