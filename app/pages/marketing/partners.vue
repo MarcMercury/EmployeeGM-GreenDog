@@ -27,6 +27,7 @@ const exportColumns = [
   { key: 'membership_level', title: 'Membership Level' },
   { key: 'membership_fee', title: 'Annual Fee', format: (v: number) => v ? `$${v}` : '' },
   { key: 'notes', title: 'Notes' },
+  { key: 'last_visit_date', title: 'Last Visit Date' },
   { key: 'created_at', title: 'Created' }
 ]
 
@@ -1077,6 +1078,10 @@ function getPriorityColor(priority: string | null | undefined): string {
                   <v-icon size="x-small">mdi-email</v-icon>
                   {{ partner.contact_email }}
                 </span>
+                <span v-if="partner.last_visit_date">
+                  <v-icon size="x-small">mdi-calendar-check</v-icon>
+                  Last Visit: {{ new Date(partner.last_visit_date).toLocaleDateString() }}
+                </span>
               </div>
               <div v-if="partner.notes" class="text-truncate mt-1" style="max-width: 500px;">
                 {{ partner.notes }}
@@ -1189,6 +1194,10 @@ function getPriorityColor(priority: string | null | undefined): string {
                 <div v-if="partner.services_provided" class="d-flex align-center gap-1">
                   <v-icon size="14" color="grey">mdi-tag</v-icon>
                   <span>{{ partner.services_provided }}</span>
+                </div>
+                <div v-if="partner.last_visit_date" class="d-flex align-center gap-1">
+                  <v-icon size="14" color="grey">mdi-calendar-check</v-icon>
+                  <span>Last Visit: {{ new Date(partner.last_visit_date).toLocaleDateString() }}</span>
                 </div>
               </div>
             </v-card-text>
