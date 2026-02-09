@@ -1153,6 +1153,7 @@
         </v-card-title>
         <v-card-text class="pa-6" style="max-height: 70vh;">
           <v-tabs v-model="personalInfoTab" color="primary" class="mb-6">
+            <v-tab value="profile">Profile</v-tab>
             <v-tab value="basic">Basic Info</v-tab>
             <v-tab value="contact">Contact</v-tab>
             <v-tab value="address">Address</v-tab>
@@ -1162,6 +1163,30 @@
           </v-tabs>
 
           <v-window v-model="personalInfoTab">
+            <!-- Profile Tab (Avatar & Bio) -->
+            <v-window-item value="profile">
+              <v-row dense>
+                <v-col cols="12" class="d-flex flex-column align-center mb-4">
+                  <v-avatar size="120" class="mb-3 elevation-3">
+                    <v-img v-if="avatarPreviewUrl" :src="avatarPreviewUrl" cover />
+                    <v-img v-else-if="avatarUrl" :src="avatarUrl" cover />
+                    <span v-else class="text-h3 font-weight-bold bg-primary text-white d-flex align-center justify-center" style="width: 100%; height: 100%;">
+                      {{ getInitials(employee) }}
+                    </span>
+                  </v-avatar>
+                  <v-btn variant="outlined" size="small" color="primary" prepend-icon="mdi-camera" @click="($refs.avatarInput as HTMLInputElement)?.click()">
+                    Change Photo
+                  </v-btn>
+                  <input ref="avatarInput" type="file" accept="image/png,image/jpeg,image/webp" style="display: none;" @change="onAvatarFileSelected" />
+                  <p v-if="avatarFileInput" class="text-caption text-success mt-1">{{ avatarFileInput.name }} selected</p>
+                  <p class="text-caption text-grey mt-1">PNG, JPG, or WebP. Max 2MB.</p>
+                </v-col>
+                <v-col cols="12">
+                  <v-textarea v-model="personalInfoForm.bio" label="Bio / About" variant="outlined" density="compact" rows="5" placeholder="Write a short bio..." />
+                </v-col>
+              </v-row>
+            </v-window-item>
+
             <!-- Basic Info Tab -->
             <v-window-item value="basic">
               <v-row dense>
@@ -1369,7 +1394,7 @@
             </v-col>
             <v-col cols="12" sm="6">
               <v-select
-                v-model="licenseForm.state"
+                v-model="licenseForm.state_code"
                 :items="usStates"
                 label="State"
                 variant="outlined"
@@ -1379,7 +1404,7 @@
             </v-col>
             <v-col cols="12" sm="6">
               <v-text-field
-                v-model="licenseForm.issued_date"
+                v-model="licenseForm.issue_date"
                 label="Issued Date"
                 type="date"
                 variant="outlined"
@@ -1408,15 +1433,7 @@
                 class="mt-0"
               />
             </v-col>
-            <v-col cols="12">
-              <v-select
-                v-model="licenseForm.status"
-                :items="licenseStatusOptions"
-                label="Status"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
+
           </v-row>
           
           <v-alert v-if="licenseForm.id" type="warning" variant="tonal" density="compact" class="mt-4">
@@ -1735,6 +1752,8 @@ const skillCategoryOptionsForReview = [
 const showPersonalInfoDialog = ref(false)
 const savingPersonalInfo = ref(false)
 const personalInfoTab = ref('basic')
+const avatarFileInput = ref<File | null>(null)
+const avatarPreviewUrl = ref('')
 const personalInfoForm = ref({
   first_name: '',
   last_name: '',
@@ -1762,7 +1781,8 @@ const personalInfoForm = ref({
   termination_date: '',
   profile_role: 'user',
   profile_is_active: true,
-  notes_internal: ''
+  notes_internal: '',
+  bio: ''
 })
 
 // Lookup data for personal info form
@@ -1822,14 +1842,11 @@ const licenseForm = ref({
   id: null as string | null,
   license_type: '',
   license_number: '',
-  state: '',
-  issued_date: '',
+  state_code: '',
+  issue_date: '',
   expiration_date: '',
-  never_expires: false,
-  status: 'active'
+  never_expires: false
 })
-
-const licenseStatusOptions = ['active', 'expired', 'pending', 'revoked']
 const usStates = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC']
 
 // ==========================================
@@ -2314,11 +2331,10 @@ function openAddLicenseDialog() {
     id: null,
     license_type: '',
     license_number: '',
-    state: '',
-    issued_date: '',
+    state_code: '',
+    issue_date: '',
     expiration_date: '',
-    never_expires: false,
-    status: 'active'
+    never_expires: false
   }
   showLicenseDialog.value = true
 }
@@ -2328,11 +2344,10 @@ function openEditLicenseDialog(license: any) {
     id: license.id,
     license_type: license.license_type || '',
     license_number: license.license_number || '',
-    state: license.state || '',
-    issued_date: license.issued_date || '',
+    state_code: license.state_code || '',
+    issue_date: license.issue_date || '',
     expiration_date: license.expiration_date || '',
-    never_expires: license.never_expires || false,
-    status: license.status || 'active'
+    never_expires: license.never_expires || false
   }
   showLicenseDialog.value = true
 }
@@ -2343,11 +2358,10 @@ function closeLicenseDialog() {
     id: null,
     license_type: '',
     license_number: '',
-    state: '',
-    issued_date: '',
+    state_code: '',
+    issue_date: '',
     expiration_date: '',
-    never_expires: false,
-    status: 'active'
+    never_expires: false
   }
 }
 
@@ -2362,12 +2376,11 @@ async function saveLicense() {
     const payload = {
       employee_id: employeeId.value,
       license_type: licenseForm.value.license_type,
-      license_number: licenseForm.value.license_number || null,
-      state: licenseForm.value.state || null,
-      issued_date: licenseForm.value.issued_date || null,
+      license_number: licenseForm.value.license_number || 'N/A',
+      state_code: licenseForm.value.state_code || null,
+      issue_date: licenseForm.value.issue_date || null,
       expiration_date: licenseForm.value.never_expires ? null : (licenseForm.value.expiration_date || null),
-      never_expires: licenseForm.value.never_expires,
-      status: licenseForm.value.status
+      never_expires: licenseForm.value.never_expires
     }
 
     if (licenseForm.value.id) {
@@ -3016,11 +3029,37 @@ function openPersonalInfoDialog() {
     termination_date: emp.termination_date || '',
     profile_role: emp.profile?.role || 'user',
     profile_is_active: emp.profile?.is_active ?? true,
-    notes_internal: emp.notes_internal || ''
+    notes_internal: emp.notes_internal || '',
+    bio: emp.profile?.bio || ''
   }
   
-  personalInfoTab.value = 'basic'
+  avatarFileInput.value = null
+  avatarPreviewUrl.value = ''
+  personalInfoTab.value = 'profile'
   showPersonalInfoDialog.value = true
+}
+
+function onAvatarFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  // Validate type
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+    toast.error('Please upload a PNG, JPG, or WebP image')
+    input.value = ''
+    return
+  }
+
+  // Validate size (2MB max)
+  if (file.size > 2 * 1024 * 1024) {
+    toast.error('Image must be less than 2MB')
+    input.value = ''
+    return
+  }
+
+  avatarFileInput.value = file
+  avatarPreviewUrl.value = URL.createObjectURL(file)
 }
 
 async function savePersonalInfo() {
@@ -3064,11 +3103,38 @@ async function savePersonalInfo() {
     
     if (empErr) throw empErr
     
-    // Update profile if it exists and role/is_active changed
+    // Update profile if it exists
     if (employee.value?.profile?.id) {
+      // Upload avatar if a new file was selected
+      let newAvatarUrl = ''
+      if (avatarFileInput.value) {
+        const file = avatarFileInput.value
+        const fileExt = file.name.split('.').pop()
+        const filePath = `avatars/${employee.value.profile.id}-${Date.now()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('company-assets')
+          .upload(filePath, file, { upsert: true })
+
+        if (uploadError) {
+          console.error('Avatar upload error:', uploadError)
+          toast.error('Failed to upload avatar, but other changes will be saved')
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('company-assets')
+            .getPublicUrl(filePath)
+          newAvatarUrl = urlData.publicUrl
+        }
+      }
+
       const profileUpdate: Record<string, any> = {
         role: form.profile_role,
-        is_active: form.profile_is_active
+        is_active: form.profile_is_active,
+        bio: form.bio || null
+      }
+
+      if (newAvatarUrl) {
+        profileUpdate.avatar_url = newAvatarUrl
       }
       
       const { error: profErr } = await supabase

@@ -1078,9 +1078,11 @@ function getPriorityColor(priority: string | null | undefined): string {
                   <v-icon size="x-small">mdi-email</v-icon>
                   {{ partner.contact_email }}
                 </span>
-                <span v-if="partner.last_visit_date">
+              </div>
+              <div class="d-flex align-center flex-wrap gap-2 mt-1">
+                <span class="text-medium-emphasis">
                   <v-icon size="x-small">mdi-calendar-check</v-icon>
-                  Last Visit: {{ new Date(partner.last_visit_date).toLocaleDateString() }}
+                  Last Visit: {{ partner.last_visit_date ? new Date(partner.last_visit_date).toLocaleDateString() : '—' }}
                 </span>
               </div>
               <div v-if="partner.notes" class="text-truncate mt-1" style="max-width: 500px;">
@@ -1195,9 +1197,9 @@ function getPriorityColor(priority: string | null | undefined): string {
                   <v-icon size="14" color="grey">mdi-tag</v-icon>
                   <span>{{ partner.services_provided }}</span>
                 </div>
-                <div v-if="partner.last_visit_date" class="d-flex align-center gap-1">
+                <div class="d-flex align-center gap-1">
                   <v-icon size="14" color="grey">mdi-calendar-check</v-icon>
-                  <span>Last Visit: {{ new Date(partner.last_visit_date).toLocaleDateString() }}</span>
+                  <span>Last Visit: {{ partner.last_visit_date ? new Date(partner.last_visit_date).toLocaleDateString() : '—' }}</span>
                 </div>
               </div>
             </v-card-text>
