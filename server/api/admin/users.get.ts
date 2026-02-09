@@ -110,12 +110,12 @@ export default defineEventHandler(async (event) => {
   // Get auth user details for login status info with pagination
   // listUsers() only returns 50 users by default, so we need to paginate
   let allAuthUsers: any[] = []
-  let page = 1
+  let authPage = 1
   const perPage = 100
 
   while (true) {
     const { data: { users: pageUsers }, error: authFetchError } = await supabaseAdmin.auth.admin.listUsers({
-      page,
+      page: authPage,
       perPage
     })
 
@@ -129,7 +129,7 @@ export default defineEventHandler(async (event) => {
     allAuthUsers = [...allAuthUsers, ...pageUsers]
 
     if (pageUsers.length < perPage) break
-    page++
+    authPage++
   }
 
   // Create a map of auth users for quick lookup
