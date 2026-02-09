@@ -118,15 +118,15 @@ export default defineEventHandler(async (event) => {
     // Check if email already exists in auth using a targeted lookup
     // NOTE: listUsers() without pagination only returns page 1 (50 users) and misses duplicates.
     // Instead, use the profiles table (which has all auth_user_ids) and a targeted query.
-    const { data: existingProfile } = await supabaseAdmin
+    const { data: existingEmailProfile } = await supabaseAdmin
       .from('profiles')
       .select('id, first_name, last_name, email, auth_user_id')
       .eq('email', body.email.toLowerCase())
       .not('auth_user_id', 'is', null)
       .maybeSingle()
 
-    const existingAuthUser = existingProfile?.auth_user_id
-      ? (await supabaseAdmin.auth.admin.getUserById(existingProfile.auth_user_id)).data?.user
+    const existingAuthUser = existingEmailProfile?.auth_user_id
+      ? (await supabaseAdmin.auth.admin.getUserById(existingEmailProfile.auth_user_id)).data?.user
       : null
     
     if (existingAuthUser) {
