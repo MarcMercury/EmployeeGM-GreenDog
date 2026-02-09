@@ -57,3 +57,4 @@ export default defineEventHandler(async (event) => {
       totalPages: Math.ceil((totalGigs || 0) / perPage)
     }
   }
+})
