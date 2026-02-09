@@ -87,6 +87,7 @@ async function refreshAll() {
 const showAddDepartment = ref(false)
 const showAddPosition = ref(false)
 const showAddLocation = ref(false)
+const showAddRole = ref(false)
 const showPositionSkillsDialog = ref(false)
 const loadingDepartments = ref(false)
 const loadingPositions = ref(false)
@@ -99,6 +100,7 @@ const savingPositionSkills = ref(false)
 const editingDepartment = ref<any>(null)
 const editingPosition = ref<any>(null)
 const editingLocation = ref<any>(null)
+const editingRole = ref<any>(null)
 const selectedPositionForSkills = ref<any>(null)
 const selectedSkillToAdd = ref<string | null>(null)
 const skillLibrary = ref<any[]>([])
@@ -174,6 +176,23 @@ const newLocation = reactive({
   address: '',
   is_active: true
 })
+
+const newRole = reactive({
+  display_name: '',
+  description: '',
+  role_key: '',
+  tier: 10,
+  icon: 'mdi-account',
+  color: 'primary'
+})
+
+const roleHeaders = [
+  { title: 'Role', key: 'name' },
+  { title: 'Description', key: 'description' },
+  { title: 'Tier', key: 'tier' },
+  { title: 'Users', key: 'user_count' },
+  { title: 'Actions', key: 'actions', sortable: false }
+]
 
 const migration = reactive({
   name: '',
@@ -571,6 +590,34 @@ async function loadIntegrations() {
       description: 'Database and authentication',
       icon: 'mdi-database',
       connected: true
+    })
+
+    // Check OpenAI integration
+    let openaiConnected = false
+    try {
+      const openaiHealth = await $fetch('/api/agents/health')
+      openaiConnected = openaiHealth?.openai === true || openaiHealth?.status === 'ok'
+    } catch {
+      // If no health endpoint, check if any agent has run successfully recently
+      try {
+        const { count } = await supabase
+          .from('agent_runs')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'success')
+          .gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(1)
+        openaiConnected = (count ?? 0) > 0
+      } catch {
+        openaiConnected = false
+      }
+    }
+
+    intList.push({
+      id: 'openai',
+      name: 'OpenAI',
+      description: 'AI agent intelligence & analysis',
+      icon: 'mdi-brain',
+      connected: openaiConnected
     })
     
     integrations.value = intList
@@ -1072,7 +1119,128 @@ function toggleIntegration(integration: any) {
     navigateTo('/admin/slack')
     return
   }
+  if (integration.id === 'openai') {
+    navigateTo('/admin/agents')
+    return
+  }
   showSnackbar(`${integration.name} configuration coming soon`, 'info')
+}
+
+// =====================================================
+// ROLES CRUD
+// =====================================================
+async function saveRole() {
+  if (!newRole.display_name || !newRole.role_key) return
+
+  try {
+    if (editingRole.value) {
+      const { error } = await supabase
+        .from('role_definitions')
+        .update({
+          display_name: newRole.display_name,
+          description: newRole.description,
+          tier: newRole.tier,
+          icon: newRole.icon,
+          color: newRole.color,
+        })
+        .eq('role_key', editingRole.value.id)
+
+      if (error) throw error
+
+      const idx = roles.value.findIndex(r => r.id === editingRole.value.id)
+      if (idx !== -1) {
+        roles.value[idx].name = newRole.display_name
+        roles.value[idx].description = newRole.description
+        roles.value[idx].tier = newRole.tier
+        roles.value[idx].icon = newRole.icon
+        roles.value[idx].color = newRole.color
+      }
+      showSnackbar('Role updated', 'success')
+    } else {
+      const { data, error } = await supabase
+        .from('role_definitions')
+        .insert({
+          role_key: newRole.role_key,
+          display_name: newRole.display_name,
+          description: newRole.description,
+          tier: newRole.tier,
+          icon: newRole.icon,
+          color: newRole.color,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      roles.value.push({
+        id: data.role_key,
+        name: data.display_name,
+        description: data.description,
+        icon: data.icon || 'mdi-account',
+        color: data.color || 'primary',
+        tier: data.tier,
+        user_count: 0,
+      })
+      showSnackbar('Role created', 'success')
+    }
+
+    showAddRole.value = false
+    editingRole.value = null
+    newRole.display_name = ''
+    newRole.description = ''
+    newRole.role_key = ''
+    newRole.tier = 10
+    newRole.icon = 'mdi-account'
+    newRole.color = 'primary'
+  } catch (err: any) {
+    console.error('Error saving role:', err)
+    showSnackbar('Failed to save role', 'error')
+  }
+}
+
+function editRole(item: any) {
+  editingRole.value = item
+  newRole.display_name = item.name
+  newRole.description = item.description || ''
+  newRole.role_key = item.id
+  newRole.tier = item.tier || 10
+  newRole.icon = item.icon || 'mdi-account'
+  newRole.color = item.color || 'primary'
+  showAddRole.value = true
+}
+
+async function deleteRole(item: any) {
+  // Check if any users are assigned to this role
+  if (item.user_count > 0) {
+    showSnackbar(`Cannot delete role with ${item.user_count} assigned users`, 'error')
+    return
+  }
+
+  try {
+    const { error } = await supabase
+      .from('role_definitions')
+      .delete()
+      .eq('role_key', item.id)
+
+    if (error) throw error
+
+    roles.value = roles.value.filter(r => r.id !== item.id)
+    showSnackbar('Role deleted', 'info')
+  } catch (err: any) {
+    console.error('Error deleting role:', err)
+    showSnackbar('Failed to delete role', 'error')
+  }
+}
+
+function openAddRole() {
+  editingRole.value = null
+  newRole.display_name = ''
+  newRole.description = ''
+  newRole.role_key = ''
+  newRole.tier = 10
+  newRole.icon = 'mdi-account'
+  newRole.color = 'primary'
+  showAddRole.value = true
 }
 
 function selectEmailTemplate(template: EmailTemplate) {
@@ -1659,26 +1827,46 @@ onUnmounted(() => {
       <!-- ===== ROLES TAB ===== -->
       <v-window-item value="roles">
         <v-card rounded="lg">
-          <v-card-title>User Roles & Permissions</v-card-title>
+          <v-card-title class="d-flex align-center">
+            User Roles & Permissions
+            <v-spacer />
+            <v-btn color="primary" size="small" prepend-icon="mdi-plus" @click="openAddRole">
+              Add Role
+            </v-btn>
+          </v-card-title>
           <v-card-text>
             <v-progress-circular v-if="loadingRoles" indeterminate color="primary" class="d-block mx-auto my-8" />
             <v-alert v-else-if="roles.length === 0" type="info" variant="tonal" class="my-4">
-              No roles defined. Roles are managed in the RBAC system.
+              No roles defined. Click "Add Role" to create your first role.
             </v-alert>
-            <v-list v-else>
-              <v-list-item v-for="role in roles" :key="role.id">
-                <template #prepend>
-                  <v-avatar :color="role.color" size="40">
-                    <v-icon color="white">{{ role.icon }}</v-icon>
+            <v-data-table
+              v-else
+              :items="roles"
+              :headers="roleHeaders"
+              density="comfortable"
+              class="elevation-0"
+            >
+              <template #item.name="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <v-avatar :color="item.color" size="32">
+                    <v-icon size="18" color="white">{{ item.icon }}</v-icon>
                   </v-avatar>
-                </template>
-                <v-list-item-title class="font-weight-bold">{{ role.name }}</v-list-item-title>
-                <v-list-item-subtitle>{{ role.description }}</v-list-item-subtitle>
-                <template #append>
-                  <v-chip size="small" variant="outlined">{{ role.user_count }} users</v-chip>
-                </template>
-              </v-list-item>
-            </v-list>
+                  <span class="font-weight-bold">{{ item.name }}</span>
+                </div>
+              </template>
+              <template #item.tier="{ item }">
+                <v-chip size="small" :color="item.tier <= 3 ? 'error' : item.tier <= 6 ? 'warning' : 'info'" variant="tonal">
+                  Tier {{ item.tier }}
+                </v-chip>
+              </template>
+              <template #item.user_count="{ item }">
+                <v-chip size="small" variant="outlined">{{ item.user_count }} users</v-chip>
+              </template>
+              <template #item.actions="{ item }">
+                <v-btn icon="mdi-pencil" size="small" variant="text" @click="editRole(item)" />
+                <v-btn icon="mdi-delete" size="small" variant="text" color="error" :disabled="item.user_count > 0" @click="deleteRole(item)" />
+              </template>
+            </v-data-table>
           </v-card-text>
         </v-card>
       </v-window-item>
@@ -1976,6 +2164,75 @@ onUnmounted(() => {
           <v-spacer />
           <v-btn variant="text" @click="showAddLocation = false">Cancel</v-btn>
           <v-btn color="primary" @click="saveLocation">{{ editingLocation ? 'Save' : 'Add' }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Add/Edit Role Dialog -->
+    <v-dialog v-model="showAddRole" max-width="500">
+      <v-card>
+        <v-card-title>{{ editingRole ? 'Edit Role' : 'Add Role' }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newRole.display_name"
+            label="Display Name"
+            variant="outlined"
+            class="mb-3"
+            placeholder="e.g. Practice Manager"
+          />
+          <v-text-field
+            v-model="newRole.role_key"
+            label="Role Key"
+            variant="outlined"
+            class="mb-3"
+            :disabled="!!editingRole"
+            placeholder="e.g. practice_manager"
+            hint="Unique identifier (snake_case). Cannot be changed after creation."
+            persistent-hint
+          />
+          <v-textarea
+            v-model="newRole.description"
+            label="Description"
+            variant="outlined"
+            rows="2"
+            class="mb-3"
+          />
+          <v-row>
+            <v-col cols="6">
+              <v-select
+                v-model="newRole.tier"
+                :items="[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
+                label="Access Tier"
+                variant="outlined"
+                hint="1 = highest access"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-select
+                v-model="newRole.color"
+                :items="['primary', 'success', 'warning', 'error', 'info', 'purple', 'cyan', 'teal']"
+                label="Color"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+          <v-text-field
+            v-model="newRole.icon"
+            label="Icon (MDI)"
+            variant="outlined"
+            class="mt-3"
+            placeholder="mdi-shield-account"
+          >
+            <template #prepend-inner>
+              <v-icon>{{ newRole.icon }}</v-icon>
+            </template>
+          </v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddRole = false">Cancel</v-btn>
+          <v-btn color="primary" @click="saveRole">{{ editingRole ? 'Save' : 'Add' }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

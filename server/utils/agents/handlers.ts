@@ -46,6 +46,11 @@ handlerMap.set('referral_intelligence', () => import('~~/server/agents/handlers/
 // =========================================================
 handlerMap.set('supervisor_agent', () => import('~~/server/agents/handlers/supervisor-agent'))
 
+// =========================================================
+// Phase 5: System Monitor
+// =========================================================
+handlerMap.set('system_monitor', () => import('~~/server/agents/handlers/system-monitor'))
+
 /**
  * Get the handler for a given agent_id.
  * Returns null if no handler is registered.
