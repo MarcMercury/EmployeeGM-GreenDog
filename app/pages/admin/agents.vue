@@ -98,6 +98,23 @@
 
       <v-divider />
 
+      <!-- Error Banner -->
+      <v-alert
+        v-if="store.error"
+        type="error"
+        variant="tonal"
+        closable
+        class="ma-4"
+        @click:close="store.error = null"
+      >
+        <strong>Failed to load agents:</strong> {{ store.error }}
+        <template #append>
+          <v-btn size="small" variant="text" @click="store.fetchAgents()">
+            Retry
+          </v-btn>
+        </template>
+      </v-alert>
+
       <v-window v-model="activeTab">
         <!-- AGENT ROSTER TAB -->
         <v-window-item value="roster">
