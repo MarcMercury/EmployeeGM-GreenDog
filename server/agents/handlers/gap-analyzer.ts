@@ -22,8 +22,8 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 1. Get all active employees with their job positions
   const { data: employees, error: empErr } = await supabase
     .from('employees')
-    .select('id, first_name, last_name, job_position_id, department_id')
-    .eq('status', 'active')
+    .select('id, first_name, last_name, position_id, department_id')
+    .eq('employment_status', 'active')
 
   if (empErr || !employees) {
     throw new Error(`Failed to fetch employees: ${empErr?.message}`)
@@ -129,9 +129,9 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   let totalGaps = 0
 
   for (const emp of employees) {
-    if (!emp.job_position_id) continue
+    if (!emp.position_id) continue
     
-    const posExpectations = expectationsByPosition.get(emp.job_position_id)
+    const posExpectations = expectationsByPosition.get(emp.position_id)
     if (!posExpectations) continue
 
     employeesAnalyzed++

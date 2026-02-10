@@ -58,7 +58,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 2. Check for active licenses/certifications
   const { data: licenses } = await supabase
     .from('employee_licenses')
-    .select('employee_id, status, expiration_date')
+    .select('employee_id, is_verified, expiration_date')
 
   const { data: certs } = await supabase
     .from('employee_certifications')
@@ -117,7 +117,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
 
     // Check if employee has at least one active license
     const empLicenses = licensesByEmp.get(emp.id) ?? []
-    const hasActiveLicense = empLicenses.some((l: any) => l.status === 'active')
+    const hasActiveLicense = empLicenses.some((l: any) => l.is_verified && (!l.expiration_date || new Date(l.expiration_date) > new Date()))
     if (!hasActiveLicense && empLicenses.length === 0) {
       // Only flag if no licenses at all — some positions may not need them
       // We'll make this a lower-weight check

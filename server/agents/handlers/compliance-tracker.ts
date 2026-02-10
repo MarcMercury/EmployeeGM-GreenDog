@@ -71,8 +71,8 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 3. Check licenses
   const { data: licenses } = await supabase
     .from('employee_licenses')
-    .select('id, employee_id, license_type, license_number, expiration_date, status')
-    .in('status', ['active', 'renewal_pending'])
+    .select('id, employee_id, license_type, license_number, expiration_date, is_verified')
+    .eq('is_verified', true)
 
   for (const lic of (licenses ?? [])) {
     const emp = empMap.get(lic.employee_id)

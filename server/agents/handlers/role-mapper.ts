@@ -25,7 +25,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 1. Fetch all job positions
   const { data: positions, error: posErr } = await supabase
     .from('job_positions')
-    .select('id, title, department_id')
+    .select('id, title')
 
   if (posErr || !positions || positions.length === 0) {
     throw new Error(`Failed to fetch positions: ${posErr?.message ?? 'No positions found'}`)
