@@ -8,23 +8,10 @@
  * - Token usage by agent
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
-  if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  await requireAgentAdmin(event)
 
-  const adminClient = await serverSupabaseServiceRole(event)
-  const { data: profile } = await adminClient
-    .from('profiles')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || !hasRole(profile.role, ADMIN_ROLES))
-    throw createError({ statusCode: 403, message: 'Admin access required' })
-
-  const sb = adminClient as any
+  const sb = createAdminClient() as any
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
   // 1. Runs in last 7 days for cost/status charts

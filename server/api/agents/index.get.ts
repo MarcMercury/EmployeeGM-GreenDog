@@ -5,24 +5,8 @@
  * Accessible to admin roles only.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
-
-  const adminClient = await serverSupabaseServiceRole(event)
-  const { data: profile } = await adminClient
-    .from('profiles')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || !hasRole(profile.role, ADMIN_ROLES)) {
-    throw createError({ statusCode: 403, message: 'Admin access required' })
-  }
+  await requireAgentAdmin(event)
 
   const query = getQuery(event)
 

@@ -785,8 +785,9 @@ onMounted(async () => {
 watch(activeTab, async (tab) => {
   if (tab === 'runs' && store.recentRuns.length === 0) {
     try {
+      const headers = await store._authHeaders()
       const runs = await $fetch('/api/agents/runs', {
-        headers: useRequestHeaders(['cookie']),
+        headers,
         params: { limit: 50 },
       }) as any
       if (runs?.data) store.recentRuns = runs.data

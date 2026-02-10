@@ -5,7 +5,6 @@
  * Accessible to admin roles only.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { z } from 'zod'
 
 const bodySchema = z.object({
@@ -14,21 +13,7 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  const user = await serverSupabaseUser(event)
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
-
-  const adminClient = await serverSupabaseServiceRole(event)
-  const { data: profile } = await adminClient
-    .from('profiles')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || !hasRole(profile.role, ADMIN_ROLES)) {
-    throw createError({ statusCode: 403, message: 'Admin access required' })
-  }
+  const { profileId } = await requireAgentAdmin(event)
 
   const proposalId = getRouterParam(event, 'id')
   if (!proposalId) {
@@ -61,7 +46,7 @@ export default defineEventHandler(async (event) => {
     action: `agent_proposal_${body.action}`,
     entityType: 'agent_proposal',
     entityId: proposalId,
-    actorProfileId: profile.id,
+    actorProfileId: profileId,
     metadata: {
       agentId: proposal.agent_id,
       proposalType: proposal.proposal_type,

@@ -10,8 +10,6 @@
  * Event routing rules are defined in agent config as `config.events: string[]`.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-
 // Map event types to agent IDs that should respond
 const EVENT_ROUTES: Record<string, string[]> = {
   // Employee events
@@ -69,24 +67,13 @@ export default defineEventHandler(async (event) => {
     authorized = true
   }
 
-  // Check admin user
+  // Check admin user via Bearer token
   if (!authorized) {
     try {
-      const user = await serverSupabaseUser(event)
-      if (user) {
-        const adminClient = await serverSupabaseServiceRole(event)
-        const { data: profile } = await adminClient
-          .from('profiles')
-          .select('id, role')
-          .eq('auth_user_id', user.id)
-          .single()
-
-        if (profile && hasRole(profile.role, ADMIN_ROLES)) {
-          authorized = true
-        }
-      }
+      await requireAgentAdmin(event)
+      authorized = true
     } catch {
-      // Not authenticated via user session
+      // Not authenticated
     }
   }
 

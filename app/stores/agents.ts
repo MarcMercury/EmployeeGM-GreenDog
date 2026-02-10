@@ -144,6 +144,18 @@ export const useAgentsStore = defineStore('agents', {
 
   actions: {
     /**
+     * Get Authorization headers with the current session's access token.
+     */
+    async _authHeaders(): Promise<Record<string, string>> {
+      const supabase = useSupabaseClient()
+      const { data: session } = await supabase.auth.getSession()
+      if (!session.session?.access_token) {
+        throw new Error('No active session')
+      }
+      return { Authorization: `Bearer ${session.session.access_token}` }
+    },
+
+    /**
      * Fetch all agents and global stats.
      */
     async fetchAgents() {
@@ -151,23 +163,16 @@ export const useAgentsStore = defineStore('agents', {
       this.error = null
 
       try {
-        const { data, error } = await useFetch('/api/agents', {
-          headers: useRequestHeaders(['cookie']),
-        })
+        const headers = await this._authHeaders()
+        const response = await $fetch('/api/agents', { headers }) as any
 
-        if (error.value) {
-          this.error = error.value.message || 'Failed to fetch agents'
-          return
-        }
-
-        const response = data.value as any
         if (response?.success) {
           this.agents = response.data.agents
           this.proposalStats = response.data.stats.proposals
           this.runStats = response.data.stats.runs
         }
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Failed to fetch agents'
+      } catch (err: any) {
+        this.error = err?.data?.message || err?.message || 'Failed to fetch agents'
       } finally {
         this.isLoading = false
       }
@@ -181,23 +186,16 @@ export const useAgentsStore = defineStore('agents', {
       this.error = null
 
       try {
-        const { data, error } = await useFetch(`/api/agents/${agentId}`, {
-          headers: useRequestHeaders(['cookie']),
-        })
+        const headers = await this._authHeaders()
+        const response = await $fetch(`/api/agents/${agentId}`, { headers }) as any
 
-        if (error.value) {
-          this.error = error.value.message || 'Failed to fetch agent'
-          return
-        }
-
-        const response = data.value as any
         if (response?.success) {
           this.selectedAgent = response.data.agent
           this.recentRuns = response.data.recentRuns
           this.proposalStats = response.data.proposalStats
         }
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Failed to fetch agent'
+      } catch (err: any) {
+        this.error = err?.data?.message || err?.message || 'Failed to fetch agent'
       } finally {
         this.isLoading = false
       }
@@ -210,6 +208,7 @@ export const useAgentsStore = defineStore('agents', {
       this.isLoadingProposals = true
 
       try {
+        const headers = await this._authHeaders()
         const params = new URLSearchParams()
         if (this.proposalFilter.status) params.set('status', this.proposalFilter.status)
         if (this.proposalFilter.agentId) params.set('agentId', this.proposalFilter.agentId)
@@ -217,13 +216,8 @@ export const useAgentsStore = defineStore('agents', {
         params.set('limit', String(this.proposalFilter.limit))
         params.set('offset', String(this.proposalFilter.offset))
 
-        const { data, error } = await useFetch(`/api/agents/proposals?${params.toString()}`, {
-          headers: useRequestHeaders(['cookie']),
-        })
+        const response = await $fetch(`/api/agents/proposals?${params.toString()}`, { headers }) as any
 
-        if (error.value) return
-
-        const response = data.value as any
         if (response?.success) {
           this.proposals = response.data
           this.proposalsTotal = response.pagination.total
@@ -240,21 +234,17 @@ export const useAgentsStore = defineStore('agents', {
       this.isTriggering = agentId
 
       try {
-        const { data, error } = await useFetch(`/api/agents/${agentId}/trigger`, {
+        const headers = await this._authHeaders()
+        await $fetch(`/api/agents/${agentId}/trigger`, {
           method: 'POST',
-          headers: useRequestHeaders(['cookie']),
+          headers,
         })
-
-        if (error.value) {
-          this.error = error.value.message || 'Failed to trigger agent'
-          return false
-        }
 
         // Refresh agent data after run
         await this.fetchAgents()
         return true
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Trigger failed'
+      } catch (err: any) {
+        this.error = err?.data?.message || err?.message || 'Failed to trigger agent'
         return false
       } finally {
         this.isTriggering = null
@@ -266,24 +256,20 @@ export const useAgentsStore = defineStore('agents', {
      */
     async updateStatus(agentId: string, status: AgentStatus) {
       try {
-        const { data, error } = await useFetch(`/api/agents/${agentId}/status`, {
+        const headers = await this._authHeaders()
+        await $fetch(`/api/agents/${agentId}/status`, {
           method: 'POST',
           body: { status },
-          headers: useRequestHeaders(['cookie']),
+          headers,
         })
-
-        if (error.value) {
-          this.error = error.value.message || 'Failed to update status'
-          return false
-        }
 
         // Update local state
         const agent = this.agents.find(a => a.agent_id === agentId)
         if (agent) agent.status = status
 
         return true
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Update failed'
+      } catch (err: any) {
+        this.error = err?.data?.message || err?.message || 'Failed to update status'
         return false
       }
     },
@@ -293,16 +279,12 @@ export const useAgentsStore = defineStore('agents', {
      */
     async reviewProposal(proposalId: string, action: 'approve' | 'reject', notes?: string) {
       try {
-        const { data, error } = await useFetch(`/api/agents/proposals/${proposalId}/review`, {
+        const headers = await this._authHeaders()
+        await $fetch(`/api/agents/proposals/${proposalId}/review`, {
           method: 'POST',
           body: { action, notes },
-          headers: useRequestHeaders(['cookie']),
+          headers,
         })
-
-        if (error.value) {
-          this.error = error.value.message || `Failed to ${action} proposal`
-          return false
-        }
 
         // Update local state
         const proposal = this.proposals.find(p => p.id === proposalId)
@@ -314,8 +296,8 @@ export const useAgentsStore = defineStore('agents', {
         // Refresh stats
         await this.fetchAgents()
         return true
-      } catch (err) {
-        this.error = err instanceof Error ? err.message : 'Review failed'
+      } catch (err: any) {
+        this.error = err?.data?.message || err?.message || 'Review failed'
         return false
       }
     },
@@ -326,13 +308,9 @@ export const useAgentsStore = defineStore('agents', {
     async fetchCharts() {
       this.isLoadingCharts = true
       try {
-        const { data, error } = await useFetch('/api/agents/charts', {
-          headers: useRequestHeaders(['cookie']),
-        })
+        const headers = await this._authHeaders()
+        const response = await $fetch('/api/agents/charts', { headers }) as any
 
-        if (error.value) return
-
-        const response = data.value as any
         if (response?.success) {
           this.chartData = response.data
         }
