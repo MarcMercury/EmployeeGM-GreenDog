@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS appointment_data (
   
   -- Status
   status TEXT DEFAULT 'scheduled',         -- scheduled, completed, cancelled, no_show
-  is_past BOOLEAN GENERATED ALWAYS AS (appointment_date < CURRENT_DATE) STORED,
+  is_past BOOLEAN DEFAULT false,           -- set on insert/update based on appointment_date
   
   -- Duration & revenue
   duration_minutes INT,

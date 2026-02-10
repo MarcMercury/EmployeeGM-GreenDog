@@ -120,8 +120,8 @@ export async function agentChat(options: AgentChatOptions): Promise<AgentChatRes
       const costPerK = COST_PER_1K[model] ?? 0.001
       const costUsd = (tokensUsed / 1000) * costPerK
 
-      // Log to ai_usage_log
-      await client.from('ai_usage_log').insert({
+      // Log to ai_usage_log (fire and forget — don't block the response)
+      client.from('ai_usage_log').insert({
         feature: `agent:${options.agentId}`,
         model,
         tokens_used: tokensUsed,
@@ -131,14 +131,27 @@ export async function agentChat(options: AgentChatOptions): Promise<AgentChatRes
         duration_ms: durationMs,
         success: true,
         metadata: { run_id: options.runId },
-      }).then(() => {}) // fire and forget
+      }).then(() => {}) // suppress PromiseLike return
 
-      // Update agent budget
+      // Update agent budget atomically to avoid race conditions
       if (agent) {
-        await client
-          .from('agent_registry')
-          .update({ daily_tokens_used: (agent.daily_tokens_used || 0) + tokensUsed })
-          .eq('agent_id', options.agentId)
+        try {
+          const { error: rpcErr } = await client.rpc('increment_agent_tokens', {
+            p_agent_id: options.agentId,
+            p_tokens: tokensUsed,
+          })
+          if (rpcErr) {
+            // Fallback to non-atomic update if RPC doesn't exist yet
+            logger.warn('[AgentChat] atomic token increment failed, using fallback', 'agent', { error: rpcErr.message })
+            await client
+              .from('agent_registry')
+              .update({ daily_tokens_used: (agent.daily_tokens_used || 0) + tokensUsed })
+              .eq('agent_id', options.agentId)
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err)
+          logger.warn('[AgentChat] token update failed', 'agent', { error: msg })
+        }
       }
 
       return {
@@ -155,15 +168,19 @@ export async function agentChat(options: AgentChatOptions): Promise<AgentChatRes
   }
 
   // All retries exhausted — log failure
-  await client.from('ai_usage_log').insert({
-    feature: `agent:${options.agentId}`,
-    model,
-    tokens_used: 0,
-    cost_usd: 0,
-    success: false,
-    error_message: lastError?.message ?? 'Unknown error',
-    metadata: { run_id: options.runId },
-  }).then(() => {}).catch?.(() => {})
+  try {
+    await client.from('ai_usage_log').insert({
+      feature: `agent:${options.agentId}`,
+      model,
+      tokens_used: 0,
+      cost_usd: 0,
+      success: false,
+      error_message: lastError?.message ?? 'Unknown error',
+      metadata: { run_id: options.runId },
+    })
+  } catch {
+    // Suppress — logging failure shouldn't mask the original error
+  }
 
   throw lastError ?? new Error('[AgentChat] All retries exhausted')
 }

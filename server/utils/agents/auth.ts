@@ -29,13 +29,12 @@ export async function requireAgentAdmin(event: H3Event): Promise<AgentAuthResult
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
   const supabaseKey = config.public.supabaseKey
-  const supabaseServiceKey = config.supabaseServiceRoleKey
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl) {
     throw createError({ statusCode: 500, message: 'Server configuration error' })
   }
 
-  // Verify caller's token
+  // Verify caller's token using a lightweight client with the anon key
   const supabaseClient = createClient(supabaseUrl, supabaseKey || '')
   const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
 
@@ -43,18 +42,20 @@ export async function requireAgentAdmin(event: H3Event): Promise<AgentAuthResult
     throw createError({ statusCode: 401, message: 'Unauthorized - Invalid token' })
   }
 
-  // Look up profile using admin client
-  const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  // Look up profile using the shared admin client (service role)
+  const adminClient = createAdminClient()
 
-  const { data: profile } = await adminClient
+  const { data: profile, error: profileError } = await adminClient
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !hasRole(profile.role, ADMIN_ROLES)) {
+  if (profileError || !profile) {
+    throw createError({ statusCode: 403, message: 'Profile not found' })
+  }
+
+  if (!hasRole(profile.role, ADMIN_ROLES)) {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 

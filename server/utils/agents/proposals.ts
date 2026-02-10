@@ -11,6 +11,7 @@ import type {
   ProposalStatus,
   RiskLevel,
 } from '~/types/agent.types'
+import { validateProposalDetail } from './schemas'
 
 interface CreateProposalInput {
   agentId: string
@@ -30,6 +31,17 @@ interface CreateProposalInput {
  * Returns the created proposal ID, or null on failure.
  */
 export async function createProposal(input: CreateProposalInput): Promise<string | null> {
+  // Validate detail payload against schema (if one exists for this type)
+  const validation = validateProposalDetail(input.proposalType, input.detail)
+  if (!validation.success) {
+    logger.warn('[AgentProposals] Proposal detail failed schema validation', 'agent', {
+      agentId: input.agentId,
+      type: input.proposalType,
+      errors: validation.errors,
+    })
+    // Log but don't block — schemas may lag behind agent output evolution
+  }
+
   const client = createAdminClient()
 
   const expiresAt = input.expiresInHours
