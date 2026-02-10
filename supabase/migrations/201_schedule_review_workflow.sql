@@ -42,6 +42,11 @@ DECLARE
   v_profile_id UUID;
   v_profile_name TEXT;
 BEGIN
+  -- Require schedule admin role (SECURITY DEFINER bypasses RLS)
+  IF NOT public.is_schedule_admin() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Insufficient permissions: schedule admin role required');
+  END IF;
+
   -- Get profile ID for current user
   SELECT p.id, (p.first_name || ' ' || p.last_name) 
   INTO v_profile_id, v_profile_name
@@ -57,19 +62,26 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Draft not found');
   END IF;
 
-  -- Must be in validated or building state (allow re-submit after changes)
-  IF v_draft.status NOT IN ('validated', 'building', 'reviewing') THEN
+  -- Must be validated before submitting (all required slots filled)
+  IF v_draft.status NOT IN ('validated') THEN
     RETURN jsonb_build_object('success', false, 'error', 
       'Draft must be validated before submitting for review. Current status: ' || v_draft.status);
   END IF;
 
-  -- Update draft status
+  -- Update draft status (append notes to preserve review history)
   UPDATE schedule_drafts
   SET 
     status = 'submitted_for_review',
     submitted_by = v_profile_id,
     submitted_at = now(),
-    review_notes = COALESCE(p_notes, ''),
+    review_notes = CASE
+      WHEN p_notes IS NOT NULL AND p_notes != '' THEN
+        CASE WHEN review_notes IS NOT NULL AND review_notes != ''
+          THEN review_notes || E'\n' || 'Submitted: ' || p_notes
+          ELSE 'Submitted: ' || p_notes
+        END
+      ELSE review_notes
+    END,
     updated_at = now()
   WHERE id = p_draft_id;
 
@@ -98,6 +110,11 @@ DECLARE
   v_profile_name TEXT;
   v_submitter_name TEXT;
 BEGIN
+  -- Require schedule admin role (SECURITY DEFINER bypasses RLS)
+  IF NOT public.is_schedule_admin() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Insufficient permissions: schedule admin role required');
+  END IF;
+
   -- Get profile ID for current user
   SELECT p.id, (p.first_name || ' ' || p.last_name)
   INTO v_profile_id, v_profile_name
@@ -117,6 +134,12 @@ BEGIN
   IF v_draft.status != 'submitted_for_review' THEN
     RETURN jsonb_build_object('success', false, 'error', 
       'Draft must be submitted for review before approving. Current status: ' || v_draft.status);
+  END IF;
+
+  -- Prevent self-approval: submitter cannot approve their own schedule
+  IF v_draft.submitted_by = v_profile_id THEN
+    RETURN jsonb_build_object('success', false, 'error',
+      'Cannot approve your own submission. A different reviewer must approve.');
   END IF;
 
   -- Get submitter name for notification
@@ -165,6 +188,11 @@ DECLARE
   v_profile_id UUID;
   v_profile_name TEXT;
 BEGIN
+  -- Require schedule admin role (SECURITY DEFINER bypasses RLS)
+  IF NOT public.is_schedule_admin() THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Insufficient permissions: schedule admin role required');
+  END IF;
+
   -- Get profile ID
   SELECT p.id, (p.first_name || ' ' || p.last_name)
   INTO v_profile_id, v_profile_name
@@ -234,8 +262,17 @@ DECLARE
   v_schedule_week_id UUID;
   v_profile_id UUID;
 BEGIN
+  -- Require schedule admin role (SECURITY DEFINER bypasses RLS)
+  IF NOT public.is_schedule_admin() THEN
+    RAISE EXCEPTION 'Insufficient permissions: schedule admin role required';
+  END IF;
+
   -- Get profile ID for current user
   SELECT id INTO v_profile_id FROM profiles WHERE auth_user_id = auth.uid();
+
+  IF v_profile_id IS NULL THEN
+    RAISE EXCEPTION 'User profile not found';
+  END IF;
 
   -- Get draft
   SELECT * INTO v_draft FROM schedule_drafts WHERE id = p_draft_id;
@@ -305,8 +342,22 @@ $$;
 -- ============================================================================
 -- 6. ENABLE REALTIME on draft_slots for collaborative editing
 -- ============================================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE draft_slots;
-ALTER PUBLICATION supabase_realtime ADD TABLE schedule_drafts;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'draft_slots'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE draft_slots;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'schedule_drafts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE schedule_drafts;
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 7. GRANT EXECUTE on new functions

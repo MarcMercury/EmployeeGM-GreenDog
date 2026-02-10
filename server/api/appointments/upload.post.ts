@@ -8,49 +8,94 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+import { lookupAppointmentType } from '~/server/utils/appointments/clinic-report-parser'
 
 // Common appointment type → service code mappings
+// Extended with actual GreenDog/EzyVet appointment types
 const SERVICE_CODE_MAP: Record<string, string> = {
-  // Surgery
+  // ─── Surgery ───
   'surgery': 'SURG', 'sx': 'SURG', 'spay': 'SURG', 'neuter': 'SURG',
   'mass removal': 'SURG', 'orthopedic': 'SURG', 'tplo': 'SURG',
   'fho': 'SURG', 'gastropexy': 'SURG', 'exploratory': 'SURG',
   'laparoscopic': 'SURG', 'abdominal': 'SURG',
-  // Dental
-  'dental': 'AP_DENTAL', 'dental cleaning': 'AP_DENTAL', 'dental prophylaxis': 'AP_DENTAL',
-  'extraction': 'AP_DENTAL', 'tooth extraction': 'AP_DENTAL', 'oral surgery': 'AP_DENTAL',
-  'dental radiograph': 'AP_DENTAL',
-  // Internal Medicine
+  'surgery consult new': 'SURG', 'surgery consult returning': 'SURG',
+
+  // ─── Dental / Oral ───
+  'dental': 'DENTAL', 'dental cleaning': 'DENTAL', 'dental prophylaxis': 'DENTAL',
+  'extraction': 'DENTAL', 'tooth extraction': 'DENTAL', 'oral surgery': 'DENTAL',
+  'dental radiograph': 'DENTAL',
+  'neat new': 'DENTAL', 'neat returning': 'DENTAL',
+  'neat (nails.ears.anal glands) returning': 'DENTAL',
+  'nad new': 'DENTAL', 'nad returning': 'DENTAL',
+  'oe new': 'DENTAL', 'oe returning': 'DENTAL',
+  'oral exam (new)': 'DENTAL', 'oral exam (returning)': 'DENTAL',
+  'gdd (new)': 'DENTAL', 'gdd (returning)': 'DENTAL',
+
+  // ─── Advanced Procedures ───
+  'advanced procedure': 'AP', 'ap': 'AP', 'oe/ap': 'AP',
+  'oe possible same day ap': 'AP', 'post ap recheck': 'AP',
+
+  // ─── Internal Medicine ───
   'internal medicine': 'IM', 'endoscopy': 'IM', 'ultrasound': 'IM',
   'consultation': 'IM', 'referral consult': 'IM',
-  // Exotic
+  'im consult new': 'IM', 'im consult returning': 'IM',
+  'im - consult - recheck': 'IM', 'im recheck': 'IM',
+  'im tech': 'IM', 'im procedure': 'IM',
+
+  // ─── Exotics ───
   'exotic': 'EXOTIC', 'avian': 'EXOTIC', 'reptile': 'EXOTIC', 'small mammal': 'EXOTIC',
-  // Cardiology
+  'ex wellness new': 'EXOTIC', 'ex wellness returning': 'EXOTIC',
+  'ex- veterinary exam- new': 'EXOTIC', 'ex recheck': 'EXOTIC',
+  'ex tech': 'EXOTIC', 'ex sick new': 'EXOTIC', 'ex sick returning': 'EXOTIC',
+  'ex surgery': 'EXOTIC',
+
+  // ─── Cardiology ───
   'cardiology': 'CARDIO', 'echocardiogram': 'CARDIO', 'echo': 'CARDIO',
   'cardiac': 'CARDIO', 'heart': 'CARDIO',
-  // General clinic (NAD = No Apparent Disease / wellness)
-  'wellness': 'CLINIC_NAD', 'wellness exam': 'CLINIC_NAD', 'annual exam': 'CLINIC_NAD',
-  'vaccine': 'CLINIC_NAD', 'vaccination': 'CLINIC_NAD', 'physical exam': 'CLINIC_NAD',
-  'check up': 'CLINIC_NAD', 'checkup': 'CLINIC_NAD', 'sick visit': 'CLINIC_NAD',
-  'recheck': 'CLINIC_NAD', 're-check': 'CLINIC_NAD',
-  // Emergency / urgent
-  'emergency': 'CLINIC_NAD', 'urgent care': 'CLINIC_NAD', 'er': 'CLINIC_NAD',
-  // Imaging
+
+  // ─── Wellness / Veterinary Exams ───
+  'wellness': 'WELLNESS', 'wellness exam': 'WELLNESS', 'annual exam': 'WELLNESS',
+  'vaccine': 'WELLNESS', 'vaccination': 'WELLNESS', 'physical exam': 'WELLNESS',
+  'check up': 'WELLNESS', 'checkup': 'WELLNESS', 'sick visit': 'WELLNESS',
+  'recheck': 'WELLNESS', 're-check': 'WELLNESS',
+  've new': 'WELLNESS', 've returning': 'WELLNESS',
+  'veterinary exam new': 'WELLNESS', 'veterinary exam returning': 'WELLNESS',
+  'urgent care (new)': 'WELLNESS', 'urgent care (returning)': 'WELLNESS',
+  'drop off urgent care': 'WELLNESS',
+
+  // ─── Urgent Care ───
+  'emergency': 'WELLNESS', 'urgent care': 'WELLNESS', 'er': 'WELLNESS',
+
+  // ─── Add-on / Tech Services ───
+  'tech services': 'ADDON', 'tech services (vx,ag,nt)': 'ADDON',
+  'bloodwork': 'ADDON',
+
+  // ─── Imaging ───
   'imaging': 'IMAGING', 'radiograph': 'IMAGING', 'x-ray': 'IMAGING',
   'xray': 'IMAGING', 'ct scan': 'IMAGING', 'mri': 'IMAGING',
+
+  // ─── Mobile/MPMV ───
+  'mp - pickup': 'MPMV', 'mp - shipment': 'MPMV', 'mp - meds done': 'MPMV',
+
+  // ─── Other ───
+  'vetfm client': 'WELLNESS',
 }
 
 function mapToServiceCategory(appointmentType: string): string | null {
   if (!appointmentType) return null
   const lower = appointmentType.toLowerCase().trim()
   
-  // Direct match
+  // Direct match in local map
   if (SERVICE_CODE_MAP[lower]) return SERVICE_CODE_MAP[lower]
   
-  // Partial match
+  // Partial match in local map
   for (const [key, code] of Object.entries(SERVICE_CODE_MAP)) {
     if (lower.includes(key) || key.includes(lower)) return code
   }
+
+  // Fall back to the comprehensive GDD type lookup
+  const gddMatch = lookupAppointmentType(appointmentType)
+  if (gddMatch) return gddMatch.serviceCode
   
   return null
 }

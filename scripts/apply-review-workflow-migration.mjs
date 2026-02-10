@@ -56,9 +56,9 @@ const functionBlocks = [
   fs.readFileSync('supabase/migrations/201_schedule_review_workflow.sql', 'utf8')
     .match(/CREATE OR REPLACE FUNCTION publish_schedule_draft[\s\S]*?\$\$;/)?.[0],
   
-  // Realtime
-  `ALTER PUBLICATION supabase_realtime ADD TABLE draft_slots`,
-  `ALTER PUBLICATION supabase_realtime ADD TABLE schedule_drafts`,
+  // Realtime (idempotent DO block)
+  fs.readFileSync('supabase/migrations/201_schedule_review_workflow.sql', 'utf8')
+    .match(/DO \$\$[\s\S]*?END \$\$;/)?.[0],
   
   // Grants
   `GRANT EXECUTE ON FUNCTION submit_draft_for_review(UUID, TEXT) TO authenticated`,

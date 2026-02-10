@@ -11,6 +11,7 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+import { getServiceDepartmentSummary, lookupAppointmentType } from '~/server/utils/appointments/clinic-report-parser'
 
 export default defineEventHandler(async (event) => {
   // Auth
@@ -269,8 +270,37 @@ function buildAnalysisPrompt(
 ): string {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   
+  // Get GreenDog-specific department/appointment type mappings
+  const deptSummary = getServiceDepartmentSummary()
+
   return `
 Analyze the following veterinary hospital appointment data and provide scheduling recommendations.
+
+## IMPORTANT: This is Green Dog Dental & Veterinary Center
+This is a multi-location veterinary hospital with 3 locations:
+- Sherman Oaks (SO) - Main facility
+- Van Nuys (VN) 
+- Venice (VE) / DOG PPL
+
+## Service Departments & Appointment Types
+The hospital organizes services into these departments, each with specific appointment types:
+${deptSummary.map(d => `
+### ${d.department} (Code: ${d.serviceCode}) ${d.requiresDVM ? '[Requires DVM]' : '[Tech-level]'}
+Appointment types: ${d.appointmentTypes.join(', ')}
+`).join('\n')}
+
+Key terminology:
+- NAD = Non-Anesthesia Dental (basic dental cleaning, no anesthesia required)
+- NEAT = Nails, Ears, Anal Glands, Tech services
+- OE = Oral Exam
+- AP = Advanced Procedure (under anesthesia - dental surgery, extractions)
+- VE = Veterinary Exam (wellness)
+- UC = Urgent Care
+- IM = Internal Medicine
+- EX = Exotics
+- MPMV = Mobile Pet Medicine / Venice location services
+- "Avail" rows = available appointment slots (capacity, NOT actual appointments)
+- SO/VN/VE = Location codes (Sherman Oaks / Van Nuys / Venice)
 
 ## Appointment Data Summary (Last ${weeksBack} weeks)
 - Total appointments: ${data.totalAppointments}
@@ -310,45 +340,49 @@ ${employees.length > 30 ? `... and ${employees.length - 30} more employees` : ''
 ${targetWeekStart ? `## Target Week: ${targetWeekStart}\nGenerate a specific weekly plan for this week.\n` : ''}
 
 ## Required Response Format
+Use the actual GreenDog service codes (DENTAL, AP, WELLNESS, ADDON, IMAGING, SURG, EXOTIC, IM, CARDIO, MPMV) in your response.
 {
   "demandSummary": {
     "SERVICE_CODE": {
       "avgPerWeek": number,
       "trend": "increasing" | "stable" | "decreasing",
       "peakDays": ["Mon", "Wed"],
+      "peakLocations": ["SO", "VN"],
       "avgDuration": number,
-      "completionRate": number
+      "completionRate": number,
+      "notes": "string with GDD-specific insight"
     }
   },
   "serviceRecommendations": [
     {
-      "serviceCode": "SURG",
-      "serviceName": "Surgery",
-      "recommendedDays": [1, 3, 5],
-      "dailyVolume": 4,
+      "serviceCode": "DENTAL",
+      "serviceName": "Dentistry",
+      "recommendedDays": [1, 2, 3, 4, 5],
+      "dailyVolume": 15,
+      "volumeByLocation": { "SO": 8, "VN": 5, "VE": 2 },
       "staffNeeded": { "DVM": 2, "Tech": 3, "DA": 1 },
-      "reasoning": "Surgery demand peaks Mon/Wed/Fri with avg 4/day",
+      "reasoning": "NAD + NEAT + OE combined drive 70-80 dental visits/week across locations",
       "priority": "high" | "medium" | "low"
     }
   ],
   "staffingSuggestions": [
     {
-      "serviceCode": "SURG",
+      "serviceCode": "DENTAL",
       "role": "DVM",
       "recommendedCount": 2,
       "currentCapacity": "adequate" | "understaffed" | "overstaffed",
-      "notes": "Consider adding 1 more surgical tech for peak days"
+      "notes": "Need DVM coverage for NAD procedures; NEAT can be tech-only"
     }
   ],
   "weeklyPlan": {
-    "Mon": { "services": [{ "code": "SURG", "slots": 4 }, { "code": "AP_DENTAL", "slots": 3 }], "totalStaff": 12 },
-    "Tue": { "services": [...], "totalStaff": 10 },
-    ...
+    "Mon": { "services": [{ "code": "DENTAL", "slots": 15, "byLocation": { "SO": 8, "VN": 5, "VE": 2 } }], "totalStaff": 12 },
+    "Tue": { "services": [...], "totalStaff": 10 }
   },
   "insights": [
-    { "type": "trend", "message": "Surgery appointments increased 15% over the past 8 weeks", "severity": "info" },
-    { "type": "opportunity", "message": "Tuesday has low utilization - consider adding dental procedures", "severity": "warning" },
-    { "type": "staffing", "message": "Current DVM coverage may be insufficient for peak surgery days", "severity": "error" }
+    { "type": "trend", "message": "Dental (NAD/NEAT) is the highest-volume department at ~80 appointments/week", "severity": "info" },
+    { "type": "opportunity", "message": "Tuesday has low utilization at VN - consider adding AP or IM slots", "severity": "warning" },
+    { "type": "staffing", "message": "Exotics only needs coverage Wed (VN) - can consolidate that DVM's other days", "severity": "info" },
+    { "type": "capacity", "message": "Dental availability (Avail slots) suggests room for 20% more appointments", "severity": "info" }
   ]
 }
 `

@@ -11,6 +11,7 @@
  */
 
 import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
+import { getServiceDepartmentSummary } from '~/server/utils/appointments/clinic-report-parser'
 
 interface ShiftRequirement {
   date: string
@@ -390,8 +391,18 @@ function buildSchedulingPrompt(
     preferences: emp.preferences
   }))
 
+  // Get GreenDog-specific service department context
+  const deptSummary = getServiceDepartmentSummary()
+
   return `
-Generate an optimal schedule for the week starting ${weekStart}.
+Generate an optimal schedule for the week starting ${weekStart} for Green Dog Dental & Veterinary Center.
+
+## Hospital Context
+This is a multi-location veterinary hospital with 3 locations: Sherman Oaks (SO), Van Nuys (VN), Venice (VE).
+Key departments and their appointment types:
+${deptSummary.map(d => `- **${d.department}** (${d.serviceCode}): ${d.appointmentTypes.slice(0, 6).join(', ')}${d.appointmentTypes.length > 6 ? '...' : ''} ${d.requiresDVM ? '[Requires DVM]' : '[Tech-level]'}`).join('\n')}
+
+Key terminology: NAD=Non-Anesthesia Dental, NEAT=Nails/Ears/Anal Glands/Tech, OE=Oral Exam, AP=Advanced Procedure (anesthesia), VE=Vet Exam, UC=Urgent Care, IM=Internal Medicine, EX=Exotics
 
 ## Available Employees
 ${JSON.stringify(employeeInfo, null, 2)}

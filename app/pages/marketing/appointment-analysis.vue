@@ -18,6 +18,15 @@
           Analysis History
         </v-btn>
         <v-btn
+          color="teal"
+          variant="outlined"
+          prepend-icon="mdi-hospital-building"
+          :loading="importingClinic"
+          @click="importClinicReports"
+        >
+          Import Clinic Reports
+        </v-btn>
+        <v-btn
           color="primary"
           prepend-icon="mdi-upload"
           @click="showUploadDialog = true"
@@ -172,10 +181,15 @@
     <v-card v-else-if="stats.totalAppointments === 0" class="mb-6 pa-8 text-center" elevation="2">
       <v-icon size="72" color="grey-lighten-1" class="mb-4">mdi-calendar-blank</v-icon>
       <h3 class="text-h6 mb-2">No Appointment Data Yet</h3>
-      <p class="text-body-2 text-grey mb-4">Upload appointment data from your practice management system (CSV export) to get started with demand analysis.</p>
-      <v-btn color="primary" prepend-icon="mdi-upload" @click="showUploadDialog = true">
-        Upload Appointments
-      </v-btn>
+      <p class="text-body-2 text-grey mb-4">Import weekly clinic reports or upload CSV exports from your practice management system to get started.</p>
+      <div class="d-flex gap-2 justify-center">
+        <v-btn color="teal" prepend-icon="mdi-hospital-building" :loading="importingClinic" @click="importClinicReports">
+          Import Clinic Reports
+        </v-btn>
+        <v-btn color="primary" variant="outlined" prepend-icon="mdi-upload" @click="showUploadDialog = true">
+          Upload CSV
+        </v-btn>
+      </div>
     </v-card>
 
     <!-- Main Content -->
@@ -518,8 +532,10 @@
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            Upload a CSV export from your practice management system (EzyVet, etc).
-            Include columns like: Date, Type, Species, Status, Duration, Provider, Location.
+            Upload a CSV export from your practice management system (EzyVet, etc),
+            or weekly appointment tracking spreadsheets.
+            Supported formats: standard CSV (Date, Type, Species columns) and
+            GreenDog weekly tracking CSVs (matrix format with SO/VN/VE location columns).
           </v-alert>
 
           <v-select
@@ -650,6 +666,7 @@ const user = useSupabaseUser()
 const loading = ref(false)
 const analyzing = ref(false)
 const uploading = ref(false)
+const importingClinic = ref(false)
 const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const tableSearch = ref('')
@@ -1060,6 +1077,34 @@ async function uploadAppointments() {
 }
 
 // ── AI Analysis ──────────────────────────────────────────────────────────
+
+// ── Import Clinic Reports ────────────────────────────────────────────────
+
+async function importClinicReports() {
+  importingClinic.value = true
+  try {
+    const result = await $fetch('/api/appointments/import-clinic-reports', {
+      method: 'POST',
+      body: {
+        replaceExisting: true, // Replace old weekly_tracking data to avoid duplicates
+      },
+    }) as any
+
+    if (result?.success) {
+      const msg = `Imported ${result.inserted} appointments from ${result.filesProcessed} clinic report${result.filesProcessed !== 1 ? 's' : ''}.`
+      const unmapped = result.unmappedTypes?.length ? ` ${result.unmappedTypes.length} unmapped types.` : ''
+      showNotification(msg + unmapped, 'success')
+      await loadAppointmentData()
+    } else {
+      showNotification(result?.message || 'Import failed', 'error')
+    }
+  } catch (err: any) {
+    console.error('Clinic report import failed:', err)
+    showNotification('Import failed: ' + (err.data?.message || err.message || 'Unknown error'), 'error')
+  } finally {
+    importingClinic.value = false
+  }
+}
 
 async function runAnalysis() {
   analyzing.value = true

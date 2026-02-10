@@ -14,6 +14,7 @@ import type { AgentRunContext, AgentRunResult } from '~/types/agent.types'
 import { createProposal } from '../../utils/agents/proposals'
 import { agentChat } from '../../utils/agents/openai'
 import { logger } from '../../utils/logger'
+import { getServiceDepartmentSummary } from '../../utils/appointments/clinic-report-parser'
 
 const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   const { supabase: _sb, agentId, runId, config } = ctx
@@ -133,6 +134,32 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
     .gte('start_at', weekStart)
     .lte('start_at', weekEndStr)
 
+  // 9b. Fetch latest appointment demand analysis
+  let demandContext = ''
+  try {
+    const { data: latestAnalysis } = await supabase
+      .from('appointment_analysis_runs')
+      .select('demand_summary, service_recommendations, weekly_plan')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (latestAnalysis) {
+      demandContext = `
+APPOINTMENT DEMAND DATA (from recent analysis):
+Service demand summary: ${JSON.stringify(latestAnalysis.demand_summary)}
+Service recommendations: ${JSON.stringify(latestAnalysis.service_recommendations)}
+Weekly plan template: ${JSON.stringify(latestAnalysis.weekly_plan)}
+Use this demand data to prioritize which services need more staff coverage on which days.`
+    }
+  } catch {
+    // Demand data is optional — continue without it
+  }
+
+  // 9c. Get service department context
+  const deptSummary = getServiceDepartmentSummary()
+
   // 10. Build prompt for LLM
   const employeeList = (employees ?? []).map((e: any) => {
     const empAvail = (availability ?? []).filter((a: any) => a.employee_id === e.id)
@@ -150,7 +177,13 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
     `- [${r.severity}] ${r.name}: ${JSON.stringify(r.parameters)}`
   ).join('\n')
 
-  const systemPrompt = `You are an expert veterinary practice scheduler. Generate a weekly shift schedule for "${location.name}" for the week starting ${weekStart}.
+  const systemPrompt = `You are an expert veterinary practice scheduler for Green Dog Dental & Veterinary Center. Generate a weekly shift schedule for "${location.name}" for the week starting ${weekStart}.
+
+SERVICE DEPARTMENTS:
+${deptSummary.map(d => `- ${d.department} (${d.serviceCode}): ${d.appointmentTypes.slice(0, 5).join(', ')} ${d.requiresDVM ? '[Requires DVM]' : '[Tech-level]'}`).join('\n')}
+
+Key: NAD=Non-Anesthesia Dental, NEAT=Nails/Ears/Anal Glands, OE=Oral Exam, AP=Advanced Procedure, VE=Vet Exam, UC=Urgent Care, IM=Internal Medicine, EX=Exotics
+${demandContext}
 
 EMPLOYEES:
 ${employeeList}

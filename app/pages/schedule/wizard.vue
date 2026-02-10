@@ -184,9 +184,7 @@ const canProceedToStep3 = computed(() =>
 
 const canSubmitForReview = computed(() =>
   validationResult.value?.is_valid === true && 
-  draftStatus.value !== 'submitted_for_review' &&
-  draftStatus.value !== 'approved' &&
-  draftStatus.value !== 'published'
+  draftStatus.value === 'validated'
 )
 
 const canApprove = computed(() =>
@@ -712,6 +710,11 @@ async function approveDraft() {
 // Request changes (send back to building)
 async function requestChanges() {
   if (!draftId.value) return
+  
+  if (draftStatus.value !== 'submitted_for_review') {
+    toast.warning('Can only request changes on schedules submitted for review')
+    return
+  }
   
   if (!approvalNotes.value.trim()) {
     toast.warning('Please provide notes explaining what changes are needed')
