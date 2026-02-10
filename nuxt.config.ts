@@ -119,7 +119,30 @@ export default defineNuxtConfig({
   // Nitro configuration for server-side packages
   nitro: {
     externals: {
-      inline: ['pdf-parse']
+      // Don't bundle heavy libraries into the Nitro server — keep as external node_modules
+      inline: [],
+      external: ['unpdf']
+    }
+  },
+
+  // Vite build optimizations
+  vite: {
+    build: {
+      // Reduce memory: disable source maps for production
+      sourcemap: false,
+      // Increase chunk size warning limit (Vuetify is large)
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            // Split heavy dependencies into separate chunks to reduce memory pressure
+            if (id.includes('node_modules/vuetify')) return 'vuetify'
+            if (id.includes('node_modules/apexcharts') || id.includes('node_modules/vue3-apexcharts')) return 'charts'
+            if (id.includes('node_modules/@sentry')) return 'sentry'
+            if (id.includes('node_modules/@mdi')) return 'mdi-icons'
+          }
+        }
+      }
     }
   },
 

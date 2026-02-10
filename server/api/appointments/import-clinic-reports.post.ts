@@ -3,7 +3,7 @@
  * 
  * POST /api/appointments/import-clinic-reports
  * 
- * Reads the weekly appointment tracking CSV files from public/Appointments/
+ * Reads the weekly appointment tracking CSV files from data/Appointments/
  * and imports them into the appointment_data table.
  * Also reads any new files uploaded as part of the request.
  * 
@@ -41,21 +41,21 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event) || {}
   const { csvTexts, replaceExisting = false } = body
 
-  // Phase 1: Read files from public/Appointments/ directory
-  const publicDir = join(process.cwd(), 'public', 'Appointments')
+  // Phase 1: Read files from data/Appointments/ directory
+  const dataDir = join(process.cwd(), 'data', 'Appointments')
   const files: { name: string; content: string }[] = []
 
   try {
-    const dirEntries = await fs.readdir(publicDir)
+    const dirEntries = await fs.readdir(dataDir)
     const csvFiles = dirEntries.filter(f => f.endsWith('.csv') && f.includes('Appointment Tracking'))
 
     for (const fileName of csvFiles) {
-      const filePath = join(publicDir, fileName)
+      const filePath = join(dataDir, fileName)
       const content = await fs.readFile(filePath, 'utf-8')
       files.push({ name: fileName, content })
     }
   } catch (err: any) {
-    console.warn('Could not read public/Appointments/ directory:', err.message)
+    console.warn('Could not read data/Appointments/ directory:', err.message)
   }
 
   // Phase 2: Also accept CSV texts passed directly (from frontend)

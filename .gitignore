@@ -35,5 +35,9 @@ data/marketing/parsed/resources_passwords.csv
 .env*.local
 # Data files — prevent PII/business data from being committed
 public/*.csv
+public/*.pdf
+public/*.xls
+public/*.xlsx
+public/Appointments/
 scripts/archive/*.csv
 scripts/archive/*.json
