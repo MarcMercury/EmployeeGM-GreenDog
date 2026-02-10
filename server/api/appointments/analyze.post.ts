@@ -11,7 +11,7 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import { getServiceDepartmentSummary, lookupAppointmentType } from '~/server/utils/appointments/clinic-report-parser'
+import { getServiceDepartmentSummary, lookupAppointmentType } from '../../utils/appointments/clinic-report-parser'
 
 export default defineEventHandler(async (event) => {
   // Auth

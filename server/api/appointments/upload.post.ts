@@ -8,7 +8,7 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import { lookupAppointmentType } from '~/server/utils/appointments/clinic-report-parser'
+import { lookupAppointmentType } from '../../utils/appointments/clinic-report-parser'
 
 // Common appointment type → service code mappings
 // Extended with actual GreenDog/EzyVet appointment types

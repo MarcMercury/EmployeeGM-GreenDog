@@ -11,7 +11,7 @@
  */
 
 import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
-import { getServiceDepartmentSummary } from '~/server/utils/appointments/clinic-report-parser'
+import { getServiceDepartmentSummary } from '../../utils/appointments/clinic-report-parser'
 
 interface ShiftRequirement {
   date: string

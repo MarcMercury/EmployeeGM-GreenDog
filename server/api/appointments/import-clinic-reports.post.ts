@@ -19,7 +19,7 @@ import {
   parseWeeklyTrackingCSV,
   lookupAppointmentType,
   type FlattenedAppointment,
-} from '~/server/utils/appointments/clinic-report-parser'
+} from '../../utils/appointments/clinic-report-parser'
 
 export default defineEventHandler(async (event) => {
   // Auth

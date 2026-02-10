@@ -11,7 +11,7 @@
 import {
   GDD_APPOINTMENT_TYPE_MAP,
   getServiceDepartmentSummary,
-} from '~/server/utils/appointments/clinic-report-parser'
+} from '../../utils/appointments/clinic-report-parser'
 
 export default defineEventHandler(async () => {
   // Convert the type map to a sorted array
