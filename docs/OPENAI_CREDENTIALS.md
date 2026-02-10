@@ -5,30 +5,34 @@
 
 ## API Keys
 
+**Keys are stored in `.env` (local) and Vercel environment variables (production).**
+**Do NOT commit raw keys — GitHub push protection will block them.**
+
 ### OpenAI API Key (OPENAI_API_KEY)
-```
-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
-```
+- Env var: `OPENAI_API_KEY`
+- Prefix: `sk-proj-CL8s...`
+- Source: https://platform.openai.com/api-keys
 
 ### OpenAI Admin/Secret Key (OPENAI_ADMIN_KEY)
-```
-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
-```
+- Env var: `OPENAI_ADMIN_KEY`
+- Prefix: `sk-admin-ysmQ...`
+- Source: https://platform.openai.com/api-keys
 
 ## Environment Variables Format
 ```env
-OPENAI_API_KEY=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
-OPENAI_ADMIN_KEY=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
+OPENAI_API_KEY=<see .env file or Vercel dashboard>
+OPENAI_ADMIN_KEY=<see .env file or Vercel dashboard>
 ```
 
 ## Usage
 
 These keys are used for:
-1. AI-assisted scheduling recommendations
-2. Skill gap analysis
-3. Training content generation
-4. Any future AI features
+1. AI Agent workforce (skill scout, role mapper, personal coach, etc.)
+2. AI-assisted scheduling recommendations
+3. Skill gap analysis
+4. Training content generation
+5. Any future AI features
 
 ---
 
-**Last Updated:** January 16, 2026
+**Last Updated:** February 10, 2026

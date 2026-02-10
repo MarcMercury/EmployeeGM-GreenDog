@@ -219,13 +219,13 @@ Full documentation: [docs/SLACK_INTEGRATION.md](./SLACK_INTEGRATION.md)
 
 | Property | Value |
 |----------|-------|
-| API Key | `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` |
-| Admin Key | `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` |
+| API Key | Stored in `.env` and Vercel (prefix: `sk-proj-CL8s...`) |
+| Admin Key | Stored in `.env` and Vercel (prefix: `sk-admin-ysmQ...`) |
 
 ### Environment Variables (add to Vercel & .env)
 ```env
-OPENAI_API_KEY=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
-OPENAI_ADMIN_KEY=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
+OPENAI_API_KEY=<see .env file or Vercel dashboard>
+OPENAI_ADMIN_KEY=<see .env file or Vercel dashboard>
 ```
 
 ### Planned Use Cases
