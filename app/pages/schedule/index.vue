@@ -23,10 +23,6 @@
               <v-list-item-title>Schedule Wizard</v-list-item-title>
               <v-list-item-subtitle>Step-by-step service-based builder</v-list-item-subtitle>
             </v-list-item>
-            <v-list-item to="/schedule/builder" prepend-icon="mdi-grid">
-              <v-list-item-title>Quick Builder</v-list-item-title>
-              <v-list-item-subtitle>Drag-and-drop shift editor</v-list-item-subtitle>
-            </v-list-item>
             <v-divider />
             <v-list-item to="/schedule/services" prepend-icon="mdi-cog">
               <v-list-item-title>Service Settings</v-list-item-title>
@@ -232,6 +228,8 @@ function getStatus(weekStart: string, locationId: string): string | null {
 function getStatusClass(status: string | null): string {
   if (!status) return 'status-none'
   if (status === 'published') return 'status-published'
+  if (status === 'approved') return 'status-approved'
+  if (status === 'submitted_for_review') return 'status-review'
   // All other statuses (building, reviewing, validated) are considered "draft"
   return 'status-draft'
 }
@@ -239,6 +237,8 @@ function getStatusClass(status: string | null): string {
 function getStatusIcon(status: string | null): string {
   if (!status) return 'mdi-minus'
   if (status === 'published') return 'mdi-check-circle'
+  if (status === 'approved') return 'mdi-check-decagram'
+  if (status === 'submitted_for_review') return 'mdi-clipboard-check-outline'
   return 'mdi-pencil'
 }
 
@@ -248,8 +248,10 @@ function getStatusLabel(status: string | null): string {
   // Show the specific draft stage
   const labels: Record<string, string> = {
     'building': 'Building',
-    'reviewing': 'Reviewing',
-    'validated': 'Validated'
+    'reviewing': 'Needs Fixes',
+    'validated': 'Validated',
+    'submitted_for_review': 'In Review',
+    'approved': 'Approved'
   }
   return labels[status] || 'Draft'
 }
@@ -380,6 +382,16 @@ onMounted(() => {
 .status-published {
   background-color: #e8f5e9;
   color: #2e7d32;
+}
+
+.status-approved {
+  background-color: #e0f2f1;
+  color: #00695c;
+}
+
+.status-review {
+  background-color: #f3e5f5;
+  color: #7b1fa2;
 }
 
 .status-draft {

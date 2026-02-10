@@ -279,16 +279,48 @@ async function getReliabilityScores(client: any, employeeIds: string[]): Promise
 }
 
 async function getShiftRequirements(client: any, weekStart: string, departmentId?: string) {
-  // In a real implementation, this would fetch from a shift_templates or requirements table
-  // For now, return a default pattern
+  // Fetch actual staffing requirements from the service_staffing_requirements table
   const weekDays = getWeekDays(weekStart)
   
-  return weekDays.flatMap(date => [
-    { date, startTime: '07:00', endTime: '15:00', role: 'Veterinary Technician', minStaff: 2 },
-    { date, startTime: '07:00', endTime: '15:00', role: 'Dental Technician', minStaff: 1 },
-    { date, startTime: '14:00', endTime: '22:00', role: 'Veterinary Technician', minStaff: 2 },
-    { date, startTime: '14:00', endTime: '22:00', role: 'Receptionist', minStaff: 1 }
-  ])
+  const { data: staffingReqs, error } = await client
+    .from('service_staffing_requirements')
+    .select(`
+      id, role_category, role_label, is_required, priority,
+      default_start_time, default_end_time, min_count,
+      service:service_id(id, name, code, is_active)
+    `)
+    .order('priority')
+
+  if (error || !staffingReqs || staffingReqs.length === 0) {
+    logger.warn('No staffing requirements found, using defaults', 'AI Schedule')
+    // Fallback to basic defaults if no requirements configured
+    return weekDays.filter(date => {
+      const dayOfWeek = new Date(date).getDay()
+      return dayOfWeek >= 1 && dayOfWeek <= 5 // Mon-Fri only  
+    }).flatMap(date => [
+      { date, startTime: '07:00', endTime: '17:30', role: 'Veterinary Technician', minStaff: 2 },
+      { date, startTime: '07:00', endTime: '17:30', role: 'Receptionist', minStaff: 1 }
+    ])
+  }
+
+  // Build requirements for each weekday from the staffing configuration
+  // Only include active services
+  const activeReqs = staffingReqs.filter((r: any) => r.service?.is_active !== false)
+  
+  return weekDays.filter(date => {
+    const dayOfWeek = new Date(date).getDay()
+    return dayOfWeek >= 1 && dayOfWeek <= 5 // Mon-Fri by default
+  }).flatMap(date => 
+    activeReqs.map((req: any) => ({
+      date,
+      startTime: req.default_start_time || '09:00',
+      endTime: req.default_end_time || '17:30',
+      role: req.role_label || req.role_category,
+      service: req.service?.name || 'General',
+      minStaff: req.min_count || 1,
+      isRequired: req.is_required !== false
+    }))
+  )
 }
 
 async function getRecentScheduleData(client: any, employeeIds: string[]) {
@@ -303,13 +335,13 @@ async function getRecentScheduleData(client: any, employeeIds: string[]) {
   // Get recent weekend shifts for fairness
   const { data } = await client
     .from('shifts')
-    .select('employee_id, shift_date')
+    .select('employee_id, start_at')
     .in('employee_id', validIds)
-    .gte('shift_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-    .order('shift_date', { ascending: false })
+    .gte('start_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+    .order('start_at', { ascending: false })
   
   for (const shift of data || []) {
-    const dayOfWeek = new Date(shift.shift_date).getDay()
+    const dayOfWeek = new Date(shift.start_at).getDay()
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       weekendCounts[shift.employee_id] = (weekendCounts[shift.employee_id] || 0) + 1
     }

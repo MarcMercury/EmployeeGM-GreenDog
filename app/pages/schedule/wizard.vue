@@ -2,14 +2,15 @@
 /**
  * Schedule Wizard - Service-Based Schedule Builder
  * 
- * 4-Step Wizard Flow:
+ * 5-Step Wizard Flow:
  * 1. SCOPE: Select week, location, operational days, services
  * 2. STAFFING MATRIX: Assign employees to service slots (ghost cards)
- * 3. VALIDATION: AI/Logic checks for conflicts and understaffing
- * 4. PUBLISH: Finalize and notify employees
+ * 3. VALIDATE: AI/Logic checks for conflicts and understaffing → Submit for Review
+ * 4. REVIEW: Reviewer edits and approves the schedule
+ * 5. PUBLISH: Finalize, push to shifts, notify employees
  */
 import { format, addDays, startOfWeek, parseISO } from 'date-fns'
-import type { Service, StaffingRequirement, DraftSlot, WizardValidationResult, DashboardLocation } from '~/types/schedule.types'
+import type { Service, StaffingRequirement, DraftSlot, WizardValidationResult, DashboardLocation, ScheduleDraftStatus } from '~/types/schedule.types'
 
 definePageMeta({
   middleware: ['auth', 'schedule-access'],
@@ -71,6 +72,24 @@ const editingSlot = ref<DraftSlot | null>(null)
 const editStartTime = ref('')
 const editEndTime = ref('')
 const isSavingTime = ref(false)
+
+// Review/Approval state
+const isSubmitting = ref(false)
+const isApproving = ref(false)
+const isRequestingChanges = ref(false)
+const reviewNotes = ref('')
+const approvalNotes = ref('')
+const draftStatus = ref<ScheduleDraftStatus | string>('building')
+const draftSubmittedBy = ref<string | null>(null)
+const draftSubmittedByName = ref('')
+const draftSubmittedAt = ref<string | null>(null)
+const draftApprovedBy = ref<string | null>(null)
+const draftApprovedByName = ref('')
+const draftApprovedAt = ref<string | null>(null)
+const draftReviewNotes = ref('')
+
+// Realtime subscription for collaborative editing
+const realtimeChannel = ref<ReturnType<typeof supabase.channel> | null>(null)
 
 // Snackbar notification bridge for child components
 const showNotification = (message: string, color = 'success') => {
@@ -163,8 +182,19 @@ const canProceedToStep3 = computed(() =>
   coverageStats.value.requiredPercentage >= 50 // At least 50% required slots filled
 )
 
+const canSubmitForReview = computed(() =>
+  validationResult.value?.is_valid === true && 
+  draftStatus.value !== 'submitted_for_review' &&
+  draftStatus.value !== 'approved' &&
+  draftStatus.value !== 'published'
+)
+
+const canApprove = computed(() =>
+  draftStatus.value === 'submitted_for_review'
+)
+
 const canPublish = computed(() => 
-  validationResult.value?.is_valid === true
+  draftStatus.value === 'approved'
 )
 
 // Load services
@@ -316,9 +346,13 @@ async function createDraftAndProceed() {
     
     // RPC returns { success: true, draft_id: "uuid" }
     draftId.value = data?.draft_id || data
+    draftStatus.value = 'building'
     
     // Load generated slots
     await loadDraftSlots()
+    
+    // Start realtime for collaborative editing
+    setupRealtime()
     
     currentStep.value = 2
     toast.success('Draft created! Now assign employees to slots.')
@@ -336,7 +370,12 @@ async function loadExistingDraft(weekStart: Date, locationId: string) {
   
   const { data, error } = await supabase
     .from('schedule_drafts')
-    .select('*')
+    .select(`
+      *,
+      submitter:submitted_by(first_name, last_name),
+      reviewer:reviewed_by(first_name, last_name),
+      approver:approved_by(first_name, last_name)
+    `)
     .eq('location_id', locationId)
     .eq('week_start', weekStartStr)
     .neq('status', 'archived')
@@ -349,6 +388,16 @@ async function loadExistingDraft(weekStart: Date, locationId: string) {
   
   // Found existing draft - load its data
   draftId.value = data.id
+  draftStatus.value = data.status
+  
+  // Load review metadata
+  draftSubmittedBy.value = data.submitted_by
+  draftSubmittedByName.value = data.submitter ? `${data.submitter.first_name} ${data.submitter.last_name}` : ''
+  draftSubmittedAt.value = data.submitted_at
+  draftApprovedBy.value = data.approved_by
+  draftApprovedByName.value = data.approver ? `${data.approver.first_name} ${data.approver.last_name}` : ''
+  draftApprovedAt.value = data.approved_at
+  draftReviewNotes.value = data.review_notes || ''
   
   // Restore the service days matrix
   if (data.service_days_matrix && Object.keys(data.service_days_matrix).length > 0) {
@@ -365,9 +414,18 @@ async function loadExistingDraft(weekStart: Date, locationId: string) {
   // Load the draft slots
   await loadDraftSlots()
   
+  // Start realtime subscription for collaborative editing
+  setupRealtime()
+  
   // Determine which step to go to based on draft status
-  if (data.status === 'validated') {
-    currentStep.value = 3  // Go to validation step
+  if (data.status === 'published') {
+    currentStep.value = 5
+  } else if (data.status === 'approved') {
+    currentStep.value = 5  // Show publish step
+  } else if (data.status === 'submitted_for_review') {
+    currentStep.value = 4  // Review step
+  } else if (data.status === 'validated') {
+    currentStep.value = 3  // Validation step
   } else if (draftSlots.value.length > 0) {
     currentStep.value = 2  // Has slots, go to staffing
   } else {
@@ -547,6 +605,7 @@ async function validateDraft() {
     if (error) throw error
     
     validationResult.value = data
+    draftStatus.value = data?.is_valid ? 'validated' : 'reviewing'
     currentStep.value = 3
   } catch (err) {
     console.error('Validation failed:', err)
@@ -556,7 +615,152 @@ async function validateDraft() {
   }
 }
 
-// Publish draft (Step 4)
+// Submit for review (Step 3 → Step 4)
+async function submitForReview() {
+  if (!draftId.value || !canSubmitForReview.value) return
+  
+  isSubmitting.value = true
+  try {
+    const { data, error } = await supabase.rpc('submit_draft_for_review', {
+      p_draft_id: draftId.value,
+      p_notes: reviewNotes.value || ''
+    })
+    
+    if (error) throw error
+    
+    if (data?.success) {
+      draftStatus.value = 'submitted_for_review'
+      draftSubmittedByName.value = data.submitted_by || ''
+      draftSubmittedAt.value = data.submitted_at || null
+      currentStep.value = 4
+      toast.success('Schedule submitted for review!')
+      
+      // Send Slack notification
+      try {
+        await $fetch('/api/slack/notifications/queue', {
+          method: 'POST',
+          body: {
+            triggerType: 'schedule_submitted_for_review',
+            channel: '#schedule',
+            message: `📋 Schedule Submitted for Review: ${weekLabel.value} at ${selectedLocation.value?.name} by ${data.submitted_by}`,
+            metadata: { draft_id: draftId.value, week_start: format(selectedWeekStart.value, 'yyyy-MM-dd') }
+          }
+        })
+      } catch (slackErr) {
+        console.warn('Slack notification failed:', slackErr)
+      }
+    } else {
+      toast.error(data?.error || 'Failed to submit for review')
+    }
+  } catch (err) {
+    console.error('Submit for review failed:', err)
+    toast.error('Failed to submit for review')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+// Approve schedule (Step 4 → Step 5)
+async function approveDraft() {
+  if (!draftId.value || !canApprove.value) return
+  
+  isApproving.value = true
+  try {
+    const { data, error } = await supabase.rpc('approve_schedule_draft', {
+      p_draft_id: draftId.value,
+      p_notes: approvalNotes.value || ''
+    })
+    
+    if (error) throw error
+    
+    if (data?.success) {
+      draftStatus.value = 'approved'
+      draftApprovedByName.value = data.approved_by || ''
+      draftApprovedAt.value = data.approved_at || null
+      currentStep.value = 5
+      toast.success('Schedule approved! Ready to publish.')
+      
+      // Notify the submitter that the schedule is approved
+      try {
+        await $fetch('/api/slack/notifications/queue', {
+          method: 'POST',
+          body: {
+            triggerType: 'schedule_approved',
+            channel: '#schedule',
+            message: `✅ Schedule Approved: ${weekLabel.value} at ${selectedLocation.value?.name} approved by ${data.approved_by}. Ready to publish!`,
+            metadata: { 
+              draft_id: draftId.value,
+              week_start: format(selectedWeekStart.value, 'yyyy-MM-dd'),
+              submitted_by_id: data.submitted_by_id
+            }
+          }
+        })
+      } catch (slackErr) {
+        console.warn('Slack notification failed:', slackErr)
+      }
+    } else {
+      toast.error(data?.error || 'Failed to approve schedule')
+    }
+  } catch (err) {
+    console.error('Approval failed:', err)
+    toast.error('Failed to approve schedule')
+  } finally {
+    isApproving.value = false
+  }
+}
+
+// Request changes (send back to building)
+async function requestChanges() {
+  if (!draftId.value) return
+  
+  if (!approvalNotes.value.trim()) {
+    toast.warning('Please provide notes explaining what changes are needed')
+    return
+  }
+  
+  isRequestingChanges.value = true
+  try {
+    const { data, error } = await supabase.rpc('request_schedule_changes', {
+      p_draft_id: draftId.value,
+      p_notes: approvalNotes.value
+    })
+    
+    if (error) throw error
+    
+    if (data?.success) {
+      draftStatus.value = 'building'
+      validationResult.value = null
+      currentStep.value = 2
+      toast.info('Changes requested. Schedule sent back for editing.')
+      
+      // Notify the submitter
+      try {
+        await $fetch('/api/slack/notifications/queue', {
+          method: 'POST',
+          body: {
+            triggerType: 'schedule_changes_requested',
+            channel: '#schedule',
+            message: `🔄 Changes Requested: ${weekLabel.value} at ${selectedLocation.value?.name} — ${approvalNotes.value}`,
+            metadata: { draft_id: draftId.value }
+          }
+        })
+      } catch (slackErr) {
+        console.warn('Slack notification failed:', slackErr)
+      }
+      
+      approvalNotes.value = ''
+    } else {
+      toast.error(data?.error || 'Failed to request changes')
+    }
+  } catch (err) {
+    console.error('Request changes failed:', err)
+    toast.error('Failed to request changes')
+  } finally {
+    isRequestingChanges.value = false
+  }
+}
+
+// Publish draft (Step 5)
 async function publishDraft() {
   if (!draftId.value || !canPublish.value) return
   
@@ -568,10 +772,11 @@ async function publishDraft() {
     
     if (error) throw error
     
-    currentStep.value = 4
+    draftStatus.value = 'published'
+    currentStep.value = 5
     toast.success('Schedule published! Employees have been notified.')
     
-    // Optional: Send Slack notification
+    // Send Slack notification
     try {
       await $fetch('/api/slack/notifications/queue', {
         method: 'POST',
@@ -606,7 +811,18 @@ function resetWizard() {
   draftId.value = null
   draftSlots.value = []
   validationResult.value = null
-  selectedServiceIds.value = []
+  serviceDaysMatrix.value = {}
+  draftStatus.value = 'building'
+  draftSubmittedBy.value = null
+  draftSubmittedByName.value = ''
+  draftSubmittedAt.value = null
+  draftApprovedBy.value = null
+  draftApprovedByName.value = ''
+  draftApprovedAt.value = null
+  draftReviewNotes.value = ''
+  reviewNotes.value = ''
+  approvalNotes.value = ''
+  cleanupRealtime()
 }
 
 // ============================================================
@@ -666,8 +882,11 @@ function toggleViewMode() {
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     published: 'success',
+    approved: 'info',
+    submitted_for_review: 'purple',
     validated: 'info',
     building: 'warning',
+    reviewing: 'orange',
     draft: 'grey',
     none: 'grey-lighten-1'
   }
@@ -678,12 +897,79 @@ function getStatusColor(status: string): string {
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     published: 'Published',
+    approved: 'Approved',
+    submitted_for_review: 'In Review',
     validated: 'Validated',
     building: 'In Progress',
+    reviewing: 'Needs Fixes',
     draft: 'Draft',
     none: 'Not Started'
   }
   return labels[status] || status
+}
+
+// ============================================================
+// REALTIME COLLABORATIVE EDITING
+// ============================================================
+function setupRealtime() {
+  if (!draftId.value || realtimeChannel.value) return
+  
+  realtimeChannel.value = supabase
+    .channel(`draft-${draftId.value}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'draft_slots',
+        filter: `draft_id=eq.${draftId.value}`
+      },
+      async (payload) => {
+        // Another user changed a slot — refresh the slot list
+        console.log('[Realtime] Draft slot changed:', payload.eventType)
+        await loadDraftSlots()
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'schedule_drafts',
+        filter: `id=eq.${draftId.value}`
+      },
+      (payload) => {
+        // Draft status changed (e.g., another user approved it)
+        const newStatus = (payload.new as any)?.status
+        if (newStatus && newStatus !== draftStatus.value) {
+          console.log('[Realtime] Draft status changed:', draftStatus.value, '→', newStatus)
+          draftStatus.value = newStatus
+          
+          // Auto-navigate to the correct step
+          if (newStatus === 'approved') {
+            toast.success('Schedule has been approved! Ready to publish.')
+            currentStep.value = 5
+          } else if (newStatus === 'submitted_for_review') {
+            toast.info('Schedule submitted for review')
+            currentStep.value = 4
+          } else if (newStatus === 'building') {
+            toast.info('Changes have been requested — schedule sent back for editing')
+            currentStep.value = 2
+          } else if (newStatus === 'published') {
+            toast.success('Schedule has been published!')
+            currentStep.value = 5
+          }
+        }
+      }
+    )
+    .subscribe()
+}
+
+function cleanupRealtime() {
+  if (realtimeChannel.value) {
+    supabase.removeChannel(realtimeChannel.value)
+    realtimeChannel.value = null
+  }
 }
 
 // Get role color based on category
@@ -734,6 +1020,10 @@ onMounted(async () => {
   
   isLoading.value = false
 })
+
+onUnmounted(() => {
+  cleanupRealtime()
+})
 </script>
 
 <template>
@@ -747,7 +1037,7 @@ onMounted(async () => {
         <p class="text-body-2 text-grey-darken-1 mb-0">
           {{ viewMode === 'dashboard' 
             ? 'Overview of all locations for the selected week' 
-            : 'Build your weekly schedule in 4 easy steps' 
+            : 'Build your weekly schedule in 5 easy steps' 
           }}
         </p>
       </div>
@@ -776,7 +1066,7 @@ onMounted(async () => {
         </v-btn>
         
         <v-btn
-          v-if="viewMode === 'wizard' && currentStep > 1 && currentStep < 4"
+          v-if="viewMode === 'wizard' && currentStep > 1 && currentStep < 5"
           variant="text"
           color="grey"
           @click="resetWizard"
@@ -897,7 +1187,8 @@ onMounted(async () => {
       :items="[
         { title: 'Scope', subtitle: 'Week & Services' },
         { title: 'Staffing', subtitle: 'Assign Employees' },
-        { title: 'Validate', subtitle: 'Check Conflicts' },
+        { title: 'Validate', subtitle: 'Check & Submit' },
+        { title: 'Review', subtitle: 'Approve' },
         { title: 'Publish', subtitle: 'Go Live' }
       ]"
       alt-labels
@@ -1384,22 +1675,174 @@ onMounted(async () => {
               Back to Staffing
             </v-btn>
             <v-btn
-              color="success"
+              color="primary"
               size="large"
-              :disabled="!canPublish"
-              :loading="isLoading"
-              @click="publishDraft"
+              :disabled="!canSubmitForReview"
+              :loading="isSubmitting"
+              @click="submitForReview"
             >
-              <v-icon start>mdi-publish</v-icon>
-              Publish Schedule
+              <v-icon start>mdi-send</v-icon>
+              Submit for Review
             </v-btn>
           </v-col>
         </v-row>
       </v-window-item>
 
-      <!-- Step 4: Published -->
+      <!-- Step 4: Review & Approve -->
       <v-window-item :value="4">
-        <v-card rounded="lg" class="text-center pa-8">
+        <v-row>
+          <!-- Review Status -->
+          <v-col cols="12">
+            <v-alert
+              v-if="draftStatus === 'submitted_for_review'"
+              type="info"
+              variant="tonal"
+              prominent
+            >
+              <template #prepend>
+                <v-icon size="32">mdi-clipboard-check-outline</v-icon>
+              </template>
+              <div class="text-h6 mb-1">Schedule Submitted for Review</div>
+              <div class="text-body-2">
+                Submitted by <strong>{{ draftSubmittedByName }}</strong>
+                <span v-if="draftSubmittedAt"> on {{ format(parseISO(draftSubmittedAt), 'MMM d, yyyy h:mm a') }}</span>
+              </div>
+              <div v-if="draftReviewNotes" class="text-body-2 mt-2">
+                <strong>Notes:</strong> {{ draftReviewNotes }}
+              </div>
+            </v-alert>
+          </v-col>
+
+          <!-- Coverage Summary -->
+          <v-col cols="12" md="4">
+            <v-card rounded="lg" class="h-100">
+              <v-card-title class="text-subtitle-1">
+                <v-icon start color="primary">mdi-chart-donut</v-icon>
+                Coverage Summary
+              </v-card-title>
+              <v-card-text class="text-center">
+                <v-progress-circular
+                  :model-value="coverageStats.percentage"
+                  :size="100"
+                  :width="10"
+                  :color="coverageStats.percentage >= 80 ? 'success' : coverageStats.percentage >= 50 ? 'warning' : 'error'"
+                >
+                  <div class="text-h5 font-weight-bold">{{ coverageStats.percentage }}%</div>
+                </v-progress-circular>
+                <div class="text-body-2 text-grey mt-2">
+                  {{ coverageStats.filled }}/{{ coverageStats.total }} slots filled
+                </div>
+                <div class="text-caption text-grey">
+                  {{ coverageStats.requiredFilled }}/{{ coverageStats.required }} required
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- Validation Summary -->
+          <v-col cols="12" md="8">
+            <v-card rounded="lg" class="h-100">
+              <v-card-title class="text-subtitle-1">
+                <v-icon start color="primary">mdi-clipboard-list</v-icon>
+                Schedule Review
+              </v-card-title>
+              <v-card-text>
+                <p class="text-body-2 text-grey mb-4">
+                  Review the staffing assignments below. You can edit slots directly from here, then approve or request changes.
+                </p>
+
+                <!-- Inline staffing preview (collapsed service rows) -->
+                <div v-for="service in selectedServices" :key="service.id" class="mb-3">
+                  <div class="d-flex align-center mb-1">
+                    <v-icon :color="service.color" size="18" class="mr-2">{{ service.icon }}</v-icon>
+                    <span class="text-body-2 font-weight-bold">{{ service.name }}</span>
+                  </div>
+                  <div class="d-flex flex-wrap gap-2">
+                    <template v-for="date in operationalDates" :key="date.toISOString()">
+                      <template v-for="slot in slotsByServiceAndDate.get(service.id)?.get(format(date, 'yyyy-MM-dd')) || []" :key="slot.id">
+                        <v-chip
+                          size="small"
+                          :color="slot.employee_id ? 'success' : (slot.is_required ? 'error' : 'grey')"
+                          variant="tonal"
+                          @click="employeeSelectorRef?.open(slot)"
+                        >
+                          <span class="text-caption">{{ format(date, 'EEE') }}:</span>&nbsp;
+                          <span v-if="slot.employee" class="font-weight-medium">
+                            {{ slot.employee.first_name }} {{ slot.employee.last_name?.charAt(0) }}.
+                          </span>
+                          <span v-else class="text-grey">{{ slot.role_label }}</span>
+                        </v-chip>
+                      </template>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Reviewer notes -->
+                <v-textarea
+                  v-model="approvalNotes"
+                  label="Review Notes (optional for approval, required for requesting changes)"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  class="mt-4"
+                  placeholder="Add any notes about this schedule..."
+                />
+              </v-card-text>
+            </v-card>
+          </v-col>
+
+          <!-- Review Actions -->
+          <v-col cols="12" class="d-flex justify-space-between">
+            <v-btn
+              variant="outlined"
+              color="error"
+              :loading="isRequestingChanges"
+              @click="requestChanges"
+            >
+              <v-icon start>mdi-undo</v-icon>
+              Request Changes
+            </v-btn>
+            <v-btn
+              color="success"
+              size="large"
+              :disabled="!canApprove"
+              :loading="isApproving"
+              @click="approveDraft"
+            >
+              <v-icon start>mdi-check-decagram</v-icon>
+              Approve Schedule
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-window-item>
+
+      <!-- Step 5: Publish -->
+      <v-window-item :value="5">
+        <!-- Approved - Ready to Publish -->
+        <v-card v-if="draftStatus === 'approved'" rounded="lg" class="text-center pa-8">
+          <v-icon size="80" color="success" class="mb-4">mdi-check-decagram</v-icon>
+          <h2 class="text-h4 font-weight-bold mb-2">Schedule Approved!</h2>
+          <p class="text-body-1 text-grey mb-2">
+            The schedule for {{ weekLabel }} at {{ selectedLocation?.name }} has been approved.
+          </p>
+          <p v-if="draftApprovedByName" class="text-body-2 text-grey mb-6">
+            Approved by <strong>{{ draftApprovedByName }}</strong>
+            <span v-if="draftApprovedAt"> on {{ format(parseISO(draftApprovedAt), 'MMM d, yyyy h:mm a') }}</span>
+          </p>
+          
+          <v-btn
+            color="success"
+            size="x-large"
+            :loading="isLoading"
+            @click="publishDraft"
+          >
+            <v-icon start>mdi-publish</v-icon>
+            Publish Schedule
+          </v-btn>
+        </v-card>
+
+        <!-- Published Success -->
+        <v-card v-else-if="draftStatus === 'published'" rounded="lg" class="text-center pa-8">
           <v-icon size="80" color="success" class="mb-4">mdi-check-circle</v-icon>
           <h2 class="text-h4 font-weight-bold mb-2">Schedule Published!</h2>
           <p class="text-body-1 text-grey mb-6">
@@ -1417,6 +1860,19 @@ onMounted(async () => {
               <v-icon end>mdi-arrow-right</v-icon>
             </v-btn>
           </div>
+        </v-card>
+
+        <!-- Fallback: waiting for approval -->
+        <v-card v-else rounded="lg" class="text-center pa-8">
+          <v-icon size="80" color="info" class="mb-4">mdi-clock-outline</v-icon>
+          <h2 class="text-h5 font-weight-bold mb-2">Awaiting Approval</h2>
+          <p class="text-body-1 text-grey mb-6">
+            This schedule is pending review and approval before it can be published.
+          </p>
+          <v-btn variant="outlined" to="/schedule">
+            <v-icon start>mdi-arrow-left</v-icon>
+            Back to Schedules
+          </v-btn>
         </v-card>
       </v-window-item>
     </v-window>

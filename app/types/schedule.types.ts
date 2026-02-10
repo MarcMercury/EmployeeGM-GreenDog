@@ -65,13 +65,30 @@ export interface ScheduleWeek {
   filled_shifts: number
 }
 
+/** Valid schedule draft statuses. */
+export type ScheduleDraftStatus =
+  | 'building'
+  | 'reviewing'       // validation found issues
+  | 'validated'
+  | 'submitted_for_review'
+  | 'approved'
+  | 'published'
+  | 'archived'
+
 /** A schedule draft entry (index page). */
 export interface ScheduleDraft {
   id: string
   location_id: string
   week_start: string
-  status: string
+  status: ScheduleDraftStatus | string
   published_at?: string
+  submitted_by?: string
+  submitted_at?: string
+  reviewed_by?: string
+  reviewed_at?: string
+  approved_by?: string
+  approved_at?: string
+  review_notes?: string
 }
 
 /** A row in the builder shift grid, built from services + staffing requirements. */
