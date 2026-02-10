@@ -195,8 +195,8 @@
             </template>
 
             <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_login_at || item.last_sign_in_at" class="text-body-2">
-                {{ formatRelativeDate(item.last_login_at || item.last_sign_in_at) }}
+              <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2">
+                {{ formatRelativeDate(item.last_sign_in_at || item.last_login_at) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -390,8 +390,8 @@
             </template>
 
             <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_login_at || item.last_sign_in_at" class="text-body-2 text-grey">
-                {{ formatRelativeDate(item.last_login_at || item.last_sign_in_at) }}
+              <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2 text-grey">
+                {{ formatRelativeDate(item.last_sign_in_at || item.last_login_at) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>

@@ -1,8 +1,8 @@
 /**
  * POST /api/admin/sync-login-times
  * 
- * Updates last_login_at to NOW() for all users who have ever signed in.
- * This effectively "marks everyone as active" at the moment the button is pressed.
+ * Syncs last_login_at from Supabase Auth's last_sign_in_at for all users.
+ * Uses each user's actual last sign-in timestamp, not the current time.
  * Only super_admin can access this endpoint.
  */
 
@@ -91,9 +91,7 @@ export default defineEventHandler(async (event) => {
     page++
   }
 
-  // Update profiles.last_login_at to NOW() for all users who have ever signed in
-  // This treats Sync as "mark everyone as active at this moment"
-  const now = new Date().toISOString()
+  // Sync profiles.last_login_at from each user's actual last_sign_in_at in Supabase Auth
   let updatedCount = 0
   let skippedCount = 0
   let notFoundCount = 0
@@ -106,10 +104,10 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    // Update last_login_at to NOW (current time), not the old last_sign_in_at
+    // Use the actual last_sign_in_at from auth, not NOW()
     const { data: updateResult, error: updateError } = await supabaseAdmin
       .from('profiles')
-      .update({ last_login_at: now })
+      .update({ last_login_at: authUser.last_sign_in_at })
       .eq('auth_user_id', authUser.id)
       .select('id')
 
@@ -123,7 +121,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  logger.info('Login times sync completed', 'sync-login-times', { updatedCount, now, skippedCount, notFoundCount, errorCount: errors.length })
+  logger.info('Login times sync completed', 'sync-login-times', { updatedCount, skippedCount, notFoundCount, errorCount: errors.length })
 
   return {
     success: true,
