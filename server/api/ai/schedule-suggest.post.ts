@@ -109,9 +109,10 @@ export default defineEventHandler(async (event) => {
     const employees = await getAvailableEmployees(adminClient, departmentId, locationId)
     const requirements = await getShiftRequirements(adminClient, weekStart, departmentId)
     const recentSchedules = await getRecentScheduleData(adminClient, employees.map(e => e.id))
+    const demandData = await getAppointmentDemand(adminClient, locationId)
 
     // 2. Build the prompt
-    const prompt = buildSchedulingPrompt(employees, requirements, recentSchedules, weekStart)
+    const prompt = buildSchedulingPrompt(employees, requirements, recentSchedules, weekStart, demandData)
 
     // 3. Call OpenAI
     const response = await fetch(`${config.openaiBaseUrl}/chat/completions`, {
@@ -323,6 +324,29 @@ async function getShiftRequirements(client: any, weekStart: string, departmentId
   )
 }
 
+/**
+ * Fetch latest appointment demand analysis to inform scheduling decisions
+ */
+async function getAppointmentDemand(client: any, locationId?: string) {
+  try {
+    let query = client
+      .from('appointment_analysis_runs')
+      .select('demand_summary, service_recommendations, weekly_plan')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (locationId) {
+      query = query.eq('location_id', locationId)
+    }
+
+    const { data } = await query.single()
+    return data || null
+  } catch {
+    return null
+  }
+}
+
 async function getRecentScheduleData(client: any, employeeIds: string[]) {
   const weekendCounts: Record<string, number> = {}
   
@@ -354,7 +378,8 @@ function buildSchedulingPrompt(
   employees: any[], 
   requirements: ShiftRequirement[], 
   recentData: any,
-  weekStart: string
+  weekStart: string,
+  demandData?: any
 ): string {
   // Format employees with reliability info
   const employeeInfo = employees.map(emp => ({
@@ -377,6 +402,18 @@ ${JSON.stringify(requirements, null, 2)}
 ## Recent Weekend Shift Counts (for fairness)
 ${JSON.stringify(recentData.weekendCounts, null, 2)}
 
+${demandData ? `## Appointment Demand Analysis
+The following demand data comes from analyzing historical appointment data. Use it to prioritize services and staffing levels.
+
+### Demand Summary by Service
+${JSON.stringify(demandData.demand_summary, null, 2)}
+
+### Service Recommendations
+${JSON.stringify(demandData.service_recommendations, null, 2)}
+
+### Recommended Weekly Plan
+${JSON.stringify(demandData.weekly_plan, null, 2)}
+` : ''}
 ## Instructions
 1. Assign employees to shifts based on their skills
 2. Ensure minimum staff requirements are met
@@ -384,6 +421,7 @@ ${JSON.stringify(recentData.weekendCounts, null, 2)}
 4. Each employee should work 32-40 hours per week
 5. Avoid scheduling the same person for closing (ends after 20:00) then opening (starts before 08:00) the next day
 6. RELIABILITY SCORES: Consider reliability scores when assigning shifts. Employees with higher reliability (90+) are more dependable. For critical shifts, prefer employees with higher reliability. Factor reliability into your confidence score.
+7. DEMAND DATA: If appointment demand analysis is provided, use it to prioritize services with higher demand, schedule more staff on peak days, and align shift types with service recommendations.
 
 ## Required Response Format
 {
