@@ -3,13 +3,27 @@
     <!-- Page Header -->
     <v-row class="mb-6">
       <v-col>
-        <h1 class="text-h4 font-weight-bold d-flex align-center">
-          <v-icon class="mr-3" color="primary" size="36">mdi-robot</v-icon>
-          AI Agent Workforce
-        </h1>
-        <p class="text-subtitle-1 text-medium-emphasis mt-1">
-          Autonomous agents managing skills, scheduling, HR, and engagement
-        </p>
+        <div class="d-flex align-center justify-space-between flex-wrap ga-3">
+          <div>
+            <h1 class="text-h4 font-weight-bold d-flex align-center">
+              <v-icon class="mr-3" color="primary" size="36">mdi-robot</v-icon>
+              AI Agent Workforce
+            </h1>
+            <p class="text-subtitle-1 text-medium-emphasis mt-1">
+              Autonomous agents managing skills, scheduling, HR, and engagement
+            </p>
+          </div>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="isRunningAll"
+            :disabled="store.activeAgents.length === 0"
+            @click="runAllActive"
+          >
+            <v-icon start>mdi-play-speed</v-icon>
+            Run All Active ({{ store.activeAgents.length }})
+          </v-btn>
+        </div>
       </v-col>
     </v-row>
 
@@ -222,7 +236,7 @@
                         <v-btn
                           size="small"
                           color="primary"
-                          variant="text"
+                          variant="flat"
                           :loading="store.isTriggering === agent.agent_id"
                           :disabled="agent.status === 'disabled'"
                           @click="triggerRun(agent.agent_id)"
@@ -750,6 +764,18 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <!-- Snackbar for run feedback -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="5000"
+      location="bottom end"
+    >
+      {{ snackbar.text }}
+      <template #actions>
+        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 
@@ -768,12 +794,26 @@ const activeTab = ref('roster')
 const showDetailDialog = ref(false)
 const selectedProposal = ref<AgentProposalRow | null>(null)
 
+// Snackbar state
+const snackbar = reactive({
+  show: false,
+  text: '',
+  color: 'success',
+})
+
+function showSnack(text: string, color = 'success') {
+  snackbar.text = text
+  snackbar.color = color
+  snackbar.show = true
+}
+
 // Review dialog state
 const showReviewDialog = ref(false)
 const reviewAction = ref<'approve' | 'reject'>('approve')
 const reviewNotes = ref('')
 const reviewTargetProposal = ref<AgentProposalRow | null>(null)
 const isReviewing = ref(false)
+const isRunningAll = ref(false)
 
 // Load data on mount
 onMounted(async () => {
@@ -927,11 +967,46 @@ async function loadProposals() {
 }
 
 async function triggerRun(agentId: string) {
-  await store.triggerAgent(agentId)
+  const agent = store.getAgentById(agentId)
+  const name = agent?.display_name || agentId
+  showSnack(`Running ${name}...`, 'info')
+  const success = await store.triggerAgent(agentId)
+  if (success) {
+    showSnack(`${name} completed successfully!`, 'success')
+  } else {
+    showSnack(store.error || `${name} failed`, 'error')
+  }
+}
+
+async function runAllActive() {
+  const active = store.activeAgents
+  if (active.length === 0) return
+  isRunningAll.value = true
+  showSnack(`Running ${active.length} active agent${active.length !== 1 ? 's' : ''}...`, 'info')
+  let succeeded = 0
+  let failed = 0
+  for (const agent of active) {
+    const ok = await store.triggerAgent(agent.agent_id)
+    if (ok) succeeded++
+    else failed++
+  }
+  isRunningAll.value = false
+  if (failed === 0) {
+    showSnack(`All ${succeeded} agents completed successfully!`, 'success')
+  } else {
+    showSnack(`${succeeded} succeeded, ${failed} failed`, failed > 0 ? 'warning' : 'success')
+  }
 }
 
 async function toggleStatus(agentId: string, status: AgentStatus) {
-  await store.updateStatus(agentId, status)
+  const agent = store.getAgentById(agentId)
+  const name = agent?.display_name || agentId
+  const success = await store.updateStatus(agentId, status)
+  if (success) {
+    showSnack(`${name} is now ${status}`, 'success')
+  } else {
+    showSnack(store.error || `Failed to update ${name}`, 'error')
+  }
 }
 
 function openReviewDialog(proposal: AgentProposalRow, action: 'approve' | 'reject') {
