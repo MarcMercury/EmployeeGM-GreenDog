@@ -55,9 +55,18 @@ export async function listAgents(filters?: {
  */
 export async function updateAgentStatus(agentId: string, status: AgentStatus): Promise<boolean> {
   const client = createAdminClient()
+
+  // When resuming (setting to active), also reset error counters
+  // so the supervisor agent doesn't immediately re-pause
+  const updatePayload: Record<string, any> = { status }
+  if (status === 'active') {
+    updatePayload.consecutive_errors = 0
+    updatePayload.last_error_message = null
+  }
+
   const { error } = await client
     .from('agent_registry')
-    .update({ status })
+    .update(updatePayload)
     .eq('agent_id', agentId)
 
   if (error) {

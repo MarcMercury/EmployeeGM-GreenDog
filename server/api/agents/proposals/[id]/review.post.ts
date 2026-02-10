@@ -1,14 +1,15 @@
 /**
  * POST /api/agents/proposals/:id/review
  * 
- * Approve or reject a proposal.
+ * Approve, reject, or resolve a proposal.
+ * Supports: pending → approve/reject, auto_approved → resolve/reject
  * Accessible to admin roles only.
  */
 
 import { z } from 'zod'
 
 const bodySchema = z.object({
-  action: z.enum(['approve', 'reject']),
+  action: z.enum(['approve', 'reject', 'resolve']),
   notes: z.string().optional(),
 })
 
@@ -25,17 +26,32 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Proposal not found' })
   }
 
-  if (proposal.status !== 'pending') {
-    throw createError({ statusCode: 400, message: `Proposal is already ${proposal.status}` })
-  }
-
   const body = await validateBody(event, bodySchema)
+
+  // Validate transitions
+  if (body.action === 'resolve') {
+    // Resolve: marks auto_approved/approved proposals as applied/acknowledged
+    if (!['auto_approved', 'approved', 'pending'].includes(proposal.status)) {
+      throw createError({ statusCode: 400, message: `Cannot resolve proposal with status: ${proposal.status}` })
+    }
+  } else if (body.action === 'approve') {
+    if (proposal.status !== 'pending') {
+      throw createError({ statusCode: 400, message: `Can only approve pending proposals. Current: ${proposal.status}` })
+    }
+  } else if (body.action === 'reject') {
+    if (!['pending', 'auto_approved'].includes(proposal.status)) {
+      throw createError({ statusCode: 400, message: `Can only reject pending/auto_approved proposals. Current: ${proposal.status}` })
+    }
+  }
 
   let success: boolean
   if (body.action === 'approve') {
-    success = await approveProposal(proposalId, profile.id, body.notes)
+    success = await approveProposal(proposalId, profileId, body.notes)
+  } else if (body.action === 'reject') {
+    success = await rejectProposal(proposalId, profileId, body.notes)
   } else {
-    success = await rejectProposal(proposalId, profile.id, body.notes)
+    // resolve — mark as applied
+    success = await resolveProposal(proposalId, profileId, body.notes)
   }
 
   if (!success) {
@@ -61,13 +77,15 @@ export default defineEventHandler(async (event) => {
     applied = await applyProposal(proposalId)
   }
 
+  const statusMap = { approve: 'approved', reject: 'rejected', resolve: 'applied' }
+
   return {
     success: true,
     data: {
       proposalId,
       action: body.action,
-      status: body.action === 'approve' ? 'approved' : 'rejected',
-      applied,
+      status: statusMap[body.action],
+      applied: body.action === 'resolve' || applied,
     },
   }
 })

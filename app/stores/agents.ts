@@ -277,7 +277,7 @@ export const useAgentsStore = defineStore('agents', {
     /**
      * Review a proposal (approve or reject).
      */
-    async reviewProposal(proposalId: string, action: 'approve' | 'reject', notes?: string) {
+    async reviewProposal(proposalId: string, action: 'approve' | 'reject' | 'resolve', notes?: string) {
       try {
         const headers = await this._authHeaders()
         await $fetch(`/api/agents/proposals/${proposalId}/review`, {
@@ -289,7 +289,8 @@ export const useAgentsStore = defineStore('agents', {
         // Update local state
         const proposal = this.proposals.find(p => p.id === proposalId)
         if (proposal) {
-          proposal.status = action === 'approve' ? 'approved' : 'rejected'
+          const statusMap: Record<string, string> = { approve: 'approved', reject: 'rejected', resolve: 'applied' }
+          proposal.status = statusMap[action] as any
           proposal.reviewed_at = new Date().toISOString()
         }
 

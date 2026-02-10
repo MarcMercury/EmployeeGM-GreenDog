@@ -163,6 +163,68 @@ export async function markProposalApplied(proposalId: string): Promise<boolean> 
 }
 
 /**
+ * Resolve (dismiss/acknowledge) a proposal.
+ * Used for auto_approved proposals that need to be cleared from the queue.
+ */
+export async function resolveProposal(
+  proposalId: string,
+  reviewerProfileId: string,
+  notes?: string
+): Promise<boolean> {
+  const client = createAdminClient()
+  const { error } = await client
+    .from('agent_proposals')
+    .update({
+      status: 'applied' as ProposalStatus,
+      reviewed_by: reviewerProfileId,
+      reviewed_at: new Date().toISOString(),
+      applied_at: new Date().toISOString(),
+      review_notes: notes ?? 'Resolved by admin',
+    })
+    .eq('id', proposalId)
+    .in('status', ['pending', 'auto_approved', 'approved'])
+
+  if (error) {
+    logger.warn('[AgentProposals] Failed to resolve', 'agent', { proposalId, error: error.message })
+    return false
+  }
+  return true
+}
+
+/**
+ * Bulk-resolve proposals (mark as applied). Returns count resolved.
+ */
+export async function bulkResolveProposals(
+  reviewerProfileId: string,
+  filters?: { agentId?: string; status?: ProposalStatus }
+): Promise<number> {
+  const client = createAdminClient()
+
+  let query = client
+    .from('agent_proposals')
+    .update({
+      status: 'applied' as ProposalStatus,
+      reviewed_by: reviewerProfileId,
+      reviewed_at: new Date().toISOString(),
+      applied_at: new Date().toISOString(),
+      review_notes: 'Bulk resolved by admin',
+    })
+    .in('status', filters?.status ? [filters.status] : ['auto_approved', 'pending'])
+
+  if (filters?.agentId) {
+    query = query.eq('agent_id', filters.agentId)
+  }
+
+  const { data, error, count } = await query.select('id')
+
+  if (error) {
+    logger.warn('[AgentProposals] Bulk resolve failed', 'agent', { error: error.message })
+    return 0
+  }
+  return data?.length ?? 0
+}
+
+/**
  * List proposals with filtering options.
  */
 export async function listProposals(filters?: {

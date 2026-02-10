@@ -110,24 +110,28 @@ async function checkAuth(event: H3Event): Promise<HealthCheck> {
 }
 
 function checkEnvironment(): HealthCheck {
+  const config = useRuntimeConfig()
+
   const required = [
     'SUPABASE_URL',
     'SUPABASE_KEY'
   ]
   
-  const optional = [
-    'SLACK_BOT_TOKEN',
-    'OPENAI_API_KEY'
+  // Check optional services via runtime config (Nuxt resolves env vars at startup)
+  // This is more reliable than raw process.env, especially on Vercel
+  const optionalConfigChecks: { name: string; hasValue: boolean }[] = [
+    { name: 'SLACK_BOT_TOKEN', hasValue: !!(process.env.SLACK_BOT_TOKEN || config.slackBotToken) },
+    { name: 'OPENAI_API_KEY', hasValue: !!(process.env.OPENAI_API_KEY || config.openaiApiKey) },
   ]
   
   const missingRequired = required.filter(key => !process.env[key] && !process.env[`NUXT_PUBLIC_${key}`])
-  const missingOptional = optional.filter(key => !process.env[key])
+  const missingOptional = optionalConfigChecks.filter(c => !c.hasValue).map(c => c.name)
   
   if (missingRequired.length > 0) {
     return {
       name: 'environment',
       status: 'error',
-      message: 'Required environment variables missing'
+      message: `Required environment variables missing: ${missingRequired.join(', ')}`
     }
   }
   
@@ -135,7 +139,7 @@ function checkEnvironment(): HealthCheck {
     return {
       name: 'environment',
       status: 'degraded',
-      message: 'Some optional services not configured'
+      message: `Optional services not configured: ${missingOptional.join(', ')}`
     }
   }
   

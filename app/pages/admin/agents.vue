@@ -286,6 +286,19 @@
                   @update:model-value="loadProposals"
                 />
               </v-col>
+              <v-col cols="12" sm="4" md="3" class="d-flex align-center gap-2">
+                <v-btn
+                  color="teal"
+                  variant="tonal"
+                  size="small"
+                  prepend-icon="mdi-check-all"
+                  :loading="bulkResolving"
+                  :disabled="!hasResolvableProposals"
+                  @click="bulkResolveAll"
+                >
+                  Resolve All ({{ resolvableCount }})
+                </v-btn>
+              </v-col>
             </v-row>
 
             <div v-if="store.isLoadingProposals" class="text-center pa-8">
@@ -347,6 +360,25 @@
                           @click="openReviewDialog(proposal, 'approve')"
                         >
                           <v-icon>mdi-check</v-icon>
+                        </v-btn>
+                        <v-btn
+                          size="x-small"
+                          color="error"
+                          variant="tonal"
+                          @click="openReviewDialog(proposal, 'reject')"
+                        >
+                          <v-icon>mdi-close</v-icon>
+                        </v-btn>
+                      </template>
+                      <template v-if="proposal.status === 'auto_approved' || proposal.status === 'approved'">
+                        <v-btn
+                          size="x-small"
+                          color="teal"
+                          variant="tonal"
+                          @click="openReviewDialog(proposal, 'resolve')"
+                        >
+                          <v-icon start size="14">mdi-check-circle</v-icon>
+                          Resolve
                         </v-btn>
                         <v-btn
                           size="x-small"
@@ -708,13 +740,22 @@
             Approve
           </v-btn>
           <v-btn
-            v-if="selectedProposal.status === 'pending'"
+            v-if="selectedProposal.status === 'pending' || selectedProposal.status === 'auto_approved'"
             color="error"
             variant="tonal"
             @click="openReviewDialog(selectedProposal, 'reject'); showDetailDialog = false"
           >
             <v-icon start>mdi-close</v-icon>
             Reject
+          </v-btn>
+          <v-btn
+            v-if="selectedProposal.status === 'auto_approved' || selectedProposal.status === 'approved'"
+            color="teal"
+            variant="tonal"
+            @click="openReviewDialog(selectedProposal, 'resolve'); showDetailDialog = false"
+          >
+            <v-icon start>mdi-check-circle</v-icon>
+            Resolve
           </v-btn>
           <v-btn @click="showDetailDialog = false">Close</v-btn>
         </v-card-actions>
@@ -727,11 +768,11 @@
         <v-card-title class="d-flex align-center">
           <v-icon
             class="mr-2"
-            :color="reviewAction === 'approve' ? 'success' : 'error'"
+            :color="reviewAction === 'approve' ? 'success' : reviewAction === 'resolve' ? 'teal' : 'error'"
           >
-            {{ reviewAction === 'approve' ? 'mdi-check-circle' : 'mdi-close-circle' }}
+            {{ reviewAction === 'approve' ? 'mdi-check-circle' : reviewAction === 'resolve' ? 'mdi-check-all' : 'mdi-close-circle' }}
           </v-icon>
-          {{ reviewAction === 'approve' ? 'Approve' : 'Reject' }} Proposal
+          {{ reviewAction === 'approve' ? 'Approve' : reviewAction === 'resolve' ? 'Resolve' : 'Reject' }} Proposal
         </v-card-title>
         <v-card-text>
           <div v-if="reviewTargetProposal" class="mb-3">
@@ -746,7 +787,7 @@
             variant="outlined"
             density="compact"
             rows="3"
-            :placeholder="reviewAction === 'approve' ? 'Why are you approving this proposal?' : 'Reason for rejection...'"
+            :placeholder="reviewAction === 'resolve' ? 'Acknowledged / resolved' : reviewAction === 'approve' ? 'Why are you approving this proposal?' : 'Reason for rejection...'"
             auto-grow
           />
         </v-card-text>
@@ -754,12 +795,12 @@
           <v-spacer />
           <v-btn variant="text" @click="cancelReview">Cancel</v-btn>
           <v-btn
-            :color="reviewAction === 'approve' ? 'success' : 'error'"
+            :color="reviewAction === 'approve' ? 'success' : reviewAction === 'resolve' ? 'teal' : 'error'"
             variant="flat"
             :loading="isReviewing"
             @click="submitReview"
           >
-            {{ reviewAction === 'approve' ? 'Approve' : 'Reject' }}
+            {{ reviewAction === 'approve' ? 'Approve' : reviewAction === 'resolve' ? 'Resolve' : 'Reject' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -809,11 +850,18 @@ function showSnack(text: string, color = 'success') {
 
 // Review dialog state
 const showReviewDialog = ref(false)
-const reviewAction = ref<'approve' | 'reject'>('approve')
+const reviewAction = ref<'approve' | 'reject' | 'resolve'>('approve')
 const reviewNotes = ref('')
 const reviewTargetProposal = ref<AgentProposalRow | null>(null)
 const isReviewing = ref(false)
 const isRunningAll = ref(false)
+const bulkResolving = ref(false)
+
+// Computed — resolvable proposals count
+const resolvableCount = computed(() =>
+  store.proposals.filter(p => ['auto_approved', 'approved', 'pending'].includes(p.status)).length
+)
+const hasResolvableProposals = computed(() => resolvableCount.value > 0)
 
 // Load data on mount
 onMounted(async () => {
@@ -1009,7 +1057,7 @@ async function toggleStatus(agentId: string, status: AgentStatus) {
   }
 }
 
-function openReviewDialog(proposal: AgentProposalRow, action: 'approve' | 'reject') {
+function openReviewDialog(proposal: AgentProposalRow, action: 'approve' | 'reject' | 'resolve') {
   reviewTargetProposal.value = proposal
   reviewAction.value = action
   reviewNotes.value = ''
@@ -1031,12 +1079,40 @@ async function submitReview() {
       reviewAction.value,
       reviewNotes.value || undefined,
     )
+    showSnack(`Proposal ${reviewAction.value}d successfully`)
     await store.fetchProposals()
+    await store.fetchAgents()
     showReviewDialog.value = false
     reviewTargetProposal.value = null
     reviewNotes.value = ''
+  } catch (err: any) {
+    showSnack(err?.message || 'Review failed', 'error')
   } finally {
     isReviewing.value = false
+  }
+}
+
+async function bulkResolveAll() {
+  bulkResolving.value = true
+  try {
+    const headers = await store._authHeaders()
+    const response = await $fetch('/api/agents/proposals/bulk-resolve', {
+      method: 'POST',
+      body: {
+        agentId: store.proposalFilter.agentId || undefined,
+        status: (store.proposalFilter.status === 'auto_approved' || store.proposalFilter.status === 'pending')
+          ? store.proposalFilter.status
+          : undefined,
+      },
+      headers,
+    }) as any
+    showSnack(`${response?.data?.resolved ?? 0} proposals resolved`)
+    await store.fetchProposals()
+    await store.fetchAgents()
+  } catch (err: any) {
+    showSnack(err?.message || 'Bulk resolve failed', 'error')
+  } finally {
+    bulkResolving.value = false
   }
 }
 
