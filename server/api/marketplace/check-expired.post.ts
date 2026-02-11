@@ -3,11 +3,10 @@
  * Check and process expired gigs (Reaper logic)
  * Can be called periodically or on page load
  */
-import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const supabase = await serverSupabaseClient(event)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await serverSupabaseUser(event)
   const client = await serverSupabaseServiceRole(event)
 
   if (!user) {

@@ -2,11 +2,10 @@
  * POST /api/marketplace/gigs/[id]/approve
  * Approve a submitted gig and award points (admin only)
  */
-import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const supabase = await serverSupabaseClient(event)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await serverSupabaseUser(event)
   const client = await serverSupabaseServiceRole(event)
   const gigId = getRouterParam(event, 'id')
 

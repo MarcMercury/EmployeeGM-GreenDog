@@ -2,11 +2,10 @@
  * GET /api/marketplace/gigs
  * Get all available gigs with optional filters
  */
-import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const supabase = await serverSupabaseClient(event)
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await serverSupabaseUser(event)
   const client = await serverSupabaseServiceRole(event)
 
   if (!user) {
@@ -46,6 +45,7 @@ export default defineEventHandler(async (event) => {
   const { data: gigs, count: totalGigs, error } = await queryBuilder
 
   if (error) {
+    console.error('[marketplace/gigs] Query error:', error.message, error.details, error.hint, error.code)
     throw createError({ statusCode: 500, message: error.message })
   }
 
