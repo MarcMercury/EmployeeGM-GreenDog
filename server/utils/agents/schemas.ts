@@ -215,6 +215,37 @@ export const HealthReportSchema = z.object({
   stuck_runs_killed: z.number().optional(),
 })
 
+// ─── Access & Security ────────────────────────────────────────────
+
+export const AccessReviewSchema = z.object({
+  finding_type: z.enum(['missing_pages', 'missing_role_access', 'over_permissive', 'rls_gaps', 'role_distribution', 'summary']),
+  severity: z.enum(['critical', 'warning', 'info']),
+  missing_pages: z.array(z.object({
+    path: z.string(),
+    name: z.string(),
+    section: z.string(),
+  })).optional(),
+  issues: z.array(z.object({
+    page: z.string().optional(),
+    role: z.string().optional(),
+    table: z.string().optional(),
+    description: z.string(),
+    recommendation: z.string().optional(),
+  })).optional(),
+  missing_entries: z.array(z.object({
+    page: z.string().optional(),
+    role: z.string().optional(),
+  })).optional(),
+  tables: z.array(z.object({
+    table: z.string().optional(),
+    description: z.string(),
+  })).optional(),
+  total_registered: z.number().optional(),
+  total_known: z.number().optional(),
+  executive_summary: z.string().optional(),
+  role_distribution: z.record(z.number()).optional(),
+})
+
 // ─── Schema Registry ──────────────────────────────────────────────
 
 export const proposalSchemas: Record<string, z.ZodType<any>> = {
@@ -235,6 +266,7 @@ export const proposalSchemas: Record<string, z.ZodType<any>> = {
   engagement_report: EngagementReportSchema,
   referral_insight: ReferralInsightSchema,
   health_report: HealthReportSchema,
+  access_review: AccessReviewSchema,
 }
 
 /**

@@ -60,6 +60,8 @@ export type ProposalType =
   | 'referral_insight'
   // Orchestration (Phase 4)
   | 'health_report'
+  // Access & Security
+  | 'access_review'
 
 export interface AgentProposalRow {
   id: string

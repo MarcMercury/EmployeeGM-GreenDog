@@ -239,6 +239,13 @@ applierMap.set('health_report', async (_proposal, _supabase) => {
   // Informational — displayed in agent dashboard
 })
 
+// ─── Access & Security ────────────────────────────────────────────
+
+applierMap.set('access_review', async (_proposal, _supabase) => {
+  // Access review findings are informational — admin reviews and applies fixes manually.
+  // Missing pages can be added to page_definitions via the admin UI.
+})
+
 // ─── Main Entry Point ─────────────────────────────────────────────
 
 /**

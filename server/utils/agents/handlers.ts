@@ -51,6 +51,11 @@ handlerMap.set('supervisor_agent', () => import('~~/server/agents/handlers/super
 // =========================================================
 handlerMap.set('system_monitor', () => import('~~/server/agents/handlers/system-monitor'))
 
+// =========================================================
+// Phase 6: Access & Security
+// =========================================================
+handlerMap.set('access_reviewer', () => import('~~/server/agents/handlers/access-reviewer'))
+
 /**
  * Get the handler for a given agent_id.
  * Returns null if no handler is registered.

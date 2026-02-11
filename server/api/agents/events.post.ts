@@ -49,6 +49,11 @@ const EVENT_ROUTES: Record<string, string[]> = {
   'referral.synced': ['referral_intelligence'],
   'partner.visit_logged': ['referral_intelligence'],
 
+  // Access & Security events
+  'page.created': ['access_reviewer'],
+  'role.updated': ['access_reviewer'],
+  'rls.policy_changed': ['access_reviewer'],
+
   // Agent events (inter-agent communication)
   'agent.proposal_created': ['supervisor_agent'],
   'agent.failed': ['supervisor_agent'],
