@@ -44,6 +44,14 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // For resolve: run side effects BEFORE changing status, since applier checks status
+  let applied = false
+  if (body.action === 'resolve' && !proposal.applied_at &&
+      ['auto_approved', 'approved', 'pending'].includes(proposal.status)) {
+    const { applyProposal } = await import('../../../../utils/agents/appliers')
+    applied = await applyProposal(proposalId).catch(() => false) as boolean
+  }
+
   let success: boolean
   if (body.action === 'approve') {
     success = await approveProposal(proposalId, profileId, body.notes)
@@ -71,7 +79,6 @@ export default defineEventHandler(async (event) => {
   })
 
   // If approved, apply the proposal side effects immediately
-  let applied = false
   if (body.action === 'approve') {
     const { applyProposal } = await import('../../../../utils/agents/appliers')
     applied = await applyProposal(proposalId)

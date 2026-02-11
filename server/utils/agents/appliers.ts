@@ -114,15 +114,28 @@ applierMap.set('mentor_match', async (proposal, supabase) => {
 applierMap.set('profile_update_request', async (proposal, supabase) => {
   // HR Auditor flagged missing fields — create a notification for the employee
   const d = proposal.detail as any
-  if (d.employee_profile_id) {
-    await supabase.from('notifications').insert({
-      profile_id: d.employee_profile_id,
-      type: 'profile_incomplete',
-      title: '📝 Profile Update Needed',
-      body: d.summary ?? proposal.summary ?? 'Please update your profile with missing information.',
-      data: { proposal_id: proposal.id, missing_fields: d.missing_fields },
-      is_read: false,
-    })
+  const employeeId = d.employee_profile_id ?? d.employee_id
+  if (employeeId) {
+    // Resolve profile_id from employee_id if needed
+    let profileId = d.employee_profile_id
+    if (!profileId && d.employee_id) {
+      const { data: emp } = await supabase
+        .from('employees')
+        .select('profile_id')
+        .eq('id', d.employee_id)
+        .single()
+      profileId = emp?.profile_id
+    }
+    if (profileId) {
+      await supabase.from('notifications').insert({
+        profile_id: profileId,
+        type: 'profile_incomplete',
+        title: '📝 Profile Update Needed',
+        body: d.summary ?? proposal.summary ?? 'Please update your profile with missing information.',
+        data: { proposal_id: proposal.id, missing_fields: d.missing_fields },
+        is_read: false,
+      })
+    }
   }
 })
 
@@ -134,9 +147,26 @@ applierMap.set('schedule_draft', async (_proposal, _supabase) => {
 applierMap.set('attendance_flag', async (proposal, supabase) => {
   // Create a notification for the employee's manager
   const d = proposal.detail as any
-  if (d.manager_profile_id) {
+  // Resolve manager's profile_id from employee's manager_employee_id or employee_id
+  let managerProfileId = d.manager_profile_id
+  if (!managerProfileId && d.employee_id) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('manager_employee_id')
+      .eq('id', d.employee_id)
+      .single()
+    if (emp?.manager_employee_id) {
+      const { data: manager } = await supabase
+        .from('employees')
+        .select('profile_id')
+        .eq('id', emp.manager_employee_id)
+        .single()
+      managerProfileId = manager?.profile_id
+    }
+  }
+  if (managerProfileId) {
     await supabase.from('notifications').insert({
-      profile_id: d.manager_profile_id,
+      profile_id: managerProfileId,
       type: 'attendance_alert',
       title: `⚠️ Attendance Alert: ${d.employee_name ?? 'Employee'}`,
       body: proposal.summary,
@@ -148,9 +178,26 @@ applierMap.set('attendance_flag', async (proposal, supabase) => {
 
 applierMap.set('payroll_anomaly', async (proposal, supabase) => {
   const d = proposal.detail as any
-  if (d.manager_profile_id) {
+  // Resolve manager's profile_id from the employee
+  let managerProfileId = d.manager_profile_id
+  if (!managerProfileId && d.employee_id) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('manager_employee_id')
+      .eq('id', d.employee_id)
+      .single()
+    if (emp?.manager_employee_id) {
+      const { data: manager } = await supabase
+        .from('employees')
+        .select('profile_id')
+        .eq('id', emp.manager_employee_id)
+        .single()
+      managerProfileId = manager?.profile_id
+    }
+  }
+  if (managerProfileId) {
     await supabase.from('notifications').insert({
-      profile_id: d.manager_profile_id,
+      profile_id: managerProfileId,
       type: 'payroll_alert',
       title: `💰 Payroll Alert: ${d.employee_name ?? 'Time Entry Issue'}`,
       body: proposal.summary,
@@ -162,12 +209,21 @@ applierMap.set('payroll_anomaly', async (proposal, supabase) => {
 
 applierMap.set('compliance_alert', async (proposal, supabase) => {
   const d = proposal.detail as any
-  // Notify the employee
-  if (d.employee_profile_id) {
+  // Resolve profile_id from employee_id
+  let profileId = d.employee_profile_id
+  if (!profileId && d.employee_id) {
+    const { data: emp } = await supabase
+      .from('employees')
+      .select('profile_id')
+      .eq('id', d.employee_id)
+      .single()
+    profileId = emp?.profile_id
+  }
+  if (profileId) {
     await supabase.from('notifications').insert({
-      profile_id: d.employee_profile_id,
+      profile_id: profileId,
       type: 'compliance_alert',
-      title: `🔒 Compliance: ${d.credential_type ?? 'Action Required'}`,
+      title: `🔒 Compliance: ${d.credential_type ?? d.entity_name ?? 'Action Required'}`,
       body: proposal.summary,
       data: { proposal_id: proposal.id, ...d },
       is_read: false,
@@ -177,6 +233,20 @@ applierMap.set('compliance_alert', async (proposal, supabase) => {
 
 applierMap.set('disciplinary_recommendation', async (_proposal, _supabase) => {
   // High-risk — always requires manual handling by admin/HR
+})
+
+// ─── Summary Reports (informational — no side effects) ───────────
+
+applierMap.set('hr_audit_report', async (_proposal, _supabase) => {
+  // Informational — summary lives in the proposal
+})
+
+applierMap.set('attendance_report', async (_proposal, _supabase) => {
+  // Informational — summary lives in the proposal
+})
+
+applierMap.set('compliance_report', async (_proposal, _supabase) => {
+  // Informational — summary lives in the proposal
 })
 
 // ─── Engagement & Growth ──────────────────────────────────────────

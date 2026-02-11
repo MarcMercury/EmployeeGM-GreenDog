@@ -6,7 +6,7 @@
  * Pure SQL/logic — no LLM calls needed.
  *
  * Reads: time_entries, time_punches, shifts, employees
- * Writes: agent_proposals (payroll_flag type)
+ * Writes: agent_proposals (payroll_anomaly type)
  */
 
 import type { AgentRunContext, AgentRunResult } from '~/types/agent.types'
@@ -193,7 +193,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
     for (const anomaly of highSeverity) {
       const proposalId = await createProposal({
         agentId,
-        proposalType: 'payroll_flag',
+        proposalType: 'payroll_anomaly',
         title: `🚨 ${anomaly.type.replace(/_/g, ' ').toUpperCase()}: ${anomaly.employee_name}`,
         summary: anomaly.description,
         detail: anomaly as unknown as Record<string, unknown>,
@@ -211,7 +211,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
     if (otherAnomalies.length > 0) {
       const summaryId = await createProposal({
         agentId,
-        proposalType: 'payroll_report',
+        proposalType: 'payroll_anomaly',
         title: `Payroll Report — Week of ${weekStartDate}`,
         summary: `${anomalies.length} anomalies found: ${highSeverity.length} critical, ${otherAnomalies.length} warnings.`,
         detail: {

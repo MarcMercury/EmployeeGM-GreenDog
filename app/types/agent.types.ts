@@ -49,7 +49,11 @@ export type ProposalType =
   | 'attendance_flag'
   | 'payroll_anomaly'
   | 'compliance_alert'
+  | 'compliance_report'
   | 'disciplinary_recommendation'
+  // Reports (auto-generated summaries)
+  | 'hr_audit_report'
+  | 'attendance_report'
   // Engagement & Growth (Phase 3)
   | 'nudge'
   | 'review_reminder'

@@ -194,7 +194,7 @@ export async function resolveProposal(
       review_notes: notes ?? 'Resolved by admin',
     })
     .eq('id', proposalId)
-    .in('status', ['pending', 'auto_approved', 'approved'])
+    .in('status', ['pending', 'auto_approved', 'approved', 'applied'])
 
   if (error) {
     logger.warn('[AgentProposals] Failed to resolve', 'agent', { proposalId, error: error.message })
