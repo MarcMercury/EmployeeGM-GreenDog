@@ -18,7 +18,7 @@ VALUES (
   'Access Policy Reviewer',
   'admin',
   'Continuously audits the application''s access control posture. Scans page_definitions vs actual app routes to find unregistered pages, checks role-to-page access completeness, detects RLS gaps on DB tables, flags over-permissive entries, and monitors role distribution. Generates AI-powered executive summaries with prioritized action items.',
-  'paused',
+  'active',
   '0 5 * * 1',  -- Every Monday at 5 AM
   5000,
   '{"scan_rls": true, "alert_on_missing_pages": true, "max_findings_per_run": 50}'::jsonb
