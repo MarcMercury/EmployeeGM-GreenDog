@@ -174,6 +174,7 @@
         </template>
         <v-list-item v-if="hasPageAccess('/marketing/ezyvet-analytics')" to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/invoice-analysis')" to="/marketing/invoice-analysis" title="Invoice Analysis" prepend-icon="mdi-receipt-text-check" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
 
       <!-- ===== GDU (Education) Group - Database-driven Access ===== -->
@@ -330,6 +331,7 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   // CRM & Analytics
   '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
+  '/marketing/invoice-analysis': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   
   // GDU
   '/gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
