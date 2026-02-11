@@ -2,11 +2,12 @@
  * POST /api/marketplace/rewards/[id]/purchase
  * Purchase a reward with points — uses atomic balance deduction to prevent double-spend
  */
-import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
+  const supabase = await serverSupabaseClient(event)
+  const { data: { user } } = await supabase.auth.getUser()
+  const client = await serverSupabaseServiceRole(event)
   const rewardId = getRouterParam(event, 'id')
 
   if (!user) {
@@ -61,15 +62,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Reward is out of stock' })
   }
 
-  // Use service role for atomic operations (bypass RLS for wallet updates)
-  const adminClient = await serverSupabaseServiceRole(event)
+  // client is already service role — use it for atomic wallet operations
 
   // ATOMIC: Deduct balance using a conditional update that only succeeds if
   // the balance is sufficient. This prevents TOCTOU double-spend.
-  const { data: updatedWallet, error: walletUpdateError } = await adminClient
+  const { data: updatedWallet, error: walletUpdateError } = await client
     .from('employee_wallets')
     .update({
-      current_balance: adminClient.rpc ? undefined : undefined, // placeholder, see raw SQL below
+      current_balance: client.rpc ? undefined : undefined, // placeholder, see raw SQL below
     })
     .eq('employee_id', employee.id)
     .gte('current_balance', reward.cost) // Only update if balance >= cost
@@ -79,10 +79,10 @@ export default defineEventHandler(async (event) => {
   // Since Supabase doesn't support column arithmetic in .update(), use RPC or raw approach:
   // We'll do a conditional update with gte filter, then read back
   // Strategy: Use gte filter on the UPDATE to make it atomic
-  const { error: deductError, count: deductCount } = await adminClient
+  const { error: deductError, count: deductCount } = await client
     .from('employee_wallets')
     .update({
-      current_balance: adminClient.rpc ? 0 : 0, // We'll use a workaround
+      current_balance: client.rpc ? 0 : 0, // We'll use a workaround
     })
     .eq('employee_id', employee.id)
 
@@ -91,7 +91,7 @@ export default defineEventHandler(async (event) => {
   // perform the balance check + deduct in a single conditional update:
   
   // Step 1: Get current wallet state
-  const { data: wallet } = await adminClient
+  const { data: wallet } = await client
     .from('employee_wallets')
     .select('id, current_balance, lifetime_spent')
     .eq('employee_id', employee.id)
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
 
   // Step 2: Atomic conditional update — only succeeds if balance hasn't changed
   // This implements optimistic concurrency control via the current_balance check
-  const { data: atomicResult, error: atomicError } = await adminClient
+  const { data: atomicResult, error: atomicError } = await client
     .from('employee_wallets')
     .update({
       current_balance: newBalance,
@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
 
   // Step 3: Atomically decrement stock (only if limited)
   if (reward.stock_quantity !== null) {
-    const { data: stockResult, error: stockError } = await adminClient
+    const { data: stockResult, error: stockError } = await client
       .from('marketplace_rewards')
       .update({ stock_quantity: reward.stock_quantity - 1 })
       .eq('id', rewardId)
@@ -140,7 +140,7 @@ export default defineEventHandler(async (event) => {
 
     if (stockError || !stockResult) {
       // Stock ran out during purchase — refund the wallet
-      await adminClient
+      await client
         .from('employee_wallets')
         .update({
           current_balance: wallet.current_balance,
@@ -153,7 +153,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Step 4: Create transaction log
-  const { data: transaction, error: txError } = await adminClient
+  const { data: transaction, error: txError } = await client
     .from('marketplace_transactions')
     .insert({
       employee_id: employee.id,
@@ -171,7 +171,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Step 5: Create redemption record
-  const { data: redemption, error: redemptionError } = await adminClient
+  const { data: redemption, error: redemptionError } = await client
     .from('marketplace_redemptions')
     .insert({
       employee_id: employee.id,

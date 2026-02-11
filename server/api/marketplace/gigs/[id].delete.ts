@@ -2,11 +2,12 @@
  * DELETE /api/marketplace/gigs/[id]
  * Delete a gig (admin only)
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
+  const supabase = await serverSupabaseClient(event)
+  const { data: { user } } = await supabase.auth.getUser()
+  const client = await serverSupabaseServiceRole(event)
   const gigId = getRouterParam(event, 'id')
 
   if (!user) {

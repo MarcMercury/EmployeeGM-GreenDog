@@ -2,11 +2,12 @@
  * PATCH /api/marketplace/rewards/[id]
  * Update a reward (admin only)
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
+  const supabase = await serverSupabaseClient(event)
+  const { data: { user } } = await supabase.auth.getUser()
+  const client = await serverSupabaseServiceRole(event)
   const rewardId = getRouterParam(event, 'id')
 
   if (!user) {

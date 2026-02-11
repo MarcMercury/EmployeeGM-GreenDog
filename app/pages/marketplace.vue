@@ -1071,10 +1071,16 @@ const pendingRedemptionsCount = computed(() => {
 const fetchData = async () => {
   loading.value = true
   try {
-    // Fetch wallet
-    const walletRes = await $fetch('/api/marketplace/wallet')
-    wallet.value = walletRes.wallet
-    employeeId.value = walletRes.employeeId
+    // Fetch wallet (isolated - don't crash everything if wallet fails)
+    try {
+      const walletRes = await $fetch('/api/marketplace/wallet')
+      wallet.value = walletRes.wallet
+      employeeId.value = walletRes.employeeId
+    } catch (walletErr: any) {
+      console.warn('Wallet fetch failed, continuing:', walletErr?.message)
+      wallet.value = null
+      employeeId.value = null
+    }
 
     // Fetch gigs
     const gigsRes = await $fetch('/api/marketplace/gigs')
@@ -1097,16 +1103,27 @@ const fetchData = async () => {
     allRewards.value = allRewardsRes.rewards || []
 
     // Fetch transactions
-    const txRes = await $fetch('/api/marketplace/transactions')
-    transactions.value = txRes.transactions || []
+    try {
+      const txRes = await $fetch('/api/marketplace/transactions')
+      transactions.value = txRes.transactions || []
+    } catch (txErr: any) {
+      console.warn('Transactions fetch failed:', txErr?.message)
+      transactions.value = []
+    }
 
     // Fetch redemptions
-    const redemptionsRes = await $fetch('/api/marketplace/redemptions')
-    myRedemptions.value = redemptionsRes.redemptions || []
-    allRedemptions.value = redemptionsRes.redemptions || []
+    try {
+      const redemptionsRes = await $fetch('/api/marketplace/redemptions')
+      myRedemptions.value = redemptionsRes.redemptions || []
+      allRedemptions.value = redemptionsRes.redemptions || []
+    } catch (redemptionErr: any) {
+      console.warn('Redemptions fetch failed:', redemptionErr?.message)
+      myRedemptions.value = []
+      allRedemptions.value = []
+    }
 
     // Check for expired gigs
-    await $fetch('/api/marketplace/check-expired', { method: 'POST' })
+    await $fetch('/api/marketplace/check-expired', { method: 'POST' }).catch(() => {})
   } catch (err: any) {
     console.error('Failed to load marketplace data:', err)
     fetchError.value = err?.message || 'Failed to load marketplace data'

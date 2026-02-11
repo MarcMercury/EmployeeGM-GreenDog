@@ -2,18 +2,19 @@
  * GET /api/marketplace/wallet
  * Get current user's wallet balance
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const client = await serverSupabaseClient(event)
-  const user = await serverSupabaseUser(event)
+  const supabase = await serverSupabaseClient(event)
+  const { data: { user } } = await supabase.auth.getUser()
+  const adminClient = await serverSupabaseServiceRole(event)
 
   if (!user) {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   // Get user's profile
-  const { data: profile } = await client
+  const { data: profile } = await adminClient
     .from('profiles')
     .select('id')
     .eq('auth_user_id', user.id)
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Get employee linked to profile
-  const { data: employee } = await client
+  const { data: employee } = await adminClient
     .from('employees')
     .select('id')
     .eq('profile_id', profile.id)
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Get or create wallet
-  let { data: wallet, error } = await client
+  let { data: wallet, error } = await adminClient
     .from('employee_wallets')
     .select('*')
     .eq('employee_id', employee.id)
@@ -47,7 +48,7 @@ export default defineEventHandler(async (event) => {
 
   if (!wallet) {
     // Create wallet if doesn't exist
-    const { data: newWallet, error: insertError } = await client
+    const { data: newWallet, error: insertError } = await adminClient
       .from('employee_wallets')
       .insert({ employee_id: employee.id })
       .select()
