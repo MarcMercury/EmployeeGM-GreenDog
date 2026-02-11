@@ -5,7 +5,7 @@
  * Uses the same auth pattern (Authorization: Bearer <CRON_SECRET>) as all other crons.
  *
  * Configure in vercel.json:
- * { "path": "/api/cron/slack-sync", "schedule": "0 */6 * * *" }
+ * Schedule: every 6 hours — "0 0,6,12,18 * * *"
  *
  * What it does:
  *   1. Fetches all Slack workspace users (paginated)
