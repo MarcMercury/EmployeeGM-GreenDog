@@ -81,7 +81,7 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // === Marketing (view) === Calendar, Resources — everyone except hr_admin
   marketing_view: ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
-  // === CRM & Analytics === EzyVet CRM, EzyVet Analytics, List Hygiene
+  // === CRM & Analytics === EzyVet Analytics, List Hygiene
   crm_analytics: ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   
   // === GDU (Education) === GDU Dash, Student CRM, Visitor CRM, CE Events

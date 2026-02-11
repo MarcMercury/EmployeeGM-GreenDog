@@ -17,10 +17,10 @@
         <v-btn
           color="primary"
           variant="outlined"
-          prepend-icon="mdi-database"
-          :to="'/marketing/ezyvet-crm'"
+          prepend-icon="mdi-upload"
+          @click="showUploadDialog = true"
         >
-          CRM Data
+          Import CSV
         </v-btn>
         <v-btn
           color="primary"
@@ -581,14 +581,15 @@
       <v-icon size="80" color="grey">mdi-chart-box-outline</v-icon>
       <div class="text-h5 mt-4">No Analytics Data</div>
       <div class="text-grey mt-2">
-        Import contacts via the EzyVet CRM page to see analytics.
+        Import an EzyVet CSV export to populate your analytics dashboard.
       </div>
       <v-btn
         color="primary"
         class="mt-6"
-        :to="'/marketing/ezyvet-crm'"
+        prepend-icon="mdi-upload"
+        @click="showUploadDialog = true"
       >
-        Go to CRM
+        Import CSV
       </v-btn>
     </v-card>
 
@@ -596,6 +597,155 @@
     <v-alert v-if="error" type="error" class="mt-4">
       {{ error }}
     </v-alert>
+
+    <!-- Upload Dialog -->
+    <v-dialog v-model="showUploadDialog" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-upload</v-icon>
+          Import EzyVet CSV
+          <v-spacer />
+          <v-btn icon variant="text" aria-label="Close" @click="closeUploadDialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text>
+          <!-- Upload State -->
+          <div v-if="!uploadState.processing && !uploadState.complete">
+            <v-alert type="info" variant="tonal" class="mb-4">
+              <div class="font-weight-bold mb-1">Expected CSV Headers:</div>
+              <code class="text-caption">
+                Contact Code, Contact First Name, Contact Last Name, Email Addresses,
+                Mobile Numbers, Contact Physical City, Contact Physical Post Code,
+                Revenue Spend YTD, Last Invoiced, Contact Division, Contact Hear About Option,
+                Contact Is Active
+              </code>
+            </v-alert>
+
+            <v-file-input
+              v-model="uploadFile"
+              accept=".csv"
+              label="Select CSV file"
+              prepend-icon="mdi-file-delimited"
+              variant="outlined"
+              show-size
+              :disabled="uploadState.processing"
+              @update:model-value="handleFileSelect"
+            />
+
+            <div v-if="previewData.length > 0" class="mt-4">
+              <div class="text-subtitle-2 mb-2">
+                Preview (first 5 rows of {{ totalPreviewRows }}):
+              </div>
+              <v-table density="compact" class="preview-table">
+                <thead>
+                  <tr>
+                    <th v-for="header in previewHeaders" :key="header" class="text-caption">
+                      {{ header }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, idx) in previewData" :key="idx">
+                    <td v-for="header in previewHeaders" :key="header" class="text-caption">
+                      {{ row[header] || '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <!-- Data Quality Warnings -->
+              <div v-if="importQualityWarnings.length > 0" class="mt-4">
+                <div class="text-subtitle-2 mb-2">Data Quality Summary</div>
+                <v-alert
+                  v-for="(warning, idx) in importQualityWarnings"
+                  :key="idx"
+                  :type="warning.severity"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-1"
+                >
+                  {{ warning.message }}
+                </v-alert>
+              </div>
+            </div>
+          </div>
+
+          <!-- Processing State -->
+          <div v-if="uploadState.processing" class="text-center py-6">
+            <v-progress-circular
+              :model-value="uploadState.progress"
+              :size="80"
+              :width="8"
+              color="primary"
+            >
+              {{ uploadState.progress }}%
+            </v-progress-circular>
+            <div class="text-h6 mt-4">{{ uploadState.message }}</div>
+            <div class="text-caption text-grey">
+              Batch {{ uploadState.currentBatch }} of {{ uploadState.totalBatches }}
+            </div>
+            <div class="text-caption text-grey mt-1">
+              {{ uploadState.processedRows }} / {{ uploadState.totalRows }} rows
+            </div>
+          </div>
+
+          <!-- Complete State -->
+          <div v-if="uploadState.complete" class="text-center py-6">
+            <v-icon
+              :color="uploadState.error ? 'error' : 'success'"
+              size="80"
+            >
+              {{ uploadState.error ? 'mdi-alert-circle' : 'mdi-check-circle' }}
+            </v-icon>
+            <div class="text-h6 mt-4">
+              {{ uploadState.error ? 'Import Failed' : 'Import Complete!' }}
+            </div>
+            <div v-if="!uploadState.error" class="mt-2">
+              <v-chip color="success" class="mx-1">
+                {{ uploadState.inserted }} inserted
+              </v-chip>
+              <v-chip color="info" class="mx-1">
+                {{ uploadState.updated }} updated
+              </v-chip>
+              <v-chip v-if="uploadState.errors > 0" color="error" class="mx-1">
+                {{ uploadState.errors }} errors
+              </v-chip>
+            </div>
+            <div v-if="uploadState.error" class="text-error mt-2">
+              {{ uploadState.errorMessage }}
+            </div>
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn
+            v-if="!uploadState.processing && !uploadState.complete"
+            variant="text"
+            @click="closeUploadDialog"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            v-if="!uploadState.processing && !uploadState.complete"
+            color="primary"
+            :disabled="!uploadFile || previewData.length === 0"
+            @click="startImport"
+          >
+            Start Import
+          </v-btn>
+          <v-btn
+            v-if="uploadState.complete"
+            color="primary"
+            @click="closeUploadDialog"
+          >
+            Done
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -613,6 +763,71 @@ const error = ref<string | null>(null)
 const analytics = ref<any>(null)
 const divisions = ref<string[]>([])
 
+// Upload state
+const supabase = useSupabaseClient()
+const showUploadDialog = ref(false)
+const uploadFile = ref<File | null>(null)
+const uploadState = ref({
+  processing: false,
+  complete: false,
+  error: false,
+  errorMessage: '',
+  progress: 0,
+  message: '',
+  currentBatch: 0,
+  totalBatches: 0,
+  processedRows: 0,
+  totalRows: 0,
+  inserted: 0,
+  updated: 0,
+  errors: 0
+})
+const previewData = ref<any[]>([])
+const previewHeaders = ref<string[]>([])
+const totalPreviewRows = ref(0)
+const parsedRows = ref<any[]>([])
+
+// Import data quality warnings
+const importQualityWarnings = computed(() => {
+  if (parsedRows.value.length === 0) return []
+  const warnings: { severity: 'warning' | 'info' | 'error'; message: string }[] = []
+  const total = parsedRows.value.length
+
+  const missingEmail = parsedRows.value.filter(r => !r.email).length
+  const missingPhone = parsedRows.value.filter(r => !r.phone_mobile).length
+  const missingCity = parsedRows.value.filter(r => !r.address_city).length
+  const missingRevenue = parsedRows.value.filter(r => !r.revenue_ytd || r.revenue_ytd === 0).length
+  const missingLastVisit = parsedRows.value.filter(r => !r.last_visit).length
+  const noDivision = parsedRows.value.filter(r => !r.division).length
+
+  if (missingEmail > 0) warnings.push({ severity: missingEmail > total * 0.3 ? 'warning' : 'info', message: `${missingEmail} of ${total} contacts (${Math.round(missingEmail / total * 100)}%) missing email address` })
+  if (missingPhone > 0) warnings.push({ severity: missingPhone > total * 0.3 ? 'warning' : 'info', message: `${missingPhone} of ${total} contacts (${Math.round(missingPhone / total * 100)}%) missing phone number` })
+  if (missingCity > 0) warnings.push({ severity: 'info', message: `${missingCity} of ${total} contacts (${Math.round(missingCity / total * 100)}%) missing city` })
+  if (missingLastVisit > 0) warnings.push({ severity: missingLastVisit > total * 0.2 ? 'warning' : 'info', message: `${missingLastVisit} of ${total} contacts (${Math.round(missingLastVisit / total * 100)}%) have no last visit date` })
+  if (missingRevenue > total * 0.5) warnings.push({ severity: 'warning', message: `${missingRevenue} contacts have $0 revenue — may indicate stale or incomplete records` })
+
+  return warnings
+})
+
+// CSV Header mapping
+const CSV_HEADER_MAP: Record<string, string> = {
+  'Contact Code': 'ezyvet_contact_code',
+  'Contact First Name': 'first_name',
+  'Contact Last Name': 'last_name',
+  'Email Addresses': 'email',
+  'Mobile Numbers': 'phone_mobile',
+  'Contact Physical City': 'address_city',
+  'Contact Physical Post Code': 'address_zip',
+  'Revenue Spend YTD': 'revenue_ytd',
+  'Last Invoiced': 'last_visit',
+  'Contact Division': 'division',
+  'Contact Hear About Option': 'referral_source',
+  'Contact Is Active': 'is_active',
+  'Breed': 'breed',
+  'Pet Breed': 'breed',
+  'Department': 'department',
+  'Service Department': 'department'
+}
 // Filters
 const filters = ref({
   division: null as string | null,
@@ -660,6 +875,215 @@ function resetFilters() {
 
 function printReport() {
   window.print()
+}
+
+// ========================================
+// CSV IMPORT FUNCTIONS
+// ========================================
+
+function parseCSV(text: string): any[] {
+  const lines = text.split('\n').filter(line => line.trim())
+  if (lines.length === 0) return []
+
+  const headers = parseCSVLine(lines[0])
+  const rows: any[] = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i])
+    if (values.length === 0) continue
+
+    const row: Record<string, any> = {}
+    headers.forEach((header, idx) => {
+      row[header.trim()] = values[idx]?.trim() || ''
+    })
+    rows.push(row)
+  }
+
+  return rows
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      result.push(current)
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  result.push(current)
+  return result
+}
+
+function transformRow(csvRow: Record<string, any>): Record<string, any> {
+  const dbRow: Record<string, any> = {}
+
+  for (const [csvHeader, dbField] of Object.entries(CSV_HEADER_MAP)) {
+    let value = csvRow[csvHeader]
+
+    if (value === undefined || value === '') {
+      value = null
+    } else if (dbField === 'is_active') {
+      value = value?.toUpperCase() === 'YES'
+    } else if (dbField === 'revenue_ytd') {
+      value = parseFloat(value?.replace(/[$,]/g, '')) || 0
+    } else if (dbField === 'last_visit' && value) {
+      const parsed = new Date(value)
+      value = isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0]
+    }
+
+    dbRow[dbField] = value
+  }
+
+  return dbRow
+}
+
+async function handleFileSelect(fileInput: File | File[] | null) {
+  const file = Array.isArray(fileInput) ? fileInput[0] : fileInput
+
+  if (!file) {
+    previewData.value = []
+    previewHeaders.value = []
+    parsedRows.value = []
+    return
+  }
+
+  const text = await file.text()
+  const rows = parseCSV(text)
+  totalPreviewRows.value = rows.length
+
+  if (rows.length > 0) {
+    previewHeaders.value = Object.keys(CSV_HEADER_MAP)
+    previewData.value = rows.slice(0, 5)
+    parsedRows.value = rows.map(transformRow)
+  }
+}
+
+async function startImport() {
+  if (parsedRows.value.length === 0) return
+
+  const BATCH_SIZE = 500
+  const batches: any[][] = []
+
+  for (let i = 0; i < parsedRows.value.length; i += BATCH_SIZE) {
+    batches.push(parsedRows.value.slice(i, i + BATCH_SIZE))
+  }
+
+  uploadState.value = {
+    processing: true,
+    complete: false,
+    error: false,
+    errorMessage: '',
+    progress: 0,
+    message: 'Starting import...',
+    currentBatch: 0,
+    totalBatches: batches.length,
+    processedRows: 0,
+    totalRows: parsedRows.value.length,
+    inserted: 0,
+    updated: 0,
+    errors: 0
+  }
+
+  try {
+    // Create sync history record
+    const { data: syncRecord, error: syncError } = await supabase
+      .from('ezyvet_sync_history')
+      .insert({
+        sync_type: 'csv_import',
+        status: 'running',
+        total_rows: parsedRows.value.length,
+        file_name: uploadFile.value?.name,
+        triggered_by: 'user'
+      })
+      .select()
+      .single()
+
+    if (syncError) console.warn('Could not create sync record:', syncError)
+
+    // Process batches
+    for (let i = 0; i < batches.length; i++) {
+      uploadState.value.currentBatch = i + 1
+      uploadState.value.message = `Processing batch ${i + 1} of ${batches.length}...`
+
+      const batch = batches[i]
+
+      try {
+        const result = await $fetch('/api/marketing/ezyvet-upsert', {
+          method: 'POST',
+          body: { contacts: batch }
+        })
+
+        if (result) {
+          uploadState.value.inserted += result.inserted || 0
+          uploadState.value.updated += result.updated || 0
+          uploadState.value.errors += result.errors || 0
+        }
+      } catch (fetchErr: any) {
+        console.error('[EzyVet Import] Batch error:', fetchErr)
+        uploadState.value.errors += batch.length
+      }
+
+      uploadState.value.processedRows += batch.length
+      uploadState.value.progress = Math.round((uploadState.value.processedRows / uploadState.value.totalRows) * 100)
+    }
+
+    // Update sync history
+    if (syncRecord) {
+      await supabase
+        .from('ezyvet_sync_history')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          inserted_count: uploadState.value.inserted,
+          updated_count: uploadState.value.updated,
+          error_count: uploadState.value.errors
+        })
+        .eq('id', syncRecord.id)
+    }
+
+    uploadState.value.complete = true
+    uploadState.value.processing = false
+
+    // Reload analytics after import
+    await loadAnalytics()
+
+  } catch (err: any) {
+    uploadState.value.error = true
+    uploadState.value.errorMessage = err.message || 'Import failed'
+    uploadState.value.processing = false
+    uploadState.value.complete = true
+  }
+}
+
+function closeUploadDialog() {
+  showUploadDialog.value = false
+  uploadFile.value = null
+  previewData.value = []
+  previewHeaders.value = []
+  parsedRows.value = []
+  uploadState.value = {
+    processing: false,
+    complete: false,
+    error: false,
+    errorMessage: '',
+    progress: 0,
+    message: '',
+    currentBatch: 0,
+    totalBatches: 0,
+    processedRows: 0,
+    totalRows: 0,
+    inserted: 0,
+    updated: 0,
+    errors: 0
+  }
 }
 
 // ========================================
@@ -1038,5 +1462,18 @@ onMounted(() => {
     max-height: none;
     overflow: visible;
   }
+}
+
+.preview-table {
+  max-height: 200px;
+  overflow: auto;
+}
+
+.preview-table th,
+.preview-table td {
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

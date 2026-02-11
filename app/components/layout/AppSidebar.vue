@@ -172,7 +172,6 @@
             class="nav-item"
           />
         </template>
-        <v-list-item v-if="hasPageAccess('/marketing/ezyvet-crm')" to="/marketing/ezyvet-crm" title="EzyVet CRM" prepend-icon="mdi-database-import" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/ezyvet-analytics')" to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
@@ -329,8 +328,7 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   '/growth/leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   
   // CRM & Analytics
-  '/marketing/ezyvet-crm': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
-  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
+  '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   
   // GDU
@@ -399,7 +397,7 @@ function hasSectionAccess(sectionName: string): boolean {
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
     'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
-    'CRM & Analytics': ['/marketing/ezyvet-crm', '/marketing/ezyvet-analytics', '/marketing/list-hygiene'],
+    'CRM & Analytics': ['/marketing/ezyvet-analytics', '/marketing/list-hygiene'],
     'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
     'Admin Ops': ['/admin/users', '/admin/email-templates', '/admin/skills-management', '/admin/system-health', '/settings'],
   }
