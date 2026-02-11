@@ -233,6 +233,13 @@ const positionHeaders = [
   { title: 'Actions', key: 'actions', sortable: false }
 ]
 
+const filterDeptForPositions = ref<string | null>(null)
+
+const filteredPositions = computed(() => {
+  if (!filterDeptForPositions.value) return positions.value
+  return positions.value.filter((p: any) => p.department_id === filterDeptForPositions.value)
+})
+
 async function loadPositions() {
   loadingPositions.value = true
   try {
@@ -455,6 +462,158 @@ async function deleteLocation(loc: any) {
 }
 
 // =====================================================
+// EMPLOYEE ROSTER AUDIT
+// =====================================================
+const auditData = ref<any>(null)
+const loadingAudit = ref(false)
+const auditFilter = ref('all') // 'all' | 'incomplete' | 'missing_department' | 'missing_position' | 'missing_location' | 'missing_manager'
+const showQuickEditDialog = ref(false)
+const quickEditEmployee = ref<any>(null)
+const quickEditForm = reactive({
+  department_id: null as string | null,
+  position_id: null as string | null,
+  location_id: null as string | null,
+  manager_employee_id: null as string | null
+})
+const savingQuickEdit = ref(false)
+const allEmployeesForManager = ref<any[]>([])
+
+const auditEmployeeHeaders = [
+  { title: 'Employee', key: 'full_name', sortable: true },
+  { title: 'Department', key: 'department_name', sortable: true },
+  { title: 'Position', key: 'position_title', sortable: true },
+  { title: 'Location', key: 'location_name', sortable: true },
+  { title: 'Reports To', key: 'manager_name', sortable: true },
+  { title: 'Gaps', key: 'gap_count', sortable: true },
+  { title: 'Actions', key: 'actions', sortable: false }
+]
+
+const filteredAuditEmployees = computed(() => {
+  if (!auditData.value?.employees) return []
+  const emps = auditData.value.employees
+  switch (auditFilter.value) {
+    case 'incomplete': return emps.filter((e: any) => !e.is_complete)
+    case 'missing_department': return emps.filter((e: any) => e.gaps.includes('department'))
+    case 'missing_position': return emps.filter((e: any) => e.gaps.includes('position'))
+    case 'missing_location': return emps.filter((e: any) => e.gaps.includes('location'))
+    case 'missing_manager': return emps.filter((e: any) => e.gaps.includes('reports_to'))
+    default: return emps
+  }
+})
+
+const managerOptions = computed(() => {
+  return allEmployeesForManager.value
+    .filter((e: any) => e.id !== quickEditEmployee.value?.id)
+    .map((e: any) => ({
+      value: e.id,
+      label: `${e.first_name} ${e.last_name}`
+    }))
+})
+
+// Filtered positions per selected department in quick edit
+const filteredPositionsForEdit = computed(() => {
+  if (!quickEditForm.department_id) return positions.value
+  return positions.value.filter((p: any) => !p.department_id || p.department_id === quickEditForm.department_id)
+})
+
+async function loadEmployeeAudit() {
+  loadingAudit.value = true
+  try {
+    const user = useSupabaseUser()
+    const session = await supabase.auth.getSession()
+    const token = session.data.session?.access_token
+    if (!token) { toast.error('Not authenticated'); return }
+
+    const response = await $fetch('/api/admin/employee-audit', {
+      headers: { Authorization: `Bearer ${token}` }
+    }) as any
+
+    auditData.value = response
+
+    // Also load employee list for manager dropdown
+    const { data: empData } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('employment_status', 'active')
+      .order('first_name')
+    allEmployeesForManager.value = empData || []
+  } catch (err: any) {
+    console.error('Error loading employee audit:', err)
+    toast.error('Failed to load employee audit')
+  } finally {
+    loadingAudit.value = false
+  }
+}
+
+function openQuickEdit(emp: any) {
+  quickEditEmployee.value = emp
+  quickEditForm.department_id = emp.department_id || null
+  quickEditForm.position_id = emp.position_id || null
+  quickEditForm.location_id = emp.location_id || null
+  quickEditForm.manager_employee_id = emp.manager_employee_id || null
+  showQuickEditDialog.value = true
+}
+
+async function saveQuickEdit() {
+  if (!quickEditEmployee.value) return
+  savingQuickEdit.value = true
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .update({
+        department_id: quickEditForm.department_id || null,
+        position_id: quickEditForm.position_id || null,
+        location_id: quickEditForm.location_id || null,
+        manager_employee_id: quickEditForm.manager_employee_id || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', quickEditEmployee.value.id)
+
+    if (error) throw error
+    toast.success(`Updated ${quickEditEmployee.value.full_name}`)
+    showQuickEditDialog.value = false
+    // Refresh audit data
+    await loadEmployeeAudit()
+    // Also refresh department/position/location counts
+    await Promise.all([loadDepartments(), loadPositions(), loadLocations()])
+  } catch (err) {
+    toast.error('Failed to update employee')
+  } finally {
+    savingQuickEdit.value = false
+  }
+}
+
+async function bulkSetDepartmentFromPosition() {
+  try {
+    // For employees missing a department but who have a position with a department_id,
+    // set the employee's department from their position's department
+    const empsMissingDept = (auditData.value?.employees || []).filter(
+      (e: any) => !e.department_id && e.position_id
+    )
+    let updated = 0
+    for (const emp of empsMissingDept) {
+      const pos = positions.value.find((p: any) => p.id === emp.position_id)
+      if (pos?.department_id) {
+        const { error } = await supabase
+          .from('employees')
+          .update({ department_id: pos.department_id, updated_at: new Date().toISOString() })
+          .eq('id', emp.id)
+        if (!error) updated++
+      }
+    }
+    if (updated > 0) {
+      toast.success(`Updated ${updated} employees' departments from their position`)
+      await loadEmployeeAudit()
+      await loadDepartments()
+    } else {
+      toast.info('No employees could be auto-assigned a department from their position')
+    }
+  } catch {
+    toast.error('Failed to bulk update departments')
+  }
+}
+
+// =====================================================
 // LIFECYCLE
 // =====================================================
 onMounted(async () => {
@@ -476,16 +635,18 @@ onMounted(async () => {
           { key: 'company', icon: 'mdi-domain', label: 'Company' },
           { key: 'departments', icon: 'mdi-sitemap', label: 'Departments' },
           { key: 'positions', icon: 'mdi-account-tie', label: 'Positions' },
-          { key: 'locations', icon: 'mdi-map-marker', label: 'Locations' }
+          { key: 'locations', icon: 'mdi-map-marker', label: 'Locations' },
+          { key: 'employees', icon: 'mdi-account-group', label: 'Employee Audit' }
         ]"
         :key="s.key"
         :variant="activeSection === s.key ? 'flat' : 'outlined'"
         :color="activeSection === s.key ? 'primary' : undefined"
         size="small"
         :prepend-icon="s.icon"
-        @click="activeSection = s.key"
+        @click="activeSection = s.key; if (s.key === 'employees' && !auditData) loadEmployeeAudit()"
       >
         {{ s.label }}
+        <v-badge v-if="s.key === 'employees' && auditData?.summary?.incomplete > 0" :content="auditData.summary.incomplete" color="error" inline class="ml-1" />
       </v-btn>
     </div>
 
@@ -592,11 +753,25 @@ onMounted(async () => {
     <!-- ===== POSITIONS ===== -->
     <div v-show="activeSection === 'positions'">
       <v-card rounded="lg">
-        <v-card-title class="d-flex align-center justify-space-between">
+        <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
           <span>Positions</span>
-          <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openPosDialog()">Add Position</v-btn>
+          <div class="d-flex align-center gap-2">
+            <v-select
+              v-model="filterDeptForPositions"
+              :items="departments"
+              item-title="name"
+              item-value="id"
+              label="Filter by Department"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+              style="min-width: 200px;"
+            />
+            <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openPosDialog()">Add Position</v-btn>
+          </div>
         </v-card-title>
-        <v-data-table :headers="positionHeaders" :items="positions" :loading="loadingPositions">
+        <v-data-table :headers="positionHeaders" :items="filteredPositions" :loading="loadingPositions">
           <template #item.department_name="{ item }">
             <v-chip size="small" variant="outlined">{{ item.department_name || 'Unassigned' }}</v-chip>
           </template>
@@ -646,6 +821,147 @@ onMounted(async () => {
           <template #item.actions="{ item }">
             <v-btn icon="mdi-pencil" size="small" variant="text" @click="openLocDialog(item)" />
             <v-btn icon="mdi-delete" size="small" variant="text" color="error" :disabled="item.employee_count > 0" @click="deleteLocation(item)" />
+          </template>
+        </v-data-table>
+      </v-card>
+    </div>
+
+    <!-- ===== EMPLOYEE ROSTER AUDIT ===== -->
+    <div v-show="activeSection === 'employees'">
+      <!-- Summary Cards -->
+      <v-row v-if="auditData" class="mb-4">
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3" :color="auditData.summary.completeness_pct === 100 ? 'success' : 'primary'" variant="tonal">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.completeness_pct }}%</div>
+            <div class="text-caption">Complete</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3 cursor-pointer" :variant="auditFilter === 'all' ? 'flat' : 'tonal'" color="primary" @click="auditFilter = 'all'">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.total }}</div>
+            <div class="text-caption">Total</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3 cursor-pointer" :variant="auditFilter === 'missing_department' ? 'flat' : 'tonal'" :color="auditData.summary.missing_department > 0 ? 'error' : 'success'" @click="auditFilter = auditFilter === 'missing_department' ? 'all' : 'missing_department'">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.missing_department }}</div>
+            <div class="text-caption">No Dept</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3 cursor-pointer" :variant="auditFilter === 'missing_position' ? 'flat' : 'tonal'" :color="auditData.summary.missing_position > 0 ? 'error' : 'success'" @click="auditFilter = auditFilter === 'missing_position' ? 'all' : 'missing_position'">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.missing_position }}</div>
+            <div class="text-caption">No Position</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3 cursor-pointer" :variant="auditFilter === 'missing_location' ? 'flat' : 'tonal'" :color="auditData.summary.missing_location > 0 ? 'warning' : 'success'" @click="auditFilter = auditFilter === 'missing_location' ? 'all' : 'missing_location'">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.missing_location }}</div>
+            <div class="text-caption">No Location</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="4" md="2">
+          <v-card rounded="lg" class="text-center pa-3 cursor-pointer" :variant="auditFilter === 'missing_manager' ? 'flat' : 'tonal'" :color="auditData.summary.missing_manager > 0 ? 'warning' : 'success'" @click="auditFilter = auditFilter === 'missing_manager' ? 'all' : 'missing_manager'">
+            <div class="text-h4 font-weight-bold">{{ auditData.summary.missing_manager }}</div>
+            <div class="text-caption">No Manager</div>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- Bulk Actions -->
+      <v-card v-if="auditData && auditData.summary.incomplete > 0" rounded="lg" class="mb-4" variant="tonal" color="info">
+        <v-card-text class="d-flex align-center gap-3 flex-wrap">
+          <v-icon>mdi-lightbulb</v-icon>
+          <span class="text-body-2">
+            <strong>{{ auditData.summary.incomplete }}</strong> employees have incomplete profiles.
+          </span>
+          <v-spacer />
+          <v-btn size="small" variant="flat" color="primary" prepend-icon="mdi-auto-fix" @click="bulkSetDepartmentFromPosition">
+            Auto-fill Dept from Position
+          </v-btn>
+          <v-btn size="small" variant="outlined" prepend-icon="mdi-refresh" @click="loadEmployeeAudit">
+            Refresh
+          </v-btn>
+        </v-card-text>
+      </v-card>
+
+      <!-- Employee Audit Table -->
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <span>Employee Roster Audit</span>
+          <div class="d-flex gap-2">
+            <v-chip v-if="auditFilter !== 'all'" closable size="small" color="primary" @click:close="auditFilter = 'all'">
+              Filtering: {{ auditFilter.replace('missing_', 'No ').replace('incomplete', 'Incomplete') }}
+            </v-chip>
+            <v-btn size="small" variant="outlined" prepend-icon="mdi-refresh" :loading="loadingAudit" @click="loadEmployeeAudit">
+              Refresh
+            </v-btn>
+          </div>
+        </v-card-title>
+
+        <v-skeleton-loader v-if="loadingAudit" type="table" />
+
+        <v-data-table
+          v-else
+          :headers="auditEmployeeHeaders"
+          :items="filteredAuditEmployees"
+          :items-per-page="25"
+          density="comfortable"
+          hover
+        >
+          <template #item.full_name="{ item }">
+            <div>
+              <div class="font-weight-medium text-body-2">{{ item.full_name }}</div>
+              <div class="text-caption text-grey">{{ item.email || item.employee_number || '' }}</div>
+            </div>
+          </template>
+
+          <template #item.department_name="{ item }">
+            <v-chip v-if="item.department_name" size="small" variant="tonal" color="blue">
+              {{ item.department_name }}
+            </v-chip>
+            <v-chip v-else size="small" variant="flat" color="error">
+              <v-icon start size="12">mdi-alert</v-icon> Missing
+            </v-chip>
+          </template>
+
+          <template #item.position_title="{ item }">
+            <v-chip v-if="item.position_title" size="small" variant="tonal" color="green">
+              {{ item.position_title }}
+            </v-chip>
+            <v-chip v-else size="small" variant="flat" color="error">
+              <v-icon start size="12">mdi-alert</v-icon> Missing
+            </v-chip>
+          </template>
+
+          <template #item.location_name="{ item }">
+            <v-chip v-if="item.location_name" size="small" variant="tonal" color="purple">
+              {{ item.location_name }}
+            </v-chip>
+            <v-chip v-else size="small" variant="flat" color="warning">
+              <v-icon start size="12">mdi-alert</v-icon> Missing
+            </v-chip>
+          </template>
+
+          <template #item.manager_name="{ item }">
+            <span v-if="item.manager_name" class="text-body-2">{{ item.manager_name }}</span>
+            <v-chip v-else size="small" variant="flat" color="warning">
+              <v-icon start size="12">mdi-alert</v-icon> Missing
+            </v-chip>
+          </template>
+
+          <template #item.gap_count="{ item }">
+            <v-chip v-if="item.gap_count === 0" size="small" variant="flat" color="success">
+              <v-icon start size="14">mdi-check-circle</v-icon> Complete
+            </v-chip>
+            <v-chip v-else size="small" variant="flat" color="error">
+              {{ item.gap_count }} gap{{ item.gap_count > 1 ? 's' : '' }}
+            </v-chip>
+          </template>
+
+          <template #item.actions="{ item }">
+            <v-btn icon="mdi-pencil" size="small" variant="text" color="primary" title="Quick Edit" @click="openQuickEdit(item)" />
+            <v-btn icon="mdi-open-in-new" size="small" variant="text" title="View Profile" :to="`/roster/${item.id}`" />
           </template>
         </v-data-table>
       </v-card>
@@ -785,6 +1101,92 @@ onMounted(async () => {
           <v-chip size="small" variant="tonal" color="info">Core = required, Nice = nice-to-have</v-chip>
           <v-spacer />
           <v-btn color="primary" variant="flat" @click="showSkillsDialog = false">Done</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Employee Quick Edit Dialog -->
+    <v-dialog v-model="showQuickEditDialog" max-width="520">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">mdi-account-edit</v-icon>
+          Quick Edit: {{ quickEditEmployee?.full_name }}
+        </v-card-title>
+        <v-card-text>
+          <v-alert v-if="quickEditEmployee?.gap_count > 0" type="warning" variant="tonal" density="compact" class="mb-4">
+            {{ quickEditEmployee.gap_count }} field(s) missing: {{ quickEditEmployee.gaps.map((g: string) => g.replace('_', ' ')).join(', ') }}
+          </v-alert>
+          <v-row dense>
+            <v-col cols="12">
+              <v-select
+                v-model="quickEditForm.department_id"
+                :items="departments"
+                item-title="name"
+                item-value="id"
+                label="Department"
+                variant="outlined"
+                density="compact"
+                clearable
+                :color="!quickEditForm.department_id ? 'error' : undefined"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="quickEditForm.position_id"
+                :items="filteredPositionsForEdit"
+                item-title="title"
+                item-value="id"
+                label="Position"
+                variant="outlined"
+                density="compact"
+                clearable
+                :color="!quickEditForm.position_id ? 'error' : undefined"
+              >
+                <template #item="{ item, props: p }">
+                  <v-list-item v-bind="p">
+                    <template #append>
+                      <v-chip v-if="item.raw.department_name" size="x-small" variant="tonal">{{ item.raw.department_name }}</v-chip>
+                    </template>
+                  </v-list-item>
+                </template>
+              </v-select>
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="quickEditForm.location_id"
+                :items="locations.filter(l => l.is_active)"
+                item-title="name"
+                item-value="id"
+                label="Primary Location"
+                variant="outlined"
+                density="compact"
+                clearable
+                :color="!quickEditForm.location_id ? 'warning' : undefined"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-select
+                v-model="quickEditForm.manager_employee_id"
+                :items="managerOptions"
+                item-title="label"
+                item-value="value"
+                label="Reports To"
+                variant="outlined"
+                density="compact"
+                clearable
+                :color="!quickEditForm.manager_employee_id ? 'warning' : undefined"
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="outlined" size="small" :to="`/roster/${quickEditEmployee?.id}`">
+            <v-icon start size="16">mdi-open-in-new</v-icon>
+            Full Profile
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="showQuickEditDialog = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="savingQuickEdit" @click="saveQuickEdit">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

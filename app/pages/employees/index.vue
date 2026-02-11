@@ -57,7 +57,18 @@
               clearable
             />
           </v-col>
-          <v-col cols="12" sm="12" md="3" lg="3" class="d-flex justify-end gap-2">
+          <v-col cols="6" sm="3" md="2" lg="2">
+            <v-select
+              v-model="filterLocation"
+              :items="locationOptions"
+              label="Location"
+              variant="outlined"
+              density="compact"
+              hide-details
+              clearable
+            />
+          </v-col>
+          <v-col cols="12" sm="12" md="2" lg="2" class="d-flex justify-end gap-2">
             <!-- Desktop: Dense table view by default -->
             <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary" class="view-toggle">
               <v-btn value="table" size="small">
@@ -156,6 +167,11 @@
               {{ item.department.name }}
             </div>
           </div>
+        </template>
+
+        <!-- Location -->
+        <template #item.location="{ item }">
+          <span class="text-body-2">{{ item.location?.name || '—' }}</span>
         </template>
 
         <!-- Hire Date + Tenure -->
@@ -288,9 +304,33 @@
                 />
               </v-col>
               <v-col cols="6">
-                <v-text-field
-                  v-model="newEmployee.position"
+                <v-select
+                  v-model="newEmployee.department_id"
+                  :items="allDepartments"
+                  item-title="name"
+                  item-value="id"
+                  label="Department"
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="newEmployee.position_id"
+                  :items="filteredNewPositions"
+                  item-title="title"
+                  item-value="id"
                   label="Position"
+                  clearable
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-select
+                  v-model="newEmployee.location_id"
+                  :items="allLocations"
+                  item-title="name"
+                  item-value="id"
+                  label="Primary Location"
+                  clearable
                 />
               </v-col>
             </v-row>
@@ -333,6 +373,7 @@ const isAdmin = computed(() => authStore.isAdmin)
 const search = ref('')
 const filterRole = ref<string | null>(null)
 const filterDepartment = ref<string | null>(null)
+const filterLocation = ref<string | null>(null)
 // Desktop-first: Default to table view for high-density display
 const viewMode = ref<'table' | 'grid'>('table')
 
@@ -346,7 +387,31 @@ const newEmployee = reactive({
   email: '',
   password: '',
   role: 'user',
-  position: ''
+  department_id: null as string | null,
+  position_id: null as string | null,
+  location_id: null as string | null
+})
+
+// Lookup data for add employee dialog
+const supabase = useSupabaseClient()
+const allDepartments = ref<any[]>([])
+const allPositions = ref<any[]>([])
+const allLocations = ref<any[]>([])
+
+const filteredNewPositions = computed(() => {
+  if (!newEmployee.department_id) return allPositions.value
+  return allPositions.value.filter((p: any) => !p.department_id || p.department_id === newEmployee.department_id)
+})
+
+onMounted(async () => {
+  const [deptRes, posRes, locRes] = await Promise.all([
+    supabase.from('departments').select('id, name').eq('is_active', true).order('name'),
+    supabase.from('job_positions').select('id, title, department_id').order('title'),
+    supabase.from('locations').select('id, name').eq('is_active', true).order('name')
+  ])
+  allDepartments.value = deptRes.data || []
+  allPositions.value = posRes.data || []
+  allLocations.value = locRes.data || []
 })
 
 const roleOptions = [
@@ -359,10 +424,22 @@ const departmentOptions = computed(() =>
   departments.value.map(d => ({ title: d.name, value: d.id }))
 )
 
+// Location options from hydrated employee data  
+const locationOptions = computed(() => {
+  const locs = new Map<string, string>()
+  employees.value.forEach(e => {
+    if (e.location?.id && e.location?.name) {
+      locs.set(e.location.id, e.location.name)
+    }
+  })
+  return Array.from(locs.entries()).map(([id, name]) => ({ title: name, value: id }))
+})
+
 // Desktop-first: More columns for dense information display
 const tableHeaders = [
   { title: 'Employee', key: 'name', sortable: true, width: '220px' },
   { title: 'Position', key: 'position', sortable: true, width: '180px' },
+  { title: 'Location', key: 'location', sortable: true, width: '120px' },
   { title: 'Hire Date', key: 'hire_date', sortable: true, width: '120px' },
   { title: 'Skills', key: 'skills', sortable: false, width: '150px' },
   { title: 'Role', key: 'role', sortable: true, width: '80px' },
@@ -392,6 +469,10 @@ const filteredEmployees = computed((): HydratedEmployee[] => {
     result = result.filter(e => e.department?.id === filterDepartment.value)
   }
 
+  if (filterLocation.value) {
+    result = result.filter(e => e.location?.id === filterLocation.value)
+  }
+
   return result
 })
 
@@ -415,6 +496,7 @@ function clearFilters() {
   search.value = ''
   filterRole.value = null
   filterDepartment.value = null
+  filterLocation.value = null
 }
 
 async function refresh() {
@@ -427,12 +509,42 @@ async function createEmployee() {
 
   isSaving.value = true
   try {
-    await authStore.signUp(
-      newEmployee.email,
-      newEmployee.password,
-      newEmployee.first_name,
-      newEmployee.last_name
-    )
+    // Create auth user via Supabase
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: newEmployee.email,
+      password: newEmployee.password,
+      options: {
+        data: {
+          first_name: newEmployee.first_name,
+          last_name: newEmployee.last_name
+        }
+      }
+    })
+    if (authError) throw authError
+
+    // Wait a moment for DB triggers to create the employee record, then update it
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    // Find the employee record for this new user and update department/position/location
+    if (newEmployee.department_id || newEmployee.position_id || newEmployee.location_id) {
+      const { data: empRecord } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('email_work', newEmployee.email)
+        .maybeSingle()
+
+      if (empRecord) {
+        const updates: Record<string, any> = {}
+        if (newEmployee.department_id) updates.department_id = newEmployee.department_id
+        if (newEmployee.position_id) updates.position_id = newEmployee.position_id
+        if (newEmployee.location_id) updates.location_id = newEmployee.location_id
+        
+        await supabase
+          .from('employees')
+          .update(updates)
+          .eq('id', empRecord.id)
+      }
+    }
     
     addEmployeeDialog.value = false
     uiStore.showSuccess('Employee created successfully')
@@ -445,7 +557,9 @@ async function createEmployee() {
       email: '',
       password: '',
       role: 'user',
-      position: ''
+      department_id: null,
+      position_id: null,
+      location_id: null
     })
   } catch (error) {
     uiStore.showError(error instanceof Error ? error.message : 'Failed to create employee')

@@ -298,15 +298,15 @@ function getScoreLabel(score: number): string {
 
 // Table headers (matching Referral CRM grid style)
 const tableHeaders = [
-  { title: 'Priority', key: 'priority', sortable: true, width: '100px' },
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Service', key: 'services_provided', sortable: true },
-  { title: 'Area', key: 'area', sortable: true },
+  { title: 'Priority', key: 'priority', sortable: true, width: '80px' },
+  { title: 'Name', key: 'name', sortable: true, width: '180px' },
+  { title: 'Service', key: 'services_provided', sortable: true, width: '110px' },
+  { title: 'Area', key: 'area', sortable: true, width: '130px' },
   { title: 'Address', key: 'address', sortable: true },
   { title: 'Email', key: 'contact_email', sortable: true },
-  { title: 'Last Visit', key: 'last_visit_date', sortable: true },
-  { title: 'Score', key: 'computed_score', sortable: true, width: '120px' },
-  { title: '', key: 'actions', sortable: false, width: '100px' }
+  { title: 'Last Visit', key: 'last_visit_date', sortable: true, width: '100px' },
+  { title: 'Score', key: 'computed_score', sortable: true, width: '110px' },
+  { title: '', key: 'actions', sortable: false, width: '90px' }
 ]
 
 // Scored and filtered partners for the data table
@@ -1230,9 +1230,7 @@ function getPriorityColor(priority: string | null | undefined): string {
         </template>
 
         <template #item.services_provided="{ item }">
-          <v-chip v-if="item.services_provided" size="x-small" color="info" variant="tonal">
-            {{ item.services_provided }}
-          </v-chip>
+          <span v-if="item.services_provided" class="text-body-2" style="word-break: break-word; white-space: normal; line-height: 1.3;">{{ item.services_provided }}</span>
           <span v-else class="text-grey">—</span>
         </template>
 
@@ -2185,3 +2183,16 @@ function getPriorityColor(priority: string | null | undefined): string {
     />
   </div>
 </template>
+
+<style scoped>
+:deep(.v-data-table-virtual table) {
+  table-layout: fixed;
+  width: 100%;
+}
+
+:deep(.v-data-table-virtual td),
+:deep(.v-data-table-virtual th) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>
