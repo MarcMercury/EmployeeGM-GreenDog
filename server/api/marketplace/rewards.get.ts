@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     .from('marketplace_rewards')
     .select(`
       *,
-      creator:profiles!created_by(id, full_name)
+      creator:profiles!created_by(id, first_name, last_name)
     `)
     .order('cost', { ascending: true })
 

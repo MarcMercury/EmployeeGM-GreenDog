@@ -1082,25 +1082,45 @@ const fetchData = async () => {
       employeeId.value = null
     }
 
-    // Fetch gigs
-    const gigsRes = await $fetch('/api/marketplace/gigs')
-    gigs.value = gigsRes.gigs || []
+    // Fetch gigs (isolated - don't crash everything if gigs fail)
+    try {
+      const gigsRes = await $fetch('/api/marketplace/gigs')
+      gigs.value = gigsRes.gigs || []
+    } catch (gigsErr: any) {
+      console.warn('Gigs fetch failed:', gigsErr?.message)
+      gigs.value = []
+    }
 
     // Fetch all gigs for admin
-    const allGigsRes = await $fetch('/api/marketplace/gigs', {
-      query: { includeCompleted: 'true' }
-    })
-    allGigs.value = allGigsRes.gigs || []
+    try {
+      const allGigsRes = await $fetch('/api/marketplace/gigs', {
+        query: { includeCompleted: 'true' }
+      })
+      allGigs.value = allGigsRes.gigs || []
+    } catch (allGigsErr: any) {
+      console.warn('All gigs fetch failed:', allGigsErr?.message)
+      allGigs.value = []
+    }
 
-    // Fetch rewards
-    const rewardsRes = await $fetch('/api/marketplace/rewards')
-    rewards.value = rewardsRes.rewards || []
+    // Fetch rewards (isolated)
+    try {
+      const rewardsRes = await $fetch('/api/marketplace/rewards')
+      rewards.value = rewardsRes.rewards || []
+    } catch (rewardsErr: any) {
+      console.warn('Rewards fetch failed:', rewardsErr?.message)
+      rewards.value = []
+    }
 
     // Fetch all rewards for admin
-    const allRewardsRes = await $fetch('/api/marketplace/rewards', {
-      query: { includeInactive: 'true' }
-    })
-    allRewards.value = allRewardsRes.rewards || []
+    try {
+      const allRewardsRes = await $fetch('/api/marketplace/rewards', {
+        query: { includeInactive: 'true' }
+      })
+      allRewards.value = allRewardsRes.rewards || []
+    } catch (allRewardsErr: any) {
+      console.warn('All rewards fetch failed:', allRewardsErr?.message)
+      allRewards.value = []
+    }
 
     // Fetch transactions
     try {

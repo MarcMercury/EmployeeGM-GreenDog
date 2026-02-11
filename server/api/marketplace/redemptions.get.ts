@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
       *,
       reward:marketplace_rewards(id, title, icon, cost),
       employee:employees(id, first_name, last_name),
-      fulfilled_by_profile:profiles!fulfilled_by(id, full_name)
+      fulfilled_by_profile:profiles!fulfilled_by(id, first_name, last_name)
     `)
     .order('created_at', { ascending: false })
 

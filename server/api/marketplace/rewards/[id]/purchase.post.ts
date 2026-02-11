@@ -61,34 +61,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Reward is out of stock' })
   }
 
-  // client is already service role — use it for atomic wallet operations
-
-  // ATOMIC: Deduct balance using a conditional update that only succeeds if
-  // the balance is sufficient. This prevents TOCTOU double-spend.
-  const { data: updatedWallet, error: walletUpdateError } = await client
-    .from('employee_wallets')
-    .update({
-      current_balance: client.rpc ? undefined : undefined, // placeholder, see raw SQL below
-    })
-    .eq('employee_id', employee.id)
-    .gte('current_balance', reward.cost) // Only update if balance >= cost
-    .select('id, current_balance')
-    .single()
-
-  // Since Supabase doesn't support column arithmetic in .update(), use RPC or raw approach:
-  // We'll do a conditional update with gte filter, then read back
-  // Strategy: Use gte filter on the UPDATE to make it atomic
-  const { error: deductError, count: deductCount } = await client
-    .from('employee_wallets')
-    .update({
-      current_balance: client.rpc ? 0 : 0, // We'll use a workaround
-    })
-    .eq('employee_id', employee.id)
-
-  // Better approach: use Supabase RPC for atomic deduction
-  // Since we can't do column arithmetic in PostgREST .update(),
-  // perform the balance check + deduct in a single conditional update:
-  
   // Step 1: Get current wallet state
   const { data: wallet } = await client
     .from('employee_wallets')

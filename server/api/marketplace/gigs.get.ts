@@ -26,8 +26,8 @@ export default defineEventHandler(async (event) => {
     .select(`
       *,
       claimed_employee:employees!claimed_by(id, first_name, last_name),
-      creator:profiles!created_by(id, full_name),
-      approver:profiles!approved_by(id, full_name)
+      creator:profiles!created_by(id, first_name, last_name),
+      approver:profiles!approved_by(id, first_name, last_name)
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to)
