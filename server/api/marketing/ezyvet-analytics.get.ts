@@ -164,29 +164,6 @@ export default defineEventHandler(async (event) => {
     })
 
     // ========================================
-    // BREED REVENUE (Top 10 Breeds)
-    // ========================================
-    const breedMap = new Map<string, { count: number; revenue: number }>()
-    
-    for (const contact of filteredContacts) {
-      const breed = contact.breed || 'Unknown'
-      const existing = breedMap.get(breed) || { count: 0, revenue: 0 }
-      existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      breedMap.set(breed, existing)
-    }
-
-    const breedData = Array.from(breedMap.entries())
-      .map(([breed, data]) => ({
-        breed,
-        clientCount: data.count,
-        totalRevenue: data.revenue,
-        avgRevenue: data.count > 0 ? data.revenue / data.count : 0
-      }))
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
-      .slice(0, 10)
-
-    // ========================================
     // RECENCY ANALYSIS
     // ========================================
     const recencyAnalysis = {
@@ -260,25 +237,98 @@ export default defineEventHandler(async (event) => {
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
 
     // ========================================
-    // GEOGRAPHIC ANALYSIS (Top cities)
+    // GEOGRAPHIC ANALYSIS — Zip Code → Neighborhood clustering
     // ========================================
-    const cityMap = new Map<string, { count: number; revenue: number; active: number }>()
-    
+    const ZIP_TO_NEIGHBORHOOD: Record<string, string> = {
+      // Westside & Coastal
+      '90291': 'Venice', '90292': 'Marina del Rey', '90293': 'Playa del Rey',
+      '90094': 'Playa Vista', '90066': 'Mar Vista', '90230': 'Culver City',
+      '90232': 'Culver City', '90245': 'El Segundo', '90254': 'Hermosa Beach',
+      '90266': 'Manhattan Beach', '90277': 'Redondo Beach', '90278': 'Redondo Beach',
+      '90301': 'Inglewood', '90302': 'Inglewood', '90303': 'Inglewood',
+      '90401': 'Santa Monica', '90402': 'Santa Monica', '90403': 'Santa Monica',
+      '90404': 'Santa Monica', '90405': 'Santa Monica',
+      '90025': 'West LA', '90064': 'West LA / Rancho Park',
+      '90049': 'Brentwood', '90073': 'West LA (VA)',
+      '90272': 'Pacific Palisades', '90265': 'Malibu',
+      // Beverly Hills / Miracle Mile
+      '90210': 'Beverly Hills', '90211': 'Beverly Hills', '90212': 'Beverly Hills',
+      '90048': 'Beverly Grove / Fairfax', '90035': 'Beverlywood',
+      '90036': 'Miracle Mile / Park La Brea',
+      // Hollywood / West Hollywood
+      '90028': 'Hollywood', '90038': 'Hollywood', '90068': 'Hollywood Hills',
+      '90046': 'West Hollywood / Laurel Canyon', '90069': 'West Hollywood',
+      '90027': 'Los Feliz', '90039': 'Silver Lake', '90026': 'Echo Park',
+      // Mid-City / Mid-Wilshire
+      '90004': 'Mid-Wilshire', '90005': 'Koreatown', '90006': 'Koreatown',
+      '90010': 'Mid-Wilshire', '90019': 'Mid-City', '90020': 'Koreatown',
+      // Downtown LA
+      '90012': 'Downtown LA', '90013': 'Downtown LA', '90014': 'Downtown LA',
+      '90015': 'Downtown LA', '90017': 'Downtown LA', '90071': 'Downtown LA',
+      // South LA
+      '90001': 'South LA', '90002': 'South LA', '90003': 'South LA',
+      '90007': 'South LA / USC', '90008': 'Baldwin Hills / Crenshaw',
+      '90011': 'South LA', '90016': 'West Adams / Jefferson Park',
+      '90018': 'West Adams', '90043': 'Ladera Heights / View Park',
+      '90044': 'Westmont', '90047': 'South LA',
+      // San Fernando Valley — South
+      '91423': 'Sherman Oaks', '91403': 'Sherman Oaks',
+      '91604': 'Studio City', '91602': 'Studio City / Valley Village',
+      '91607': 'Valley Village', '91601': 'North Hollywood',
+      '91606': 'North Hollywood', '91605': 'North Hollywood',
+      '91411': 'Van Nuys', '91401': 'Van Nuys', '91405': 'Van Nuys',
+      '91406': 'Van Nuys', '91316': 'Encino', '91436': 'Encino',
+      '91356': 'Tarzana', '91335': 'Reseda', '91344': 'Granada Hills',
+      // San Fernando Valley — North
+      '91331': 'Pacoima', '91340': 'San Fernando',
+      '91342': 'Sylmar', '91345': 'Mission Hills',
+      '91352': 'Sun Valley', '91504': 'Burbank', '91505': 'Burbank',
+      '91506': 'Burbank', '91501': 'Burbank', '91502': 'Burbank',
+      '91203': 'Glendale', '91204': 'Glendale', '91205': 'Glendale',
+      '91206': 'Glendale', '91208': 'Glendale',
+      // West Valley / Conejo
+      '91302': 'Calabasas', '91301': 'Agoura Hills',
+      '91361': 'Westlake Village', '91362': 'Thousand Oaks',
+      '91320': 'Newbury Park', '93065': 'Simi Valley',
+      '91355': 'Valencia', '91354': 'Valencia', '91381': 'Stevenson Ranch',
+      '91390': 'Santa Clarita',
+      // Pasadena / San Gabriel Valley
+      '91101': 'Pasadena', '91103': 'Pasadena', '91104': 'Pasadena',
+      '91105': 'Pasadena', '91106': 'Pasadena', '91107': 'Pasadena',
+      '91001': 'Altadena', '91011': 'La Cañada Flintridge',
+      // South Bay
+      '90501': 'Torrance', '90502': 'Torrance', '90503': 'Torrance',
+      '90504': 'Torrance', '90505': 'Torrance',
+      '90717': 'Lomita', '90710': 'Harbor City', '90731': 'San Pedro',
+    }
+
+    // Helper: map a zip code to a neighborhood label
+    function zipToNeighborhood(zip: string | null | undefined): string {
+      if (!zip) return 'Unknown'
+      const trimmed = zip.trim().slice(0, 5)
+      return ZIP_TO_NEIGHBORHOOD[trimmed] || `Other (${trimmed})`
+    }
+
+    const neighborhoodMap = new Map<string, { count: number; revenue: number; active: number; zips: Set<string> }>()
+
     for (const contact of filteredContacts) {
-      const city = contact.address_city?.trim() || null
-      if (!city) continue
-      const existing = cityMap.get(city) || { count: 0, revenue: 0, active: 0 }
+      const zip = contact.address_zip?.trim() || null
+      if (!zip) continue
+      const neighborhood = zipToNeighborhood(zip)
+      const existing = neighborhoodMap.get(neighborhood) || { count: 0, revenue: 0, active: 0, zips: new Set<string>() }
       existing.count++
       existing.revenue += parseFloat(contact.revenue_ytd) || 0
+      existing.zips.add(zip.slice(0, 5))
       if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
         existing.active++
       }
-      cityMap.set(city, existing)
+      neighborhoodMap.set(neighborhood, existing)
     }
 
-    const geographicBreakdown = Array.from(cityMap.entries())
-      .map(([city, data]) => ({
-        city,
+    const geographicBreakdown = Array.from(neighborhoodMap.entries())
+      .map(([neighborhood, data]) => ({
+        neighborhood,
+        zipCodes: Array.from(data.zips).sort(),
         totalClients: data.count,
         activeClients: data.active,
         totalRevenue: data.revenue,
@@ -286,34 +336,7 @@ export default defineEventHandler(async (event) => {
         retentionRate: data.count > 0 ? Math.round((data.active / data.count) * 100) : 0
       }))
       .sort((a, b) => b.totalClients - a.totalClients)
-      .slice(0, 20)
-
-    // ========================================
-    // REFERRAL SOURCE ANALYSIS
-    // ========================================
-    const referralMap = new Map<string, { count: number; revenue: number; active: number }>()
-    
-    for (const contact of filteredContacts) {
-      const source = contact.referral_source?.trim() || 'Unknown'
-      const existing = referralMap.get(source) || { count: 0, revenue: 0, active: 0 }
-      existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
-        existing.active++
-      }
-      referralMap.set(source, existing)
-    }
-
-    const referralBreakdown = Array.from(referralMap.entries())
-      .map(([source, data]) => ({
-        source,
-        totalClients: data.count,
-        activeClients: data.active,
-        totalRevenue: data.revenue,
-        avgRevenue: data.count > 0 ? data.revenue / data.count : 0,
-        retentionRate: data.count > 0 ? Math.round((data.active / data.count) * 100) : 0
-      }))
-      .sort((a, b) => b.totalClients - a.totalClients)
+      .slice(0, 25)
 
     // ========================================
     // CLIENT SEGMENTATION
@@ -392,7 +415,7 @@ export default defineEventHandler(async (event) => {
         lastVisit: c.last_visit,
         division: c.division,
         city: c.address_city,
-        breed: c.breed,
+        zip: c.address_zip,
         isActive: c.is_active
       }))
 
@@ -406,9 +429,8 @@ export default defineEventHandler(async (event) => {
       missingPhone: filteredContacts.filter(c => !c.phone_mobile).length,
       missingCity: filteredContacts.filter(c => !c.address_city).length,
       missingLastVisit: filteredContacts.filter(c => !c.last_visit).length,
-      missingBreed: filteredContacts.filter(c => !c.breed).length,
+      missingZip: filteredContacts.filter(c => !c.address_zip).length,
       missingDivision: filteredContacts.filter(c => !c.division).length,
-      missingReferralSource: filteredContacts.filter(c => !c.referral_source).length,
       zeroRevenue: filteredContacts.filter(c => (parseFloat(c.revenue_ytd) || 0) === 0).length,
       overallScore: 0
     }
@@ -420,8 +442,8 @@ export default defineEventHandler(async (event) => {
         { field: 'missingLastVisit', weight: 25 },
         { field: 'missingCity', weight: 15 },
         { field: 'missingPhone', weight: 15 },
-        { field: 'missingDivision', weight: 10 },
-        { field: 'missingReferralSource', weight: 10 }
+        { field: 'missingZip', weight: 10 },
+        { field: 'missingDivision', weight: 10 }
       ]
       let completenessScore = 0
       for (const w of weights) {
@@ -513,58 +535,26 @@ export default defineEventHandler(async (event) => {
 
     // --- Geographic insights ---
     if (geographicBreakdown.length >= 3) {
-      const topThreeCities = geographicBreakdown.slice(0, 3)
-      const topThreeCount = topThreeCities.reduce((sum, c) => sum + c.totalClients, 0)
+      const topThreeAreas = geographicBreakdown.slice(0, 3)
+      const topThreeCount = topThreeAreas.reduce((sum, c) => sum + c.totalClients, 0)
       const topThreePct = totalCount > 0 ? Math.round((topThreeCount / totalCount) * 100) : 0
       insights.push({
         type: 'info',
         icon: 'mdi-map-marker-radius',
         title: 'Geographic Concentration',
-        detail: `Top 3 cities (${topThreeCities.map(c => c.city).join(', ')}) account for ${topThreePct}% of all clients.`
+        detail: `Top 3 neighborhoods (${topThreeAreas.map(c => c.neighborhood).join(', ')}) account for ${topThreePct}% of all clients.`
       })
       
-      const lowRetentionCities = geographicBreakdown.filter(c => c.totalClients >= 10 && c.retentionRate < 40)
-      if (lowRetentionCities.length > 0) {
+      const lowRetentionAreas = geographicBreakdown.filter(c => c.totalClients >= 10 && c.retentionRate < 40)
+      if (lowRetentionAreas.length > 0) {
         suggestedActions.push({
           priority: 'medium',
           icon: 'mdi-map-marker-alert',
-          title: 'Address Low-Retention Areas',
-          detail: `${lowRetentionCities.map(c => c.city).slice(0, 3).join(', ')} have under 40% retention. Consider targeted marketing or mobile clinic events in these areas.`,
-          metric: lowRetentionCities.map(c => `${c.city}: ${c.retentionRate}%`).slice(0, 3).join(', ')
+          title: 'Address Low-Retention Neighborhoods',
+          detail: `${lowRetentionAreas.map(c => c.neighborhood).slice(0, 3).join(', ')} have under 40% retention. Consider targeted marketing or mobile clinic events in these areas.`,
+          metric: lowRetentionAreas.map(c => `${c.neighborhood}: ${c.retentionRate}%`).slice(0, 3).join(', ')
         })
       }
-    }
-
-    // --- Referral source insights ---
-    const knownReferrals = referralBreakdown.filter(r => r.source !== 'Unknown')
-    const unknownReferral = referralBreakdown.find(r => r.source === 'Unknown')
-    if (unknownReferral && totalCount > 0) {
-      const unknownPct = Math.round((unknownReferral.totalClients / totalCount) * 100)
-      if (unknownPct > 40) {
-        insights.push({
-          type: 'warning',
-          icon: 'mdi-help-circle',
-          title: `${unknownPct}% of Clients Have No Referral Source`,
-          detail: `${unknownReferral.totalClients.toLocaleString()} clients have no "heard about" data. This limits marketing attribution.`
-        })
-        suggestedActions.push({
-          priority: 'low',
-          icon: 'mdi-form-textbox',
-          title: 'Improve Referral Source Capture',
-          detail: 'Ask receptionists to consistently ask new clients "How did you hear about us?" during check-in. This data helps measure which marketing channels work best.',
-          metric: `${unknownPct}% unknown sources`
-        })
-      }
-    }
-    if (knownReferrals.length >= 2) {
-      const bestReferral = knownReferrals.reduce((best, r) => r.avgRevenue > best.avgRevenue ? r : best, knownReferrals[0])
-      const highestVolume = knownReferrals.reduce((best, r) => r.totalClients > best.totalClients ? r : best, knownReferrals[0])
-      insights.push({
-        type: 'info',
-        icon: 'mdi-bullhorn',
-        title: 'Top Referral Channels',
-        detail: `"${highestVolume.source}" brings the most clients (${highestVolume.totalClients}). "${bestReferral.source}" delivers the highest avg revenue (${formatUSD(bestReferral.avgRevenue)}/client).`
-      })
     }
 
     // --- Data quality insights ---
@@ -609,17 +599,6 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // --- Breed spending insight ---
-    if (breedData.length >= 2 && breedData[0].breed !== 'Unknown') {
-      const topBreed = breedData[0]
-      insights.push({
-        type: 'info',
-        icon: 'mdi-paw',
-        title: `Top Breed: ${topBreed.breed}`,
-        detail: `${topBreed.breed} owners generate ${formatUSD(topBreed.totalRevenue)} across ${topBreed.clientCount} clients (${formatUSD(topBreed.avgRevenue)} avg).`
-      })
-    }
-
     // Sort actions by priority
     const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
     suggestedActions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
@@ -642,13 +621,11 @@ export default defineEventHandler(async (event) => {
       success: true,
       kpis,
       revenueDistribution,
-      breedData,
       recencyAnalysis,
       recencyChart,
       divisionBreakdown,
       departmentBreakdown,
       geographicBreakdown,
-      referralBreakdown,
       clientSegments,
       churnRisk,
       topClients,

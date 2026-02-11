@@ -462,51 +462,11 @@
         </v-card-text>
       </v-card>
 
-      <!-- ===== CHARTS ROW: Breed + Referral Source ===== -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="6">
-          <v-card elevation="2" class="fill-height">
-            <v-card-title>
-              <v-icon class="mr-2">mdi-paw</v-icon>
-              Revenue by Breed (Top 10)
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  type="bar"
-                  height="350"
-                  :options="breedOptions"
-                  :series="breedSeries"
-                />
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card elevation="2" class="fill-height">
-            <v-card-title>
-              <v-icon class="mr-2">mdi-bullhorn</v-icon>
-              Client Referral Sources
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  type="pie"
-                  height="350"
-                  :options="referralPieOptions"
-                  :series="referralPieSeries"
-                />
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
       <!-- ===== GEOGRAPHIC ANALYSIS ===== -->
       <v-card elevation="2" class="mb-6" v-if="analytics.geographicBreakdown?.length">
         <v-card-title>
           <v-icon class="mr-2">mdi-map-marker-radius</v-icon>
-          Geographic Analysis — Top Cities
+          Neighborhood Analysis — by Zip Code
         </v-card-title>
         <v-card-text>
           <v-row>
@@ -515,8 +475,8 @@
                 <apexchart
                   type="bar"
                   height="350"
-                  :options="geoCityOptions"
-                  :series="geoCitySeries"
+                  :options="geoNeighborhoodOptions"
+                  :series="geoNeighborhoodSeries"
                 />
               </ClientOnly>
             </v-col>
@@ -527,6 +487,9 @@
                 density="compact"
                 :items-per-page="10"
               >
+                <template #item.zipCodes="{ item }">
+                  <span class="text-caption">{{ item.zipCodes?.join(', ') }}</span>
+                </template>
                 <template #item.totalRevenue="{ item }">
                   <span class="font-weight-bold text-primary">{{ formatCurrency(item.totalRevenue) }}</span>
                 </template>
@@ -541,37 +504,6 @@
               </v-data-table>
             </v-col>
           </v-row>
-        </v-card-text>
-      </v-card>
-
-      <!-- ===== REFERRAL SOURCE TABLE ===== -->
-      <v-card elevation="2" class="mb-6" v-if="analytics.referralBreakdown?.length">
-        <v-card-title>
-          <v-icon class="mr-2">mdi-share-variant</v-icon>
-          Referral Source Performance
-        </v-card-title>
-        <v-card-text>
-          <v-data-table
-            :headers="referralHeaders"
-            :items="analytics.referralBreakdown"
-            density="comfortable"
-            :items-per-page="10"
-          >
-            <template #item.source="{ item }">
-              <span class="font-weight-medium">{{ item.source }}</span>
-            </template>
-            <template #item.totalRevenue="{ item }">
-              <span class="font-weight-bold text-primary">{{ formatCurrency(item.totalRevenue) }}</span>
-            </template>
-            <template #item.avgRevenue="{ item }">
-              {{ formatCurrency(item.avgRevenue) }}
-            </template>
-            <template #item.retentionRate="{ item }">
-              <v-chip :color="getActiveRateColor(item.retentionRate)" size="x-small" label>
-                {{ item.retentionRate }}%
-              </v-chip>
-            </template>
-          </v-data-table>
         </v-card-text>
       </v-card>
 
@@ -741,8 +673,8 @@ const dataQualityFields = computed(() => {
     { key: 'email', label: 'Email', missing: dq.missingEmail, icon: 'mdi-email' },
     { key: 'phone', label: 'Phone', missing: dq.missingPhone, icon: 'mdi-phone' },
     { key: 'city', label: 'City', missing: dq.missingCity, icon: 'mdi-map-marker' },
+    { key: 'zip', label: 'Zip Code', missing: dq.missingZip, icon: 'mdi-map-marker-outline' },
     { key: 'lastVisit', label: 'Last Visit', missing: dq.missingLastVisit, icon: 'mdi-calendar' },
-    { key: 'referral', label: 'Referral Source', missing: dq.missingReferralSource, icon: 'mdi-share-variant' },
     { key: 'division', label: 'Division', missing: dq.missingDivision, icon: 'mdi-domain' }
   ]
   return fields.map(f => {
@@ -842,59 +774,37 @@ const revenueDistributionSeries = computed(() => [{
   data: analytics.value?.revenueDistribution?.map((d: any) => d.count) || []
 }])
 
-// Breed Revenue Chart
-const breedOptions = computed(() => ({
-  chart: {
-    type: 'bar',
-    toolbar: { show: true }
-  },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      borderRadius: 4,
-      dataLabels: { position: 'center' }
-    }
-  },
-  dataLabels: {
-    enabled: true,
-    formatter: (val: number) => formatCurrencyShort(val),
-    style: { fontSize: '11px', colors: ['#fff'] }
-  },
-  xaxis: {
-    categories: analytics.value?.breedData?.map((d: any) => d.breed) || [],
-    labels: { formatter: (val: number) => formatCurrencyShort(val) }
-  },
-  yaxis: {
-    labels: { style: { fontSize: '12px' } }
-  },
-  colors: ['#4CAF50'],
-  tooltip: {
-    y: { formatter: (val: number) => formatCurrency(val) }
-  }
-}))
-
-const breedSeries = computed(() => [{
-  name: 'Revenue',
-  data: analytics.value?.breedData?.map((d: any) => d.totalRevenue) || []
-}])
-
-// Referral Source Pie Chart
-const referralPieOptions = computed(() => {
-  const items = analytics.value?.referralBreakdown?.slice(0, 8) || []
+// Neighborhood Analysis Chart
+const geoNeighborhoodOptions = computed(() => {
+  const areas = analytics.value?.geographicBreakdown?.slice(0, 12) || []
   return {
-    chart: { type: 'pie' },
-    labels: items.map((r: any) => r.source),
-    colors: ['#1976D2', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#00BCD4', '#795548', '#607D8B'],
-    legend: { position: 'bottom', fontSize: '11px' },
+    chart: { type: 'bar', toolbar: { show: false } },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+        dataLabels: { position: 'center' }
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: (val: number) => val,
+      style: { fontSize: '11px', colors: ['#fff'] }
+    },
+    xaxis: {
+      categories: areas.map((c: any) => c.neighborhood)
+    },
+    colors: ['#1976D2'],
     tooltip: {
       y: { formatter: (val: number) => `${val} clients` }
     }
   }
 })
 
-const referralPieSeries = computed(() =>
-  (analytics.value?.referralBreakdown?.slice(0, 8) || []).map((r: any) => r.totalClients)
-)
+const geoNeighborhoodSeries = computed(() => [{
+  name: 'Clients',
+  data: (analytics.value?.geographicBreakdown?.slice(0, 12) || []).map((c: any) => c.totalClients)
+}])
 
 // Recency Analysis Chart
 const recencyTotal = computed(() => {
@@ -940,38 +850,6 @@ const recencySeries = computed(() => [{
   data: analytics.value?.recencyChart?.map((d: any) => d.count) || []
 }])
 
-// Geographic City Chart
-const geoCityOptions = computed(() => {
-  const cities = analytics.value?.geographicBreakdown?.slice(0, 10) || []
-  return {
-    chart: { type: 'bar', toolbar: { show: false } },
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 4,
-        dataLabels: { position: 'center' }
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      formatter: (val: number) => val,
-      style: { fontSize: '11px', colors: ['#fff'] }
-    },
-    xaxis: {
-      categories: cities.map((c: any) => c.city)
-    },
-    colors: ['#1976D2'],
-    tooltip: {
-      y: { formatter: (val: number) => `${val} clients` }
-    }
-  }
-})
-
-const geoCitySeries = computed(() => [{
-  name: 'Clients',
-  data: (analytics.value?.geographicBreakdown?.slice(0, 10) || []).map((c: any) => c.totalClients)
-}])
-
 // ========================================
 // TABLE HEADERS
 // ========================================
@@ -1000,22 +878,13 @@ const topClientHeaders = [
   { title: 'Revenue YTD', key: 'revenue', sortable: true },
   { title: 'Last Visit', key: 'lastVisit', sortable: true },
   { title: 'Division', key: 'division', sortable: true },
-  { title: 'City', key: 'city', sortable: true },
-  { title: 'Breed', key: 'breed', sortable: true },
+  { title: 'Zip', key: 'zip', sortable: true },
   { title: 'Email', key: 'email', sortable: false }
 ]
 
 const geoHeaders = [
-  { title: 'City', key: 'city', sortable: true },
-  { title: 'Clients', key: 'totalClients', sortable: true },
-  { title: 'Active', key: 'activeClients', sortable: true },
-  { title: 'Retention', key: 'retentionRate', sortable: true },
-  { title: 'Revenue', key: 'totalRevenue', sortable: true },
-  { title: 'Avg Revenue', key: 'avgRevenue', sortable: true }
-]
-
-const referralHeaders = [
-  { title: 'Source', key: 'source', sortable: true },
+  { title: 'Neighborhood', key: 'neighborhood', sortable: true },
+  { title: 'Zip Codes', key: 'zipCodes', sortable: false },
   { title: 'Clients', key: 'totalClients', sortable: true },
   { title: 'Active', key: 'activeClients', sortable: true },
   { title: 'Retention', key: 'retentionRate', sortable: true },
