@@ -1,15 +1,21 @@
-name: Slack Sync Scheduler
+name: Slack Sync Scheduler (Backup)
 
 # ============================================================
+# BACKUP TRIGGER: Primary sync now runs via Vercel Cron (vercel.json)
+# at /api/cron/slack-sync every 6 hours with Authorization: Bearer auth.
+#
+# This GitHub Actions workflow is a FALLBACK that runs every 12 hours
+# in case Vercel Cron misses a cycle.
+#
 # REQUIRED GITHUB SECRETS:
 # - APP_URL: Your Vercel deployment URL (e.g., https://employee-gm-green-dog.vercel.app)
-# - CRON_SECRET: A secret string to authenticate cron requests (any random string)
+# - CRON_SECRET: Must match CRON_SECRET env var in Vercel
 # ============================================================
 
 on:
   schedule:
-    # Run every 6 hours
-    - cron: '0 */6 * * *'
+    # Run every 12 hours as backup (Vercel cron is primary at 6h)
+    - cron: '0 */12 * * *'
   workflow_dispatch:
     # Allow manual trigger from GitHub Actions UI
 
@@ -25,15 +31,15 @@ jobs:
             exit 1
           fi
           if [ -z "${{ secrets.CRON_SECRET }}" ]; then
-            echo "⚠️ WARNING: CRON_SECRET is not configured (sync may fail authentication)"
+            echo "⚠️ WARNING: CRON_SECRET is not configured (sync will fail authentication)"
           fi
           echo "✅ Configuration validated"
 
-      - name: Run Slack Sync
+      - name: Run Slack Sync (via Vercel Cron endpoint)
         run: |
           response=$(curl -s -w "\n%{http_code}" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/slack/sync/scheduled")
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/slack-sync")
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | sed '$d')
@@ -42,34 +48,18 @@ jobs:
           echo "HTTP Code: $http_code"
           
           if [ "$http_code" != "200" ]; then
-            echo "Sync failed with status $http_code"
+            echo "❌ Sync failed with status $http_code"
             exit 1
           fi
           
-          # Check if sync was successful
+          # Check if sync was successful or skipped (both are OK)
           if echo "$body" | grep -q '"ok":true'; then
-            echo "✅ Slack sync completed successfully"
+            if echo "$body" | grep -q '"skipped":true'; then
+              echo "⏭️ Slack sync skipped (recent sync exists)"
+            else
+              echo "✅ Slack sync completed successfully"
+            fi
           else
             echo "❌ Slack sync reported issues"
             exit 1
-          fi
-
-      - name: Process Notification Queue
-        run: |
-          response=$(curl -s -w "\n%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/slack/notifications/process")
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | sed '$d')
-          
-          echo "Response: $body"
-          echo "HTTP Code: $http_code"
-          
-          if [ "$http_code" = "200" ]; then
-            echo "✅ Notification queue processed"
-          else
-            echo "⚠️ Notification processing had issues (non-critical)"
           fi

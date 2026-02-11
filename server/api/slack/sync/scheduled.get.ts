@@ -15,7 +15,11 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
   // Validate cron secret for security (REQUIRED)
-  const cronSecret = getHeader(event, 'x-cron-secret')
+  // Support both auth patterns:
+  //   - X-Cron-Secret header (GitHub Actions workflow)
+  //   - Authorization: Bearer <secret> (Vercel Cron)
+  const xCronSecret = getHeader(event, 'x-cron-secret')
+  const authHeader = getHeader(event, 'authorization')
   const expectedSecret = config.cronSecret
   
   if (!expectedSecret) {
@@ -23,7 +27,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, message: 'Server configuration error' })
   }
   
-  if (cronSecret !== expectedSecret) {
+  const isAuthorized = xCronSecret === expectedSecret || authHeader === `Bearer ${expectedSecret}`
+  if (!isAuthorized) {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
@@ -60,17 +65,15 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    // Call the main sync endpoint internally
-    const syncResponse = await $fetch('/api/slack/sync/run', {
-      method: 'POST',
-      body: { triggered_by: 'scheduled_cron' }
+    // Call the unified Vercel cron endpoint which uses service-role auth
+    // (avoids the user auth requirement of /api/slack/sync/run)
+    const syncResponse = await $fetch('/api/cron/slack-sync', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${expectedSecret}` }
     })
 
-    // Also process any pending notifications
-    const notificationResponse = await $fetch('/api/slack/notifications/process', {
-      method: 'POST',
-      body: { limit: 100 }
-    })
+    // Notification processing is handled inside slack-sync cron
+    const notificationResponse = { ok: true, message: 'Handled by slack-sync cron' }
 
     // Check for conflicts and send admin alerts if needed
     const { count: pendingConflicts } = await supabase

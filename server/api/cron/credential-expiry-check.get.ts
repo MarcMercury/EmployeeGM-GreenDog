@@ -149,9 +149,9 @@ export default defineEventHandler(async (event) => {
             
             // Send to Slack
             try {
-              const slackResponse = await $fetch('/api/slack/send-message', {
+              const slackResponse = await $fetch('/api/slack/send', {
                 method: 'POST',
-                body: slackMessage
+                body: { ...slackMessage, type: 'channel' }
               })
               
               if (slackResponse) {
