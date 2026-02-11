@@ -299,6 +299,21 @@
                   </tr>
                 </tbody>
               </v-table>
+
+              <!-- Data Quality Warnings -->
+              <div v-if="dataQualityWarnings.length > 0" class="mt-4">
+                <div class="text-subtitle-2 mb-2">Data Quality Summary</div>
+                <v-alert
+                  v-for="(warning, idx) in dataQualityWarnings"
+                  :key="idx"
+                  :type="warning.severity"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-1"
+                >
+                  {{ warning.message }}
+                </v-alert>
+              </div>
             </div>
           </div>
 
@@ -522,6 +537,29 @@ const previewData = ref<any[]>([])
 const previewHeaders = ref<string[]>([])
 const totalPreviewRows = ref(0)
 const parsedRows = ref<any[]>([])
+
+// Data quality warnings computed from parsed rows
+const dataQualityWarnings = computed(() => {
+  if (parsedRows.value.length === 0) return []
+  const warnings: { severity: 'warning' | 'info' | 'error'; message: string }[] = []
+  const total = parsedRows.value.length
+
+  const missingEmail = parsedRows.value.filter(r => !r.email).length
+  const missingPhone = parsedRows.value.filter(r => !r.phone_mobile).length
+  const missingCity = parsedRows.value.filter(r => !r.address_city).length
+  const missingRevenue = parsedRows.value.filter(r => !r.revenue_ytd || r.revenue_ytd === 0).length
+  const missingLastVisit = parsedRows.value.filter(r => !r.last_visit).length
+  const missingBreed = parsedRows.value.filter(r => !r.breed).length
+  const noDivision = parsedRows.value.filter(r => !r.division).length
+
+  if (missingEmail > 0) warnings.push({ severity: missingEmail > total * 0.3 ? 'warning' : 'info', message: `${missingEmail} of ${total} contacts (${Math.round(missingEmail / total * 100)}%) missing email address` })
+  if (missingPhone > 0) warnings.push({ severity: missingPhone > total * 0.3 ? 'warning' : 'info', message: `${missingPhone} of ${total} contacts (${Math.round(missingPhone / total * 100)}%) missing phone number` })
+  if (missingCity > 0) warnings.push({ severity: 'info', message: `${missingCity} of ${total} contacts (${Math.round(missingCity / total * 100)}%) missing city` })
+  if (missingLastVisit > 0) warnings.push({ severity: missingLastVisit > total * 0.2 ? 'warning' : 'info', message: `${missingLastVisit} of ${total} contacts (${Math.round(missingLastVisit / total * 100)}%) have no last visit date` })
+  if (missingRevenue > total * 0.5) warnings.push({ severity: 'warning', message: `${missingRevenue} contacts have $0 revenue — may indicate stale or incomplete records` })
+
+  return warnings
+})
 
 // CSV Header mapping
 const CSV_HEADER_MAP: Record<string, string> = {
