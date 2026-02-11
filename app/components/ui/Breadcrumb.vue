@@ -50,6 +50,7 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => {
     'roster': 'Roster',
     'marketing': 'Marketing',
     'med-ops': 'Med Ops',
+    'wiki': 'Wiki',
     'academy': 'Academy',
     'training': 'Training',
     'recruiting': 'Recruiting',

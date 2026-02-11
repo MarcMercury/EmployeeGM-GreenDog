@@ -200,6 +200,7 @@ export interface Partner {
   preferred_visit_day?: string | null
   best_contact_person?: string | null
   partnership_value?: string | null
+  area?: string | null
   priority?: string | null
   payment_status?: string | null
   payment_amount?: number | null

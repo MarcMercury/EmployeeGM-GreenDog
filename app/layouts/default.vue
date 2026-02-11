@@ -222,6 +222,14 @@ const closeMobileMenu = () => {
             <span v-if="!sidebarCollapsed">Activity Hub</span>
           </NuxtLink>
 
+          <!-- Wiki - Top-level, below Activity Hub -->
+          <NuxtLink to="/wiki" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
+            <div class="nav-icon-wrap group-hover:bg-teal-500/20">
+              📚
+            </div>
+            <span v-if="!sidebarCollapsed">Wiki</span>
+          </NuxtLink>
+
           <!-- Green Dog Marketplace (Super Admin only for now) -->
           <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
             <div class="nav-icon-wrap group-hover:bg-amber-500/20">
@@ -239,6 +247,9 @@ const closeMobileMenu = () => {
                   {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
                 </span>
               </div>
+            </NuxtLink>
+            <NuxtLink to="/wiki" class="nav-link group justify-center" title="Wiki">
+              <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
             </NuxtLink>
             <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group justify-center" title="Marketplace">
               <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
@@ -404,10 +415,6 @@ const closeMobileMenu = () => {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.medOps }">
-              <NuxtLink to="/med-ops/wiki" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
-                Wiki
-              </NuxtLink>
               <NuxtLink to="/med-ops/calculators" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-red-500/20">💊</div>
                 Drug Calculators

@@ -27,6 +27,7 @@ const exportColumns = [
   { key: 'membership_level', title: 'Membership Level' },
   { key: 'membership_fee', title: 'Annual Fee', format: (v: number) => v ? `$${v}` : '' },
   { key: 'notes', title: 'Notes' },
+  { key: 'area', title: 'Area' },
   { key: 'last_visit_date', title: 'Last Visit Date' },
   { key: 'created_at', title: 'Created' }
 ]
@@ -36,6 +37,7 @@ const partnerImportFields = [
   { key: 'name', label: 'Business Name', required: true },
   { key: 'partner_type', label: 'Partner Type' },
   { key: 'status', label: 'Status' },
+  { key: 'area', label: 'Area' },
   { key: 'contact_name', label: 'Contact Name' },
   { key: 'contact_phone', label: 'Phone' },
   { key: 'contact_email', label: 'Email' },
@@ -51,11 +53,35 @@ const partnerImportFields = [
   { key: 'notes', label: 'Notes' }
 ]
 
+// Area options matching referral CRM zones
+const areaOptions = [
+  { title: 'All Areas', value: null },
+  { title: 'Westside & Coastal', value: 'Westside & Coastal' },
+  { title: 'South Valley', value: 'South Valley' },
+  { title: 'North Valley', value: 'North Valley' },
+  { title: 'Central & Eastside', value: 'Central & Eastside' },
+  { title: 'South Bay', value: 'South Bay' },
+  { title: 'San Gabriel Valley', value: 'San Gabriel Valley' },
+  { title: 'Online/Remote/Out of Area', value: 'Online/Remote/Out of Area' }
+]
+
+// Area edit options (without "All Areas")
+const areaEditOptions = [
+  { title: 'Westside & Coastal', value: 'Westside & Coastal' },
+  { title: 'South Valley', value: 'South Valley' },
+  { title: 'North Valley', value: 'North Valley' },
+  { title: 'Central & Eastside', value: 'Central & Eastside' },
+  { title: 'South Bay', value: 'South Bay' },
+  { title: 'San Gabriel Valley', value: 'San Gabriel Valley' },
+  { title: 'Online/Remote/Out of Area', value: 'Online/Remote/Out of Area' }
+]
+
 // Filter state
 const searchQuery = ref('')
 const selectedType = ref<string | null>(null)
 const selectedStatus = ref<string | null>(null)
 const selectedService = ref<string | null>(null)
+const selectedArea = ref<string | null>(null)
 const viewMode = ref<'list' | 'cards'>('list')
 
 // Service options for pet businesses
@@ -73,29 +99,39 @@ const serviceOptions = [
 // Partner type options
 const partnerTypes = [
   { title: 'All Types', value: null },
-  { title: 'Pet Business', value: 'pet_business' },
+  { title: 'Other Pet Business', value: 'pet_business' },
   { title: 'Exotic Shop', value: 'exotic_shop' },
   { title: 'Rescue', value: 'rescue' },
   { title: 'Entertainment', value: 'entertainment' },
   { title: 'Print Vendor', value: 'print_vendor' },
-  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Chamber/Association', value: 'chamber' },
   { title: 'Food & Beverage', value: 'food_vendor' },
-  { title: 'Association', value: 'association' },
-  { title: 'Spay & Neuter', value: 'spay_neuter' },
+  { title: 'Media', value: 'media' },
+  { title: 'Groomer', value: 'groomer' },
+  { title: 'Daycare/Boarding', value: 'daycare_boarding' },
+  { title: 'Pet Retail', value: 'pet_retail' },
+  { title: 'Charity', value: 'charity' },
+  { title: 'Merch Vendor', value: 'merch_vendor' },
+  { title: 'Designers/Graphics', value: 'designers_graphics' },
   { title: 'Other', value: 'other' }
 ]
 
 // Partner type options for profile editing (without "All Types")
 const partnerTypeEditOptions = [
-  { title: 'Pet Business', value: 'pet_business' },
+  { title: 'Other Pet Business', value: 'pet_business' },
   { title: 'Exotic Shop', value: 'exotic_shop' },
   { title: 'Rescue', value: 'rescue' },
   { title: 'Entertainment', value: 'entertainment' },
   { title: 'Print Vendor', value: 'print_vendor' },
-  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Chamber/Association', value: 'chamber' },
   { title: 'Food & Beverage', value: 'food_vendor' },
-  { title: 'Association', value: 'association' },
-  { title: 'Spay & Neuter', value: 'spay_neuter' },
+  { title: 'Media', value: 'media' },
+  { title: 'Groomer', value: 'groomer' },
+  { title: 'Daycare/Boarding', value: 'daycare_boarding' },
+  { title: 'Pet Retail', value: 'pet_retail' },
+  { title: 'Charity', value: 'charity' },
+  { title: 'Merch Vendor', value: 'merch_vendor' },
+  { title: 'Designers/Graphics', value: 'designers_graphics' },
   { title: 'Other', value: 'other' }
 ]
 
@@ -147,7 +183,8 @@ const filteredPartners = computed(() => {
       p.contact_email?.toLowerCase().includes(query) ||
       p.notes?.toLowerCase().includes(query) ||
       p.services_provided?.toLowerCase().includes(query) ||
-      p.address?.toLowerCase().includes(query)
+      p.address?.toLowerCase().includes(query) ||
+      p.area?.toLowerCase().includes(query)
     )
   }
   
@@ -163,6 +200,10 @@ const filteredPartners = computed(() => {
     result = result.filter(p => 
       p.services_provided?.toLowerCase().includes(selectedService.value!.toLowerCase())
     )
+  }
+
+  if (selectedArea.value) {
+    result = result.filter(p => p.area === selectedArea.value)
   }
   
   return result
@@ -182,10 +223,10 @@ const summaryStats = computed(() => {
   const all = combinedList.value || []
   return {
     total: all.length,
-    active: all.filter(p => p.status === 'active' || p.status === 'current').length,
+    active: all.filter(p => p.status === 'active').length,
     prospects: all.filter(p => p.status === 'prospect').length,
     needsFollowup: all.filter(p => p.needs_followup).length,
-    inactive: all.filter(p => p.status === 'inactive' || p.status === 'former').length
+    inactive: all.filter(p => p.status === 'inactive').length
   }
 })
 
@@ -260,7 +301,8 @@ const tableHeaders = [
   { title: 'Priority', key: 'priority', sortable: true, width: '100px' },
   { title: 'Name', key: 'name', sortable: true },
   { title: 'Service', key: 'services_provided', sortable: true },
-  { title: 'Zone', key: 'address', sortable: true },
+  { title: 'Area', key: 'area', sortable: true },
+  { title: 'Address', key: 'address', sortable: true },
   { title: 'Email', key: 'contact_email', sortable: true },
   { title: 'Last Visit', key: 'last_visit_date', sortable: true },
   { title: 'Score', key: 'computed_score', sortable: true, width: '120px' },
@@ -301,7 +343,10 @@ const formData = ref({
   account_email: '',
   account_password: '',
   account_number: '',
-  category: ''
+  category: '',
+  area: '',
+  facebook_url: '',
+  tiktok_handle: ''
 })
 
 // Profile Dialog State (comprehensive view)
@@ -382,15 +427,20 @@ const contactForm = ref({
 // Contact category options (same as partner types for filtering)
 const contactCategoryOptions = [
   { title: 'None', value: null },
-  { title: 'Pet Business', value: 'pet_business' },
+  { title: 'Other Pet Business', value: 'pet_business' },
   { title: 'Exotic Shop', value: 'exotic_shop' },
   { title: 'Rescue', value: 'rescue' },
   { title: 'Entertainment', value: 'entertainment' },
   { title: 'Print Vendor', value: 'print_vendor' },
-  { title: 'Chamber of Commerce', value: 'chamber' },
+  { title: 'Chamber/Association', value: 'chamber' },
   { title: 'Food & Beverage', value: 'food_vendor' },
-  { title: 'Association', value: 'association' },
-  { title: 'Spay & Neuter', value: 'spay_neuter' },
+  { title: 'Media', value: 'media' },
+  { title: 'Groomer', value: 'groomer' },
+  { title: 'Daycare/Boarding', value: 'daycare_boarding' },
+  { title: 'Pet Retail', value: 'pet_retail' },
+  { title: 'Charity', value: 'charity' },
+  { title: 'Merch Vendor', value: 'merch_vendor' },
+  { title: 'Designers/Graphics', value: 'designers_graphics' },
   { title: 'Other', value: 'other' }
 ]
 
@@ -427,7 +477,10 @@ function openAddDialog() {
     account_email: '',
     account_password: '',
     account_number: '',
-    category: ''
+    category: '',
+    area: '',
+    facebook_url: '',
+    tiktok_handle: ''
   }
   dialogOpen.value = true
 }
@@ -452,7 +505,10 @@ function openEditDialog(partner: Partner) {
     account_email: partner.account_email || '',
     account_password: partner.account_password || '',
     account_number: partner.account_number || '',
-    category: partner.category || ''
+    category: partner.category || '',
+    area: partner.area || '',
+    facebook_url: partner.facebook_url || '',
+    tiktok_handle: partner.tiktok_handle || ''
   }
   dialogOpen.value = true
 }
@@ -487,7 +543,10 @@ async function savePartner() {
     account_email: formData.value.account_email || null,
     account_password: formData.value.account_password || null,
     account_number: formData.value.account_number || null,
-    category: formData.value.category || null
+    category: formData.value.category || null,
+    area: formData.value.area || null,
+    facebook_url: formData.value.facebook_url || null,
+    tiktok_handle: formData.value.tiktok_handle || null
   }
   
   try {
@@ -549,8 +608,13 @@ function getTypeColor(type: string): string {
     print_vendor: 'brown',
     chamber: 'primary',
     food_vendor: 'orange',
-    association: 'indigo',
-    spay_neuter: 'cyan',
+    media: 'deep-purple',
+    groomer: 'light-blue',
+    daycare_boarding: 'amber',
+    pet_retail: 'teal-darken-2',
+    charity: 'red',
+    merch_vendor: 'blue-grey',
+    designers_graphics: 'deep-orange',
     other: 'grey'
   }
   return colors[type] || 'grey'
@@ -559,16 +623,21 @@ function getTypeColor(type: string): string {
 function getCategoryLabel(category: string | null): string {
   if (!category) return ''
   const labels: Record<string, string> = {
-    pet_business: 'Pet Business',
+    pet_business: 'Other Pet Business',
     exotic_shop: 'Exotic Shop',
     rescue: 'Rescue',
     influencer: 'Influencer',
     entertainment: 'Entertainment',
     print_vendor: 'Print Vendor',
-    chamber: 'Chamber',
+    chamber: 'Chamber/Association',
     food_vendor: 'Food & Beverage',
-    association: 'Association',
-    spay_neuter: 'Spay & Neuter',
+    media: 'Media',
+    groomer: 'Groomer',
+    daycare_boarding: 'Daycare/Boarding',
+    pet_retail: 'Pet Retail',
+    charity: 'Charity',
+    merch_vendor: 'Merch Vendor',
+    designers_graphics: 'Designers/Graphics',
     other: 'Other'
   }
   return labels[category] || category
@@ -585,8 +654,13 @@ function getCategoryIcon(category: string | null): string {
     print_vendor: 'mdi-printer',
     chamber: 'mdi-domain',
     food_vendor: 'mdi-food',
-    association: 'mdi-account-group',
-    spay_neuter: 'mdi-medical-bag',
+    media: 'mdi-newspaper',
+    groomer: 'mdi-content-cut',
+    daycare_boarding: 'mdi-home-heart',
+    pet_retail: 'mdi-store',
+    charity: 'mdi-hand-heart',
+    merch_vendor: 'mdi-tshirt-crew',
+    designers_graphics: 'mdi-palette',
     other: 'mdi-tag'
   }
   return icons[category] || 'mdi-tag'
@@ -603,8 +677,13 @@ function getCategoryColor(category: string | null): string {
     print_vendor: 'brown',
     chamber: 'primary',
     food_vendor: 'orange',
-    association: 'indigo',
-    spay_neuter: 'cyan',
+    media: 'deep-purple',
+    groomer: 'light-blue',
+    daycare_boarding: 'amber',
+    pet_retail: 'teal-darken-2',
+    charity: 'red',
+    merch_vendor: 'blue-grey',
+    designers_graphics: 'deep-orange',
     other: 'grey'
   }
   return colors[category] || 'grey'
@@ -616,7 +695,8 @@ function getStatusColor(status: string): string {
     pending: 'warning',
     expired: 'error',
     inactive: 'grey',
-    prospect: 'info'
+    prospect: 'info',
+    completed: 'blue-grey'
   }
   return colors[status] || 'grey'
 }
@@ -1058,7 +1138,7 @@ function getPriorityColor(priority: string | null | undefined): string {
 
         <!-- Row 2: Primary Filters -->
         <v-row dense align="center">
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="4">
             <v-text-field
               v-model="searchQuery"
               label="Search partners..."
@@ -1069,7 +1149,7 @@ function getPriorityColor(priority: string | null | undefined): string {
               hide-details
             />
           </v-col>
-          <v-col cols="6" md="3">
+          <v-col cols="4" md="3">
             <v-select
               v-model="selectedType"
               :items="partnerTypes"
@@ -1079,11 +1159,21 @@ function getPriorityColor(priority: string | null | undefined): string {
               hide-details
             />
           </v-col>
-          <v-col cols="6" md="3">
+          <v-col cols="4" md="2">
             <v-select
               v-model="selectedStatus"
               :items="statusOptions"
               label="Status"
+              variant="outlined"
+              density="compact"
+              hide-details
+            />
+          </v-col>
+          <v-col cols="4" md="3">
+            <v-select
+              v-model="selectedArea"
+              :items="areaOptions"
+              label="Area"
               variant="outlined"
               density="compact"
               hide-details
@@ -1142,6 +1232,13 @@ function getPriorityColor(priority: string | null | undefined): string {
         <template #item.services_provided="{ item }">
           <v-chip v-if="item.services_provided" size="x-small" color="info" variant="tonal">
             {{ item.services_provided }}
+          </v-chip>
+          <span v-else class="text-grey">—</span>
+        </template>
+
+        <template #item.area="{ item }">
+          <v-chip v-if="item.area" size="x-small" :color="item.area === 'Online/Remote/Out of Area' ? 'grey' : 'teal'" variant="tonal">
+            {{ item.area }}
           </v-chip>
           <span v-else class="text-grey">—</span>
         </template>
@@ -1295,13 +1392,42 @@ function getPriorityColor(priority: string | null | undefined): string {
                 prepend-inner-icon="mdi-instagram"
               />
             </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formData.facebook_url"
+                label="Facebook URL"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-facebook"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="formData.tiktok_handle"
+                label="TikTok Handle"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-music-note"
+              />
+            </v-col>
             
-            <v-col cols="12">
+            <v-col cols="12" md="6">
               <v-text-field
                 v-model="formData.address"
                 label="Address"
                 variant="outlined"
                 density="compact"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="formData.area"
+                :items="areaEditOptions"
+                label="Area"
+                variant="outlined"
+                density="compact"
+                clearable
+                prepend-inner-icon="mdi-map-marker"
               />
             </v-col>
             
@@ -1486,6 +1612,10 @@ function getPriorityColor(priority: string | null | undefined): string {
                     <v-chip :color="selectedPartner.status === 'active' ? 'success' : selectedPartner.status === 'inactive' ? 'grey' : 'warning'" variant="tonal" size="small">
                       {{ selectedPartner.status || 'Unknown' }}
                     </v-chip>
+                    <v-chip v-if="selectedPartner.area" :color="selectedPartner.area === 'Online/Remote/Out of Area' ? 'grey' : 'teal'" variant="tonal" size="small">
+                      <v-icon start size="16">mdi-map-marker</v-icon>
+                      {{ selectedPartner.area }}
+                    </v-chip>
                   </div>
                   <v-alert type="info" variant="tonal" density="compact" class="mb-4">
                     <template #prepend>
@@ -1541,6 +1671,20 @@ function getPriorityColor(priority: string | null | undefined): string {
                         <v-icon size="small">mdi-instagram</v-icon>
                       </template>
                       <v-list-item-title>@{{ selectedPartner.instagram_handle }}</v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.facebook_url">
+                      <template #prepend>
+                        <v-icon size="small">mdi-facebook</v-icon>
+                      </template>
+                      <v-list-item-title>
+                        <a :href="selectedPartner.facebook_url" target="_blank">{{ selectedPartner.facebook_url }}</a>
+                      </v-list-item-title>
+                    </v-list-item>
+                    <v-list-item v-if="selectedPartner.tiktok_handle">
+                      <template #prepend>
+                        <v-icon size="small">mdi-music-note</v-icon>
+                      </template>
+                      <v-list-item-title>@{{ selectedPartner.tiktok_handle }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-col>

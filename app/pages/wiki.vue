@@ -1,20 +1,161 @@
 <template>
-  <div />
-</template>
+  <div class="wiki-page">
+    <!-- Page Header -->
+    <div class="d-flex align-center justify-space-between mb-6">
+      <div>
+        <h1 class="text-h4 font-weight-bold mb-1">Green Dog Wiki</h1>
+        <p class="text-body-1 text-grey-darken-1">
+          AI-powered knowledge base — search company policies, medical info, and more
+        </p>
+      </div>
+    </div>
 
-<script setup lang="ts">
-// Wiki has been moved to top-level /wiki route
-definePageMeta({
-  layout: 'default',
-  middleware: ['auth']
-})
+    <!-- Search Section -->
+    <v-card rounded="lg" class="mb-6 pa-6 text-center">
+      <v-icon size="64" color="primary" class="mb-4">mdi-book-open-page-variant</v-icon>
+      <h2 class="text-h5 font-weight-bold mb-2">What would you like to know?</h2>
+      <p class="text-body-2 text-grey mb-4">Search company policies, medical knowledge, procedures, and more</p>
+      <v-text-field
+        v-model="searchQuery"
+        placeholder="Try: PTO policy, time off, anesthesia protocols, safety manual..."
+        variant="outlined"
+        prepend-inner-icon="mdi-magnify"
+        density="comfortable"
+        class="search-field mx-auto mb-4"
+        style="max-width: 700px;"
+        @keyup.enter="performSearch('both')"
+        clearable
+      />
+      <div class="d-flex justify-center gap-2 flex-wrap">
+        <v-btn color="primary" size="large" @click="performSearch('both')" :loading="searching" class="mr-2">
+          <v-icon start>mdi-magnify</v-icon>
+          Smart Search
+        </v-btn>
+        <v-btn variant="outlined" size="large" @click="performSearch('ai')" :loading="aiLoading">
+          <v-icon start>mdi-robot</v-icon>
+          Ask AI
+        </v-btn>
+      </div>
+      <p class="text-caption text-grey mt-3">
+        <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
+        Searches through GDD policies, wiki articles, medical knowledge, and AI-powered web results
+      </p>
+    </v-card>
 
-// Redirect to new wiki location
-const router = useRouter()
-onMounted(() => {
-  router.replace('/wiki')
-})
-</script>
+    <!-- Quick Categories -->
+    <div class="mb-6">
+      <h3 class="text-subtitle-1 font-weight-bold mb-3">Browse by Category</h3>
+      <v-row>
+        <v-col v-for="category in categories" :key="category.id" cols="6" sm="4" md="true">
+          <v-card
+            variant="outlined"
+            rounded="lg"
+            class="category-card text-center pa-3"
+            @click="selectCategory(category)"
+          >
+            <v-icon :color="category.color" size="28" class="mb-1">{{ category.icon }}</v-icon>
+            <div class="text-caption font-weight-medium">{{ category.name }}</div>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
+
+    <!-- Internal Document Results -->
+    <template v-if="internalResults.length > 0">
+      <div class="d-flex align-center justify-space-between mb-3">
+        <h3 class="text-subtitle-1 font-weight-bold">
+          <v-icon color="success" size="20" class="mr-1">mdi-check-circle</v-icon>
+          Internal Results
+          <v-chip size="x-small" variant="tonal" color="success" class="ml-2">{{ internalResults.length }} found</v-chip>
+        </h3>
+        <v-btn v-if="searchResults.length > 0" variant="text" size="small" @click="clearResults">Clear</v-btn>
+      </div>
+      <v-row class="mb-4">
+        <v-col v-for="result in internalResults" :key="result.id" cols="12" md="6">
+          <v-card rounded="lg" class="result-card h-100" @click="openResult(result)">
+            <v-card-text class="d-flex gap-4">
+              <v-avatar :color="getSourceColor(result.source)" size="48">
+                <v-icon color="white">{{ getSourceIcon(result.source) }}</v-icon>
+              </v-avatar>
+              <div class="flex-grow-1">
+                <h4 class="text-subtitle-1 font-weight-bold mb-1">{{ result.title }}</h4>
+                <p class="text-body-2 text-grey mb-2 text-truncate-2">{{ result.excerpt }}</p>
+                <div class="d-flex gap-2 flex-wrap">
+                  <v-chip size="x-small" variant="tonal" :color="getSourceColor(result.source)">
+                    {{ getSourceLabel(result.source) }}
+                  </v-chip>
+                  <v-chip size="x-small" variant="outlined">{{ result.category }}</v-chip>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
+
+    <!-- Medical/Topic Search Results -->
+    <template v-if="topicResults.length > 0">
+      <h3 class="text-subtitle-1 font-weight-bold mb-3">
+        <v-icon color="blue" size="20" class="mr-1">mdi-book-open-variant</v-icon>
+        Knowledge Base Results
+      </h3>
+      <v-row class="mb-4">
+        <v-col v-for="result in topicResults" :key="result.id" cols="12" md="6">
+          <v-card rounded="lg" class="result-card" @click="openArticle(result)">
+            <v-card-text class="d-flex gap-4">
+              <v-avatar :color="result.category_color" size="48">
+                <v-icon color="white">{{ result.category_icon }}</v-icon>
+              </v-avatar>
+              <div class="flex-grow-1">
+                <h4 class="text-subtitle-1 font-weight-bold mb-1">{{ result.title }}</h4>
+                <p class="text-body-2 text-grey mb-2 text-truncate-2">{{ result.excerpt }}</p>
+                <div class="d-flex gap-2">
+                  <v-chip size="x-small" variant="tonal">{{ result.category }}</v-chip>
+                  <v-chip size="x-small" variant="outlined">{{ result.read_time }} min read</v-chip>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+    </template>
+
+    <!-- AI Response -->
+    <v-card v-if="aiResponse" rounded="lg" class="mb-6">
+      <v-card-title class="d-flex align-center">
+        <v-icon color="primary" class="mr-2">mdi-robot</v-icon>
+        AI Assistant Response
+        <v-chip size="x-small" variant="tonal" color="primary" class="ml-2">
+          <v-icon start size="12">mdi-brain</v-icon>
+          AI Generated
+        </v-chip>
+      </v-card-title>
+      <v-card-text>
+        <div class="ai-response" v-html="formattedAiResponse"></div>
+        <v-alert type="info" variant="tonal" density="compact" class="mt-4">
+          <v-icon start size="16">mdi-information</v-icon>
+          AI-generated content is for reference. For company policy details, refer to the official documents linked above.
+        </v-alert>
+      </v-card-text>
+    </v-card>
+
+    <!-- No Results Message -->
+    <v-card v-if="hasSearched && !internalResults.length && !topicResults.length && !aiResponse" rounded="lg" class="mb-6 pa-6 text-center">
+      <v-icon size="48" color="grey" class="mb-3">mdi-magnify-close</v-icon>
+      <h3 class="text-h6 mb-2">No results found</h3>
+      <p class="text-body-2 text-grey mb-3">Try different search terms or ask the AI assistant for help</p>
+      <v-btn color="primary" variant="outlined" @click="performSearch('ai')" :loading="aiLoading">
+        <v-icon start>mdi-robot</v-icon>
+        Ask AI About "{{ searchQuery }}"
+      </v-btn>
+    </v-card>
+
+    <!-- Policies Section -->
+    <template v-if="showPolicies">
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6 font-weight-bold">Company Policies & Important Links</h3>
+        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showPolicies = false">
+          Back to Wiki
         </v-btn>
       </div>
       
@@ -48,8 +189,8 @@ onMounted(() => {
       </v-row>
     </template>
 
-    <!-- Popular Topics -->
-    <template v-if="!searchResults.length && !aiResponse && !showPolicies">
+    <!-- Popular Topics (default view) -->
+    <template v-if="!hasSearched && !showPolicies">
       <h3 class="text-subtitle-1 font-weight-bold mb-3">Popular Topics</h3>
       <v-row>
         <v-col v-for="topic in popularTopics" :key="topic.id" cols="12" md="4">
@@ -78,7 +219,7 @@ onMounted(() => {
             v-for="recentSearch in recentSearches"
             :key="recentSearch"
             variant="outlined"
-            @click="searchQuery = recentSearch"
+            @click="searchQuery = recentSearch; performSearch('both')"
           >
             <v-icon start size="small">mdi-history</v-icon>
             {{ recentSearch }}
@@ -99,14 +240,14 @@ onMounted(() => {
         
         <v-card-text class="article-content">
           <div class="d-flex gap-2 mb-4">
-            <v-chip size="small" :color="selectedArticle.category_color" variant="tonal">
+            <v-chip size="small" :color="selectedArticle.category_color || 'primary'" variant="tonal">
               {{ selectedArticle.category }}
             </v-chip>
-            <v-chip size="small" variant="outlined">
+            <v-chip v-if="selectedArticle.read_time" size="small" variant="outlined">
               <v-icon start size="small">mdi-clock-outline</v-icon>
               {{ selectedArticle.read_time }} min read
             </v-chip>
-            <v-chip size="small" variant="outlined">
+            <v-chip v-if="selectedArticle.last_updated" size="small" variant="outlined">
               <v-icon start size="small">mdi-update</v-icon>
               Updated {{ selectedArticle.last_updated }}
             </v-chip>
@@ -136,7 +277,7 @@ definePageMeta({
 })
 
 useHead({
-  title: 'Medical Wiki'
+  title: 'Wiki - Green Dog Dental'
 })
 
 // State
@@ -144,11 +285,22 @@ const searchQuery = ref('')
 const searching = ref(false)
 const aiLoading = ref(false)
 const searchResults = ref<any[]>([])
+const internalResults = ref<any[]>([])
+const topicResults = ref<any[]>([])
 const aiResponse = ref('')
 const articleDialog = ref(false)
 const selectedArticle = ref<any>(null)
-const recentSearches = ref(['Canine parvovirus', 'Feline kidney disease', 'Anesthesia protocols'])
+const recentSearches = ref<string[]>([])
 const showPolicies = ref(false)
+const hasSearched = ref(false)
+
+// Load recent searches from localStorage
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('wiki_recent_searches')
+    if (saved) recentSearches.value = JSON.parse(saved)
+  } catch { /* ignore */ }
+})
 
 // Policy Links
 const policyCategories = [
@@ -276,88 +428,157 @@ const popularTopics = [
 
 // Computed
 const formattedAiResponse = computed(() => {
-  return aiResponse.value.replace(/\n/g, '<br>')
+  if (!aiResponse.value) return ''
+  // Convert markdown-style formatting to HTML
+  let html = aiResponse.value
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^### (.*$)/gm, '<h4 class="mt-3 mb-1">$1</h4>')
+    .replace(/^## (.*$)/gm, '<h3 class="mt-4 mb-2">$1</h3>')
+    .replace(/^# (.*$)/gm, '<h2 class="mt-4 mb-2">$1</h2>')
+    .replace(/^- (.*$)/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="ml-4 mb-2">$&</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+  return `<p>${html}</p>`
 })
 
-// Methods
-async function search() {
-  if (!searchQuery.value.trim()) return
-  
-  searching.value = true
-  aiResponse.value = ''
-  
-  try {
-    // Filter topics based on search
-    searchResults.value = popularTopics.filter(t =>
-      t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      t.excerpt.toLowerCase().includes(searchQuery.value.toLowerCase())
-    )
-    
-    // Add to recent searches
-    if (!recentSearches.value.includes(searchQuery.value)) {
-      recentSearches.value.unshift(searchQuery.value)
-      if (recentSearches.value.length > 5) {
-        recentSearches.value.pop()
-      }
-    }
-  } finally {
-    searching.value = false
+// Helper functions for result display
+function getSourceColor(source: string): string {
+  switch (source) {
+    case 'policy_document': return 'teal'
+    case 'wiki_article': return 'blue'
+    case 'system_data': return 'purple'
+    default: return 'grey'
   }
 }
 
-async function askAI() {
+function getSourceIcon(source: string): string {
+  switch (source) {
+    case 'policy_document': return 'mdi-file-document'
+    case 'wiki_article': return 'mdi-book-open-variant'
+    case 'system_data': return 'mdi-database'
+    default: return 'mdi-file'
+  }
+}
+
+function getSourceLabel(source: string): string {
+  switch (source) {
+    case 'policy_document': return 'GDD Policy'
+    case 'wiki_article': return 'Wiki Article'
+    case 'system_data': return 'System'
+    default: return 'Document'
+  }
+}
+
+// Methods
+async function performSearch(mode: 'search' | 'ai' | 'both') {
   if (!searchQuery.value.trim()) return
   
-  aiLoading.value = true
-  searchResults.value = []
+  const isAiOnly = mode === 'ai'
+  if (isAiOnly) {
+    aiLoading.value = true
+  } else {
+    searching.value = true
+  }
+  
+  hasSearched.value = true
+  showPolicies.value = false
+  
+  // Clear previous results
+  if (!isAiOnly) {
+    internalResults.value = []
+    topicResults.value = []
+  }
+  aiResponse.value = ''
   
   try {
-    // TODO: Replace with real AI wiki endpoint call
+    // Call server API for intelligent search
+    const { data } = await useFetch('/api/wiki/search', {
+      method: 'POST',
+      body: {
+        query: searchQuery.value,
+        mode
+      }
+    })
     
-    aiResponse.value = `Based on your query about "${searchQuery.value}", here's what I found:
-
-**Summary**
-This topic is commonly encountered in veterinary practice. Here are the key points:
-
-1. **Definition**: A detailed explanation of the condition/procedure/medication.
-
-2. **Clinical Signs**: Common presentations include various symptoms that may vary by species.
-
-3. **Diagnosis**: Recommended diagnostic approaches include physical examination, laboratory tests, and imaging.
-
-4. **Treatment**: Evidence-based treatment protocols should be followed, adjusted for individual patient needs.
-
-5. **Prognosis**: Outcomes depend on early detection and appropriate intervention.
-
-**Important Considerations**
-- Always perform a thorough patient assessment
-- Consider species-specific variations
-- Monitor for adverse reactions
-- Follow up appropriately
-
-For more detailed information, consult the relevant articles in our database or veterinary medical references.`
+    if (data.value) {
+      // Internal results from API
+      if (data.value.internalResults?.length) {
+        internalResults.value = data.value.internalResults
+      }
+      
+      // AI response
+      if (data.value.aiResponse) {
+        aiResponse.value = data.value.aiResponse
+      }
+    }
+    
+    // Also filter local popular topics for additional results
+    if (mode !== 'ai') {
+      topicResults.value = popularTopics.filter(t =>
+        t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        t.excerpt.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchQuery.value.toLowerCase())
+      )
+    }
+    
+    // Save to recent searches
+    addToRecentSearches(searchQuery.value)
+  } catch (err) {
+    console.error('[Wiki] Search error:', err)
+    
+    // Fallback: do local search only
+    topicResults.value = popularTopics.filter(t =>
+      t.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      t.excerpt.toLowerCase().includes(searchQuery.value.toLowerCase())
+    )
   } finally {
+    searching.value = false
     aiLoading.value = false
   }
 }
 
+function addToRecentSearches(query: string) {
+  const searches = recentSearches.value.filter(s => s !== query)
+  searches.unshift(query)
+  if (searches.length > 5) searches.pop()
+  recentSearches.value = searches
+  try {
+    localStorage.setItem('wiki_recent_searches', JSON.stringify(searches))
+  } catch { /* ignore */ }
+}
+
+function clearResults() {
+  internalResults.value = []
+  topicResults.value = []
+  aiResponse.value = ''
+  hasSearched.value = false
+}
+
 function selectCategory(category: any) {
-  // Handle Policies category specially
   if (category.id === 'policies') {
     showPolicies.value = true
+    hasSearched.value = false
     searchQuery.value = ''
     aiResponse.value = ''
-    searchResults.value = []
+    internalResults.value = []
+    topicResults.value = []
     return
   }
   
-  // Filter by category instead of putting category name in search
   showPolicies.value = false
-  searchQuery.value = ''
-  aiResponse.value = ''
-  searchResults.value = popularTopics.filter(t =>
-    t.category.toLowerCase() === category.name.toLowerCase()
-  )
+  searchQuery.value = category.name
+  performSearch('both')
+}
+
+function openResult(result: any) {
+  if (result.source === 'policy_document' && result.url) {
+    window.open(result.url, '_blank')
+  } else if (result.content) {
+    selectedArticle.value = result
+    articleDialog.value = true
+  }
 }
 
 function openArticle(article: any) {
@@ -366,7 +587,6 @@ function openArticle(article: any) {
 }
 
 function saveArticle() {
-  // Add to saved articles (localStorage for now)
   const saved = JSON.parse(localStorage.getItem('saved_wiki_articles') || '[]')
   if (!saved.find((a: any) => a.id === selectedArticle.value?.id)) {
     saved.push({
@@ -386,7 +606,7 @@ function shareArticle() {
   if (navigator.share) {
     navigator.share({
       title: selectedArticle.value?.title,
-      text: 'Check out this medical wiki article',
+      text: 'Check out this wiki article',
       url
     })
   } else {
@@ -396,7 +616,6 @@ function shareArticle() {
 }
 
 function markHelpful() {
-  // In a real app, this would send feedback to the backend
   alert('Thanks for your feedback!')
 }
 
@@ -441,7 +660,20 @@ function printArticle() {
 
 .ai-response {
   line-height: 1.8;
-  white-space: pre-wrap;
+}
+
+.ai-response :deep(h2),
+.ai-response :deep(h3),
+.ai-response :deep(h4) {
+  font-weight: 600;
+}
+
+.ai-response :deep(ul) {
+  padding-left: 1.5rem;
+}
+
+.ai-response :deep(li) {
+  margin-bottom: 0.25rem;
 }
 
 .wiki-content h3 {

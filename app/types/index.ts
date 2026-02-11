@@ -66,7 +66,7 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // === Management === Roster, Skills Library, Facilities (everyone); Skill Stats (admin+); Course Manager (gdu+)
   management: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
-  // === Med Ops === Wiki, Calculators, Boards, Partners - everyone has access
+  // === Med Ops === Calculators, Boards, Partners - everyone has access (Wiki moved to top-level)
   med_ops: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
   
   // === HR === Schedule, Time Off, Recruiting, Payroll, Master Roster

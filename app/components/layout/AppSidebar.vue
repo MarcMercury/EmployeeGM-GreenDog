@@ -42,6 +42,16 @@
         class="nav-item mb-1"
       />
 
+      <!-- ===== Wiki - Global Access (below Activity Hub) ===== -->
+      <v-list-item
+        v-if="hasPageAccess('/wiki')"
+        to="/wiki"
+        prepend-icon="mdi-book-open-page-variant"
+        title="Wiki"
+        rounded="lg"
+        class="nav-item mb-1"
+      />
+
       <!-- ===== Marketplace - Global Access ===== -->
       <v-list-item
         v-if="hasPageAccess('/marketplace')"
@@ -102,12 +112,11 @@
             class="nav-item"
           />
         </template>
-        <v-list-item v-if="hasPageAccess('/med-ops/wiki')" to="/med-ops/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/calculators')" to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/boards')" to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/partners')" to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/wiki" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/calculators" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== HR Group - Page-level access control ===== -->
       <v-list-group v-if="hasHrAccess && !rail" value="hr">
@@ -274,6 +283,7 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   // Global
   '/': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
   '/activity': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
+  '/wiki': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
   '/marketplace': ['super_admin', 'sup_admin'],
   
   // My Workspace
@@ -386,7 +396,7 @@ function hasSectionAccess(sectionName: string): boolean {
   const sectionPages: Record<string, string[]> = {
     'My Workspace': ['/profile', '/contact-list', '/my-schedule', '/people/my-skills', '/development', '/academy/my-training'],
     'Management': ['/roster', '/skills-library', '/people/skill-stats', '/med-ops/facilities', '/academy/course-manager'],
-    'Med Ops': ['/med-ops/wiki', '/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
+    'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
     'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
     'CRM & Analytics': ['/marketing/ezyvet-crm', '/marketing/ezyvet-analytics', '/marketing/list-hygiene'],
