@@ -105,7 +105,15 @@ export async function executeAgentRun(
     throw new Error(msg)
   }
 
-  if (agent.status !== 'active') {
+  // Manual triggers can run paused agents; only block disabled agents
+  // Cron/event/agent triggers require active status
+  if (agent.status === 'disabled') {
+    const msg = `Agent "${agentId}" is disabled, skipping`
+    await failAgentRun(runId, msg)
+    throw new Error(msg)
+  }
+
+  if (agent.status !== 'active' && triggerType !== 'manual') {
     const msg = `Agent "${agentId}" is ${agent.status}, skipping`
     await failAgentRun(runId, msg)
     throw new Error(msg)
