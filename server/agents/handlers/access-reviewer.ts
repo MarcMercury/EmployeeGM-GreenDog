@@ -219,9 +219,15 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
 
   // ── 5. Check RLS-enabled tables for policy coverage ───────────
   // Query information_schema for tables with RLS enabled that may lack policies
-  const { data: rlsTables } = await supabase.rpc('get_rls_table_info').catch(() => ({ data: null }))
+  let rlsTables: any[] | null = null
+  try {
+    const { data } = await supabase.rpc('get_rls_table_info')
+    rlsTables = data
+  } catch {
+    rlsTables = null
+  }
 
-  // Fallback: query pg_tables if RPC not available
+  // Fallback: skip if RPC not available
   if (!rlsTables) {
     logger.info(`[Agent:${agentId}] RPC get_rls_table_info not available, skipping RLS deep check`, 'agent')
   } else {
