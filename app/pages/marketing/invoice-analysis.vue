@@ -640,7 +640,7 @@
             :disabled="!uploadForm.file"
             @click="uploadInvoiceData"
           >
-            Upload & Process
+            {{ uploadProgress || 'Upload & Process' }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -737,6 +737,7 @@ const supabase = useSupabaseClient()
 const loading = ref(false)
 const analyzing = ref(false)
 const uploading = ref(false)
+const uploadProgress = ref('')
 const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const showUploadHistory = ref(false)
@@ -1122,7 +1123,7 @@ async function loadData() {
       .eq('status', 'completed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (latestRun) {
       analysisResult.value = {
@@ -1269,16 +1270,38 @@ async function uploadInvoiceData() {
 
     if (rows.length === 0) throw new Error('No data rows found after header')
 
-    const result = await $fetch('/api/invoices/upload', {
-      method: 'POST',
-      body: {
-        invoiceLines: rows,
-        fileName: uploadForm.file.name,
-      },
-    }) as any
+    // Chunk large uploads to avoid 413 payload-too-large errors
+    const UPLOAD_CHUNK_SIZE = 3000
+    let totalInserted = 0
+    let totalDuplicatesSkipped = 0
+    let totalErrors = 0
+    let totalPurged = 0
+    const totalChunks = Math.ceil(rows.length / UPLOAD_CHUNK_SIZE)
 
+    for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+      const start = chunkIdx * UPLOAD_CHUNK_SIZE
+      const chunk = rows.slice(start, start + UPLOAD_CHUNK_SIZE)
+      uploadProgress.value = totalChunks > 1
+        ? `Uploading chunk ${chunkIdx + 1} of ${totalChunks} (${chunk.length} rows)...`
+        : ''
+
+      const result = await $fetch('/api/invoices/upload', {
+        method: 'POST',
+        body: {
+          invoiceLines: chunk,
+          fileName: uploadForm.file.name,
+        },
+      }) as any
+
+      totalInserted += result.inserted || 0
+      totalDuplicatesSkipped += result.duplicatesSkipped || 0
+      totalErrors += result.errors || 0
+      totalPurged += result.purged || 0
+    }
+
+    uploadProgress.value = ''
     showNotification(
-      `Upload complete: ${result.inserted} new lines added, ${result.duplicatesSkipped} duplicates skipped.${result.purged ? ` ${result.purged} old records purged.` : ''}`,
+      `Upload complete: ${totalInserted} new lines added, ${totalDuplicatesSkipped} duplicates skipped.${totalPurged ? ` ${totalPurged} old records purged.` : ''}`,
       'success'
     )
 
