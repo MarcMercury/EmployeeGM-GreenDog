@@ -148,9 +148,10 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
               await supabase.from('notifications').insert({
                 profile_id: emp.profile_id,
                 type: 'review_reminder',
+                category: 'training',
                 title: `📋 Performance Review — ${urgency}`,
                 body: `Your ${cycle.name} review is ${urgency.toLowerCase()}. Please complete it soon.`,
-                data: { review_id: review.id, cycle_id: cycle.id },
+                data: { review_id: review.id, cycle_id: cycle.id, url: '/development', action_label: 'Complete Review' },
                 is_read: false,
               })
             }

@@ -243,9 +243,10 @@ Respond in JSON format:
         await supabase.from('notifications').insert({
           profile_id: emp.profile_id,
           type: 'coach_nudge',
+          category: 'training',
           title: '💡 Daily Coaching Tip',
           body: nudge.message,
-          data: { agent_id: agentId, proposal_id: proposalId },
+          data: { agent_id: agentId, proposal_id: proposalId, url: '/development', action_label: 'View Tips' },
           is_read: false,
         })
       }

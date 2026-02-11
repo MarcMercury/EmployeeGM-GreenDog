@@ -708,11 +708,21 @@ const loadNotifications = async () => {
   page.value = 1
   
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('notifications')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(pageSize)
+    
+    // Personal view: filter to current user; Company view (admin only): show all
+    if (viewMode.value === 'personal' || !isAdmin.value) {
+      const profileId = currentUserProfile.value?.id
+      if (profileId) {
+        query = query.eq('profile_id', profileId)
+      }
+    }
+    
+    const { data, error } = await query
     
     if (error) throw error
     
@@ -732,11 +742,20 @@ const loadMore = async () => {
   try {
     const offset = (page.value - 1) * pageSize
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('notifications')
       .select('*')
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1)
+    
+    if (viewMode.value === 'personal' || !isAdmin.value) {
+      const profileId = currentUserProfile.value?.id
+      if (profileId) {
+        query = query.eq('profile_id', profileId)
+      }
+    }
+    
+    const { data, error } = await query
     
     if (error) throw error
     
@@ -750,12 +769,59 @@ const loadMore = async () => {
   }
 }
 
+// Map agent/system notification types to Activity Hub categories
+const NOTIFICATION_TYPE_CATEGORY_MAP: Record<string, string> = {
+  // Schedule
+  schedule_assigned: 'schedule',
+  schedule_published: 'schedule',
+  schedule_removed: 'schedule',
+  schedule_changed: 'schedule',
+  // PTO
+  pto_approved: 'pto',
+  pto_denied: 'pto',
+  pto_submitted: 'pto',
+  pto_updated: 'pto',
+  pto_request_admin: 'pto',
+  pto_request_manager: 'pto',
+  // Skills
+  skill_added: 'skills',
+  skill_improved: 'skills',
+  skill_updated: 'skills',
+  // Profile & HR
+  profile_updated: 'profile',
+  profile_incomplete: 'profile',
+  role_changed: 'hr',
+  admin_alert: 'hr',
+  team_change_alert: 'hr',
+  attendance_alert: 'hr',
+  attendance_flag: 'hr',
+  payroll_alert: 'hr',
+  payroll_anomaly: 'hr',
+  compliance_alert: 'hr',
+  disciplinary_recommendation: 'hr',
+  engagement_alert: 'hr',
+  // Training & growth
+  training_assigned: 'training',
+  training_completed: 'training',
+  training_reminder: 'training',
+  coach_nudge: 'training',
+  review_reminder: 'training',
+  kudos: 'training',
+  promotion: 'hr',
+  // Marketing
+  marketing_update: 'marketing',
+  // System
+  system_welcome: 'system',
+  system: 'system',
+}
+
 const enrichNotification = (n: any): ActivityNotification => {
-  const category = n.category || n.type?.split('_')[0] || 'system'
+  // Use DB category, then mapped type, then fallback to first segment of type
+  const category = n.category || NOTIFICATION_TYPE_CATEGORY_MAP[n.type] || n.type?.split('_')[0] || 'system'
   const actionTypes = ['approval_needed', 'response_required', 'urgent', 'action_required']
   const requires_action = n.requires_action || actionTypes.some(t => n.type?.includes(t)) || n.data?.requires_action
   const action_url = n.data?.url || n.data?.action_url || null
-  const action_label = n.data?.action_label || null
+  const action_label = n.data?.action_label || n.action_label || null
   
   return { ...n, category, requires_action, action_url, action_label }
 }
@@ -921,6 +987,11 @@ onMounted(async () => {
   await fetchGlobalData()
   await fetchPersonalData()
   await loadNotifications()
+})
+
+// Reload notifications when view mode changes (personal vs company)
+watch(viewMode, () => {
+  loadNotifications()
 })
 </script>
 

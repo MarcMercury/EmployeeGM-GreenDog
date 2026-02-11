@@ -21,6 +21,8 @@ interface AgentNotification {
   title: string
   /** Notification body text */
   body: string
+  /** Notification category for Activity Hub grouping */
+  category?: string
   /** Optional structured data */
   data?: Record<string, unknown>
   /** Priority: 'low' | 'normal' | 'high' | 'urgent' */
@@ -39,6 +41,7 @@ export async function notifyInApp(opts: AgentNotification): Promise<boolean> {
   const { error } = await client.from('notifications').insert({
     profile_id: opts.profileId,
     type: opts.type,
+    category: opts.category ?? 'system',
     title: opts.title,
     body: opts.body,
     data: opts.data ?? {},

@@ -130,9 +130,10 @@ applierMap.set('profile_update_request', async (proposal, supabase) => {
       await supabase.from('notifications').insert({
         profile_id: profileId,
         type: 'profile_incomplete',
+        category: 'profile',
         title: '📝 Profile Update Needed',
         body: d.summary ?? proposal.summary ?? 'Please update your profile with missing information.',
-        data: { proposal_id: proposal.id, missing_fields: d.missing_fields },
+        data: { proposal_id: proposal.id, missing_fields: d.missing_fields, url: '/profile', action_label: 'Update Profile' },
         is_read: false,
       })
     }
@@ -168,9 +169,10 @@ applierMap.set('attendance_flag', async (proposal, supabase) => {
     await supabase.from('notifications').insert({
       profile_id: managerProfileId,
       type: 'attendance_alert',
+      category: 'hr',
       title: `⚠️ Attendance Alert: ${d.employee_name ?? 'Employee'}`,
       body: proposal.summary,
-      data: { proposal_id: proposal.id, employee_id: d.employee_id },
+      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/admin/master-roster', action_label: 'Review' },
       is_read: false,
     })
   }
@@ -199,9 +201,10 @@ applierMap.set('payroll_anomaly', async (proposal, supabase) => {
     await supabase.from('notifications').insert({
       profile_id: managerProfileId,
       type: 'payroll_alert',
+      category: 'hr',
       title: `💰 Payroll Alert: ${d.employee_name ?? 'Time Entry Issue'}`,
       body: proposal.summary,
-      data: { proposal_id: proposal.id, employee_id: d.employee_id },
+      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/admin/master-roster', action_label: 'Review' },
       is_read: false,
     })
   }
@@ -223,9 +226,10 @@ applierMap.set('compliance_alert', async (proposal, supabase) => {
     await supabase.from('notifications').insert({
       profile_id: profileId,
       type: 'compliance_alert',
+      category: 'hr',
       title: `🔒 Compliance: ${d.credential_type ?? d.entity_name ?? 'Action Required'}`,
       body: proposal.summary,
-      data: { proposal_id: proposal.id, ...d },
+      data: { proposal_id: proposal.id, ...d, url: '/profile', action_label: 'Review' },
       is_read: false,
     })
   }
@@ -284,9 +288,10 @@ applierMap.set('engagement_alert', async (proposal, supabase) => {
       await supabase.from('notifications').insert({
         profile_id: manager.profile_id,
         type: 'engagement_alert',
+        category: 'hr',
         title: `📉 Engagement Drop: ${d.employee_name}`,
         body: proposal.summary,
-        data: { proposal_id: proposal.id, employee_id: d.employee_id, score: d.score_this_week },
+        data: { proposal_id: proposal.id, employee_id: d.employee_id, score: d.score_this_week, url: '/roster', action_label: 'Review' },
         is_read: false,
       })
     }
