@@ -5,6 +5,12 @@
  * based on login frequency, skill/course activity, goal updates, and mentorship.
  * Pure SQL/logic — no LLM calls needed.
  *
+ * CA vet industry context (from ~/utils/vetBenchmarks.ts):
+ * - Staffing challenges are acute in CA due to high cost of living
+ * - Staff-to-vet ratio of 4:1 to 5:1 is optimal — losing staff impacts throughput
+ * - Disengagement is an early indicator of turnover, which is particularly costly
+ *   in CA's tight veterinary labor market
+ *
  * Reads: profiles (login), employee_skills, training_progress, training_quiz_attempts,
  *        goal_updates, employee_goals, mentorships, employee_achievements
  * Writes: agent_proposals (engagement_alert type)

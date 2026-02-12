@@ -1,5 +1,13 @@
 /**
  * Shared helper functions for marketing/partnerships page and its sub-components.
+ *
+ * Relationship health scoring thresholds align with the CA vet industry benchmarks
+ * defined in ~/utils/vetBenchmarks.ts (REFERRAL_BENCHMARKS). The SQL scoring engine
+ * in supabase/migrations/191_partner_metrics_trigger.sql uses the same scale:
+ *   - High-tier expected visit: every 60 days
+ *   - Mid-tier: every 120 days
+ *   - Low-tier: every 180 days
+ *   - Health score: 0-100 (≥80 Excellent, ≥60 Good, ≥40 Fair, ≥20 Needs Attention, <20 At Risk)
  */
 
 export function formatPartnerDate(date: string): string {

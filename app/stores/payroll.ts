@@ -1,6 +1,13 @@
 /**
  * Payroll Store
  * Handles payroll calculation, adjustments, and approval workflow
+ *
+ * CA vet industry benchmarks (from ~/utils/vetBenchmarks.ts):
+ * - Payroll costs target: 23-25% of revenue (AAHA/VHMA)
+ * - CA overtime: daily >8h = 1.5×, >12h = 2×; weekly >40h (CA Labor Code § 510)
+ * - CA healthcare worker minimum wage: $25/hr (SB 525)
+ * - Salary divisor: 26 pay periods/year (bi-weekly)
+ * - Staff-to-vet ratio: 4:1 to 5:1 optimal for productivity
  */
 import { defineStore } from 'pinia'
 import { format, differenceInMinutes, parseISO, startOfWeek, addDays } from 'date-fns'

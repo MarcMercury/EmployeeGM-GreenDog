@@ -1,7 +1,8 @@
 /**
  * California Overtime Calculation Utility
  *
- * Implements California Labor Code overtime rules:
+ * Implements California Labor Code overtime rules per STAFFING_BENCHMARKS in
+ * ~/utils/vetBenchmarks.ts (sourced from CA Labor Code § 510):
  *
  * **Daily overtime (Cal. Lab. Code § 510)**
  *  - Hours 1–8 in a workday → regular rate
@@ -13,6 +14,9 @@
  *
  * **7th consecutive day rules** are NOT yet implemented (requires
  * tracking consecutive workdays, which depends on schedule context).
+ *
+ * CA-specific note: SB 525 sets healthcare worker minimum wage at $25/hr.
+ * Ensure all vet staff hourly rates comply with this floor.
  */
 
 // ---------------------------------------------------------------------------

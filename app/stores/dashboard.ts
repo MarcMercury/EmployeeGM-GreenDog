@@ -1,6 +1,16 @@
 import { defineStore } from 'pinia'
 import type { StoreDashboardStats, TeamHealth, MentorshipMatch, GrowthStats, UpcomingShift } from '~/types/admin.types'
 
+/**
+ * Dashboard Store
+ *
+ * CA vet industry context (from ~/utils/vetBenchmarks.ts):
+ * - New client target: 24/month/DVM → ~6/week/DVM
+ * - Staff-to-vet ratio: 4:1 to 5:1 optimal
+ * - Certification compliance critical for CA VMB
+ * - Weekly lead goal default should scale with number of DVMs
+ */
+
 interface DashboardState {
   stats: StoreDashboardStats
   teamHealth: TeamHealth

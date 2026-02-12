@@ -143,7 +143,7 @@
               @update:model-value="loadData"
             />
           </v-col>
-          <v-col cols="12" md="2">
+          <v-col cols="12" md="3">
             <v-text-field
               v-model="filters.startDate"
               type="date"
@@ -155,7 +155,7 @@
               @update:model-value="loadData"
             />
           </v-col>
-          <v-col cols="12" md="2">
+          <v-col cols="12" md="3">
             <v-text-field
               v-model="filters.endDate"
               type="date"
@@ -165,18 +165,6 @@
               hide-details
               prepend-inner-icon="mdi-calendar-end"
               @update:model-value="loadData"
-            />
-          </v-col>
-          <v-col cols="12" md="2">
-            <v-select
-              v-model="filters.department"
-              :items="departmentOptions"
-              label="Product Group"
-              variant="outlined"
-              density="compact"
-              clearable
-              hide-details
-              prepend-inner-icon="mdi-package-variant"
             />
           </v-col>
           <v-col cols="12" md="3" class="d-flex gap-2 align-center">
@@ -784,14 +772,12 @@ const uploadProgress = ref('')
 const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const showUploadHistory = ref(false)
-const tableSearch = ref('')
 const dataVersion = ref(0)
 
 const filters = reactive({
   location: null as string | null,
   startDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
   endDate: new Date().toISOString().split('T')[0],
-  department: null as string | null,
 })
 
 const uploadForm = reactive({
@@ -820,12 +806,12 @@ const stats = reactive({
   latestDate: null as string | null,
 })
 
-const invoices = ref<any[]>([])
+// Dashboard data from server-side SQL aggregation (replaces raw row fetching)
+const dashboardData = ref<any>(null)
 const analysisResult = ref<any>(null)
 const analysisHistory = ref<any[]>([])
 const uploadHistory = ref<any[]>([])
 const locationOptions = ref<string[]>([])
-const departmentOptions = ref<string[]>([])
 
 const snackbar = reactive({
   show: false,
@@ -867,12 +853,11 @@ function applyPreset(preset: { days: number }) {
 }
 
 const hasActiveFilters = computed(() => {
-  return !!filters.location || !!filters.department
+  return !!filters.location
 })
 
 function resetFilters() {
   filters.location = null
-  filters.department = null
   filters.startDate = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0]
   filters.endDate = new Date().toISOString().split('T')[0]
   loadData()
@@ -894,19 +879,6 @@ const avgLinesPerInvoice = computed(() => {
 
 // ── Table Headers ────────────────────────────────────────────────────────
 
-const tableHeaders = [
-  { title: 'Date', key: 'invoice_date', sortable: true },
-  { title: 'Invoice #', key: 'invoice_number', sortable: true },
-  { title: 'Product', key: 'product_name', sortable: true },
-  { title: 'Department', key: 'department', sortable: true },
-  { title: 'Product Group', key: 'product_group', sortable: true },
-  { title: 'Staff', key: 'staff_member', sortable: true },
-  { title: 'Std Price', key: 'standard_price', sortable: true },
-  { title: 'Total Earned', key: 'total_earned', sortable: true },
-  { title: 'Client', key: 'client_first_name', sortable: true },
-  { title: 'Pet', key: 'pet_name', sortable: true },
-]
-
 const historyHeaders = [
   { title: 'Date', key: 'created_at', sortable: true },
   { title: 'Status', key: 'status', sortable: true },
@@ -926,34 +898,23 @@ const uploadHistoryHeaders = [
   { title: 'Errors', key: 'errors' },
 ]
 
-// ── Chart Computed ───────────────────────────────────────────────────────
+// ── Chart Computed (from server-side SQL aggregation) ────────────────────
 
-const filteredInvoices = computed(() => {
-  let list = invoices.value
-  if (filters.department) {
-    list = list.filter(inv => inv.product_group === filters.department)
-  }
-  return list
-})
-
-// Monthly revenue
+// Monthly data from server (already pre-aggregated)
 const monthlyData = computed(() => {
-  const monthMap: Record<string, { revenue: number; count: number; clients: Set<string>; invoices: Set<string> }> = {}
-  for (const inv of filteredInvoices.value) {
-    if (!inv.invoice_date) continue
-    const monthKey = inv.invoice_date.substring(0, 7)
-    if (!monthMap[monthKey]) monthMap[monthKey] = { revenue: 0, count: 0, clients: new Set(), invoices: new Set() }
-    monthMap[monthKey].revenue += parseFloat(inv.total_earned) || 0
-    monthMap[monthKey].count++
-    if (inv.client_code) monthMap[monthKey].clients.add(inv.client_code)
-    if (inv.invoice_number) monthMap[monthKey].invoices.add(inv.invoice_number)
-  }
-  return Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0]))
+  const monthly = dashboardData.value?.monthly || []
+  return monthly.map((m: any) => ({
+    month: m.month,
+    revenue: m.revenue || 0,
+    count: m.lineCount || 0,
+    invoiceCount: m.invoiceCount || 0,
+    clientCount: m.clientCount || 0,
+  }))
 })
 
 const monthlyRevenueSeries = computed(() => [{
   name: 'Revenue',
-  data: monthlyData.value.map(([, d]) => Math.round(d.revenue * 100) / 100),
+  data: monthlyData.value.map((d: any) => Math.round(d.revenue * 100) / 100),
 }])
 
 const monthlyRevenueOptions = computed(() => ({
@@ -962,7 +923,7 @@ const monthlyRevenueOptions = computed(() => ({
   fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.1 } },
   stroke: { curve: 'smooth', width: 2 },
   xaxis: {
-    categories: monthlyData.value.map(([m]) => m),
+    categories: monthlyData.value.map((d: any) => d.month),
     labels: { rotate: -45, style: { fontSize: '10px' } },
   },
   yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
@@ -973,9 +934,8 @@ const monthlyRevenueOptions = computed(() => ({
 // Invoice Revenue Trend (avg revenue per invoice by month)
 const invoiceRevenueTrendSeries = computed(() => [{
   name: 'Avg Revenue per Invoice',
-  data: monthlyData.value.map(([, d]) => {
-    const invoiceCount = d.invoices.size
-    return invoiceCount > 0 ? Math.round((d.revenue / invoiceCount) * 100) / 100 : 0
+  data: monthlyData.value.map((d: any) => {
+    return d.invoiceCount > 0 ? Math.round((d.revenue / d.invoiceCount) * 100) / 100 : 0
   }),
 }])
 
@@ -985,7 +945,7 @@ const invoiceRevenueTrendOptions = computed(() => ({
   stroke: { curve: 'smooth', width: 3 },
   markers: { size: 4 },
   xaxis: {
-    categories: monthlyData.value.map(([m]) => m),
+    categories: monthlyData.value.map((d: any) => d.month),
     labels: { rotate: -45, style: { fontSize: '10px' } },
   },
   yaxis: { title: { text: 'Avg Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(1) + 'k' } },
@@ -993,14 +953,10 @@ const invoiceRevenueTrendOptions = computed(() => ({
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2 }) } },
 }))
 
-// Department donut
+// Department donut (from server-side top 10)
 const deptData = computed(() => {
-  const map: Record<string, number> = {}
-  for (const inv of filteredInvoices.value) {
-    const dept = inv.department || 'Unknown'
-    map[dept] = (map[dept] || 0) + (parseFloat(inv.total_earned) || 0)
-  }
-  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10)
+  const departments = dashboardData.value?.departments || []
+  return departments.map((d: any) => [d.department || 'Unknown', d.revenue || 0])
 })
 
 const departmentDonutSeries = computed(() => deptData.value.map(([, v]) => Math.round(v * 100) / 100))
@@ -1013,14 +969,10 @@ const departmentDonutOptions = computed(() => ({
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
 }))
 
-// Product groups bar
+// Product groups bar (from server-side top 12)
 const pgData = computed(() => {
-  const map: Record<string, number> = {}
-  for (const inv of filteredInvoices.value) {
-    const pg = inv.product_group || 'Unknown'
-    map[pg] = (map[pg] || 0) + (parseFloat(inv.total_earned) || 0)
-  }
-  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 12)
+  const groups = dashboardData.value?.productGroups || []
+  return groups.map((d: any) => [d.productGroup || 'Unknown', d.revenue || 0])
 })
 
 const productGroupSeries = computed(() => [{ name: 'Revenue', data: pgData.value.map(([, v]) => Math.round(v * 100) / 100) }])
@@ -1037,15 +989,10 @@ const productGroupOptions = computed(() => ({
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
 }))
 
-// Staff revenue bar
+// Staff revenue bar (from server-side top 15)
 const staffData = computed(() => {
-  const map: Record<string, number> = {}
-  for (const inv of filteredInvoices.value) {
-    const staff = inv.staff_member
-    if (!staff) continue
-    map[staff] = (map[staff] || 0) + (parseFloat(inv.total_earned) || 0)
-  }
-  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15)
+  const staff = dashboardData.value?.staff || []
+  return staff.map((d: any) => [d.staffMember, d.revenue || 0])
 })
 
 const staffRevenueSeries = computed(() => [{ name: 'Revenue', data: staffData.value.map(([, v]) => Math.round(v * 100) / 100) }])
@@ -1065,15 +1012,10 @@ const staffRevenueOptions = computed(() => ({
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
 }))
 
-// Case Owner revenue bar
+// Case Owner revenue bar (from server-side top 15)
 const caseOwnerData = computed(() => {
-  const map: Record<string, number> = {}
-  for (const inv of filteredInvoices.value) {
-    const owner = inv.case_owner
-    if (!owner) continue
-    map[owner] = (map[owner] || 0) + (parseFloat(inv.total_earned) || 0)
-  }
-  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15)
+  const owners = dashboardData.value?.caseOwners || []
+  return owners.map((d: any) => [d.caseOwner, d.revenue || 0])
 })
 
 const caseOwnerRevenueSeries = computed(() => [{ name: 'Revenue', data: caseOwnerData.value.map(([, v]) => Math.round(v * 100) / 100) }])
@@ -1096,14 +1038,14 @@ const caseOwnerRevenueOptions = computed(() => ({
 // Monthly clients
 const monthlyClientSeries = computed(() => [{
   name: 'Unique Clients',
-  data: monthlyData.value.map(([, d]) => d.clients.size),
+  data: monthlyData.value.map((d: any) => d.clientCount),
 }])
 
 const monthlyClientOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
   colors: ['#F59E0B'],
   xaxis: {
-    categories: monthlyData.value.map(([m]) => m),
+    categories: monthlyData.value.map((d: any) => d.month),
     labels: { rotate: -45, style: { fontSize: '10px' } },
   },
   yaxis: { title: { text: 'Client Count' } },
@@ -1114,8 +1056,8 @@ const monthlyClientOptions = computed(() => ({
 
 // Monthly invoice volume
 const monthlyVolumeSeries = computed(() => [
-  { name: 'Invoice Lines', data: monthlyData.value.map(([, d]) => d.count) },
-  { name: 'Invoices', data: monthlyData.value.map(([, d]) => d.invoices.size) },
+  { name: 'Invoice Lines', data: monthlyData.value.map((d: any) => d.count) },
+  { name: 'Invoices', data: monthlyData.value.map((d: any) => d.invoiceCount) },
 ])
 
 const monthlyVolumeOptions = computed(() => ({
@@ -1123,7 +1065,7 @@ const monthlyVolumeOptions = computed(() => ({
   colors: ['#06B6D4', '#EF4444'],
   stroke: { curve: 'smooth', width: [2, 2] },
   xaxis: {
-    categories: monthlyData.value.map(([m]) => m),
+    categories: monthlyData.value.map((d: any) => d.month),
     labels: { rotate: -45, style: { fontSize: '10px' } },
   },
   yaxis: { title: { text: 'Count' } },
@@ -1186,68 +1128,34 @@ function showNotification(message: string, color = 'success') {
 async function loadData() {
   loading.value = true
   try {
-    // Load filtered invoice lines
-    let query = supabase
-      .from('invoice_lines')
-      .select('*')
-      .order('invoice_date', { ascending: false })
+    // Call server-side aggregation API (bypasses PostgREST 1000-row limit)
+    const params = new URLSearchParams()
+    if (filters.startDate) params.set('startDate', filters.startDate)
+    if (filters.endDate) params.set('endDate', filters.endDate)
+    if (filters.location) params.set('location', filters.location)
 
-    if (filters.startDate) query = query.gte('invoice_date', filters.startDate)
-    if (filters.endDate) query = query.lte('invoice_date', filters.endDate)
-    if (filters.location) query = query.eq('department', filters.location)
+    const data = await $fetch(`/api/invoices/dashboard?${params.toString()}`) as any
+    dashboardData.value = data
 
-    const { data, error } = await query.limit(50000)
-    if (error) throw error
-    invoices.value = data || []
+    // Populate stats from server aggregation
+    const s = data.stats || {}
+    stats.totalLines = s.totalLines || 0
+    stats.totalRevenue = s.totalRevenue || 0
+    stats.uniqueInvoices = s.uniqueInvoices || 0
+    stats.uniqueClients = s.uniqueClients || 0
+    stats.uniqueStaff = s.uniqueStaff || 0
+    stats.uniqueDepartments = s.uniqueDepartments || 0
+    stats.earliestDate = s.earliestDate || null
+    stats.latestDate = s.latestDate || null
+    stats.totalUploads = data.totalUploads || 0
+    stats.analysisRuns = data.analysisRuns || 0
 
-    // Compute stats from loaded data
-    stats.totalLines = invoices.value.length
-    stats.totalRevenue = invoices.value.reduce((sum, inv) => sum + (parseFloat(inv.total_earned) || 0), 0)
-    stats.uniqueInvoices = new Set(invoices.value.map(inv => inv.invoice_number).filter(Boolean)).size
-    stats.uniqueClients = new Set(invoices.value.map(inv => inv.client_code).filter(Boolean)).size
-    stats.uniqueStaff = new Set(invoices.value.map(inv => inv.staff_member).filter(Boolean)).size
-    stats.uniqueDepartments = new Set(invoices.value.map(inv => inv.department).filter(Boolean)).size
+    // Location / product group options from server
+    locationOptions.value = data.locationOptions || []
 
-    // Populate filter options from data
-    locationOptions.value = [...new Set(invoices.value.map(inv => inv.department).filter(Boolean))].sort()
-    departmentOptions.value = [...new Set(invoices.value.map(inv => inv.product_group).filter(Boolean))].sort()
-
-    // Date range
-    const dates = invoices.value.map(inv => inv.invoice_date).filter(Boolean).sort()
-    stats.earliestDate = dates[0] || null
-    stats.latestDate = dates[dates.length - 1] || null
-
-    // Analysis run count
-    const { count: analysisCount } = await supabase
-      .from('invoice_analysis_runs')
-      .select('*', { count: 'exact', head: true })
-    stats.analysisRuns = analysisCount || 0
-
-    // Upload count
-    const { count: uploadCount } = await supabase
-      .from('invoice_upload_history')
-      .select('*', { count: 'exact', head: true })
-    stats.totalUploads = uploadCount || 0
-
-    // Load latest completed analysis
-    const { data: latestRun } = await supabase
-      .from('invoice_analysis_runs')
-      .select('*')
-      .eq('status', 'completed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (latestRun) {
-      analysisResult.value = {
-        revenueSummary: latestRun.revenue_summary,
-        trendAnalysis: latestRun.trend_analysis,
-        topProducts: latestRun.top_products,
-        departmentBreakdown: latestRun.department_breakdown,
-        staffPerformance: latestRun.staff_performance,
-        insights: latestRun.insights,
-        recommendations: latestRun.recommendations,
-      }
+    // Analysis result from server
+    if (data.latestAnalysis) {
+      analysisResult.value = data.latestAnalysis
     }
 
     // Load analysis history
@@ -1496,25 +1404,35 @@ function loadHistoricalAnalysis(run: any) {
 // ── Export ────────────────────────────────────────────────────────────────
 
 function exportCSV() {
-  const headers = tableHeaders.map(h => h.title)
-  const keys = tableHeaders.map(h => h.key)
-  const csvRows = [headers.join(',')]
+  // Export summary data from server-side aggregation
+  const csvRows = ['Category,Name,Revenue']
 
-  for (const inv of filteredInvoices.value) {
-    const row = keys.map(k => {
-      const val = inv[k]
-      if (val === null || val === undefined) return ''
-      const str = String(val)
-      return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str
-    })
-    csvRows.push(row.join(','))
+  // Staff
+  for (const s of dashboardData.value?.staff || []) {
+    csvRows.push(`Staff,"${s.staffMember}",${s.revenue}`)
+  }
+  // Case Owners
+  for (const c of dashboardData.value?.caseOwners || []) {
+    csvRows.push(`Case Owner,"${c.caseOwner}",${c.revenue}`)
+  }
+  // Departments
+  for (const d of dashboardData.value?.departments || []) {
+    csvRows.push(`Department,"${d.department}",${d.revenue}`)
+  }
+  // Product Groups
+  for (const p of dashboardData.value?.productGroups || []) {
+    csvRows.push(`Product Group,"${p.productGroup}",${p.revenue}`)
+  }
+  // Monthly
+  for (const m of dashboardData.value?.monthly || []) {
+    csvRows.push(`Monthly,${m.month},${m.revenue}`)
   }
 
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `invoice-analysis-${filters.startDate}-to-${filters.endDate}.csv`
+  a.download = `invoice-summary-${filters.startDate}-to-${filters.endDate}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }

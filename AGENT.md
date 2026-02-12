@@ -208,6 +208,65 @@ Veterinary hospital management system ("Madden for Vets") for Green Dog Dental.
 
 ---
 
+## 🏥 CALIFORNIA VETERINARY MEDICAL PRACTICE BENCHMARKS
+
+> **MANDATORY:** All reporting, analytics, and recommendation logic MUST use the benchmarks
+> defined in `app/utils/vetBenchmarks.ts`. This is the single source of truth for industry
+> standards. The `useBenchmarks` composable (`app/composables/useBenchmarks.ts`) provides
+> reactive evaluation functions for use in Vue components.
+
+### Key Financial Benchmarks
+| Metric | Target | Source |
+|--------|--------|--------|
+| Revenue per FTE DVM | $700K–$850K/year | AAHA/VHMA |
+| Net Income Margin | 10–15% | AAHA Financial Pulsepoints |
+| Payroll Costs | 23–25% of revenue | VHMA |
+| COGS | 18–23% of revenue | AAHA |
+| Facilities Expense | 7–9% of collections | AAHA |
+| Exam Room Revenue | $444K+/room/year | AAHA |
+| Collection Rate | ≥98% | Industry standard |
+
+### Key Staffing Benchmarks
+| Metric | Target | Source |
+|--------|--------|--------|
+| Staff-to-Vet Ratio | 4:1 to 5:1 | AAHA/VHMA |
+| RVT-to-Vet Ratio | 2:1 | AAHA |
+| CA Healthcare Min Wage | $25/hr (SB 525) | CA Labor Code |
+| CA OT: Daily | >8h = 1.5×, >12h = 2× | CA § 510 |
+| CA OT: Weekly | >40h = OT | CA § 510 |
+
+### Key Client/Operational Benchmarks
+| Metric | Target | Source |
+|--------|--------|--------|
+| New Clients | 24/month/DVM | AAHA/VetSuccess |
+| Client Retention (Bonding) | 60% (18-month) | AAHA |
+| Patients per Day | ~15/DVM | AVMA/VetSuccess |
+| Avg Transaction Charge | $250+ | AAHA |
+
+### CA-Specific Context (2025-2026)
+- New client acquisition declining 2+ consecutive years
+- Visit volume declining — retention > acquisition
+- Tight staffing market due to high CA cost of living
+- CA VMB: 3-year controlled substance records (stricter than federal)
+- Telemedicine adoption growing post-pandemic
+
+### Files Implementing Benchmarks
+| File | What It Does |
+|------|-------------|
+| `app/utils/vetBenchmarks.ts` | Central benchmark constants + evaluator functions |
+| `app/composables/useBenchmarks.ts` | Vue composable for reactive benchmark evaluation |
+| `app/pages/marketing/sauron.vue` | Sauron executive report — uses benchmark thresholds |
+| `app/pages/marketing/ezyvet-analytics.vue` | EzyVet analytics — benchmark-aware retention display |
+| `server/api/marketing/ezyvet-analytics.get.ts` | Server-side analytics insights using benchmarks |
+| `server/agents/handlers/referral-intelligence.ts` | AI referral agent — benchmark context in prompts |
+| `server/agents/handlers/payroll-watchdog.ts` | Payroll anomaly detection using CA labor law thresholds |
+| `app/utils/overtimeCalculation.ts` | CA Labor Code § 510 OT implementation |
+| `app/utils/partnershipHelpers.ts` | Partner health scoring aligned with benchmarks |
+
+**Last Updated: February 2026**
+
+---
+
 ## 📚 DOCUMENTATION INDEX
 
 All documentation is centralized in the `/docs` folder:

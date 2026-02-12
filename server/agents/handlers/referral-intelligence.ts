@@ -14,6 +14,7 @@ import type { AgentRunContext, AgentRunResult } from '~/types/agent.types'
 import { createProposal, autoApproveProposal } from '../../utils/agents/proposals'
 import { agentChat } from '../../utils/agents/openai'
 import { logger } from '../../utils/logger'
+import { getBenchmarkContextForAI, REFERRAL_BENCHMARKS } from '~/utils/vetBenchmarks'
 
 const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   const { supabase: _sb, agentId, runId } = ctx
@@ -155,11 +156,24 @@ ${(syncHistory ?? []).slice(0, 6).map((s: any) => `- ${new Date(s.created_at).to
     messages: [
       {
         role: 'system',
-        content: `You are a veterinary practice referral strategist. Analyze the referral partner data and provide actionable insights. Focus on:
+        content: `You are a veterinary practice referral strategist specializing in California small-animal practices. Analyze the referral partner data and provide actionable insights.
+
+${getBenchmarkContextForAI()}
+
+REFERRAL-SPECIFIC BENCHMARKS:
+- Visit platinum/gold partners every ${REFERRAL_BENCHMARKS.visitFrequency.highTier} days
+- Visit silver partners every ${REFERRAL_BENCHMARKS.visitFrequency.midTier} days
+- Visit bronze/new partners every ${REFERRAL_BENCHMARKS.visitFrequency.lowTier} days
+- No single partner should exceed ${REFERRAL_BENCHMARKS.referralConcentration.maxSingleSource * 100}% of total referrals
+- Top 3 partners should be < ${REFERRAL_BENCHMARKS.referralConcentration.topThreeMax * 100}% of total
+- Target 24 new clients per month per veterinarian from all sources combined
+
+Focus on:
 1. Outreach priorities (who to visit this week)
 2. At-risk partnerships (declining activity)
 3. Growth opportunities (high-potential partners not being leveraged)
 4. Trends (is referral volume growing or declining?)
+5. Revenue concentration risk (too dependent on few sources?)
 
 Respond in JSON:
 {
@@ -167,7 +181,7 @@ Respond in JSON:
     {
       "type": "opportunity|risk|trend|recommendation",
       "title": "Short title",
-      "summary": "2-3 sentence explanation with specific data",
+      "summary": "2-3 sentence explanation with specific data. Reference CA vet industry benchmarks where relevant.",
       "priority": "high|medium|low",
       "partners_referenced": ["Partner Name"]
     }

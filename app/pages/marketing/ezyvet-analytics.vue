@@ -228,14 +228,23 @@
         <v-col cols="12" sm="6" md="3">
           <v-card class="pa-4 kpi-card" elevation="2">
             <div class="d-flex align-center">
-              <v-avatar :color="analytics.kpis.retentionRate >= 60 ? 'success' : analytics.kpis.retentionRate >= 40 ? 'warning' : 'error'" size="56" class="mr-4">
+              <v-avatar :color="evaluateRetention(analytics.kpis.retentionRate / 100).color" size="56" class="mr-4">
                 <v-icon color="white" size="28">mdi-account-heart</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h4 font-weight-bold" :class="analytics.kpis.retentionRate >= 60 ? 'text-success' : analytics.kpis.retentionRate >= 40 ? 'text-warning' : 'text-error'">
+                <div class="text-h4 font-weight-bold" :style="{ color: `rgb(var(--v-theme-${evaluateRetention(analytics.kpis.retentionRate / 100).color}))` }">
                   {{ analytics.kpis.retentionRate }}%
                 </div>
-                <div class="text-body-2 text-grey">Retention Rate</div>
+                <div class="text-body-2 text-grey">
+                  Retention Rate
+                  <v-tooltip location="bottom">
+                    <template #activator="{ props }">
+                      <v-icon v-bind="props" size="14" class="ml-1">mdi-information-outline</v-icon>
+                    </template>
+                    CA Vet Benchmark: {{ CLIENT_BENCHMARKS.clientRetention.average * 100 }}% bonding rate (18-mo).
+                    Top practices: {{ CLIENT_BENCHMARKS.clientRetention.good * 100 }}–{{ CLIENT_BENCHMARKS.clientRetention.excellent * 100 }}%.
+                  </v-tooltip>
+                </div>
               </div>
             </div>
           </v-card>
@@ -751,6 +760,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { evaluateRetention, CLIENT_BENCHMARKS } from '~/utils/vetBenchmarks'
 
 definePageMeta({
   layout: 'default',

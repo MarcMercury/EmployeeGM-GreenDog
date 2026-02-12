@@ -4,9 +4,17 @@
  * Provides aggregated analytics data for the EzyVet CRM dashboard.
  * Returns KPIs, charts data, distribution metrics, data quality,
  * generated insights, and suggested actions.
+ *
+ * Benchmark thresholds sourced from ~/utils/vetBenchmarks.ts
+ * (CA Vet Medical Practice Benchmarks — AAHA / VHMA / VetSuccess)
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+import {
+  CLIENT_BENCHMARKS,
+  FINANCIAL_BENCHMARKS,
+  evaluateRetention,
+} from '~/utils/vetBenchmarks'
 
 export default defineEventHandler(async (event) => {
   // Authenticate user first
@@ -459,34 +467,49 @@ export default defineEventHandler(async (event) => {
     const insights: Array<{ type: 'success' | 'warning' | 'info' | 'error'; icon: string; title: string; detail: string }> = []
     const suggestedActions: Array<{ priority: 'high' | 'medium' | 'low'; icon: string; title: string; detail: string; metric?: string }> = []
 
-    // --- Retention insights ---
-    if (kpis.retentionRate < 40) {
+    // --- Retention insights (CA vet benchmarks: 60% bonding rate target, top practices 65-75%) ---
+    const retBenchmark = evaluateRetention(kpis.retentionRate / 100)
+    if (retBenchmark.severity === 'critical') {
       insights.push({
         type: 'error',
         icon: 'mdi-alert-circle',
-        title: 'Low Client Retention',
-        detail: `Only ${kpis.retentionRate}% of clients visited in the last 12 months. Industry benchmark is 60-70%.`
+        title: 'Client Retention Below CA Industry Benchmark',
+        detail: `Only ${kpis.retentionRate}% of clients visited in the last 12 months. ${retBenchmark.benchmark} With CA new client acquisition declining for 2+ consecutive years, retention is critical.`
       })
       suggestedActions.push({
         priority: 'high',
         icon: 'mdi-email-fast',
         title: 'Launch Re-engagement Campaign',
-        detail: `${kpis.inactiveContacts.toLocaleString()} clients haven't visited in over a year. Consider an email/SMS campaign with a wellness check offer or seasonal promotion.`,
+        detail: `${kpis.inactiveContacts.toLocaleString()} clients haven't visited in over a year. Consider an email/SMS campaign with a wellness check offer or seasonal promotion. Target the ${CLIENT_BENCHMARKS.clientRetention.average * 100}% bonding rate benchmark.`,
         metric: `${kpis.inactiveContacts.toLocaleString()} inactive clients`
       })
-    } else if (kpis.retentionRate < 60) {
+    } else if (retBenchmark.severity === 'warning') {
       insights.push({
         type: 'warning',
         icon: 'mdi-account-clock',
-        title: 'Moderate Client Retention',
-        detail: `${kpis.retentionRate}% retention rate. There's room to improve — typically top practices achieve 65-75%.`
+        title: 'Retention Below Industry Target',
+        detail: `${kpis.retentionRate}% retention rate — below the ${CLIENT_BENCHMARKS.clientRetention.average * 100}% industry target. ${retBenchmark.benchmark}`
+      })
+      suggestedActions.push({
+        priority: 'medium',
+        icon: 'mdi-calendar-check',
+        title: 'Implement Recall & Reminder System',
+        detail: `Focus on wellness reminders, annual exam recalls, and dental grade follow-ups to push retention toward ${CLIENT_BENCHMARKS.clientRetention.good * 100}%+ (top CA practice level).`,
+        metric: `${kpis.retentionRate}% current vs ${CLIENT_BENCHMARKS.clientRetention.average * 100}% target`
+      })
+    } else if (retBenchmark.severity === 'good') {
+      insights.push({
+        type: 'success',
+        icon: 'mdi-account-check',
+        title: 'Retention Meeting Industry Target',
+        detail: `${kpis.retentionRate}% client bonding rate meets the ${CLIENT_BENCHMARKS.clientRetention.average * 100}% benchmark. Push toward ${CLIENT_BENCHMARKS.clientRetention.good * 100}%+ for top-tier CA practice performance.`
       })
     } else {
       insights.push({
         type: 'success',
-        icon: 'mdi-account-check',
-        title: 'Strong Client Retention',
-        detail: `${kpis.retentionRate}% of clients are active — this is above industry average.`
+        icon: 'mdi-trophy',
+        title: 'Retention Exceeds CA Vet Benchmarks',
+        detail: `${kpis.retentionRate}% client bonding rate exceeds the top-practice target of ${CLIENT_BENCHMARKS.clientRetention.good * 100}%. ${retBenchmark.benchmark}`
       })
     }
 

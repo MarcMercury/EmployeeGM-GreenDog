@@ -12,9 +12,18 @@
 import type { AgentRunContext, AgentRunResult } from '~/types/agent.types'
 import { createProposal, autoApproveProposal } from '../../utils/agents/proposals'
 import { logger } from '../../utils/logger'
+import { STAFFING_BENCHMARKS, CALIFORNIA_FACTORS, FINANCIAL_BENCHMARKS } from '~/utils/vetBenchmarks'
 
-const MAX_SHIFT_HOURS = 12
-const OVERTIME_THRESHOLD = 40
+/**
+ * Thresholds aligned with CA vet industry benchmarks (vetBenchmarks.ts)
+ * - Max shift: 12h (CA double-time threshold)
+ * - OT: 40h/week (CA Labor Code § 510)
+ * - OT warning: 36h (gives 4h buffer before OT)
+ * - Payroll cost target: 23-25% of revenue (AAHA/VHMA)
+ * - CA healthcare worker min wage: $25/hr (SB 525)
+ */
+const MAX_SHIFT_HOURS = STAFFING_BENCHMARKS.californiaOT.dailyDoubletime // 12
+const OVERTIME_THRESHOLD = STAFFING_BENCHMARKS.californiaOT.weeklyOT     // 40
 const OVERTIME_WARNING_THRESHOLD = 36 // Warn when approaching overtime
 
 const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
