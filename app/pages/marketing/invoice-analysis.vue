@@ -206,6 +206,16 @@
             >
               Reset
             </v-btn>
+            <v-btn
+              variant="text"
+              size="small"
+              color="primary"
+              prepend-icon="mdi-download"
+              @click="exportCSV"
+              :disabled="stats.totalLines === 0"
+            >
+              Export
+            </v-btn>
           </v-col>
         </v-row>
 
@@ -251,7 +261,7 @@
           <v-card elevation="2">
             <v-card-title class="text-subtitle-1">
               <v-icon start size="20">mdi-chart-line</v-icon>
-              Monthly Revenue Trend
+              Revenue Trend ({{ periodLabel }})
             </v-card-title>
             <v-card-text>
               <ClientOnly>
@@ -357,7 +367,7 @@
           <v-card elevation="2">
             <v-card-title class="text-subtitle-1">
               <v-icon start size="20">mdi-account-multiple-plus</v-icon>
-              Monthly Client Count
+              Client Count ({{ periodLabel }})
             </v-card-title>
             <v-card-text>
               <ClientOnly>
@@ -375,7 +385,7 @@
           <v-card elevation="2">
             <v-card-title class="text-subtitle-1">
               <v-icon start size="20">mdi-file-document-multiple</v-icon>
-              Monthly Invoice Volume
+              Invoice Volume ({{ periodLabel }})
             </v-card-title>
             <v-card-text>
               <ClientOnly>
@@ -384,6 +394,28 @@
                   height="280"
                   :options="monthlyVolumeOptions"
                   :series="monthlyVolumeSeries"
+                />
+              </ClientOnly>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- Invoice Revenue Trend -->
+      <v-row class="mb-6">
+        <v-col cols="12">
+          <v-card elevation="2">
+            <v-card-title class="text-subtitle-1">
+              <v-icon start size="20">mdi-chart-timeline-variant</v-icon>
+              Avg Revenue per Invoice ({{ periodLabel }})
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart
+                  type="line"
+                  height="320"
+                  :options="invoiceRevenueTrendOptions"
+                  :series="invoiceRevenueTrendSeries"
                 />
               </ClientOnly>
             </v-card-text>
@@ -559,59 +591,6 @@
           </v-card-text>
         </v-card>
       </template>
-
-      <!-- Invoice Lines Data Table -->
-      <v-card elevation="2">
-        <v-card-title class="text-subtitle-1 d-flex align-center">
-          <v-icon start size="20">mdi-table</v-icon>
-          Invoice Line Data
-          <v-chip size="x-small" class="ml-2" color="grey">{{ filteredInvoices.length }} records</v-chip>
-          <v-spacer />
-          <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-download" @click="exportCSV">
-            Export CSV
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <v-data-table
-            :headers="tableHeaders"
-            :items="filteredInvoices"
-            :items-per-page="25"
-            :search="tableSearch"
-            density="compact"
-            class="elevation-0"
-          >
-            <template #top>
-              <v-text-field
-                v-model="tableSearch"
-                prepend-inner-icon="mdi-magnify"
-                label="Search invoices..."
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-                class="mb-4"
-                style="max-width: 400px;"
-              />
-            </template>
-            <template #item.invoice_date="{ item }">
-              {{ formatDate(item.invoice_date) }}
-            </template>
-            <template #item.total_earned="{ item }">
-              <span :class="{ 'text-red': parseFloat(item.total_earned) < 0 }">
-                ${{ formatCurrency(item.total_earned) }}
-              </span>
-            </template>
-            <template #item.standard_price="{ item }">
-              ${{ formatCurrency(item.standard_price) }}
-            </template>
-            <template #item.department="{ item }">
-              <v-chip size="x-small" :color="item.department ? 'primary' : 'grey'" variant="tonal">
-                {{ item.department || 'N/A' }}
-              </v-chip>
-            </template>
-          </v-data-table>
-        </v-card-text>
-      </v-card>
     </template>
 
     <!-- ============================== DIALOGS ============================== -->
@@ -890,7 +869,21 @@ function resetFilters() {
   loadData()
 }
 
+// ── Date Watch (ensure charts refresh on date change) ────────────────────
+
+watch(
+  () => [filters.startDate, filters.endDate],
+  () => { loadData() },
+)
+
 // ── Computed Stats ───────────────────────────────────────────────────────
+
+const periodLabel = computed(() => {
+  if (filters.startDate && filters.endDate) {
+    return `${formatDate(filters.startDate)} – ${formatDate(filters.endDate)}`
+  }
+  return 'All Time'
+})
 
 const avgLinesPerInvoice = computed(() => {
   if (stats.uniqueInvoices === 0) return '0'
@@ -975,6 +968,29 @@ const monthlyRevenueOptions = computed(() => ({
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2 }) } },
 }))
 
+// Invoice Revenue Trend (avg revenue per invoice by month)
+const invoiceRevenueTrendSeries = computed(() => [{
+  name: 'Avg Revenue per Invoice',
+  data: monthlyData.value.map(([, d]) => {
+    const invoiceCount = d.invoices.size
+    return invoiceCount > 0 ? Math.round((d.revenue / invoiceCount) * 100) / 100 : 0
+  }),
+}])
+
+const invoiceRevenueTrendOptions = computed(() => ({
+  chart: { type: 'line', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: ['#F97316'],
+  stroke: { curve: 'smooth', width: 3 },
+  markers: { size: 4 },
+  xaxis: {
+    categories: monthlyData.value.map(([m]) => m),
+    labels: { rotate: -45, style: { fontSize: '10px' } },
+  },
+  yaxis: { title: { text: 'Avg Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(1) + 'k' } },
+  dataLabels: { enabled: false },
+  tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString(undefined, { minimumFractionDigits: 2 }) } },
+}))
+
 // Department donut
 const deptData = computed(() => {
   const map: Record<string, number> = {}
@@ -1036,9 +1052,12 @@ const staffRevenueOptions = computed(() => ({
   colors: ['#8B5CF6'],
   xaxis: {
     categories: staffData.value.map(([k]) => k),
-    labels: { rotate: -45, style: { fontSize: '10px' }, trim: true, maxHeight: 80 },
+    title: { text: 'Revenue ($)' },
+    labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' },
   },
-  yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+  yaxis: {
+    labels: { style: { fontSize: '11px' }, maxWidth: 180 },
+  },
   plotOptions: { bar: { borderRadius: 4, horizontal: true } },
   dataLabels: { enabled: false },
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
@@ -1061,9 +1080,12 @@ const caseOwnerRevenueOptions = computed(() => ({
   colors: ['#EC4899'],
   xaxis: {
     categories: caseOwnerData.value.map(([k]) => k),
-    labels: { rotate: -45, style: { fontSize: '10px' }, trim: true, maxHeight: 80 },
+    title: { text: 'Revenue ($)' },
+    labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' },
   },
-  yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+  yaxis: {
+    labels: { style: { fontSize: '11px' }, maxWidth: 180 },
+  },
   plotOptions: { bar: { borderRadius: 4, horizontal: true } },
   dataLabels: { enabled: false },
   tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
