@@ -8,9 +8,14 @@
  * PostgREST limit by running all aggregations server-side in SQL.
  */
 
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Auth check
+  const supabaseUser = await serverSupabaseClient(event)
+  const { data: { user } } = await supabaseUser.auth.getUser()
+  if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+
   const query = getQuery(event)
 
   const startDate = (query.startDate as string) || null

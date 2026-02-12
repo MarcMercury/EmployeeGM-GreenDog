@@ -1042,17 +1042,14 @@ async function uploadAppointments() {
       rows.push(row)
     }
 
-    const { data, error } = await $fetch('/api/appointments/upload', {
+    const result = await $fetch('/api/appointments/upload', {
       method: 'POST',
       body: {
         appointments: rows,
         locationId: uploadForm.locationId,
       },
-    })
+    }) as any
 
-    if (error) throw new Error(error as string)
-
-    const result = data as any
     showNotification(
       `Uploaded ${result?.inserted || 0} appointments. ${result?.mappingStats?.unmappedTypes?.length || 0} unmapped types.`,
       'success'

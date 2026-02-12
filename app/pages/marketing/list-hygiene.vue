@@ -713,7 +713,7 @@ async function processLists() {
         }
         
         for (const normalized of normalizedRows) {
-          if (getEmail(normalized)) {
+          if (getMatchValue(normalized)) {
             allTargetRows.push(normalized)
           }
         }
@@ -1020,7 +1020,7 @@ async function importToCRM() {
     targetFiles.value = []
     suppressionFiles.value = []
     sourceTag.value = ''
-    processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0 }
+    processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0, multiEmailSplit: 0 }
   } catch (err: any) {
     console.error('CRM import error:', err)
     toast.error(err.message || 'Failed to import leads to CRM')

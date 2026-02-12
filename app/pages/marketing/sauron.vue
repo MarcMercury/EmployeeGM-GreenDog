@@ -390,7 +390,6 @@
 <script setup lang="ts">
 import {
   CLIENT_BENCHMARKS,
-  CLIENT_SEGMENTS,
   FINANCIAL_BENCHMARKS,
   evaluateRetention,
 } from '~/utils/vetBenchmarks'
@@ -1168,7 +1167,7 @@ function printReport() { window.print() }
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
-await refreshAll()
+onMounted(() => refreshAll())
 </script>
 
 <style scoped>
