@@ -2,11 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm ci --legacy-peer-deps",
   "buildCommand": "NODE_OPTIONS='--max-old-space-size=8192' npm run build",
-  "functions": {
-    "api/invoices/upload.post": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/session-reset",
