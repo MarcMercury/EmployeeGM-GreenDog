@@ -312,8 +312,8 @@ async function handleEmergencyLogin() {
           created_at: new Date().toISOString(),
         }
       }
-      // Use client-side navigation (not full reload) to preserve state
-      await navigateTo('/', { replace: true })
+      // Navigate directly to /activity (not / which 301-redirects and loses state)
+      await navigateTo('/activity', { replace: true })
     } else {
       emergencyError.value = result.error || 'Emergency login failed'
     }

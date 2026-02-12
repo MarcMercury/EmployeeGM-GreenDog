@@ -36,13 +36,24 @@ const toggleSidebar = () => {
 
 // Only fetch data once using callOnce to prevent hydration issues
 await callOnce(async () => {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session?.user) {
-    console.log('[Layout] Session found, fetching data for:', session.user.email)
-    await Promise.all([
-      authStore.fetchProfile(session.user.id),
-      fetchGlobalData()
-    ])
+  // Skip Supabase session check if we're in emergency mode (Supabase is down)
+  const { isEmergencyMode } = useEmergencyAuth()
+  if (isEmergencyMode.value) {
+    console.log('[Layout] Emergency mode active — skipping Supabase session check')
+    return
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      console.log('[Layout] Session found, fetching data for:', session.user.email)
+      await Promise.all([
+        authStore.fetchProfile(session.user.id),
+        fetchGlobalData()
+      ])
+    }
+  } catch (err) {
+    console.warn('[Layout] Session check failed:', err)
   }
 })
 
