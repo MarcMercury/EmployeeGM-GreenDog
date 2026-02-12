@@ -266,6 +266,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'revenue-' + dataVersion"
                   type="area"
                   height="320"
                   :options="monthlyRevenueOptions"
@@ -284,6 +285,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'dept-' + dataVersion"
                   type="donut"
                   height="320"
                   :options="departmentDonutOptions"
@@ -306,6 +308,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'pg-' + dataVersion"
                   type="bar"
                   height="320"
                   :options="productGroupOptions"
@@ -332,6 +335,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'staff-' + dataVersion"
                   type="bar"
                   height="400"
                   :options="staffRevenueOptions"
@@ -350,6 +354,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'owner-' + dataVersion"
                   type="bar"
                   height="400"
                   :options="caseOwnerRevenueOptions"
@@ -372,6 +377,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'clients-' + dataVersion"
                   type="bar"
                   height="280"
                   :options="monthlyClientOptions"
@@ -390,6 +396,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'volume-' + dataVersion"
                   type="line"
                   height="280"
                   :options="monthlyVolumeOptions"
@@ -412,6 +419,7 @@
             <v-card-text>
               <ClientOnly>
                 <apexchart
+                  :key="'invtrend-' + dataVersion"
                   type="line"
                   height="320"
                   :options="invoiceRevenueTrendOptions"
@@ -777,6 +785,7 @@ const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const showUploadHistory = ref(false)
 const tableSearch = ref('')
+const dataVersion = ref(0)
 
 const filters = reactive({
   location: null as string | null,
@@ -868,13 +877,6 @@ function resetFilters() {
   filters.endDate = new Date().toISOString().split('T')[0]
   loadData()
 }
-
-// ── Date Watch (ensure charts refresh on date change) ────────────────────
-
-watch(
-  () => [filters.startDate, filters.endDate],
-  () => { loadData() },
-)
 
 // ── Computed Stats ───────────────────────────────────────────────────────
 
@@ -1268,6 +1270,7 @@ async function loadData() {
     showNotification('Failed to load data: ' + (err.message || 'Unknown error'), 'error')
   } finally {
     loading.value = false
+    dataVersion.value++
   }
 }
 
