@@ -30,6 +30,23 @@ export default defineNuxtPlugin({
       console.log('[AuthPlugin] Emergency admin session detected — skipping Supabase auth')
       authStore.profile = emergencyProfile.value as any
       authStore.initialized = true
+
+      // Set the @nuxtjs/supabase internal user state so its redirect middleware
+      // doesn't kick us back to /auth/login when Supabase is unreachable.
+      const supabaseUser = useState<any>('supabase_user')
+      supabaseUser.value = {
+        id: emergencyProfile.value.auth_user_id,
+        email: emergencyProfile.value.email,
+        app_metadata: {},
+        user_metadata: {
+          first_name: emergencyProfile.value.first_name,
+          last_name: emergencyProfile.value.last_name,
+        },
+        aud: 'authenticated',
+        role: 'authenticated',
+        created_at: new Date().toISOString(),
+      }
+
       return
     }
 
