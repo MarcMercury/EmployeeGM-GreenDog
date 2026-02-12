@@ -513,10 +513,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
                   EzyVet Analytics
                 </NuxtLink>
-                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
-                  List Hygiene
-                </NuxtLink>
                 <NuxtLink to="/marketing/appointment-analysis" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">📅</div>
                   Appointment Analysis
@@ -524,6 +520,10 @@ const closeMobileMenu = () => {
                 <NuxtLink to="/marketing/invoice-analysis" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">🧾</div>
                   Invoice Analysis
+                </NuxtLink>
+                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
+                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
+                  List Hygiene
                 </NuxtLink>
               </div>
             </div>
