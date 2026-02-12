@@ -63,6 +63,7 @@ export default defineNuxtConfig({
     resendFromEmail: process.env.RESEND_FROM_EMAIL,
     sentryDsn: process.env.SENTRY_DSN,
     cronSecret: process.env.CRON_SECRET,
+    ezyvetWebhookSecret: process.env.EZYVET_WEBHOOK_SECRET,
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,

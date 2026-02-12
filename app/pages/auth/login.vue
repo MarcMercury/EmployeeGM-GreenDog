@@ -162,11 +162,19 @@ async function handleSubmit() {
 
   isLoading.value = true
 
+  const LOGIN_TIMEOUT = 10_000 // 10 seconds
+
   try {
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
+    const loginPromise = supabase.auth.signInWithPassword({
       email: form.email.trim().toLowerCase(),
       password: form.password
     })
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('__TIMEOUT__')), LOGIN_TIMEOUT)
+    )
+
+    const { data, error: authError } = await Promise.race([loginPromise, timeoutPromise])
 
     if (authError) {
       if (authError.message.includes('Invalid login credentials')) {
@@ -186,7 +194,11 @@ async function handleSubmit() {
       isLoading.value = false
     }
   } catch (err: any) {
-    error.value = 'An unexpected error occurred.'
+    if (err?.message === '__TIMEOUT__' || err?.message?.includes('fetch')) {
+      error.value = 'Unable to reach the server. The service may be temporarily unavailable — please try again in a few minutes.'
+    } else {
+      error.value = 'An unexpected error occurred. Please try again.'
+    }
     isLoading.value = false
   }
 }

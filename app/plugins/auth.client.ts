@@ -1,4 +1,15 @@
 // Auth plugin - loads profile data and handles session state changes
+
+/** Race a promise against a timeout. Resolves to the fallback on timeout. */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ])
+}
+
+const INIT_TIMEOUT = 5_000 // 5 s max for initial session check
+
 export default defineNuxtPlugin({
   name: 'auth',
   dependsOn: ['supabase'],
@@ -20,35 +31,60 @@ export default defineNuxtPlugin({
     const LOGIN_UPDATE_THROTTLE = 60 * 1000 // Only update last_login once per minute max
 
     // Check for existing session and load profile
-    const { data: { session } } = await supabase.auth.getSession()
+    // Use a timeout so the app still renders if Supabase is unreachable
+    let session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] = null
+    try {
+      const result = await withTimeout(
+        supabase.auth.getSession(),
+        INIT_TIMEOUT,
+        { data: { session: null }, error: { message: 'Supabase unreachable (timeout)' } as any }
+      )
+      session = result.data.session
+      if (result.error) {
+        console.warn('[AuthPlugin] Session check failed:', result.error.message)
+      }
+    } catch (err) {
+      console.warn('[AuthPlugin] Session check threw:', err)
+    }
     
     if (session?.user) {
       console.log('[AuthPlugin] Session found, loading profile...')
-      await authStore.fetchProfile(session.user.id)
-      await userStore.fetchUserData()
+      // Profile fetch is also guarded by a timeout so we never block forever
+      try {
+        await withTimeout(
+          Promise.all([
+            authStore.fetchProfile(session.user.id),
+            userStore.fetchUserData()
+          ]),
+          INIT_TIMEOUT,
+          undefined
+        )
+      } catch (err) {
+        console.warn('[AuthPlugin] Profile/user fetch failed:', err)
+      }
       lastProcessedUserId = session.user.id
       
       // Update last_login_at in profiles to track "last seen" 
       // (Supabase's last_sign_in_at only updates on actual authentication, not session restore)
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .update({ last_login_at: new Date().toISOString() })
-          .eq('auth_user_id', session.user.id)
-          .select('id')
-        
-        if (error) {
-          console.warn('[AuthPlugin] Failed to update last_login_at:', error.message)
-        } else if (!data || data.length === 0) {
-          console.warn('[AuthPlugin] No profile found to update last_login_at for auth_user_id:', session.user.id)
-        } else {
-          console.log('[AuthPlugin] Updated last_login_at')
-          lastLoginUpdatedAt = Date.now()
-        }
-      } catch (err) {
-        // Non-critical - don't block auth flow
-        console.warn('[AuthPlugin] Failed to update last_login_at:', err)
-      }
+      // Fire-and-forget — never block plugin setup
+      supabase
+        .from('profiles')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('auth_user_id', session.user.id)
+        .select('id')
+        .then(({ data, error }) => {
+          if (error) {
+            console.warn('[AuthPlugin] Failed to update last_login_at:', error.message)
+          } else if (!data || data.length === 0) {
+            console.warn('[AuthPlugin] No profile found to update last_login_at for auth_user_id:', session!.user.id)
+          } else {
+            console.log('[AuthPlugin] Updated last_login_at')
+            lastLoginUpdatedAt = Date.now()
+          }
+        })
+        .catch((err: unknown) => {
+          console.warn('[AuthPlugin] Failed to update last_login_at:', err)
+        })
     }
     
     authStore.initialized = true

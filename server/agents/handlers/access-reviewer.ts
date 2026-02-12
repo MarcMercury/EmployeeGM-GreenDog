@@ -72,6 +72,7 @@ const KNOWN_APP_ROUTES: Array<{ path: string; name: string; section: string }> =
 
   // CRM & Analytics
   { path: '/marketing/ezyvet-analytics', name: 'EzyVet Analytics', section: 'CRM & Analytics' },
+  { path: '/marketing/ezyvet-integration', name: 'EzyVet API Integration', section: 'CRM & Analytics' },
   { path: '/growth/leads', name: 'Event Leads', section: 'CRM & Analytics' },
   { path: '/growth/events', name: 'Growth Events', section: 'Marketing' },
   { path: '/growth/goals', name: 'Growth Goals', section: 'Marketing' },
