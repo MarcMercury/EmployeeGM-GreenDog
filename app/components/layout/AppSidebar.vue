@@ -42,15 +42,23 @@
         class="nav-item mb-1"
       />
 
-      <!-- ===== Wiki - Global Access (below Activity Hub) ===== -->
-      <v-list-item
-        v-if="hasPageAccess('/wiki')"
-        to="/wiki"
-        prepend-icon="mdi-book-open-page-variant"
-        title="Wiki"
-        rounded="lg"
-        class="nav-item mb-1"
-      />
+      <!-- ===== Resources Group - Collapsable ===== -->
+      <v-list-group v-if="hasSectionAccess('Resources') && !rail" value="resources">
+        <template #activator="{ props: activatorProps }">
+          <v-list-item
+            v-bind="activatorProps"
+            prepend-icon="mdi-bookshelf"
+            title="Resources"
+            rounded="lg"
+            class="nav-item"
+          />
+        </template>
+        <v-list-item v-if="hasPageAccess('/wiki')" to="/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facility Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
+      </v-list-group>
+      <v-list-item v-else-if="hasSectionAccess('Resources')" to="/wiki" prepend-icon="mdi-bookshelf" title="Resources" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== Marketplace - Global Access ===== -->
       <v-list-item
@@ -74,10 +82,7 @@
           />
         </template>
         <v-list-item v-if="hasPageAccess('/profile')" to="/profile" title="My Profile" prepend-icon="mdi-account-card" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/my-schedule')" to="/my-schedule" title="My Schedule" prepend-icon="mdi-calendar-account" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/people/my-skills')" to="/people/my-skills" title="My Skills" prepend-icon="mdi-lightbulb" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/development')" to="/development" title="My Growth" prepend-icon="mdi-chart-line" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/academy/my-training')" to="/academy/my-training" title="My Training" prepend-icon="mdi-school" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasSectionAccess('My Workspace')" to="/profile" prepend-icon="mdi-account-circle" title="My" rounded="lg" class="nav-item mb-1" />
@@ -94,8 +99,7 @@
           />
         </template>
         <v-list-item v-if="hasPageAccess('/roster')" to="/roster" title="Roster" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/skills-library')" to="/skills-library" title="Skill Library" prepend-icon="mdi-book-open-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/people/skill-stats')" to="/people/skill-stats" title="Skill Stats" prepend-icon="mdi-chart-bar" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/skills-management')" to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/academy/course-manager')" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
@@ -178,7 +182,6 @@
         <v-list-item v-if="hasPageAccess('/marketing/ezyvet-analytics')" to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/appointment-analysis')" to="/marketing/appointment-analysis" title="Appointment Analysis" prepend-icon="mdi-calendar-search" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/invoice-analysis')" to="/marketing/invoice-analysis" title="Invoice Analysis" prepend-icon="mdi-receipt-text-check" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
 
       <!-- ===== GDU (Education) Group - Database-driven Access ===== -->
@@ -412,12 +415,13 @@ function hasSectionAccess(sectionName: string): boolean {
   
   // Map sections to their pages
   const sectionPages: Record<string, string[]> = {
-    'My Workspace': ['/profile', '/contact-list', '/my-schedule', '/people/my-skills', '/development', '/academy/my-training'],
-    'Management': ['/roster', '/skills-library', '/people/skill-stats', '/med-ops/facilities', '/academy/course-manager'],
+    'Resources': ['/wiki', '/med-ops/facilities', '/contact-list', '/marketing/list-hygiene'],
+    'My Workspace': ['/profile', '/my-schedule', '/academy/my-training'],
+    'Management': ['/roster', '/skills-library', '/people/skill-stats', '/academy/course-manager'],
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
     'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster', '/admin/intake', '/admin/payroll/review'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
-    'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis', '/marketing/list-hygiene'],
+    'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis'],
     'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
     'Admin Ops': ['/admin/users', '/admin/agents', '/admin/email-templates', '/admin/services', '/admin/scheduling-rules', '/admin/skills-management', '/admin/slack', '/admin/system-health', '/settings'],
   }

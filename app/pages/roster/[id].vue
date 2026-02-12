@@ -289,7 +289,15 @@
             </v-tab>
             <v-tab value="skills">
               <v-icon start size="18">mdi-star-circle</v-icon>
-              Growth & Skills
+              Skills
+            </v-tab>
+            <v-tab value="goals">
+              <v-icon start size="18">mdi-flag-checkered</v-icon>
+              Goals
+            </v-tab>
+            <v-tab value="reviews">
+              <v-icon start size="18">mdi-clipboard-check</v-icon>
+              Reviews & Mentorship
             </v-tab>
             <v-tab v-if="canViewSensitiveData" value="attendance">
               <v-icon start size="18">mdi-calendar-clock</v-icon>
@@ -655,12 +663,31 @@
             </v-row>
           </v-window-item>
 
-          <!-- TAB 3: GROWTH & SKILLS -->
+          <!-- TAB 3: SKILLS -->
           <v-window-item value="skills">
             <RosterSkillsTab
               :skills="skills"
               :mentorships="mentorships"
               :employee-id="employeeId"
+            />
+          </v-window-item>
+
+          <!-- TAB 4: GOALS -->
+          <v-window-item value="goals">
+            <RosterGoalsTab
+              :employee-id="employeeId"
+              :is-own-profile="isOwnProfile"
+            />
+          </v-window-item>
+
+          <!-- TAB 5: REVIEWS & MENTORSHIP -->
+          <v-window-item value="reviews">
+            <RosterReviewsMentorshipTab
+              :employee-id="employeeId"
+              :is-own-profile="isOwnProfile"
+              :is-admin="isAdmin"
+              :mentorships="mentorships"
+              :skills="skills"
             />
           </v-window-item>
 
@@ -734,7 +761,7 @@
         </v-window>
 
         <!-- Peer View: Limited Access Message -->
-        <v-card v-if="!canViewSensitiveData && activeTab !== 'overview' && activeTab !== 'skills'" class="bg-white shadow-sm rounded-xl text-center py-12" elevation="0">
+        <v-card v-if="!canViewSensitiveData && activeTab !== 'overview' && activeTab !== 'skills' && activeTab !== 'goals' && activeTab !== 'reviews'" class="bg-white shadow-sm rounded-xl text-center py-12" elevation="0">
           <v-icon size="64" color="grey-lighten-2">mdi-lock</v-icon>
           <h3 class="text-h6 text-grey mt-4">Limited Access</h3>
           <p class="text-body-2 text-grey">
@@ -1649,8 +1676,10 @@ const weekDays = [
   { label: 'Sunday', value: 'sunday' }
 ]
 
-// Tab state
-const activeTab = ref('overview')
+// Tab state — supports deep-linking via ?tab= query param
+const validTabs = ['overview', 'personal', 'compensation', 'pto', 'skills', 'goals', 'reviews', 'attendance', 'history', 'documents', 'assets']
+const initialTab = validTabs.includes(route.query.tab as string) ? route.query.tab as string : 'overview'
+const activeTab = ref(initialTab)
 
 // Dialog state
 const showDeleteDialog = ref(false)

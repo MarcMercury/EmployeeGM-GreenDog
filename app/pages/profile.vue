@@ -260,7 +260,7 @@
                 <v-icon size="48" color="grey-lighten-2">mdi-star-outline</v-icon>
                 <p class="text-body-2 text-grey mt-3">No skills added yet</p>
                 <v-btn color="primary" variant="tonal" to="/people/my-skills" class="mt-2">
-                  Add Skills
+                  View Skills
                 </v-btn>
               </div>
               <v-list v-else density="compact" class="bg-transparent">

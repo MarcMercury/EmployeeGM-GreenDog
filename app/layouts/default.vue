@@ -15,7 +15,8 @@ const sidebarCollapsed = ref(false)
 // Collapsible section states - all collapsed by default
 // 4-TIER ROLE STRUCTURE: admin, office_admin, marketing_admin, user
 const sections = ref({
-  myWorkspace: false,    // All users: My Schedule, My Skills, My Growth, My Time Off, My Training
+  resources: false,      // Wiki, Facility Resources, Contact List, List Hygiene
+  myWorkspace: false,    // All users: My Profile (skills/goals/reviews), My Schedule, My Training
   management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
   hr: false,             // HR Admin + Admin: Team Schedule, Time Off, Recruiting, Payroll
   medOps: false,         // All users (view), admin/office_admin (edit)
@@ -222,13 +223,37 @@ const closeMobileMenu = () => {
             <span v-if="!sidebarCollapsed">Activity Hub</span>
           </NuxtLink>
 
-          <!-- Wiki - Top-level, below Activity Hub -->
-          <NuxtLink to="/wiki" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
-            <div class="nav-icon-wrap group-hover:bg-teal-500/20">
-              📚
+          <!-- Resources Section (collapsible) -->
+          <div class="pt-2">
+            <button 
+              @click="toggleSection('resources')"
+              class="section-header group"
+            >
+              <span>📚 Resources</span>
+              <svg 
+                class="w-4 h-4 transition-transform duration-200" 
+                :class="{ 'rotate-180': sections.resources }"
+                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="section-content" :class="{ 'section-open': sections.resources }">
+              <NuxtLink to="/wiki" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
+                Wiki
+              </NuxtLink>
+              <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
+                Facility Resources
+              </NuxtLink>
+              <NuxtLink to="/contact-list" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">📇</div>
+                Contact List
+              </NuxtLink>
+              <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-lime-500/20">🧹</div>
+                List Hygiene
+              </NuxtLink>
             </div>
-            <span v-if="!sidebarCollapsed">Wiki</span>
-          </NuxtLink>
+          </div>
 
           <!-- Green Dog Marketplace (Super Admin only for now) -->
           <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
@@ -248,7 +273,7 @@ const closeMobileMenu = () => {
                 </span>
               </div>
             </NuxtLink>
-            <NuxtLink to="/wiki" class="nav-link group justify-center" title="Wiki">
+            <NuxtLink to="/wiki" class="nav-link group justify-center" title="Resources">
               <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
             </NuxtLink>
             <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group justify-center" title="Marketplace">
@@ -279,7 +304,7 @@ const closeMobileMenu = () => {
           
           <!-- ==========================================
                SECTION 1: MY WORKSPACE (All Users)
-               Personal data: My Schedule, My Skills, My Growth, My Time Off
+               Personal hub: My Profile (skills, goals, reviews), My Schedule, My Training
                ========================================== -->
           <div class="pt-4">
             <button 
@@ -301,21 +326,9 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📆</div>
                 My Schedule
               </NuxtLink>
-              <NuxtLink to="/people/my-skills" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">⭐</div>
-                My Skills
-              </NuxtLink>
-              <NuxtLink to="/development" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
-                My Growth
-              </NuxtLink>
               <NuxtLink to="/academy/my-training" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-orange-500/20">🎓</div>
                 My Training
-              </NuxtLink>
-              <NuxtLink to="/contact-list" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">📇</div>
-                Contact List
               </NuxtLink>
             </div>
           </div>
@@ -341,17 +354,9 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
                   Roster
                 </NuxtLink>
-                <NuxtLink to="/skills-library" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-amber-500/20">📚</div>
-                  Skill Library
-                </NuxtLink>
-                <NuxtLink v-if="isAdmin" to="/people/skill-stats" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📈</div>
-                  Skill Stats
-                </NuxtLink>
-                <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
-                  Facilities Resources
+                  Skills Management
                 </NuxtLink>
                 <NuxtLink v-if="hasGduAccess" to="/academy/course-manager" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-purple-500/20">🎓</div>
@@ -521,10 +526,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">🧾</div>
                   Invoice Analysis
                 </NuxtLink>
-                <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🧹</div>
-                  List Hygiene
-                </NuxtLink>
               </div>
             </div>
           </template>
@@ -590,10 +591,6 @@ const closeMobileMenu = () => {
                 <NuxtLink to="/admin/email-templates" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📧</div>
                   Email Templates
-                </NuxtLink>
-                <NuxtLink to="/admin/skills-management" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-yellow-500/20">📚</div>
-                  Skills Management
                 </NuxtLink>
                 <NuxtLink to="/admin/services" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-orange-500/20">🏥</div>
