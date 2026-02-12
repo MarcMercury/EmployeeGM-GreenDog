@@ -122,7 +122,13 @@ export default defineNuxtConfig({
       // Don't bundle heavy libraries into the Nitro server — keep as external node_modules
       inline: [],
       external: ['unpdf']
-    }
+    },
+    routeRules: {
+      '/api/invoices/upload': {
+        // Allow larger payloads for invoice CSV uploads (10 MB)
+        maxBodySize: 10 * 1024 * 1024,
+      },
+    },
   },
 
   // Vite build optimizations
@@ -147,5 +153,5 @@ export default defineNuxtConfig({
   },
 
   // Route rules - explicitly defined to prevent hydration errors
-  routeRules: {}
+  routeRules: {},
 })
