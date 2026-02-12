@@ -152,11 +152,18 @@ onUnmounted(() => {
 async function handleSignOut() {
   console.log('[Layout] Signing out...')
   try {
+    // Clear emergency auth if active
+    const { isEmergencyMode, emergencyLogout } = useEmergencyAuth()
+    if (isEmergencyMode.value) {
+      emergencyLogout()
+    }
     await supabase.auth.signOut()
     authStore.$reset()
     window.location.href = '/auth/login'
   } catch (e) {
     console.error('[Layout] Sign out error:', e)
+    // Still clear emergency auth on error
+    try { useEmergencyAuth().emergencyLogout() } catch {}
     window.location.href = '/auth/login'
   }
 }

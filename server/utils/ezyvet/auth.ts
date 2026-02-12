@@ -37,7 +37,7 @@ export async function getAccessToken(
     const now = Date.now()
 
     if (expiresAt - now > REFRESH_BUFFER_MS) {
-      logger.debug('Using cached ezyVet token', {
+      logger.debug('Using cached ezyVet token', 'ezyvet-auth', {
         clinic: clinic.label,
         expiresIn: `${Math.round((expiresAt - now) / 60_000)}m`,
       })
