@@ -56,7 +56,10 @@ export function verifyEmergencyToken(token: string, secret: string): EmergencyPr
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
+  // Support both runtimeConfig (build-time) and process.env (runtime / NUXT_ prefix)
   const emergencySecret = config.emergencyAdminSecret
+    || process.env.EMERGENCY_ADMIN_SECRET
+    || process.env.NUXT_EMERGENCY_ADMIN_SECRET
 
   if (!emergencySecret) {
     throw createError({
@@ -81,6 +84,8 @@ export default defineEventHandler(async (event) => {
 
   // Validate email matches allowed emergency admin email
   const allowedEmail = config.emergencyAdminEmail
+    || process.env.EMERGENCY_ADMIN_EMAIL
+    || process.env.NUXT_EMERGENCY_ADMIN_EMAIL
   if (!allowedEmail || email.trim().toLowerCase() !== allowedEmail.trim().toLowerCase()) {
     await new Promise((r) => setTimeout(r, 1000 + Math.random() * 1000))
     throw createError({ statusCode: 401, message: 'Invalid emergency credentials' })
@@ -91,8 +96,8 @@ export default defineEventHandler(async (event) => {
     id: 'emergency-admin-' + randomBytes(4).toString('hex'),
     auth_user_id: 'emergency-' + randomBytes(4).toString('hex'),
     email: allowedEmail,
-    first_name: config.emergencyAdminName?.split(' ')[0] || 'Emergency',
-    last_name: config.emergencyAdminName?.split(' ').slice(1).join(' ') || 'Admin',
+    first_name: (config.emergencyAdminName || process.env.EMERGENCY_ADMIN_NAME || process.env.NUXT_EMERGENCY_ADMIN_NAME || 'Emergency Admin')?.split(' ')[0] || 'Emergency',
+    last_name: (config.emergencyAdminName || process.env.EMERGENCY_ADMIN_NAME || process.env.NUXT_EMERGENCY_ADMIN_NAME || 'Emergency Admin')?.split(' ').slice(1).join(' ') || 'Admin',
     role: 'super_admin',
     location_id: null,
     is_emergency: true,
