@@ -47,7 +47,7 @@
         </div>
         <v-row dense>
           <v-col cols="12" sm="6" md="4" lg="3" v-for="card in scorecardItems" :key="card.label">
-            <v-tooltip location="top" max-width="320">
+            <v-tooltip location="top" max-width="320" content-class="sauron-tooltip">
               <template #activator="{ props: tipProps }">
                 <v-card v-bind="tipProps" class="h-100 scorecard-card" variant="outlined" :class="'border-' + card.borderColor">
                   <v-card-text class="pa-3">
@@ -955,14 +955,6 @@ onMounted(() => refreshAll())
   max-width: 1200px;
   margin: 0 auto;
 }
-:deep(.v-tooltip > .v-overlay__content) {
-  background: rgba(33, 33, 33, 0.95) !important;
-  color: #fff !important;
-  font-size: 0.875rem !important;
-  line-height: 1.4 !important;
-  padding: 10px 14px !important;
-  border-radius: 6px !important;
-}
 .scorecard-card {
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -981,5 +973,22 @@ onMounted(() => refreshAll())
 .border-indigo { border-color: #3F51B5 !important; border-width: 2px !important; }
 @media print {
   .v-btn { display: none !important; }
+}
+</style>
+
+<style>
+/* Global (non-scoped) — tooltip is teleported to body, outside component scope */
+.sauron-tooltip {
+  background: #212121 !important;
+  color: #ffffff !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  padding: 12px 16px !important;
+  border-radius: 8px !important;
+  opacity: 1 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+.sauron-tooltip * {
+  color: #ffffff !important;
 }
 </style>
