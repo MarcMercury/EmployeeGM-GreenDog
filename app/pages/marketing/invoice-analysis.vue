@@ -96,20 +96,50 @@
       </v-col>
     </v-row>
 
+    <!-- Secondary Stats Row -->
+    <v-row class="mb-6">
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="pa-4" elevation="2">
+          <div class="d-flex align-center">
+            <v-avatar color="indigo-darken-1" size="48" class="mr-3">
+              <v-icon color="white">mdi-file-document-multiple</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ avgLinesPerInvoice }}</div>
+              <div class="text-caption text-grey">Avg Lines / Invoice</div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+      <v-col cols="12" sm="6" md="3">
+        <v-card class="pa-4" elevation="2">
+          <div class="d-flex align-center">
+            <v-avatar color="orange-darken-1" size="48" class="mr-3">
+              <v-icon color="white">mdi-hospital-building</v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h5 font-weight-bold">{{ formatNumber(stats.uniqueDepartments) }}</div>
+              <div class="text-caption text-grey">Locations</div>
+            </div>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Filters -->
     <v-card class="mb-6" elevation="2">
       <v-card-text>
         <v-row dense align="center">
           <v-col cols="12" md="3">
             <v-select
-              v-model="filters.division"
-              :items="divisionOptions"
-              label="Division"
+              v-model="filters.location"
+              :items="locationOptions"
+              label="Location"
               variant="outlined"
               density="compact"
               clearable
               hide-details
-              prepend-inner-icon="mdi-domain"
+              prepend-inner-icon="mdi-hospital-building"
               @update:model-value="loadData"
             />
           </v-col>
@@ -141,12 +171,12 @@
             <v-select
               v-model="filters.department"
               :items="departmentOptions"
-              label="Department"
+              label="Product Group"
               variant="outlined"
               density="compact"
               clearable
               hide-details
-              prepend-inner-icon="mdi-hospital-building"
+              prepend-inner-icon="mdi-package-variant"
             />
           </v-col>
           <v-col cols="12" md="3" class="d-flex gap-2 align-center">
@@ -255,9 +285,9 @@
         </v-col>
       </v-row>
 
-      <!-- Charts Row 2: Product Groups + Staff Revenue -->
+      <!-- Charts Row 2: Product Groups -->
       <v-row class="mb-6">
-        <v-col cols="12" md="6">
+        <v-col cols="12">
           <v-card elevation="2">
             <v-card-title class="text-subtitle-1">
               <v-icon start size="20">mdi-package-variant</v-icon>
@@ -275,19 +305,45 @@
             </v-card-text>
           </v-card>
         </v-col>
+      </v-row>
+
+      <!-- Staff Performance Section -->
+      <h2 class="text-h5 font-weight-bold mb-4">
+        <v-icon start color="deep-purple">mdi-account-group</v-icon>
+        Staff Performance
+      </h2>
+      <v-row class="mb-6">
         <v-col cols="12" md="6">
           <v-card elevation="2">
             <v-card-title class="text-subtitle-1">
               <v-icon start size="20">mdi-account-cash</v-icon>
-              Staff Revenue (Top 15)
+              Staff Member Revenue (Top 15)
             </v-card-title>
             <v-card-text>
               <ClientOnly>
                 <apexchart
                   type="bar"
-                  height="320"
+                  height="400"
                   :options="staffRevenueOptions"
                   :series="staffRevenueSeries"
+                />
+              </ClientOnly>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-card elevation="2">
+            <v-card-title class="text-subtitle-1">
+              <v-icon start size="20">mdi-account-tie</v-icon>
+              Case Owner Revenue (Top 15)
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart
+                  type="bar"
+                  height="400"
+                  :options="caseOwnerRevenueOptions"
+                  :series="caseOwnerRevenueSeries"
                 />
               </ClientOnly>
             </v-card-text>
@@ -744,7 +800,7 @@ const showUploadHistory = ref(false)
 const tableSearch = ref('')
 
 const filters = reactive({
-  division: null as string | null,
+  location: null as string | null,
   startDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
   endDate: new Date().toISOString().split('T')[0],
   department: null as string | null,
@@ -780,7 +836,7 @@ const invoices = ref<any[]>([])
 const analysisResult = ref<any>(null)
 const analysisHistory = ref<any[]>([])
 const uploadHistory = ref<any[]>([])
-const divisionOptions = ref<string[]>([])
+const locationOptions = ref<string[]>([])
 const departmentOptions = ref<string[]>([])
 
 const snackbar = reactive({
@@ -823,16 +879,23 @@ function applyPreset(preset: { days: number }) {
 }
 
 const hasActiveFilters = computed(() => {
-  return !!filters.division || !!filters.department
+  return !!filters.location || !!filters.department
 })
 
 function resetFilters() {
-  filters.division = null
+  filters.location = null
   filters.department = null
   filters.startDate = new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0]
   filters.endDate = new Date().toISOString().split('T')[0]
   loadData()
 }
+
+// ── Computed Stats ───────────────────────────────────────────────────────
+
+const avgLinesPerInvoice = computed(() => {
+  if (stats.uniqueInvoices === 0) return '0'
+  return (stats.totalLines / stats.uniqueInvoices).toFixed(1)
+})
 
 // ── Table Headers ────────────────────────────────────────────────────────
 
@@ -873,7 +936,7 @@ const uploadHistoryHeaders = [
 const filteredInvoices = computed(() => {
   let list = invoices.value
   if (filters.department) {
-    list = list.filter(inv => inv.department === filters.department)
+    list = list.filter(inv => inv.product_group === filters.department)
   }
   return list
 })
@@ -960,7 +1023,8 @@ const productGroupOptions = computed(() => ({
 const staffData = computed(() => {
   const map: Record<string, number> = {}
   for (const inv of filteredInvoices.value) {
-    const staff = inv.staff_member || 'Unknown'
+    const staff = inv.staff_member
+    if (!staff) continue
     map[staff] = (map[staff] || 0) + (parseFloat(inv.total_earned) || 0)
   }
   return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15)
@@ -972,6 +1036,31 @@ const staffRevenueOptions = computed(() => ({
   colors: ['#8B5CF6'],
   xaxis: {
     categories: staffData.value.map(([k]) => k),
+    labels: { rotate: -45, style: { fontSize: '10px' }, trim: true, maxHeight: 80 },
+  },
+  yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+  plotOptions: { bar: { borderRadius: 4, horizontal: true } },
+  dataLabels: { enabled: false },
+  tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
+}))
+
+// Case Owner revenue bar
+const caseOwnerData = computed(() => {
+  const map: Record<string, number> = {}
+  for (const inv of filteredInvoices.value) {
+    const owner = inv.case_owner
+    if (!owner) continue
+    map[owner] = (map[owner] || 0) + (parseFloat(inv.total_earned) || 0)
+  }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15)
+})
+
+const caseOwnerRevenueSeries = computed(() => [{ name: 'Revenue', data: caseOwnerData.value.map(([, v]) => Math.round(v * 100) / 100) }])
+const caseOwnerRevenueOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: ['#EC4899'],
+  xaxis: {
+    categories: caseOwnerData.value.map(([k]) => k),
     labels: { rotate: -45, style: { fontSize: '10px' }, trim: true, maxHeight: 80 },
   },
   yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
@@ -1081,7 +1170,7 @@ async function loadData() {
 
     if (filters.startDate) query = query.gte('invoice_date', filters.startDate)
     if (filters.endDate) query = query.lte('invoice_date', filters.endDate)
-    if (filters.division) query = query.eq('division', filters.division)
+    if (filters.location) query = query.eq('department', filters.location)
 
     const { data, error } = await query.limit(50000)
     if (error) throw error
@@ -1096,8 +1185,8 @@ async function loadData() {
     stats.uniqueDepartments = new Set(invoices.value.map(inv => inv.department).filter(Boolean)).size
 
     // Populate filter options from data
-    divisionOptions.value = [...new Set(invoices.value.map(inv => inv.division).filter(Boolean))].sort()
-    departmentOptions.value = [...new Set(invoices.value.map(inv => inv.department).filter(Boolean))].sort()
+    locationOptions.value = [...new Set(invoices.value.map(inv => inv.department).filter(Boolean))].sort()
+    departmentOptions.value = [...new Set(invoices.value.map(inv => inv.product_group).filter(Boolean))].sort()
 
     // Date range
     const dates = invoices.value.map(inv => inv.invoice_date).filter(Boolean).sort()
@@ -1331,7 +1420,7 @@ async function runAnalysis() {
     const result = await $fetch('/api/invoices/analyze', {
       method: 'POST',
       body: {
-        division: filters.division,
+        location: filters.location,
         startDate: filters.startDate,
         endDate: filters.endDate,
       },

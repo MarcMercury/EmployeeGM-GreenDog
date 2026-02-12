@@ -30,7 +30,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event)
-  const { division, startDate, endDate } = body
+  const { location, division, startDate, endDate } = body
+  const locationFilter = location || division || null
 
   const config = useRuntimeConfig()
   const openaiKey = config.openaiApiKey
@@ -44,7 +45,7 @@ export default defineEventHandler(async (event) => {
     const { data: run, error: runError } = await supabase
       .from('invoice_analysis_runs')
       .insert({
-        division: division || null,
+        division: locationFilter,
         analysis_period_start: startDate,
         analysis_period_end: endDate,
         status: 'running',
@@ -62,7 +63,7 @@ export default defineEventHandler(async (event) => {
 
     if (startDate) query = query.gte('invoice_date', startDate)
     if (endDate) query = query.lte('invoice_date', endDate)
-    if (division) query = query.eq('division', division)
+    if (locationFilter) query = query.eq('department', locationFilter)
 
     query = query.order('invoice_date')
 
