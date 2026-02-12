@@ -397,9 +397,8 @@ import {
 definePageMeta({ layout: 'default', middleware: ['auth', 'marketing-admin'] })
 useHead({ title: 'Sauron — Executive Report' })
 
-const supabase = useSupabaseClient()
 const loading = ref(false)
-const loadingStep = ref('clients')
+const loadingStep = ref('loading data')
 const lastRefresh = ref<string | null>(null)
 
 // ═══════════════════════════════════════════
@@ -671,239 +670,21 @@ const dataSources = computed(() => [
 ])
 
 // ═══════════════════════════════════════════
-// DATA FETCHERS
+// DATA FETCHER — single server API call
 // ═══════════════════════════════════════════
 
-async function fetchInvoiceData() {
-  loadingStep.value = 'invoice data'
-  const { data: lines } = await supabase
-    .from('invoice_lines')
-    .select('total_earned, department, product_group, invoice_number, client_code, invoice_date, staff_member, division')
-    .limit(50000)
+async function fetchAllData() {
+  loadingStep.value = 'loading data'
+  const data = await $fetch('/api/marketing/sauron') as any
 
-  if (!lines?.length) return
+  // Populate invoice data
+  Object.assign(inv, data.inv)
 
-  const totalRevenue = lines.reduce((s, l) => s + (parseFloat(l.total_earned as string) || 0), 0)
-  const uniqueInvoices = new Set(lines.map(l => l.invoice_number).filter(Boolean)).size
-  const uniqueClients = new Set(lines.map(l => l.client_code).filter(Boolean)).size
-  const uniqueStaff = new Set(lines.map(l => l.staff_member).filter(Boolean)).size
+  // Populate client data
+  Object.assign(cli, data.cli)
 
-  // Departments
-  const deptMap = new Map<string, number>()
-  for (const l of lines) {
-    const dept = (l.department as string) || 'Unknown'
-    deptMap.set(dept, (deptMap.get(dept) || 0) + (parseFloat(l.total_earned as string) || 0))
-  }
-  const topDepartments = [...deptMap.entries()]
-    .map(([name, revenue]) => ({ name, revenue, pct: totalRevenue > 0 ? Math.round((revenue / totalRevenue) * 100) : 0 }))
-    .sort((a, b) => b.revenue - a.revenue)
-
-  // Staff
-  const staffMap = new Map<string, { revenue: number; lines: number; invoices: Set<string> }>()
-  for (const l of lines) {
-    const staff = (l.staff_member as string) || 'Unknown'
-    if (!staffMap.has(staff)) staffMap.set(staff, { revenue: 0, lines: 0, invoices: new Set() })
-    const s = staffMap.get(staff)!
-    s.revenue += parseFloat(l.total_earned as string) || 0
-    s.lines++
-    if (l.invoice_number) s.invoices.add(l.invoice_number as string)
-  }
-  const topStaff = [...staffMap.entries()]
-    .map(([name, d]) => ({ name, revenue: d.revenue, lines: d.lines, invoices: d.invoices.size }))
-    .sort((a, b) => b.revenue - a.revenue)
-
-  // Monthly trend
-  const monthMap = new Map<string, number>()
-  for (const l of lines) {
-    if (!l.invoice_date) continue
-    const d = String(l.invoice_date).substring(0, 7) // YYYY-MM
-    monthMap.set(d, (monthMap.get(d) || 0) + (parseFloat(l.total_earned as string) || 0))
-  }
-  const monthlyTrend = [...monthMap.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([month, revenue]) => {
-      const [y, m] = month.split('-')
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      return { month, label: `${monthNames[parseInt(m) - 1]} ${y.slice(2)}`, revenue }
-    })
-  const peakMonth = Math.max(...monthlyTrend.map(m => m.revenue), 1)
-  const avgMonthly = monthlyTrend.length > 0 ? monthlyTrend.reduce((s, m) => s + m.revenue, 0) / monthlyTrend.length : 0
-
-  const dates = lines.map(l => l.invoice_date as string).filter(Boolean).sort()
-
-  Object.assign(inv, {
-    totalRevenue, uniqueInvoices, uniqueClients, uniqueStaff,
-    totalLines: lines.length, topDepartments, topStaff, monthlyTrend,
-    peakMonth, avgMonthly,
-    earliestDate: dates[0] || null,
-    latestDate: dates[dates.length - 1] || null,
-  })
-}
-
-async function fetchClientData() {
-  loadingStep.value = 'client records'
-
-  // Paginate
-  let allContacts: any[] = []
-  let page = 0
-  const pageSize = 1000
-  let hasMore = true
-  while (hasMore) {
-    const { data } = await supabase
-      .from('ezyvet_crm_contacts')
-      .select('id, last_visit, revenue_ytd, division, is_active')
-      .range(page * pageSize, (page + 1) * pageSize - 1)
-    if (data && data.length > 0) {
-      allContacts = allContacts.concat(data)
-      hasMore = data.length === pageSize
-      page++
-    } else {
-      hasMore = false
-    }
-  }
-
-  if (!allContacts.length) return
-
-  const now = new Date()
-  const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6)
-  const twelveMonthsAgo = new Date(now); twelveMonthsAgo.setFullYear(now.getFullYear() - 1)
-
-  let active = 0, atRisk = 0, lapsed = 0, neverVisited = 0
-  let highValue = 0
-  let totalRev = 0
-  const divisionMap = new Map<string, { count: number; revenue: number }>()
-
-  // Tier tracking
-  const tierDef = [
-    { label: 'VIP', range: '$5,000+', min: 5000, max: Infinity, color: 'amber-darken-1', count: 0, revenue: 0 },
-    { label: 'Premium', range: '$2,000–$5,000', min: 2000, max: 5000, color: 'purple', count: 0, revenue: 0 },
-    { label: 'Regular', range: '$500–$2,000', min: 500, max: 2000, color: 'blue', count: 0, revenue: 0 },
-    { label: 'Low Value', range: '$25–$500', min: 25, max: 500, color: 'grey', count: 0, revenue: 0 },
-    { label: 'Minimal', range: '<$25', min: 0, max: 25, color: 'grey-lighten-1', count: 0, revenue: 0 },
-  ]
-
-  // For ARPU, only $25+ clients
-  let arpuSum = 0, arpuCount = 0
-
-  for (const c of allContacts) {
-    const lastVisit = c.last_visit ? new Date(c.last_visit) : null
-    const rev = parseFloat(c.revenue_ytd) || 0
-    totalRev += rev
-
-    if (rev >= 25) { arpuSum += rev; arpuCount++ }
-    if (rev >= 2000) highValue++
-
-    // Division
-    const div = c.division || 'Unknown'
-    if (!divisionMap.has(div)) divisionMap.set(div, { count: 0, revenue: 0 })
-    const d = divisionMap.get(div)!
-    d.count++; d.revenue += rev
-
-    // Lifecycle
-    if (!lastVisit) {
-      neverVisited++
-    } else if (lastVisit >= sixMonthsAgo) {
-      active++
-    } else if (lastVisit >= twelveMonthsAgo) {
-      atRisk++
-    } else {
-      lapsed++
-    }
-
-    // Tiers
-    for (const t of tierDef) {
-      if (rev >= t.min && rev < t.max) { t.count++; t.revenue += rev; break }
-    }
-  }
-
-  const total = allContacts.length
-  const retentionRate = total > 0 ? Math.round(((active + atRisk) / total) * 100) : 0
-  const arpu = arpuCount > 0 ? arpuSum / arpuCount : 0
-
-  const segments = [
-    { label: 'Active (0-6mo)', count: active, pct: Math.round((active / total) * 100), bg: 'rgba(76, 175, 80, 0.15)' },
-    { label: 'At Risk (6-12mo)', count: atRisk, pct: Math.round((atRisk / total) * 100), bg: 'rgba(255, 152, 0, 0.15)' },
-    { label: 'Lapsed (12mo+)', count: lapsed, pct: Math.round((lapsed / total) * 100), bg: 'rgba(244, 67, 54, 0.15)' },
-    { label: 'Never Visited', count: neverVisited, pct: Math.round((neverVisited / total) * 100), bg: 'rgba(158, 158, 158, 0.15)' },
-  ].filter(s => s.count > 0)
-
-  const divisions = [...divisionMap.entries()]
-    .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue }))
-    .sort((a, b) => b.revenue - a.revenue)
-
-  const tiers = tierDef.map(t => ({
-    ...t,
-    clientPct: total > 0 ? Math.round((t.count / total) * 100) : 0,
-  })).filter(t => t.count > 0)
-
-  Object.assign(cli, {
-    totalClients: total, activeClients: active, atRisk, lapsed, neverVisited,
-    retentionRate, arpu, totalRevenue: totalRev, highValue, segments, tiers, divisions,
-  })
-}
-
-async function fetchAppointmentData() {
-  loadingStep.value = 'appointments'
-  const { data: appts } = await supabase
-    .from('appointment_data')
-    .select('id, appointment_type, appointment_date, location_name, location_id, day_of_week, species, service_category, duration_minutes, revenue, provider_name, status')
-    .limit(50000)
-
-  if (!appts?.length) return
-
-  const uniqueTypes = new Set(appts.map(a => a.appointment_type).filter(Boolean)).size
-  const locations = new Set(appts.map(a => a.location_name || a.location_id).filter(Boolean)).size
-
-  // Service mix
-  const typeMap = new Map<string, number>()
-  for (const a of appts) {
-    const t = (a.appointment_type as string) || 'Unknown'
-    typeMap.set(t, (typeMap.get(t) || 0) + 1)
-  }
-  const topServices = [...typeMap.entries()]
-    .map(([name, count]) => ({ name, count, pct: Math.round((count / appts.length) * 100) }))
-    .sort((a, b) => b.count - a.count)
-
-  // Day of week distribution
-  const dayOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const dayAbbr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const dayMap = new Map<string, number>()
-  for (const a of appts) {
-    let dow = a.day_of_week as string
-    if (!dow && a.appointment_date) {
-      const d = new Date(a.appointment_date as string)
-      dow = dayOrder[d.getDay()]
-    }
-    if (dow) dayMap.set(dow, (dayMap.get(dow) || 0) + 1)
-  }
-  let peakDay = ''
-  let peakCount = 0
-  for (const [day, count] of dayMap) {
-    if (count > peakCount) { peakDay = day; peakCount = count }
-  }
-  const dayDistribution = dayOrder.map((name, i) => ({
-    name, abbr: dayAbbr[i], count: dayMap.get(name) || 0,
-    pct: appts.length > 0 ? Math.round(((dayMap.get(name) || 0) / appts.length) * 100) : 0,
-  }))
-
-  // Species
-  const speciesMap = new Map<string, number>()
-  for (const a of appts) {
-    const sp = (a.species as string) || ''
-    if (sp) speciesMap.set(sp, (speciesMap.get(sp) || 0) + 1)
-  }
-  const speciesBreakdown = [...speciesMap.entries()]
-    .map(([name, count]) => ({ name, count, pct: Math.round((count / appts.length) * 100) }))
-    .sort((a, b) => b.count - a.count)
-
-  const dates = appts.map(a => a.appointment_date as string).filter(Boolean).sort()
-
-  Object.assign(appt, {
-    total: appts.length, uniqueTypes, locations, peakDay,
-    topServices, dayDistribution, speciesBreakdown,
-    earliestDate: dates[0] || null,
-    latestDate: dates[dates.length - 1] || null,
-  })
+  // Populate appointment data
+  Object.assign(appt, data.appt)
 }
 
 // ═══════════════════════════════════════════
@@ -1129,7 +910,7 @@ function generateObservations() {
 async function refreshAll() {
   loading.value = true
   try {
-    await Promise.all([fetchInvoiceData(), fetchClientData(), fetchAppointmentData()])
+    await fetchAllData()
     generateObservations()
     lastRefresh.value = new Date().toISOString()
   } catch (err) {
