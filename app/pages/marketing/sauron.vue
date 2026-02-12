@@ -45,26 +45,31 @@
         </div>
         <v-row dense>
           <v-col cols="12" sm="6" md="4" lg="3" v-for="card in scorecardItems" :key="card.label">
-            <v-card class="h-100 scorecard-card" variant="outlined" :class="'border-' + card.borderColor">
-              <v-card-text class="pa-3">
-                <div class="d-flex justify-space-between align-start">
-                  <div>
-                    <div class="text-caption text-medium-emphasis text-uppercase">{{ card.label }}</div>
-                    <div class="text-h5 font-weight-bold mt-1" :class="'text-' + card.valueColor">{{ card.value }}</div>
-                  </div>
-                  <v-avatar :color="card.borderColor" size="36" variant="tonal">
-                    <v-icon size="20">{{ card.icon }}</v-icon>
-                  </v-avatar>
-                </div>
-                <div class="mt-2">
-                  <v-progress-linear :model-value="card.pct" :color="card.borderColor" height="6" rounded class="mb-1" />
-                  <div class="d-flex justify-space-between">
-                    <span class="text-caption" :class="'text-' + card.borderColor">{{ card.rating }}</span>
-                    <span class="text-caption text-medium-emphasis">Benchmark: {{ card.benchmark }}</span>
-                  </div>
-                </div>
-              </v-card-text>
-            </v-card>
+            <v-tooltip location="top" max-width="320">
+              <template #activator="{ props: tipProps }">
+                <v-card v-bind="tipProps" class="h-100 scorecard-card" variant="outlined" :class="'border-' + card.borderColor">
+                  <v-card-text class="pa-3">
+                    <div class="d-flex justify-space-between align-start">
+                      <div>
+                        <div class="text-caption text-medium-emphasis text-uppercase">{{ card.label }}</div>
+                        <div class="text-h5 font-weight-bold mt-1" :class="'text-' + card.valueColor">{{ card.value }}</div>
+                      </div>
+                      <v-avatar :color="card.borderColor" size="36" variant="tonal">
+                        <v-icon size="20">{{ card.icon }}</v-icon>
+                      </v-avatar>
+                    </div>
+                    <div class="mt-2">
+                      <v-progress-linear :model-value="card.pct" :color="card.borderColor" height="6" rounded class="mb-1" />
+                      <div class="d-flex justify-space-between">
+                        <span class="text-caption" :class="'text-' + card.borderColor">{{ card.rating }}</span>
+                        <span class="text-caption text-medium-emphasis">Benchmark: {{ card.benchmark }}</span>
+                      </div>
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </template>
+              <span>{{ card.tooltip }}</span>
+            </v-tooltip>
           </v-col>
         </v-row>
       </div>
@@ -259,7 +264,7 @@
       </v-card>
 
       <!-- ───────── §5  APPOINTMENT INTELLIGENCE ───────── -->
-      <v-card class="mb-6" variant="outlined">
+      <v-card v-if="appt.total > 0" class="mb-6" variant="outlined">
         <v-card-title class="d-flex align-center gap-2 pb-0">
           <v-icon color="indigo" size="20">mdi-calendar-check</v-icon>
           Appointment Intelligence
@@ -470,6 +475,7 @@ const scorecardItems = computed(() => {
     label: string; value: string; icon: string
     borderColor: string; valueColor: string
     pct: number; rating: string; benchmark: string
+    tooltip: string
   }> = []
 
   // 1. Client Retention
@@ -483,6 +489,7 @@ const scorecardItems = computed(() => {
     pct: Math.min(cli.retentionRate / 0.75 * 100 / 100, 100),
     rating: retEval.label,
     benchmark: '60% (AAHA)',
+    tooltip: 'Percentage of clients with invoice activity in the last 12 months who also had activity in the prior 12 months. Based on AAHA benchmark of 60%.',
   })
 
   // 2. Avg Revenue per Client (from invoices)
@@ -500,6 +507,7 @@ const scorecardItems = computed(() => {
     pct: Math.min((avgRev / atcHigh) * 100, 100),
     rating: atcLabel,
     benchmark: `$${atcTarget} (AAHA)`,
+    tooltip: 'Total invoice revenue divided by the number of unique clients. Indicates average spending per client across all services.',
   })
 
   // 3. Revenue Concentration (HHI-lite — top dept %)
@@ -514,6 +522,7 @@ const scorecardItems = computed(() => {
     pct: 100 - topDeptPct,
     rating: topDeptPct > 50 ? 'Concentrated' : topDeptPct > 35 ? 'Moderate' : 'Healthy',
     benchmark: '<35% (best practice)',
+    tooltip: 'Shows how much revenue is concentrated in the top department. Lower is better — a healthy practice has no single department above 35% of total revenue.',
   })
 
   // 4. Client Lifetime Value
@@ -530,6 +539,7 @@ const scorecardItems = computed(() => {
     pct: Math.min((clv / clvGood) * 100, 100),
     rating: clv >= clvGood ? 'Excellent' : clv >= clvTarget ? 'Good' : 'Below Target',
     benchmark: `$${clvTarget} avg (AAHA)`,
+    tooltip: 'Average Revenue Per User — calculated from CRM contacts with $25+ in invoice activity. Measures per-client revenue value against AAHA benchmarks.',
   })
 
   // 5. Lapse Risk
@@ -544,22 +554,10 @@ const scorecardItems = computed(() => {
     pct: 100 - lapsePct,
     rating: lapsePct > 50 ? 'Critical' : lapsePct > 30 ? 'Elevated' : 'Healthy',
     benchmark: '<30% ideal',
+    tooltip: 'Percentage of CRM contacts classified as lapsed (no activity in 12+ months). A healthy practice keeps this below 30%.',
   })
 
-  // 6. Appointment Volume
-  const apptColor = appt.total > 5000 ? 'green' : appt.total > 1000 ? 'light-green' : appt.total > 0 ? 'orange' : 'grey'
-  items.push({
-    label: 'Appointment Volume',
-    value: fmtC(appt.total),
-    icon: 'mdi-calendar-check',
-    borderColor: apptColor,
-    valueColor: apptColor,
-    pct: Math.min((appt.total / 10000) * 100, 100),
-    rating: appt.total > 5000 ? 'Robust' : appt.total > 1000 ? 'Moderate' : 'Low',
-    benchmark: '15/DVM/day target',
-  })
-
-  // 7. VIP Client Concentration
+  // 6. VIP Client Concentration
   const vipPct = cli.totalClients > 0 ? Math.round((cli.highValue / cli.totalClients) * 100) : 0
   const vipColor = vipPct >= 10 ? 'green' : vipPct >= 5 ? 'light-green' : 'orange'
   items.push({
@@ -571,19 +569,7 @@ const scorecardItems = computed(() => {
     pct: Math.min(vipPct * 5, 100),
     rating: vipPct >= 10 ? 'Strong' : vipPct >= 5 ? 'Average' : 'Opportunity',
     benchmark: '10%+ VIP ideal',
-  })
-
-  // 8. Service Diversity
-  const svcColor = appt.uniqueTypes >= 10 ? 'green' : appt.uniqueTypes >= 5 ? 'light-green' : 'orange'
-  items.push({
-    label: 'Service Diversity',
-    value: `${appt.uniqueTypes} types`,
-    icon: 'mdi-medical-bag',
-    borderColor: svcColor,
-    valueColor: svcColor,
-    pct: Math.min((appt.uniqueTypes / 15) * 100, 100),
-    rating: appt.uniqueTypes >= 10 ? 'Comprehensive' : appt.uniqueTypes >= 5 ? 'Moderate' : 'Narrow',
-    benchmark: '10+ service types',
+    tooltip: 'Number and percentage of clients who have spent $2,000 or more. A strong VIP base (10%+) indicates loyal, high-value relationships.',
   })
 
   return items
