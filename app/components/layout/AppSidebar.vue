@@ -135,7 +135,9 @@
         <v-list-item v-if="hasPageAccess('/time-off')" to="/time-off" title="Time Off Approvals" prepend-icon="mdi-calendar-remove" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/recruiting')" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/export-payroll')" to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/payroll/review')" to="/admin/payroll/review" title="Payroll Review" prepend-icon="mdi-cash-check" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/master-roster')" to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/intake')" to="/admin/intake" title="Intake Management" prepend-icon="mdi-clipboard-flow" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
 
@@ -209,8 +211,12 @@
           />
         </template>
         <v-list-item v-if="hasPageAccess('/admin/users')" to="/admin/users" title="User Management" prepend-icon="mdi-account-cog" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/agents')" to="/admin/agents" title="AI Agents" prepend-icon="mdi-robot" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/email-templates')" to="/admin/email-templates" title="Email Templates" prepend-icon="mdi-email-edit" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/services')" to="/admin/services" title="Services" prepend-icon="mdi-medical-bag" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/scheduling-rules')" to="/admin/scheduling-rules" title="Scheduling Rules" prepend-icon="mdi-calendar-clock" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/skills-management')" to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/admin/slack')" to="/admin/slack" title="Slack Integration" prepend-icon="mdi-slack" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/system-health')" to="/admin/system-health" title="System Settings" prepend-icon="mdi-cog" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasAdminAccess" to="/admin/system-health" prepend-icon="mdi-cog" title="Admin" rounded="lg" class="nav-item mb-1" />
@@ -345,10 +351,18 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   
   // Admin Ops
   '/admin/users': ['super_admin', 'admin'],
+  '/admin/agents': ['super_admin', 'admin'],
   '/admin/email-templates': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/services': ['super_admin', 'admin'],
+  '/admin/scheduling-rules': ['super_admin', 'admin'],
   '/admin/skills-management': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin'],
+  '/admin/slack': ['super_admin', 'admin'],
   '/admin/system-health': ['super_admin', 'admin'],
   '/settings': ['super_admin', 'admin'],
+
+  // HR admin pages
+  '/admin/intake': ['super_admin', 'admin'],
+  '/admin/payroll/review': ['super_admin', 'admin'],
 }
 
 interface Props {
@@ -401,11 +415,11 @@ function hasSectionAccess(sectionName: string): boolean {
     'My Workspace': ['/profile', '/contact-list', '/my-schedule', '/people/my-skills', '/development', '/academy/my-training'],
     'Management': ['/roster', '/skills-library', '/people/skill-stats', '/med-ops/facilities', '/academy/course-manager'],
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
-    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster'],
+    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster', '/admin/intake', '/admin/payroll/review'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
     'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis', '/marketing/list-hygiene'],
     'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
-    'Admin Ops': ['/admin/users', '/admin/email-templates', '/admin/skills-management', '/admin/system-health', '/settings'],
+    'Admin Ops': ['/admin/users', '/admin/agents', '/admin/email-templates', '/admin/services', '/admin/scheduling-rules', '/admin/skills-management', '/admin/slack', '/admin/system-health', '/settings'],
   }
   
   const pages = sectionPages[sectionName]

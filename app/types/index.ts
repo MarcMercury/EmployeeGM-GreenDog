@@ -87,7 +87,7 @@ export const SECTION_ACCESS: Record<string, UserRole[]> = {
   // === GDU (Education) === GDU Dash, Student CRM, Visitor CRM, CE Events
   education: ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
   
-  // === Admin Ops === User Management, Email Templates, Skills Management, System Settings
+  // === Admin Ops === User Management, AI Agents, Email Templates, Services, Scheduling Rules, Skills Management, Slack Integration, System Settings, Global Settings
   admin: ['super_admin', 'admin'],
   
   // === Schedule Permissions (granular) ===
