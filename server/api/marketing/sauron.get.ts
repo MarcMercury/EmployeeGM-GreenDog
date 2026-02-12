@@ -79,10 +79,10 @@ export default defineEventHandler(async (event) => {
 
     // Staff with revenue
     const topStaffList = invoiceStaff.map((s: any) => ({
-      name: s.staff_member || 'Unknown',
+      name: s.staffMember || 'Unknown',
       revenue: s.revenue || 0,
-      lines: s.line_count || 0,
-      invoices: s.invoice_count || 0,
+      lines: s.lineCount || s.line_count || 0,
+      invoices: s.invoiceCount || s.invoice_count || 0,
     }))
 
     // Monthly trend with labels

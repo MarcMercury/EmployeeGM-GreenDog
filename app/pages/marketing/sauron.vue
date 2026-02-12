@@ -352,10 +352,10 @@
         <v-card-text class="pt-4">
           <v-row dense>
             <v-col cols="12" sm="6" md="4" v-for="insight in crossInsights" :key="insight.label">
-              <v-card variant="tonal" class="pa-3 h-100" :color="insight.cardColor">
-                <div class="text-caption text-medium-emphasis text-uppercase mb-1">{{ insight.label }}</div>
-                <div class="text-h5 font-weight-bold">{{ insight.value }}</div>
-                <div class="text-caption mt-1">{{ insight.note }}</div>
+              <v-card variant="outlined" class="pa-3 h-100" :style="{ borderLeft: '4px solid ' + insight.accentColor }">
+                <div class="text-caption text-uppercase mb-1" style="color: #555">{{ insight.label }}</div>
+                <div class="text-h5 font-weight-bold" :style="{ color: insight.accentColor }">{{ insight.value }}</div>
+                <div class="text-body-2 mt-1" style="color: #333">{{ insight.note }}</div>
               </v-card>
             </v-col>
           </v-row>
@@ -587,7 +587,7 @@ const scorecardItems = computed(() => {
 
 // ── Cross-domain insights ──
 const crossInsights = computed(() => {
-  const insights: Array<{ label: string; value: string; note: string; cardColor: string }> = []
+  const insights: Array<{ label: string; value: string; note: string; accentColor: string }> = []
 
   // Revenue per appointment
   if (appt.total > 0 && inv.totalRevenue > 0) {
@@ -596,7 +596,7 @@ const crossInsights = computed(() => {
       label: 'Revenue per Appointment',
       value: `$${fmtCurr(revPerAppt)}`,
       note: revPerAppt >= 250 ? 'Above $250 AAHA target — strong transaction value' : `Below $250 target — opportunity to increase per-visit value`,
-      cardColor: revPerAppt >= 250 ? 'green-lighten-5' : 'orange-lighten-5',
+      accentColor: revPerAppt >= 250 ? '#4CAF50' : '#FF9800',
     })
   }
 
@@ -607,7 +607,7 @@ const crossInsights = computed(() => {
       label: 'Invoice Lines per Visit',
       value: linesPerAppt,
       note: Number(linesPerAppt) >= 3 ? 'Good service bundling — multiple charges per visit' : 'Low bundling — are diagnostics/labs being recommended consistently?',
-      cardColor: Number(linesPerAppt) >= 3 ? 'green-lighten-5' : 'orange-lighten-5',
+      accentColor: Number(linesPerAppt) >= 3 ? '#4CAF50' : '#FF9800',
     })
   }
 
@@ -618,7 +618,7 @@ const crossInsights = computed(() => {
       label: 'Visits per Active Client',
       value: `${apptsPerClient}×`,
       note: Number(apptsPerClient) >= 2 ? 'Clients returning for multiple visits — good bonding' : 'Low repeat visits — retention and recall programs needed',
-      cardColor: Number(apptsPerClient) >= 2 ? 'green-lighten-5' : 'orange-lighten-5',
+      accentColor: Number(apptsPerClient) >= 2 ? '#4CAF50' : '#FF9800',
     })
   }
 
@@ -629,7 +629,7 @@ const crossInsights = computed(() => {
       label: 'Active Client Ratio',
       value: `${activePct}%`,
       note: `${fmtN(cli.activeClients)} of ${fmtN(cli.totalClients)} clients seen in last 12 months. ${cli.lapsed > 0 ? fmtN(cli.lapsed) + ' are reactivation candidates.' : ''}`,
-      cardColor: activePct >= 50 ? 'blue-lighten-5' : 'red-lighten-5',
+      accentColor: activePct >= 50 ? '#2196F3' : '#f44336',
     })
   }
 
@@ -640,7 +640,7 @@ const crossInsights = computed(() => {
       label: 'Revenue per Provider',
       value: `$${fmtC(revPerStaff)}`,
       note: `Across ${inv.uniqueStaff} providers. AAHA target: $700K+/FTE DVM/year.`,
-      cardColor: 'blue-lighten-5',
+      accentColor: '#2196F3',
     })
   }
 
@@ -651,7 +651,7 @@ const crossInsights = computed(() => {
       label: 'At-Risk Revenue Impact',
       value: `$${fmtC(riskRevenueImpact)}`,
       note: `${fmtN(cli.atRisk)} at-risk clients × $${fmtCurr(cli.arpu)} ARPU. Targeted outreach could recover this revenue.`,
-      cardColor: 'red-lighten-5',
+      accentColor: '#f44336',
     })
   }
 
