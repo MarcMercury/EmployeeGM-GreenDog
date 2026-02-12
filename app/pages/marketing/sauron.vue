@@ -17,6 +17,8 @@
           Last refreshed: {{ fmtDT(lastRefresh) }}
           <span class="ml-2">·</span>
           <span class="ml-2">{{ fmtN(totalRecords) }} records across 3 data sources</span>
+          <span v-if="dataCutoff" class="ml-2">·</span>
+          <span v-if="dataCutoff" class="ml-2">Data through: {{ dataCutoff }}</span>
         </div>
       </div>
       <div class="d-flex gap-2">
@@ -68,7 +70,7 @@
                   </v-card-text>
                 </v-card>
               </template>
-              <span>{{ card.tooltip }}</span>
+              <span class="text-body-2" style="color: #fff">{{ card.tooltip }}</span>
             </v-tooltip>
           </v-col>
         </v-row>
@@ -405,6 +407,7 @@ useHead({ title: 'Sauron — Executive Report' })
 const loading = ref(false)
 const loadingStep = ref('loading data')
 const lastRefresh = ref<string | null>(null)
+const dataCutoffDate = ref('')
 
 // ═══════════════════════════════════════════
 // DATA STATE
@@ -464,6 +467,13 @@ const observations = ref<Array<{
 
 const hasData = computed(() => cli.totalClients > 0 || inv.totalLines > 0 || appt.total > 0)
 const totalRecords = computed(() => cli.totalClients + inv.totalLines + appt.total)
+const dataCutoff = computed(() => {
+  if (dataCutoffDate.value) {
+    const d = new Date(dataCutoffDate.value + 'T00:00:00')
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  }
+  return ''
+})
 
 const criticalCount = computed(() => observations.value.filter(o => o.severity === 'critical').length)
 const warningCount = computed(() => observations.value.filter(o => o.severity === 'warning').length)
@@ -671,6 +681,9 @@ async function fetchAllData() {
 
   // Populate appointment data
   Object.assign(appt, data.appt)
+
+  // Set data cutoff date
+  dataCutoffDate.value = data.cutoffDate || ''
 }
 
 // ═══════════════════════════════════════════
@@ -941,6 +954,14 @@ onMounted(() => refreshAll())
 .sauron-page {
   max-width: 1200px;
   margin: 0 auto;
+}
+:deep(.v-tooltip > .v-overlay__content) {
+  background: rgba(33, 33, 33, 0.95) !important;
+  color: #fff !important;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  padding: 10px 14px !important;
+  border-radius: 6px !important;
 }
 .scorecard-card {
   transition: transform 0.2s, box-shadow 0.2s;

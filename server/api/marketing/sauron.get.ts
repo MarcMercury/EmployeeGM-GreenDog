@@ -36,11 +36,19 @@ export default defineEventHandler(async (event) => {
 
   try {
     // ═══════════════════════════════════════════
+    // DATE CUTOFF — only include complete months
+    // e.g. if today is Feb 11, cutoff = Jan 31 (last day of previous month)
+    // ═══════════════════════════════════════════
+    const now = new Date()
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 = last day of prev month
+    const cutoffDate = endOfLastMonth.toISOString().split('T')[0] // e.g. '2026-01-31'
+
+    // ═══════════════════════════════════════════
     // 1. INVOICE DATA — via the get_invoice_dashboard RPC (processes ALL rows)
     // ═══════════════════════════════════════════
     const { data: dashboardData, error: dashErr } = await supabase.rpc('get_invoice_dashboard', {
       p_start_date: null,
-      p_end_date: null,
+      p_end_date: cutoffDate,
       p_location: null,
     })
 
@@ -128,9 +136,8 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    const now = new Date()
-    const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6)
-    const twelveMonthsAgo = new Date(now); twelveMonthsAgo.setFullYear(now.getFullYear() - 1)
+    const sixMonthsAgo = new Date(endOfLastMonth); sixMonthsAgo.setMonth(endOfLastMonth.getMonth() - 6)
+    const twelveMonthsAgo = new Date(endOfLastMonth); twelveMonthsAgo.setFullYear(endOfLastMonth.getFullYear() - 1)
 
     let active = 0, atRisk = 0, lapsed = 0, neverVisited = 0
     let highValue = 0
@@ -214,6 +221,7 @@ export default defineEventHandler(async (event) => {
       const { data } = await supabase
         .from('appointment_data')
         .select('id, appointment_type, appointment_date, location_name, location_id, day_of_week, species, service_category, duration_minutes, revenue, provider_name, status')
+        .lte('appointment_date', cutoffDate)
         .range(page * pageSize, (page + 1) * pageSize - 1)
       if (data && data.length > 0) {
         allAppts = allAppts.concat(data)
@@ -283,7 +291,7 @@ export default defineEventHandler(async (event) => {
       latestDate: apptDates[apptDates.length - 1] || null,
     }
 
-    return { inv, cli, appt }
+    return { inv, cli, appt, cutoffDate }
 
   } catch (err: any) {
     console.error('[Sauron] API error:', err)

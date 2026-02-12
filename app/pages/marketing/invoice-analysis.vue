@@ -774,10 +774,12 @@ const showHistory = ref(false)
 const showUploadHistory = ref(false)
 const dataVersion = ref(0)
 
+// Default date range: last complete month's end (exclude partial current month)
+const lastCompleteMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
 const filters = reactive({
   location: null as string | null,
-  startDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
-  endDate: new Date().toISOString().split('T')[0],
+  startDate: new Date(lastCompleteMonth.getTime() - 89 * 86400000).toISOString().split('T')[0],
+  endDate: lastCompleteMonth.toISOString().split('T')[0],
 })
 
 const uploadForm = reactive({
@@ -836,18 +838,21 @@ function isActivePreset(preset: { days: number }): boolean {
     const ytdStart = new Date().getFullYear() + '-01-01'
     return filters.startDate === ytdStart
   }
-  const expectedStart = new Date(Date.now() - preset.days * 86400000).toISOString().split('T')[0]
+  const lcm = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
+  const expectedStart = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
   return filters.startDate === expectedStart
 }
 
 function applyPreset(preset: { days: number }) {
-  filters.endDate = new Date().toISOString().split('T')[0]
+  // Always use end of last complete month as endDate
+  const lcm = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
+  filters.endDate = lcm.toISOString().split('T')[0]
   if (preset.days === -2) {
     filters.startDate = '2020-01-01'
   } else if (preset.days === -1) {
     filters.startDate = new Date().getFullYear() + '-01-01'
   } else {
-    filters.startDate = new Date(Date.now() - preset.days * 86400000).toISOString().split('T')[0]
+    filters.startDate = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
   }
   loadData()
 }

@@ -671,10 +671,12 @@ const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const tableSearch = ref('')
 
+// Default date range: last complete month's end (exclude partial current month)
+const lastCompleteMonthEnd = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
 const filters = reactive({
   locationId: null as string | null,
-  startDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
-  endDate: new Date().toISOString().split('T')[0],
+  startDate: new Date(lastCompleteMonthEnd.getTime() - 89 * 86400000).toISOString().split('T')[0],
+  endDate: lastCompleteMonthEnd.toISOString().split('T')[0],
   serviceCategory: null as string | null,
 })
 
