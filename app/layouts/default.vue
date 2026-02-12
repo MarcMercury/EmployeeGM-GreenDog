@@ -252,16 +252,12 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-lime-500/20">🧹</div>
                 List Hygiene
               </NuxtLink>
+              <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
+                Marketplace
+              </NuxtLink>
             </div>
           </div>
-
-          <!-- Green Dog Marketplace (Super Admin only for now) -->
-          <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }">
-            <div class="nav-icon-wrap group-hover:bg-amber-500/20">
-              🦴
-            </div>
-            <span v-if="!sidebarCollapsed">Marketplace</span>
-          </NuxtLink>
 
           <!-- Collapsed mode: just show icons -->
           <template v-if="sidebarCollapsed">

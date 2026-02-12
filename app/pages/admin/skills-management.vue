@@ -325,6 +325,152 @@
                         </v-expand-transition>
                       </v-card>
 
+                      <!-- ====== Position Requirements (Skill → Position mapping) ====== -->
+                      <v-card variant="outlined" rounded="lg" class="mb-4">
+                        <v-card-title class="text-body-1 d-flex align-center">
+                          <v-icon start size="20" color="deep-purple">mdi-briefcase-check</v-icon>
+                          Position Requirements
+                          <v-spacer />
+                          <v-chip size="x-small" variant="flat" color="deep-purple-lighten-4" class="ml-2">
+                            {{ positionAssignments.length }} position{{ positionAssignments.length !== 1 ? 's' : '' }}
+                          </v-chip>
+                        </v-card-title>
+                        <v-card-text>
+                          <p class="text-caption text-grey mb-3">
+                            Assign this skill to positions and set the expected proficiency level. This drives skill gap analysis for employees and AI agent assessments.
+                          </p>
+
+                          <!-- Loading -->
+                          <div v-if="loadingPositionAssignments" class="text-center py-4">
+                            <v-progress-circular indeterminate size="24" color="deep-purple" />
+                            <span class="ml-2 text-body-2 text-grey">Loading position assignments...</span>
+                          </div>
+
+                          <!-- Current assignments -->
+                          <template v-else>
+                            <v-table v-if="positionAssignments.length > 0" density="compact" class="mb-4">
+                              <thead>
+                                <tr>
+                                  <th class="text-left">Position</th>
+                                  <th class="text-center" style="width: 200px;">Expected Level</th>
+                                  <th class="text-center" style="width: 140px;">Importance</th>
+                                  <th class="text-center" style="width: 60px;">Source</th>
+                                  <th class="text-center" style="width: 80px;"></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="pa in positionAssignments" :key="pa.id">
+                                  <td>
+                                    <span class="font-weight-medium">{{ pa.position_title }}</span>
+                                  </td>
+                                  <td class="text-center">
+                                    <v-btn-toggle
+                                      :model-value="pa.expected_level"
+                                      mandatory
+                                      density="compact"
+                                      :color="getRatingColor(pa.expected_level)"
+                                      @update:model-value="(val: number) => updatePositionAssignment(pa, 'expected_level', val)"
+                                    >
+                                      <v-btn :value="1" size="x-small">1</v-btn>
+                                      <v-btn :value="2" size="x-small">2</v-btn>
+                                      <v-btn :value="3" size="x-small">3</v-btn>
+                                      <v-btn :value="4" size="x-small">4</v-btn>
+                                      <v-btn :value="5" size="x-small">5</v-btn>
+                                    </v-btn-toggle>
+                                  </td>
+                                  <td class="text-center">
+                                    <v-select
+                                      :model-value="pa.importance"
+                                      :items="importanceOptions"
+                                      density="compact"
+                                      variant="plain"
+                                      hide-details
+                                      @update:model-value="(val: string) => updatePositionAssignment(pa, 'importance', val)"
+                                    >
+                                      <template #selection="{ item }">
+                                        <v-chip size="x-small" :color="getImportanceColor(item.value as string)" variant="flat">
+                                          {{ item.title }}
+                                        </v-chip>
+                                      </template>
+                                    </v-select>
+                                  </td>
+                                  <td class="text-center">
+                                    <v-tooltip :text="pa.source === 'agent' ? 'Set by AI Agent' : 'Manually assigned'" location="top">
+                                      <template #activator="{ props }">
+                                        <v-icon v-bind="props" size="18" :color="pa.source === 'agent' ? 'deep-purple' : 'grey'">
+                                          {{ pa.source === 'agent' ? 'mdi-robot' : 'mdi-account' }}
+                                        </v-icon>
+                                      </template>
+                                    </v-tooltip>
+                                  </td>
+                                  <td class="text-center">
+                                    <v-btn
+                                      icon="mdi-close"
+                                      variant="text"
+                                      size="x-small"
+                                      color="error"
+                                      :loading="pa._deleting"
+                                      @click="removePositionAssignment(pa)"
+                                    />
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </v-table>
+
+                            <div v-else class="text-center py-3">
+                              <v-icon size="32" color="grey-lighten-1">mdi-briefcase-off-outline</v-icon>
+                              <p class="text-caption text-grey mt-1 mb-0">Not assigned to any positions yet</p>
+                            </div>
+
+                            <!-- Add position assignment -->
+                            <v-divider v-if="positionAssignments.length > 0" class="my-3" />
+                            <div class="d-flex align-center gap-2">
+                              <v-autocomplete
+                                v-model="newPositionId"
+                                :items="availablePositionsForSkill"
+                                item-title="title"
+                                item-value="id"
+                                label="Add to position..."
+                                variant="outlined"
+                                density="compact"
+                                hide-details
+                                clearable
+                                style="flex: 1;"
+                                prepend-inner-icon="mdi-briefcase-plus"
+                                no-data-text="All positions already assigned"
+                              />
+                              <v-select
+                                v-model="newPositionLevel"
+                                :items="[1, 2, 3, 4, 5]"
+                                label="Level"
+                                variant="outlined"
+                                density="compact"
+                                hide-details
+                                style="max-width: 90px;"
+                              />
+                              <v-select
+                                v-model="newPositionImportance"
+                                :items="importanceOptions"
+                                label="Importance"
+                                variant="outlined"
+                                density="compact"
+                                hide-details
+                                style="max-width: 150px;"
+                              />
+                              <v-btn
+                                color="deep-purple"
+                                variant="tonal"
+                                :disabled="!newPositionId"
+                                :loading="addingPositionAssignment"
+                                @click="addPositionAssignment"
+                                icon="mdi-plus"
+                                size="small"
+                              />
+                            </div>
+                          </template>
+                        </v-card-text>
+                      </v-card>
+
                       <div class="d-flex justify-space-between">
                         <v-btn
                           color="error"
@@ -700,6 +846,33 @@ const showDeleteDialog = ref(false)
 const showLegend = ref(false)
 const showLevelProgression = ref(false)
 
+// =================== Position Requirements State ===================
+interface PositionAssignment {
+  id: string
+  job_position_id: string
+  skill_id: string
+  expected_level: number
+  importance: string
+  source: string
+  notes: string | null
+  position_title: string
+  _deleting?: boolean
+  _saving?: boolean
+}
+
+const positionAssignments = ref<PositionAssignment[]>([])
+const allPositions = ref<{ id: string; title: string }[]>([])
+const loadingPositionAssignments = ref(false)
+const addingPositionAssignment = ref(false)
+const newPositionId = ref<string | null>(null)
+const newPositionLevel = ref(3)
+const newPositionImportance = ref('required')
+const importanceOptions = [
+  { title: 'Required', value: 'required' },
+  { title: 'Recommended', value: 'recommended' },
+  { title: 'Optional', value: 'optional' }
+]
+
 const categoryOptions = ['Technical', 'Service', 'Leadership', 'Communication', 'Safety', 'Equipment', 'Clinical Skills', 'Administrative', 'Anesthesia', 'Animal Care', 'Client Service', 'Creative / Marketing', 'Dentistry', 'Diagnostics & Imaging', 'Emergency', 'Emergency & Critical Care', 'Facilities Skills', 'Financial Skills', 'HR / People Ops', 'Imaging', 'Inventory Skills', 'Leadership Skills', 'Pharmacy Skills', 'Soft Skills', 'Specialty Medicine', 'Surgery', 'Technology Skills', 'Wellness', 'Other']
 
 const newSkill = ref({
@@ -746,6 +919,9 @@ watch(selectedSkill, (skill) => {
       is_core: skill.is_core || false
     }
     showLevelProgression.value = false
+    loadPositionAssignments(skill.id)
+  } else {
+    positionAssignments.value = []
   }
 })
 
@@ -1021,6 +1197,132 @@ function getSkillLevelDescription(skill: Skill | SkillLibraryItem | null, level:
     5: 'Expert level. Teaches and mentors others. Creates protocols and standards.'
   }
   return genericDescriptions[level] || 'No description available.'
+}
+
+// =================== Library Methods ===================
+// =================== Position Requirements Computed ===================
+const availablePositionsForSkill = computed(() => {
+  const assignedIds = new Set(positionAssignments.value.map(pa => pa.job_position_id))
+  return allPositions.value.filter(p => !assignedIds.has(p.id))
+})
+
+function getImportanceColor(importance: string): string {
+  switch (importance) {
+    case 'required': return 'error'
+    case 'recommended': return 'warning'
+    case 'optional': return 'info'
+    default: return 'grey'
+  }
+}
+
+// =================== Position Requirements Methods ===================
+const loadPositionAssignments = async (skillId: string) => {
+  loadingPositionAssignments.value = true
+  try {
+    const { data, error } = await client
+      .from('role_skill_expectations')
+      .select('id, job_position_id, skill_id, expected_level, importance, source, notes')
+      .eq('skill_id', skillId)
+      .order('expected_level', { ascending: false })
+
+    if (error) throw error
+
+    // Resolve position titles
+    const positionIds = (data || []).map((d: any) => d.job_position_id)
+    let positionMap: Record<string, string> = {}
+    if (positionIds.length > 0) {
+      const { data: positions } = await client
+        .from('job_positions')
+        .select('id, title')
+        .in('id', positionIds)
+      positionMap = Object.fromEntries((positions || []).map((p: any) => [p.id, p.title]))
+    }
+
+    positionAssignments.value = (data || []).map((d: any) => ({
+      ...d,
+      position_title: positionMap[d.job_position_id] || 'Unknown Position',
+      _deleting: false,
+      _saving: false
+    }))
+  } catch (err) {
+    console.error('Error loading position assignments:', err)
+    toast.error('Failed to load position assignments')
+  } finally {
+    loadingPositionAssignments.value = false
+  }
+}
+
+const addPositionAssignment = async () => {
+  if (!newPositionId.value || !selectedSkill.value) return
+
+  addingPositionAssignment.value = true
+  try {
+    const { error } = await client
+      .from('role_skill_expectations')
+      .insert({
+        job_position_id: newPositionId.value,
+        skill_id: selectedSkill.value.id,
+        expected_level: newPositionLevel.value,
+        importance: newPositionImportance.value,
+        source: 'manual'
+      })
+
+    if (error) throw error
+
+    toast.success('Position requirement added')
+    newPositionId.value = null
+    newPositionLevel.value = 3
+    newPositionImportance.value = 'required'
+    await loadPositionAssignments(selectedSkill.value.id)
+  } catch (err: any) {
+    console.error('Error adding position assignment:', err)
+    if (err.code === '23505') {
+      toast.error('This skill is already assigned to that position')
+    } else {
+      toast.error('Failed to add position requirement')
+    }
+  } finally {
+    addingPositionAssignment.value = false
+  }
+}
+
+const updatePositionAssignment = async (pa: PositionAssignment, field: string, value: any) => {
+  const oldValue = (pa as any)[field];
+  (pa as any)[field] = value
+  pa._saving = true
+  try {
+    const update: Record<string, any> = { [field]: value, source: 'manual', updated_at: new Date().toISOString() }
+    const { error } = await client
+      .from('role_skill_expectations')
+      .update(update)
+      .eq('id', pa.id)
+    if (error) throw error
+    toast.success(`Updated ${pa.position_title}: ${field === 'expected_level' ? 'Level ' + value : value}`)
+  } catch (err) {
+    console.error('Error updating position assignment:', err);
+    (pa as any)[field] = oldValue
+    toast.error('Failed to update position requirement')
+  } finally {
+    pa._saving = false
+  }
+}
+
+const removePositionAssignment = async (pa: PositionAssignment) => {
+  pa._deleting = true
+  try {
+    const { error } = await client
+      .from('role_skill_expectations')
+      .delete()
+      .eq('id', pa.id)
+    if (error) throw error
+    positionAssignments.value = positionAssignments.value.filter(p => p.id !== pa.id)
+    toast.success(`Removed ${pa.position_title} requirement`)
+  } catch (err) {
+    console.error('Error removing position assignment:', err)
+    toast.error('Failed to remove position requirement')
+  } finally {
+    pa._deleting = false
+  }
 }
 
 // =================== Library Methods ===================
@@ -1314,12 +1616,26 @@ const fetchAnalyticsData = async () => {
   }
 }
 
+const fetchPositions = async () => {
+  try {
+    const { data, error } = await client
+      .from('job_positions')
+      .select('id, title')
+      .order('title')
+    if (error) throw error
+    allPositions.value = data || []
+  } catch (err) {
+    console.error('Error fetching positions:', err)
+  }
+}
+
 const fetchAllData = async () => {
   loading.value = true
   try {
     await Promise.all([
       fetchSkills(),
-      fetchAnalyticsData()
+      fetchAnalyticsData(),
+      fetchPositions()
     ])
   } finally {
     loading.value = false

@@ -76,6 +76,24 @@
 
       <!-- Course Grid -->
       <v-col cols="12" md="9">
+        <!-- Skill Filter Banner -->
+        <v-alert
+          v-if="filterBySkillId"
+          type="info"
+          variant="tonal"
+          class="mb-4"
+          closable
+          @click:close="clearSkillFilter"
+        >
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-filter</v-icon>
+            Showing courses for skill: <strong class="ml-1">{{ filterSkillName || 'Loading...' }}</strong>
+            <v-btn variant="text" size="small" class="ml-2" @click="clearSkillFilter">
+              Show All Courses
+            </v-btn>
+          </div>
+        </v-alert>
+
         <!-- Header Stats -->
         <UiStatsRow
           :stats="[
@@ -95,8 +113,15 @@
         <!-- Empty State -->
         <v-card v-else-if="filteredCourses.length === 0" class="text-center pa-8">
           <v-icon size="64" color="grey-lighten-1">mdi-book-search</v-icon>
-          <div class="text-h6 mt-4">No courses found</div>
-          <div class="text-body-2 text-grey">Try adjusting your filters</div>
+          <div class="text-h6 mt-4">
+            {{ filterBySkillId ? 'No courses available for this skill yet' : 'No courses found' }}
+          </div>
+          <div class="text-body-2 text-grey">
+            {{ filterBySkillId ? 'Check back later or browse all courses' : 'Try adjusting your filters' }}
+          </div>
+          <v-btn v-if="filterBySkillId" variant="tonal" color="primary" class="mt-4" @click="clearSkillFilter">
+            Browse All Courses
+          </v-btn>
         </v-card>
 
         <!-- Course Cards -->
@@ -254,11 +279,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAcademyCoursesStore } from '~/stores/academyCourses'
 import { useAcademyProgressStore } from '~/stores/academyProgress'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const coursesStore = useAcademyCoursesStore()
 const progressStore = useAcademyProgressStore()
 const router = useRouter()
+const route = useRoute()
 
 // State
 const searchQuery = ref('')
@@ -266,6 +292,10 @@ const selectedCategories = ref<string[]>([])
 const selectedStatus = ref('all')
 const showMandatoryOnly = ref(false)
 const enrollingId = ref<string | null>(null)
+
+// Skill filter from query param (set by SkillsTab links)
+const filterBySkillId = ref<string | null>(null)
+const filterSkillName = ref<string | null>(null)
 
 // Computed
 const loading = computed(() => coursesStore.isLoading)
@@ -282,6 +312,11 @@ const dueCount = computed(() => coursesStore.dueCoursesCount)
 
 const filteredCourses = computed(() => {
   let courses = [...coursesStore.courses]
+
+  // Skill filter (from ?skill= query param — shows only courses for that skill)
+  if (filterBySkillId.value) {
+    courses = courses.filter(c => c.skill_id === filterBySkillId.value)
+  }
 
   // Search filter
   if (searchQuery.value) {
@@ -414,8 +449,31 @@ function viewCourse(course: any) {
   router.push(`/training/${course.id}`)
 }
 
+function clearSkillFilter() {
+  filterBySkillId.value = null
+  filterSkillName.value = null
+  // Update query params without the skill filter
+  router.replace({ query: { ...route.query, skill: undefined } })
+}
+
 // Lifecycle
 onMounted(async () => {
+  // Read ?skill= query param for pre-filtering by skill
+  const skillIdParam = route.query.skill as string | undefined
+  if (skillIdParam) {
+    filterBySkillId.value = skillIdParam
+    // Resolve the skill name for display
+    const supabase = useSupabaseClient()
+    const { data: skillRow } = await supabase
+      .from('skill_library')
+      .select('name')
+      .eq('id', skillIdParam)
+      .single()
+    if (skillRow) {
+      filterSkillName.value = skillRow.name
+    }
+  }
+
   await Promise.all([
     coursesStore.fetchCourses(),
     coursesStore.fetchEnrollments()

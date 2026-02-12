@@ -57,18 +57,9 @@
         <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facility Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketplace')" to="/marketplace" title="Marketplace" prepend-icon="mdi-store" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasSectionAccess('Resources')" to="/wiki" prepend-icon="mdi-bookshelf" title="Resources" rounded="lg" class="nav-item mb-1" />
-
-      <!-- ===== Marketplace - Global Access ===== -->
-      <v-list-item
-        v-if="hasPageAccess('/marketplace')"
-        to="/marketplace"
-        prepend-icon="mdi-store"
-        title="Marketplace"
-        rounded="lg"
-        class="nav-item mb-2"
-      />
 
       <!-- ===== My Workspace Group - Database-driven Access ===== -->
       <v-list-group v-if="hasSectionAccess('My Workspace') && !rail" value="my-workspace">
@@ -415,7 +406,7 @@ function hasSectionAccess(sectionName: string): boolean {
   
   // Map sections to their pages
   const sectionPages: Record<string, string[]> = {
-    'Resources': ['/wiki', '/med-ops/facilities', '/contact-list', '/marketing/list-hygiene'],
+    'Resources': ['/wiki', '/med-ops/facilities', '/contact-list', '/marketing/list-hygiene', '/marketplace'],
     'My Workspace': ['/profile', '/my-schedule', '/academy/my-training'],
     'Management': ['/roster', '/skills-library', '/people/skill-stats', '/academy/course-manager'],
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],

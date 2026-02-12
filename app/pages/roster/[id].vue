@@ -2625,6 +2625,7 @@ async function loadSkills() {
       .from('employee_skills')
       .select(`
         id,
+        skill_id,
         level,
         is_goal,
         certified_at,
