@@ -37,8 +37,12 @@ export default defineNuxtConfig({
     }
   },
 
-  // Supabase configuration - keep it simple
+  // Supabase configuration
+  // We disable the module's built-in redirect so our own auth middleware
+  // (app/middleware/auth.ts) handles all login redirects — including
+  // the emergency admin bypass when Supabase is down.
   supabase: {
+    redirect: false,
     redirectOptions: {
       login: '/auth/login',
       callback: '/auth/confirm',

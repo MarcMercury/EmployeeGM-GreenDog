@@ -299,8 +299,21 @@ async function handleEmergencyLogin() {
       if (emergencyAuth.profile.value) {
         authStore.profile = emergencyAuth.profile.value as any
         authStore.initialized = true
+
+        // Also set supabase_user state so the supabase module doesn't interfere
+        const supabaseUser = useState<any>('supabase_user')
+        supabaseUser.value = {
+          id: emergencyAuth.profile.value.auth_user_id,
+          email: emergencyAuth.profile.value.email,
+          app_metadata: {},
+          user_metadata: {},
+          aud: 'authenticated',
+          role: 'authenticated',
+          created_at: new Date().toISOString(),
+        }
       }
-      window.location.href = '/'
+      // Use client-side navigation (not full reload) to preserve state
+      await navigateTo('/', { replace: true })
     } else {
       emergencyError.value = result.error || 'Emergency login failed'
     }
