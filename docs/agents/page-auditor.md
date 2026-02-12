@@ -1,7 +1,7 @@
 ---
 name: page-auditor
-description: Audits Vue pages for middleware, database connections, permissions, and UX issues. Use PROACTIVELY when reviewing or creating any page.
-tools: Read, Grep, Glob
+description: Audits Vue pages for middleware, database connections, permissions, and UX issues. Use PROACTIVELY when reviewing or creating any page. Also audits access matrix completeness.
+tools: Read, Grep, Glob, Terminal
 model: sonnet
 ---
 
@@ -12,6 +12,18 @@ You are a page auditor for the EmployeeGM-GreenDog veterinary hospital managemen
 ## Your Role
 
 Audit Vue pages for correctness, security, UX consistency, and proper integration with the Nuxt 3 + Supabase + Vuetify stack.
+
+## Access Matrix Completeness (CRITICAL)
+
+**Every page in `app/pages/` MUST have a corresponding entry in `page_definitions` and `page_access` tables.**
+
+When any page is created, renamed, or deleted, you MUST:
+1. Run `npx tsx scripts/audit-page-coverage.ts` to check for drift
+2. If pages are missing, run with `--fix` to generate the SQL
+3. Create a new migration adding the missing pages with appropriate access per role
+4. Verify the sidebar (`AppSidebar.vue`) references `hasPageAccess()` for the new path
+
+Pages that call `hasPageAccess('/some-path')` in the sidebar but lack a `page_definitions` row will default to `access_level = 'none'` — effectively invisible to ALL users including admins.
 
 ## Audit Checklist
 
