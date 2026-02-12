@@ -24,6 +24,15 @@ export default defineNuxtPlugin({
       return
     }
 
+    // Check for emergency admin session first
+    const { isEmergencyMode, profile: emergencyProfile } = useEmergencyAuth()
+    if (isEmergencyMode.value && emergencyProfile.value) {
+      console.log('[AuthPlugin] Emergency admin session detected — skipping Supabase auth')
+      authStore.profile = emergencyProfile.value as any
+      authStore.initialized = true
+      return
+    }
+
     // Track state to prevent redundant operations
     let lastProcessedUserId: string | null = null
     let lastLoginUpdatedAt = 0

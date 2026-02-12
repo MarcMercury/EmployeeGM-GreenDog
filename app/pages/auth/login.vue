@@ -112,6 +112,78 @@
             Use Demo Account
           </v-btn>
         </div>
+
+        <!-- Emergency Login (shown when Supabase appears down) -->
+        <v-expand-transition>
+          <div v-if="showEmergencyLogin" class="mt-6">
+            <div class="demo-divider">
+              <span>Emergency Access</span>
+            </div>
+            <v-alert type="warning" variant="tonal" density="compact" class="mt-3 mb-3">
+              Supabase appears unreachable. Use emergency admin credentials.
+            </v-alert>
+            <v-form @submit.prevent="handleEmergencyLogin">
+              <v-text-field
+                v-model="emergencyForm.email"
+                label="Admin Email"
+                type="email"
+                prepend-inner-icon="mdi-shield-account"
+                variant="outlined"
+                color="warning"
+                density="comfortable"
+                class="mb-3 custom-input"
+              />
+              <v-text-field
+                v-model="emergencyForm.secret"
+                label="Emergency Secret"
+                :type="showEmergencySecret ? 'text' : 'password'"
+                prepend-inner-icon="mdi-key-alert"
+                :append-inner-icon="showEmergencySecret ? 'mdi-eye-off' : 'mdi-eye'"
+                variant="outlined"
+                color="warning"
+                density="comfortable"
+                class="mb-3 custom-input"
+                @click:append-inner="showEmergencySecret = !showEmergencySecret"
+              />
+              <v-alert
+                v-if="emergencyError"
+                type="error"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+                closable
+                @click:close="emergencyError = ''"
+              >
+                {{ emergencyError }}
+              </v-alert>
+              <v-btn
+                type="submit"
+                color="warning"
+                variant="flat"
+                block
+                :loading="emergencyLoading"
+                :disabled="emergencyLoading || !emergencyForm.email || !emergencyForm.secret"
+                class="emergency-btn"
+              >
+                <v-icon start>mdi-shield-key</v-icon>
+                Emergency Sign In
+              </v-btn>
+            </v-form>
+          </div>
+        </v-expand-transition>
+
+        <!-- Toggle emergency login -->
+        <div class="text-center mt-4">
+          <v-btn
+            variant="text"
+            size="small"
+            color="grey"
+            @click="showEmergencyLogin = !showEmergencyLogin"
+          >
+            <v-icon start size="small">mdi-shield-alert-outline</v-icon>
+            {{ showEmergencyLogin ? 'Hide' : 'Supabase down?' }}
+          </v-btn>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -128,6 +200,7 @@ definePageMeta({
 })
 
 const supabase = useSupabaseClient()
+const { emergencyLogin } = useEmergencyAuth()
 
 // Simple state
 const formRef = ref()
@@ -139,6 +212,16 @@ const error = ref('')
 const form = reactive({
   email: '',
   password: ''
+})
+
+// Emergency login state
+const showEmergencyLogin = ref(false)
+const showEmergencySecret = ref(false)
+const emergencyLoading = ref(false)
+const emergencyError = ref('')
+const emergencyForm = reactive({
+  email: '',
+  secret: ''
 })
 
 const rules = {
@@ -200,6 +283,31 @@ async function handleSubmit() {
       error.value = 'An unexpected error occurred. Please try again.'
     }
     isLoading.value = false
+  }
+}
+
+async function handleEmergencyLogin() {
+  emergencyError.value = ''
+  emergencyLoading.value = true
+
+  try {
+    const result = await emergencyLogin(emergencyForm.email, emergencyForm.secret)
+    if (result.ok) {
+      // Populate auth store with emergency profile so the app works
+      const authStore = useAuthStore()
+      const emergencyAuth = useEmergencyAuth()
+      if (emergencyAuth.profile.value) {
+        authStore.profile = emergencyAuth.profile.value as any
+        authStore.initialized = true
+      }
+      window.location.href = '/'
+    } else {
+      emergencyError.value = result.error || 'Emergency login failed'
+    }
+  } catch (err: any) {
+    emergencyError.value = 'Emergency login failed. Check your credentials.'
+  } finally {
+    emergencyLoading.value = false
   }
 }
 </script>
@@ -447,6 +555,14 @@ async function handleSubmit() {
 
 .demo-divider span {
   padding: 0 16px;
+}
+
+/* Emergency Login Button */
+.emergency-btn {
+  border-radius: 12px !important;
+  font-weight: 600;
+  text-transform: none;
+  height: 48px !important;
 }
 
 /* Footer */

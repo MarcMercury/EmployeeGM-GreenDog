@@ -64,6 +64,9 @@ export default defineNuxtConfig({
     sentryDsn: process.env.SENTRY_DSN,
     cronSecret: process.env.CRON_SECRET,
     ezyvetWebhookSecret: process.env.EZYVET_WEBHOOK_SECRET,
+    emergencyAdminSecret: process.env.EMERGENCY_ADMIN_SECRET,
+    emergencyAdminEmail: process.env.EMERGENCY_ADMIN_EMAIL,
+    emergencyAdminName: process.env.EMERGENCY_ADMIN_NAME || 'Emergency Admin',
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,

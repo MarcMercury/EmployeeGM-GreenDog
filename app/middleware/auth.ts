@@ -3,6 +3,7 @@
  * Uses getUser() for server-validated JWT verification (prevents token tampering).
  * Populates the auth store profile for use by other middleware.
  * Includes a timeout so navigation is never blocked when Supabase is unreachable.
+ * Supports emergency admin bypass when Supabase is down.
  */
 
 const AUTH_TIMEOUT = 5_000 // 5 seconds max for auth check
@@ -10,6 +11,18 @@ const AUTH_TIMEOUT = 5_000 // 5 seconds max for auth check
 export default defineNuxtRouteMiddleware(async (to) => {
   // Public routes that don't require auth
   if (to.path.startsWith('/auth/') || to.path.startsWith('/public/')) {
+    return
+  }
+
+  // Check for emergency admin session first
+  const { isEmergencyMode, profile: emergencyProfile } = useEmergencyAuth()
+  if (isEmergencyMode.value && emergencyProfile.value) {
+    console.log('[AuthMiddleware] Emergency admin session active')
+    const authStore = useAuthStore()
+    if (!authStore.profile) {
+      authStore.profile = emergencyProfile.value as any
+      authStore.initialized = true
+    }
     return
   }
 
