@@ -445,6 +445,10 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏭</div>
                 Med Ops Partners
               </NuxtLink>
+              <NuxtLink to="/med-ops/safety" class="nav-link group" active-class="nav-link-active">
+                <div class="nav-icon-wrap group-hover:bg-green-500/20">🛡️</div>
+                Safety Logs
+              </NuxtLink>
             </div>
           </div>
 

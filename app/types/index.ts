@@ -11,6 +11,7 @@ export * from './integrations.types'
 export * from './gdu.types'
 export * from './ui.types'
 export * from './admin.types'
+export * from './safety-log.types'
 
 // =====================================================
 // ROLE-BASED ACCESS CONTROL TYPES
