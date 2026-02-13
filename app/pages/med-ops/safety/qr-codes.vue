@@ -3,7 +3,7 @@
     <!-- Page Header -->
     <UiPageHeader
       title="Safety Log QR Codes"
-      subtitle="Print and place these permanent QR codes around the hospital. Each scan opens a fresh form."
+      subtitle="36 permanent QR codes — one per log type per location. Print, post around the hospital, scan to submit."
       icon="mdi-qrcode"
     >
       <template #actions>
@@ -17,53 +17,96 @@
         <v-btn
           color="primary"
           prepend-icon="mdi-printer"
-          @click="printAll"
+          @click="printLocationSheet"
         >
-          Print All
+          Print This Location
         </v-btn>
       </template>
     </UiPageHeader>
 
-    <!-- Location selector -->
-    <v-card variant="outlined" rounded="lg" class="mb-6">
-      <v-card-text class="pb-3">
+    <!-- Location Tabs -->
+    <v-tabs v-model="activeTab" color="primary" class="mb-6" grow>
+      <v-tab
+        v-for="loc in SAFETY_LOCATIONS"
+        :key="loc.value"
+        :value="loc.value"
+      >
+        <v-icon start size="18">mdi-map-marker</v-icon>
+        {{ loc.label }}
+        <v-chip
+          v-if="locationCadenceCount(loc.value) > 0"
+          size="x-small"
+          color="primary"
+          variant="tonal"
+          class="ml-2"
+        >
+          {{ locationCadenceCount(loc.value) }} scheduled
+        </v-chip>
+      </v-tab>
+    </v-tabs>
+
+    <!-- Cadence bulk-set bar -->
+    <v-card v-if="canManage" variant="outlined" rounded="lg" class="mb-4">
+      <v-card-text class="py-3">
         <v-row dense align="center">
-          <v-col cols="12" sm="6" md="4">
+          <v-col cols="12" sm="4">
+            <span class="text-subtitle-2 font-weight-bold">
+              <v-icon size="18" class="mr-1">mdi-bell-ring</v-icon>
+              Notification Cadence
+            </span>
+            <div class="text-caption text-grey">Set how often each log type must be completed at this location</div>
+          </v-col>
+          <v-col cols="8" sm="4">
             <v-select
-              v-model="selectedLocation"
-              :items="SAFETY_LOCATIONS"
+              v-model="bulkCadence"
+              :items="CADENCE_OPTIONS"
               item-title="label"
               item-value="value"
-              label="Pre-fill location in QR"
+              label="Set all to..."
               variant="outlined"
               density="compact"
               hide-details
               clearable
-              persistent-placeholder
-              placeholder="No location pre-fill"
             />
           </v-col>
-          <v-col cols="12" sm="6" md="4">
-            <v-text-field
-              :model-value="baseUrl"
-              label="Site URL"
-              variant="outlined"
-              density="compact"
-              hide-details
-              readonly
-              append-inner-icon="mdi-content-copy"
-              @click:append-inner="copyBaseUrl"
-            />
+          <v-col cols="4" sm="2">
+            <v-btn
+              :disabled="!bulkCadence"
+              color="primary"
+              variant="tonal"
+              block
+              @click="applyBulkCadence"
+            >
+              Apply All
+            </v-btn>
+          </v-col>
+          <v-col cols="12" sm="2">
+            <v-btn
+              v-if="hasUnsavedChanges"
+              color="success"
+              variant="flat"
+              block
+              prepend-icon="mdi-content-save"
+              :loading="saving"
+              @click="saveSchedules"
+            >
+              Save
+            </v-btn>
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
-    <!-- QR Grid -->
-    <v-row>
+    <!-- Loading -->
+    <div v-if="loadingSchedules" class="d-flex justify-center pa-8">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
+
+    <!-- QR Grid for active location -->
+    <v-row v-else>
       <v-col
         v-for="cfg in printableTypes"
-        :key="cfg.key"
+        :key="`${activeTab}-${cfg.key}`"
         cols="12"
         sm="6"
         md="4"
@@ -73,62 +116,64 @@
           variant="outlined"
           rounded="lg"
           class="qr-card text-center pa-4"
-          :id="`qr-card-${cfg.key}`"
+          :id="`qr-card-${activeTab}-${cfg.key}`"
         >
-          <!-- Header -->
-          <v-avatar :color="cfg.color" size="40" variant="tonal" class="mb-2">
-            <v-icon size="22">{{ cfg.icon }}</v-icon>
+          <!-- Type icon + label -->
+          <v-avatar :color="cfg.color" size="36" variant="tonal" class="mb-2">
+            <v-icon size="20">{{ cfg.icon }}</v-icon>
           </v-avatar>
-          <div class="text-subtitle-2 font-weight-bold mb-1">{{ cfg.label }}</div>
-          <div class="text-caption text-grey mb-3" style="min-height: 32px;">
-            {{ cfg.description.length > 60 ? cfg.description.slice(0, 57) + '...' : cfg.description }}
+          <div class="text-subtitle-2 font-weight-bold">{{ cfg.label }}</div>
+          <div class="text-caption text-grey mb-3" style="min-height: 28px; line-height: 1.3;">
+            {{ truncate(cfg.description, 55) }}
           </div>
 
-          <!-- QR Code (rendered as SVG via canvas) -->
-          <div class="qr-code-container mb-3">
-            <canvas
-              :ref="el => setCanvasRef(cfg.key, el as HTMLCanvasElement)"
-              width="200"
-              height="200"
-              class="qr-canvas"
+          <!-- QR Code (real SVG via qrcode.vue) -->
+          <div class="qr-code-container mb-2">
+            <QrcodeVue
+              :value="getQrUrl(cfg.key)"
+              :size="180"
+              level="M"
+              render-as="svg"
+              class="qr-svg"
             />
           </div>
 
-          <!-- URL display -->
-          <div class="text-caption text-grey-darken-1 mb-3 url-text" style="word-break: break-all; font-size: 0.65rem;">
+          <!-- URL -->
+          <div class="text-caption text-grey-darken-1 mb-2 url-text" style="word-break: break-all; font-size: 0.6rem; line-height: 1.2;">
             {{ getQrUrl(cfg.key) }}
           </div>
 
-          <!-- Actions -->
-          <div class="d-flex gap-2 justify-center">
-            <v-btn
-              size="small"
-              variant="tonal"
-              prepend-icon="mdi-content-copy"
-              @click="copyUrl(cfg.key)"
-            >
-              Copy
-            </v-btn>
-            <v-btn
-              size="small"
-              variant="tonal"
-              prepend-icon="mdi-printer"
-              @click="printSingle(cfg.key)"
-            >
-              Print
-            </v-btn>
-            <v-btn
-              size="small"
-              variant="tonal"
-              prepend-icon="mdi-download"
-              @click="downloadQr(cfg.key, cfg.label)"
-            >
-              PNG
-            </v-btn>
+          <!-- Cadence selector (managers only) -->
+          <v-select
+            v-if="canManage"
+            v-model="localSchedules[scheduleKey(activeTab, cfg.key)]"
+            :items="CADENCE_OPTIONS"
+            item-title="label"
+            item-value="value"
+            label="Cadence"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="mb-2 cadence-select"
+          />
+          <v-chip
+            v-else-if="localSchedules[scheduleKey(activeTab, cfg.key)] && localSchedules[scheduleKey(activeTab, cfg.key)] !== 'none'"
+            size="small"
+            variant="tonal"
+            :color="cadenceColor(getCadence(activeTab, cfg.key))"
+          >
+            {{ cadenceLabel(getCadence(activeTab, cfg.key)) }}
+          </v-chip>
+
+          <!-- Actions row -->
+          <div class="d-flex gap-1 justify-center mt-2 action-btns">
+            <v-btn size="x-small" variant="text" icon="mdi-content-copy" @click="copyUrl(cfg.key)" title="Copy URL" />
+            <v-btn size="x-small" variant="text" icon="mdi-download" @click="downloadQr(cfg.key, cfg.label)" title="Download PNG" />
+            <v-btn size="x-small" variant="text" icon="mdi-printer" @click="printSingle(activeTab, cfg.key)" title="Print" />
           </div>
 
           <!-- Compliance tags -->
-          <div v-if="cfg.complianceStandards?.length" class="mt-3 d-flex flex-wrap gap-1 justify-center">
+          <div v-if="cfg.complianceStandards?.length" class="mt-2 d-flex flex-wrap gap-1 justify-center compliance-tags">
             <v-chip
               v-for="std in cfg.complianceStandards"
               :key="std"
@@ -143,20 +188,20 @@
       </v-col>
     </v-row>
 
-    <!-- Print instructions -->
+    <!-- Placement Tips -->
     <v-card variant="outlined" rounded="lg" class="mt-6">
       <v-card-text>
         <div class="d-flex align-center gap-3 mb-3">
           <v-icon color="info">mdi-information</v-icon>
-          <span class="text-subtitle-2 font-weight-bold">Placement Tips</span>
+          <span class="text-subtitle-2 font-weight-bold">How It Works</span>
         </div>
         <ul class="text-body-2 ml-4" style="list-style: disc;">
-          <li>Print on weather-resistant/laminated paper for wet areas</li>
-          <li>Place <strong>Sharps Injury</strong> and <strong>Equipment Maintenance</strong> QR codes near relevant stations</li>
-          <li>Post <strong>Emergency Contacts & Shutoffs</strong> at each facility entrance and break room</li>
-          <li>Place <strong>Radiation Dosimetry</strong> near the X-ray suite</li>
-          <li>Each scan opens a <em>fresh blank form</em> — the QR code is permanent and reusable</li>
-          <li>If you select a location above, that location is pre-filled when someone scans the code</li>
+          <li><strong>Each QR code is permanent</strong> — scanning always opens a fresh form for that log type + location</li>
+          <li>Print on <strong>laminated/weather-resistant</strong> paper for wet areas</li>
+          <li>Set a <strong>cadence</strong> (monthly, quarterly, bi-annual, annual) to receive automatic overdue reminders</li>
+          <li>Notifications go to <strong>managers, supervisors, HR, and admins</strong> via in-app + Slack</li>
+          <li>Place <strong>Sharps Injury</strong> near sharps stations, <strong>Radiation Dosimetry</strong> by X-ray suites</li>
+          <li>Post <strong>Emergency Contacts</strong> at entrances and break rooms</li>
         </ul>
       </v-card-text>
     </v-card>
@@ -164,7 +209,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import QrcodeVue from 'qrcode.vue'
 import {
   SAFETY_LOG_TYPE_CONFIGS,
   SAFETY_LOCATIONS,
@@ -180,181 +226,259 @@ definePageMeta({
 
 const router = useRouter()
 const toast = useToast()
+const { can } = usePermissions()
 const runtimeConfig = useRuntimeConfig()
 
-const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employeegm.greendog.vet')
-const selectedLocation = ref<SafetyLogLocation | null>(null)
+const canManage = computed(() => can('manage:safety-logs'))
 
-// All printable types (exclude emergency_contacts — it has no form, but keep it for reference posting)
+const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employeegm.greendog.vet')
+const activeTab = ref<SafetyLogLocation>('venice')
+
 const printableTypes = computed(() => SAFETY_LOG_TYPE_CONFIGS)
 
-// Canvas refs for QR rendering
-const canvasRefs = ref<Record<string, HTMLCanvasElement | null>>({})
+// ── Cadence options ────────────────────────────────────
+const CADENCE_OPTIONS = [
+  { value: 'none', label: 'No Schedule' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'biannual', label: 'Bi-Annual' },
+  { value: 'annual', label: 'Annual' },
+]
 
-function setCanvasRef(key: string, el: HTMLCanvasElement | null) {
-  canvasRefs.value[key] = el
+function cadenceColor(val: string): string {
+  const map: Record<string, string> = {
+    monthly: 'blue', quarterly: 'teal', biannual: 'orange', annual: 'purple', none: 'grey',
+  }
+  return map[val] || 'grey'
 }
 
+function cadenceLabel(val: string): string {
+  return CADENCE_OPTIONS.find(o => o.value === val)?.label || val
+}
+
+// ── Schedule state (keyed by `location::log_type`) ─────
+const localSchedules = ref<Record<string, string>>({})
+const savedSchedules = ref<Record<string, string>>({})
+const loadingSchedules = ref(true)
+const saving = ref(false)
+const bulkCadence = ref<string | null>(null)
+
+function scheduleKey(location: string, logType: string): string {
+  return `${location}::${logType}`
+}
+
+function getCadence(location: string, logType: string): string {
+  return localSchedules.value[scheduleKey(location, logType)] ?? 'none'
+}
+
+function getSavedCadence(key: string): string {
+  return savedSchedules.value[key] ?? 'none'
+}
+
+const hasUnsavedChanges = computed(() => {
+  for (const key in localSchedules.value) {
+    if (getCadence(key.split('::')[0], key.split('::')[1]) !== getSavedCadence(key)) return true
+  }
+  return false
+})
+
+function locationCadenceCount(location: string): number {
+  let count = 0
+  for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+    const val = getCadence(location, cfg.key)
+    if (val && val !== 'none') count++
+  }
+  return count
+}
+
+async function fetchSchedules() {
+  loadingSchedules.value = true
+  try {
+    const data = await $fetch<any[]>('/api/safety-log/schedules')
+    const map: Record<string, string> = {}
+    for (const row of data || []) {
+      map[scheduleKey(row.location, row.log_type)] = row.cadence || 'none'
+    }
+    localSchedules.value = { ...map }
+    savedSchedules.value = { ...map }
+  } catch (err: any) {
+    console.error('Failed to fetch schedules:', err)
+    // Initialize defaults
+    for (const loc of SAFETY_LOCATIONS) {
+      for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+        const key = scheduleKey(loc.value, cfg.key)
+        localSchedules.value[key] = 'none'
+        savedSchedules.value[key] = 'none'
+      }
+    }
+  } finally {
+    loadingSchedules.value = false
+  }
+}
+
+function applyBulkCadence() {
+  if (!bulkCadence.value) return
+  for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+    const key = scheduleKey(activeTab.value, cfg.key)
+    localSchedules.value[key] = bulkCadence.value
+  }
+  toast.info(`Set all ${SAFETY_LOCATIONS.find(l => l.value === activeTab.value)?.label} logs to ${cadenceLabel(bulkCadence.value)}`)
+  bulkCadence.value = null
+}
+
+async function saveSchedules() {
+  saving.value = true
+  try {
+    const updates: { log_type: string; location: string; cadence: string }[] = []
+    for (const key in localSchedules.value) {
+      const [loc, lt] = key.split('::')
+      const current = getCadence(loc, lt)
+      if (current !== getSavedCadence(key)) {
+        updates.push({ log_type: lt, location: loc, cadence: current })
+      }
+    }
+
+    if (updates.length === 0) return
+
+    await $fetch('/api/safety-log/schedules', {
+      method: 'PUT',
+      body: { updates },
+    })
+
+    // Sync saved state
+    for (const key in localSchedules.value) {
+      const [loc, lt] = key.split('::')
+      savedSchedules.value[key] = getCadence(loc, lt)
+    }
+    toast.success(`Saved ${updates.length} schedule update(s)`)
+  } catch (err: any) {
+    toast.error(err?.message || 'Failed to save schedules')
+  } finally {
+    saving.value = false
+  }
+}
+
+// ── QR URL helpers ─────────────────────────────────────
 function getQrUrl(logType: SafetyLogType): string {
   const slug = safetyKeyToSlug(logType)
-  let url = `${baseUrl.value}/med-ops/safety/${slug}`
-  if (selectedLocation.value) {
-    url += `?location=${selectedLocation.value}`
-  }
-  return url
+  return `${baseUrl.value}/med-ops/safety/${slug}?location=${activeTab.value}`
 }
 
-/**
- * Simple QR code renderer using canvas.
- * We generate QR codes client-side without external libraries
- * by encoding the URL into a QR matrix via a lightweight algorithm.
- * For production, this uses the browser's built-in capability
- * via a Google Charts QR API fallback rendered into img → canvas.
- */
-async function renderQrCode(key: string) {
-  const canvas = canvasRefs.value[key]
-  if (!canvas) return
-
-  const url = getQrUrl(key as SafetyLogType)
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  // Use Google Charts API to generate QR code image
-  const qrImageUrl = `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(url)}&choe=UTF-8&chld=M|2`
-
-  const img = new Image()
-  img.crossOrigin = 'anonymous'
-  img.onload = () => {
-    ctx.clearRect(0, 0, 200, 200)
-    ctx.drawImage(img, 0, 0, 200, 200)
-  }
-  img.onerror = () => {
-    // Fallback: render a placeholder with the URL text
-    ctx.clearRect(0, 0, 200, 200)
-    ctx.fillStyle = '#f5f5f5'
-    ctx.fillRect(0, 0, 200, 200)
-    ctx.fillStyle = '#666'
-    ctx.font = '11px Inter, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('QR Code', 100, 90)
-    ctx.fillText('(install qrcode lib', 100, 110)
-    ctx.fillText('for offline generation)', 100, 130)
-  }
-  img.src = qrImageUrl
+function truncate(str: string, len: number): string {
+  return str.length > len ? str.slice(0, len - 3) + '...' : str
 }
 
-async function renderAllQrCodes() {
-  await nextTick()
-  // Small delay to ensure canvases are mounted
-  setTimeout(() => {
-    for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
-      renderQrCode(cfg.key)
-    }
-  }, 100)
-}
-
+// ── Actions ────────────────────────────────────────────
 function copyUrl(logType: SafetyLogType) {
   const url = getQrUrl(logType)
   navigator.clipboard.writeText(url).then(() => {
-    toast.success('URL copied to clipboard')
+    toast.success('URL copied')
   }).catch(() => {
-    toast.error('Failed to copy URL')
-  })
-}
-
-function copyBaseUrl() {
-  navigator.clipboard.writeText(baseUrl.value).then(() => {
-    toast.success('Base URL copied')
-  }).catch(() => {
-    toast.error('Failed to copy')
+    toast.error('Copy failed')
   })
 }
 
 function downloadQr(key: string, label: string) {
-  const canvas = canvasRefs.value[key]
-  if (!canvas) return
-
-  const link = document.createElement('a')
-  link.download = `safety-qr-${safetyKeyToSlug(key as SafetyLogType)}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
-  toast.success(`Downloaded QR for ${label}`)
-}
-
-function printSingle(key: string) {
-  const card = document.getElementById(`qr-card-${key}`)
+  const cardId = `qr-card-${activeTab.value}-${key}`
+  const card = document.getElementById(cardId)
   if (!card) return
-  printElement(card)
-}
 
-function printAll() {
-  const printContent = document.createElement('div')
-  printContent.style.cssText = 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; padding: 16px;'
-
-  for (const cfg of printableTypes.value) {
-    const card = document.getElementById(`qr-card-${cfg.key}`)
-    if (card) {
-      const clone = card.cloneNode(true) as HTMLElement
-      clone.style.cssText = 'border: 1px solid #ddd; border-radius: 8px; padding: 16px; text-align: center; break-inside: avoid;'
-      printContent.appendChild(clone)
-    }
-  }
-
-  printElement(printContent)
-}
-
-function printElement(el: HTMLElement) {
-  const printWindow = window.open('', '_blank', 'width=900,height=700')
-  if (!printWindow) {
-    toast.error('Pop-up blocked. Please allow pop-ups for printing.')
+  const svg = card.querySelector('.qr-svg svg') as SVGSVGElement | null
+  if (!svg) {
+    toast.error('QR code not found')
     return
   }
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Safety Log QR Codes - Green Dog Veterinary</title>
-      <style>
-        body { font-family: Inter, Arial, sans-serif; padding: 20px; color: #333; }
-        .qr-card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; text-align: center; break-inside: avoid; }
-        .qr-canvas { display: block; margin: 0 auto; }
-        .v-btn, .v-chip, .url-text { display: none !important; }
-        .v-avatar { display: none; }
-        h1 { text-align: center; margin-bottom: 8px; }
-        p.subtitle { text-align: center; color: #666; margin-bottom: 24px; }
-        @media print {
-          body { padding: 0; }
-          .no-print { display: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <h1>Safety Log QR Codes</h1>
-      <p class="subtitle">Green Dog Veterinary — Scan to submit a safety log</p>
-      ${el.outerHTML}
-      <script>
-        setTimeout(() => { window.print(); window.close(); }, 500);
-      <\/script>
-    </body>
-    </html>
-  `)
-  printWindow.document.close()
+  // SVG → Canvas → PNG
+  const svgData = new XMLSerializer().serializeToString(svg)
+  const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+  const url = URL.createObjectURL(svgBlob)
+
+  const img = new Image()
+  img.onload = () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 400
+    canvas.height = 400
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, 400, 400)
+    ctx.drawImage(img, 0, 0, 400, 400)
+
+    const link = document.createElement('a')
+    link.download = `safety-qr-${safetyKeyToSlug(key as SafetyLogType)}-${activeTab.value}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Downloaded QR for ${label}`)
+  }
+  img.src = url
 }
 
-// Re-render QR codes when location changes
-watch(selectedLocation, () => {
-  renderAllQrCodes()
-})
+function printSingle(location: string, key: string) {
+  const cardId = `qr-card-${location}-${key}`
+  const card = document.getElementById(cardId)
+  if (!card) return
+  printElement(card.cloneNode(true) as HTMLElement, 'single')
+}
 
+function printLocationSheet() {
+  const container = document.createElement('div')
+  container.style.cssText = 'display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 16px;'
+
+  for (const cfg of printableTypes.value) {
+    const cardId = `qr-card-${activeTab.value}-${cfg.key}`
+    const card = document.getElementById(cardId)
+    if (card) {
+      const clone = card.cloneNode(true) as HTMLElement
+      clone.style.cssText = 'border: 1px solid #ccc; border-radius: 8px; padding: 12px; text-align: center; break-inside: avoid;'
+      container.appendChild(clone)
+    }
+  }
+
+  const locLabel = SAFETY_LOCATIONS.find(l => l.value === activeTab.value)?.label || activeTab.value
+  printElement(container, 'sheet', locLabel)
+}
+
+function printElement(el: HTMLElement, mode: 'single' | 'sheet', locationLabel?: string) {
+  const win = window.open('', '_blank', 'width=1000,height=800')
+  if (!win) {
+    toast.error('Pop-up blocked — allow pop-ups to print')
+    return
+  }
+
+  const title = mode === 'sheet'
+    ? `Safety Log QR Codes — ${locationLabel}`
+    : 'Safety Log QR Code'
+
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>${title}</title>
+    <style>
+      body { font-family: Inter, Arial, sans-serif; padding: 20px; color: #333; }
+      h1 { text-align: center; font-size: 20px; margin-bottom: 4px; }
+      p.sub { text-align: center; color: #666; margin-bottom: 20px; font-size: 13px; }
+      .action-btns, .cadence-select, .v-select, .compliance-tags { display: none !important; }
+      svg { max-width: 160px; max-height: 160px; display: block; margin: 0 auto; }
+      .url-text { font-size: 8px !important; }
+      @media print { body { padding: 0; } }
+    </style>
+  </head><body>
+    <h1>${title}</h1>
+    <p class="sub">Green Dog Veterinary — Scan to submit a safety log</p>
+    ${el.outerHTML}
+    <script>setTimeout(() => { window.print(); window.close(); }, 600);<\/script>
+  </body></html>`)
+  win.document.close()
+}
+
+// ── Lifecycle ──────────────────────────────────────────
 onMounted(() => {
-  renderAllQrCodes()
+  fetchSchedules()
 })
 </script>
 
 <style scoped>
 .qr-management-page {
-  max-width: 1200px;
+  max-width: 1400px;
 }
 
 .qr-card {
@@ -369,16 +493,22 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 200px;
+  min-height: 180px;
 }
 
-.qr-canvas {
+.qr-svg {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
+  padding: 4px;
+  background: white;
+}
+
+.cadence-select :deep(.v-field) {
+  font-size: 0.75rem;
 }
 
 @media print {
-  .v-btn, .v-select, .v-text-field {
+  .v-btn, .v-select, .v-text-field, .v-tabs, .action-btns {
     display: none !important;
   }
 }
