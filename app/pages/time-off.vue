@@ -162,7 +162,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: 'auth'
+  middleware: ['auth', 'management']
 })
 
 const authStore = useAuthStore()
@@ -194,7 +194,7 @@ async function loadData() {
   pageLoading.value = true
   pageError.value = null
   try {
-    if (authStore.profile?.id) {
+    if (authStore.profile?.id && !(authStore.profile as any)?.is_emergency && !authStore.profile.id.startsWith('emergency-')) {
       const { data } = await supabase
         .from('employees')
         .select('id')

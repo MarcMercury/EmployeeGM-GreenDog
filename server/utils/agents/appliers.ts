@@ -172,7 +172,7 @@ applierMap.set('attendance_flag', async (proposal, supabase) => {
       category: 'hr',
       title: `⚠️ Attendance Alert: ${d.employee_name ?? 'Employee'}`,
       body: proposal.summary,
-      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/admin/master-roster', action_label: 'Review' },
+      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/roster', action_label: 'Review' },
       is_read: false,
     })
   }
@@ -204,7 +204,7 @@ applierMap.set('payroll_anomaly', async (proposal, supabase) => {
       category: 'hr',
       title: `💰 Payroll Alert: ${d.employee_name ?? 'Time Entry Issue'}`,
       body: proposal.summary,
-      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/admin/master-roster', action_label: 'Review' },
+      data: { proposal_id: proposal.id, employee_id: d.employee_id, url: '/roster', action_label: 'Review' },
       is_read: false,
     })
   }

@@ -13,7 +13,7 @@
  */
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'admin']
 })
 
 onMounted(() => {

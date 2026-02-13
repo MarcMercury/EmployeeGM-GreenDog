@@ -14,16 +14,22 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return
   }
 
-  // Check for emergency admin session first
-  const { isEmergencyMode, profile: emergencyProfile } = useEmergencyAuth()
+  // Check for emergency admin session first — re-validate via server
+  const { isEmergencyMode, profile: emergencyProfile, verifySession } = useEmergencyAuth()
   if (isEmergencyMode.value && emergencyProfile.value) {
-    console.log('[AuthMiddleware] Emergency admin session active')
-    const authStore = useAuthStore()
-    if (!authStore.profile) {
-      authStore.profile = emergencyProfile.value as any
-      authStore.initialized = true
+    // Re-validate the httpOnly cookie token server-side
+    const verifiedProfile = await verifySession()
+    if (verifiedProfile) {
+      console.log('[AuthMiddleware] Emergency admin session verified server-side')
+      const authStore = useAuthStore()
+      if (!authStore.profile) {
+        authStore.profile = verifiedProfile as any
+        authStore.initialized = true
+      }
+      return
     }
-    return
+    // Session was invalid/expired — fall through to normal auth
+    console.warn('[AuthMiddleware] Emergency session expired or invalid')
   }
 
   const supabase = useSupabaseClient()

@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   const { data: callerProfile } = await supabaseAdmin
     .from('profiles')
     .select('role')
-    .eq('id', callerUser.id)
+    .eq('auth_user_id', callerUser.id)
     .single()
 
   if (!callerProfile || !['admin', 'super_admin'].includes(callerProfile.role)) {

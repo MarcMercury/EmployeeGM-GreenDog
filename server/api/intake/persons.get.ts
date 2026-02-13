@@ -45,9 +45,10 @@ export default defineEventHandler(async (event) => {
     dbQuery = dbQuery.eq('is_active', true)
   }
 
-  // Search by name or email
+  // Search by name or email (escape PostgREST special chars)
   if (search) {
-    dbQuery = dbQuery.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
+    const safeSearch = search.replace(/[%_.,()]/g, '')
+    dbQuery = dbQuery.or(`first_name.ilike.%${safeSearch}%,last_name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%`)
   }
 
   const { data: persons, error, count } = await dbQuery

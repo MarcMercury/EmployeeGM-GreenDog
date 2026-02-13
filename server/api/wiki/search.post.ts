@@ -13,6 +13,7 @@
 
 import { createAdminClient } from '../../utils/intake'
 import { logger } from '../../utils/logger'
+import { serverSupabaseUser } from '#supabase/server'
 
 interface SearchRequest {
   query: string
@@ -256,6 +257,12 @@ function searchPolicies(query: string): InternalResult[] {
 }
 
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
   const body = await readBody<SearchRequest>(event)
   
   if (!body?.query?.trim()) {
@@ -279,11 +286,13 @@ export default defineEventHandler(async (event) => {
     // 1. Search internal wiki_articles table
     const client = createAdminClient()
     
+    // Escape special PostgREST characters in search input
+    const safeQuery = query.replace(/[%_.,()]/g, '')
     const { data: wikiArticles } = await client
       .from('wiki_articles')
       .select('id, title, content, category, tags')
       .eq('is_published', true)
-      .or(`title.ilike.%${query}%,content.ilike.%${query}%,category.ilike.%${query}%`)
+      .or(`title.ilike.%${safeQuery}%,content.ilike.%${safeQuery}%,category.ilike.%${safeQuery}%`)
       .limit(10)
     
     if (wikiArticles?.length) {

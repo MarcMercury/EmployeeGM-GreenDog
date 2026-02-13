@@ -2,11 +2,11 @@
  * Emergency Auth Composable
  *
  * Client-side state management for the emergency admin bypass.
- * Stores the emergency token in localStorage and provides
- * reactive state that the auth middleware and plugin can check.
+ * The emergency token is stored in an httpOnly server cookie (not accessible
+ * to client JS), so an XSS attack cannot steal the emergency session.
+ * Only the non-sensitive profile is kept in client state for display/routing.
  */
 
-const STORAGE_KEY = 'emergency_auth_token'
 const PROFILE_KEY = 'emergency_auth_profile'
 
 export interface EmergencyProfile {
@@ -21,28 +21,28 @@ export interface EmergencyProfile {
 }
 
 export function useEmergencyAuth() {
-  const token = useState<string | null>('emergency_token', () => null)
   const profile = useState<EmergencyProfile | null>('emergency_profile', () => null)
-  const isEmergencyMode = computed(() => !!token.value && !!profile.value)
+  const isEmergencyMode = computed(() => !!profile.value)
+  const _hydrated = useState<boolean>('emergency_hydrated', () => false)
 
-  // Hydrate from localStorage on first call (client-only)
-  if (import.meta.client && !token.value) {
+  // Hydrate from sessionStorage on first call (client-only).
+  // sessionStorage is less persistent than localStorage and clears on tab close.
+  // The profile is display-only; the actual auth token is in an httpOnly cookie.
+  if (import.meta.client && !_hydrated.value) {
+    _hydrated.value = true
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      const storedProfile = localStorage.getItem(PROFILE_KEY)
-      if (stored && storedProfile) {
-        token.value = stored
+      const storedProfile = sessionStorage.getItem(PROFILE_KEY)
+      if (storedProfile) {
         profile.value = JSON.parse(storedProfile)
       }
     } catch {
-      // localStorage may be unavailable
+      // sessionStorage may be unavailable
     }
   }
 
   async function emergencyLogin(email: string, secret: string): Promise<{ ok: boolean; error?: string }> {
     try {
       const res = await $fetch<{
-        token: string
         profile: EmergencyProfile
         expiresAt: string
       }>('/api/auth/emergency-login', {
@@ -50,12 +50,11 @@ export function useEmergencyAuth() {
         body: { email, secret },
       })
 
-      token.value = res.token
       profile.value = res.profile
 
+      // Store profile in sessionStorage for display only (token is httpOnly cookie)
       if (import.meta.client) {
-        localStorage.setItem(STORAGE_KEY, res.token)
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(res.profile))
+        sessionStorage.setItem(PROFILE_KEY, JSON.stringify(res.profile))
       }
 
       return { ok: true }
@@ -65,25 +64,58 @@ export function useEmergencyAuth() {
     }
   }
 
-  function emergencyLogout() {
-    token.value = null
+  async function emergencyLogout() {
     profile.value = null
     if (import.meta.client) {
-      localStorage.removeItem(STORAGE_KEY)
-      localStorage.removeItem(PROFILE_KEY)
+      sessionStorage.removeItem(PROFILE_KEY)
+    }
+    // Clear the httpOnly cookie via server endpoint
+    try {
+      await $fetch('/api/auth/emergency-logout', { method: 'POST' })
+    } catch {
+      // Best-effort — cookie will expire naturally
     }
   }
 
-  function getToken(): string | null {
-    return token.value
+  /**
+   * Server-side session validation: verify the httpOnly cookie is still valid.
+   * Returns the profile if valid, null if not.
+   */
+  async function verifySession(): Promise<EmergencyProfile | null> {
+    try {
+      const res = await $fetch<{ active: boolean; profile: EmergencyProfile | null }>('/api/auth/emergency-session')
+      if (res.active && res.profile) {
+        profile.value = res.profile
+        return res.profile
+      }
+      // Session expired or invalid — clean up
+      profile.value = null
+      if (import.meta.client) {
+        sessionStorage.removeItem(PROFILE_KEY)
+      }
+      return null
+    } catch {
+      return null
+    }
   }
 
   return {
-    token: readonly(token),
     profile: readonly(profile),
     isEmergencyMode,
     emergencyLogin,
     emergencyLogout,
-    getToken,
+    verifySession,
   }
+}
+
+/**
+ * Quick check whether the current auth profile is an emergency admin session.
+ * Works safely outside of composable context by inspecting the profile object.
+ */
+export function isEmergencySession(profile: { is_emergency?: boolean; id?: string } | null | undefined): boolean {
+  if (!profile) return false
+  if ((profile as any).is_emergency) return true
+  // Fallback: detect synthetic emergency IDs
+  if (typeof profile.id === 'string' && profile.id.startsWith('emergency-admin-')) return true
+  return false
 }

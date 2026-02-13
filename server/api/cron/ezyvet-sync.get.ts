@@ -20,8 +20,8 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const authHeader = getHeader(event, 'authorization')
 
-  if (config.cronSecret && authHeader !== `Bearer ${config.cronSecret}`) {
-    throw createError({ statusCode: 401, message: 'Invalid cron secret' })
+  if (!config.cronSecret || authHeader !== `Bearer ${config.cronSecret}`) {
+    throw createError({ statusCode: 401, message: 'Invalid or missing cron secret' })
   }
 
   const supabase = await serverSupabaseServiceRole(event)

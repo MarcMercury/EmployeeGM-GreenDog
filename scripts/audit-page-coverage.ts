@@ -45,7 +45,7 @@ const SECTION_RULES: Array<{ match: (path: string) => boolean; section: string; 
   { match: p => p.includes('/academy/signoffs') || p.includes('/academy/manager'), section: 'Management', sortBase: 340 },
   { match: p => p.startsWith('/med-ops/'), section: 'Med Ops', sortBase: 400 },
   { match: p => p.startsWith('/schedule') || p === '/time-off' || p === '/export-payroll', section: 'HR', sortBase: 500 },
-  { match: p => p.startsWith('/recruiting') || p.startsWith('/admin/intake') || p.startsWith('/admin/master-roster') || p.startsWith('/admin/payroll'), section: 'HR', sortBase: 550 },
+  { match: p => p.startsWith('/recruiting') || p.startsWith('/admin/intake') || p.startsWith('/admin/payroll'), section: 'HR', sortBase: 550 },
   { match: p => p === '/marketing' || (p.startsWith('/marketing/') && !['sauron', 'ezyvet', 'appointment', 'invoice', 'list-hygiene'].some(s => p.includes(s))), section: 'Marketing', sortBase: 600 },
   { match: p => p.startsWith('/growth/'), section: 'Marketing', sortBase: 660 },
   { match: p => ['/leads'].includes(p), section: 'Marketing', sortBase: 668 },

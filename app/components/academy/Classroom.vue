@@ -292,6 +292,7 @@ import { useAcademyProgressStore } from '~/stores/academyProgress'
 import { useAcademyQuizStore } from '~/stores/academyQuiz'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const props = defineProps<{
   courseId: string
@@ -409,8 +410,8 @@ function getEmbedUrl(url: string): string {
 }
 
 function renderContent(content: string): string {
-  // Render markdown to HTML
-  return marked(content) as string
+  // Render markdown to HTML, then sanitize to prevent XSS
+  return DOMPurify.sanitize(marked(content) as string)
 }
 
 async function downloadAttachment() {

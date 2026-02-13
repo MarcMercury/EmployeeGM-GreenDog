@@ -162,6 +162,11 @@ const requiredCourses = computed(() =>
 // Fetch user's enrollments
 async function fetchEnrollments() {
   if (!currentUserProfile.value?.id) return
+  // Emergency admin — skip Supabase queries
+  if ((currentUserProfile.value as any)?.is_emergency || currentUserProfile.value.id.startsWith('emergency-')) {
+    loading.value = false
+    return
+  }
   
   loading.value = true
   try {

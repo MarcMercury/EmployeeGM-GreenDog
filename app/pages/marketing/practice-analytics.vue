@@ -143,7 +143,7 @@
               <div>
                 <div class="text-h5 font-weight-bold">{{ formatNumber(data.kpis.clients.activeContacts) }}</div>
                 <div class="text-caption text-grey">Active Clients</div>
-                <div class="text-caption text-grey">{{ data.kpis.clients.retentionRate3Mo }}% 90-day retention</div>
+                <div class="text-caption text-grey">{{ data.kpis.clients.retentionRate12Mo || data.kpis.clients.retentionRate3Mo }}% 12-mo retention</div>
               </div>
             </div>
           </v-card>
@@ -432,9 +432,11 @@ const error = ref<string | null>(null)
 const data = ref<any>(null)
 const syncStatus = ref<any>(null)
 
+// Default date range: end-of-last-complete-month (consistent with Sauron, Invoice, Appointment)
+const endOfLastMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
 const filters = reactive({
-  startDate: new Date(Date.now() - 90 * 86400000).toISOString().split('T')[0],
-  endDate: new Date().toISOString().split('T')[0],
+  startDate: new Date(endOfLastMonth.getTime() - 89 * 86400000).toISOString().split('T')[0],
+  endDate: endOfLastMonth.toISOString().split('T')[0],
 })
 
 const snackbar = reactive({
@@ -457,16 +459,19 @@ function isActivePreset(preset: { days: number }): boolean {
   if (preset.days === -1) {
     return filters.startDate === new Date().getFullYear() + '-01-01'
   }
-  const expectedStart = new Date(Date.now() - preset.days * 86400000).toISOString().split('T')[0]
+  const lcm = endOfLastMonth
+  const expectedStart = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
   return filters.startDate === expectedStart
 }
 
 function applyPreset(preset: { days: number }) {
-  filters.endDate = new Date().toISOString().split('T')[0]
+  // Anchor to end-of-last-complete-month (consistent with other analytics pages)
+  const lcm = endOfLastMonth
+  filters.endDate = lcm.toISOString().split('T')[0]
   if (preset.days === -1) {
     filters.startDate = new Date().getFullYear() + '-01-01'
   } else {
-    filters.startDate = new Date(Date.now() - preset.days * 86400000).toISOString().split('T')[0]
+    filters.startDate = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
   }
   loadDashboard()
 }

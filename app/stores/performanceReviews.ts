@@ -97,6 +97,7 @@ export const usePerformanceReviewsStore = defineStore('performance-reviews', {
       const supabase = useSupabaseClient()
 
       if (!authStore.profile?.id) return
+      if ((authStore.profile as any)?.is_emergency || authStore.profile.id.startsWith('emergency-')) return
 
       this.loading = true
       try {
@@ -128,6 +129,7 @@ export const usePerformanceReviewsStore = defineStore('performance-reviews', {
       const supabase = useSupabaseClient()
 
       if (!authStore.profile?.id) return
+      if ((authStore.profile as any)?.is_emergency || authStore.profile.id.startsWith('emergency-')) return
 
       this.loading = true
       try {

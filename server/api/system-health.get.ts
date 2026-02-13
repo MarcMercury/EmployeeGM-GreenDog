@@ -5,7 +5,8 @@
  * GET /api/system-health
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole } from '#supabase/server'
 import type { H3Event } from 'h3'
 
 interface HealthCheck {
@@ -151,6 +152,23 @@ function checkEnvironment(): HealthCheck {
 
 // Main handler
 export default defineEventHandler(async (event): Promise<HealthResponse> => {
+  // Require authentication — only admins/managers can view system health
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, message: 'Authentication required' })
+  }
+
+  const adminClient = await serverSupabaseServiceRole(event)
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  if (!profile || !['super_admin', 'admin', 'sup_admin', 'manager'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Admin access required' })
+  }
+
   const checks: HealthCheck[] = []
   
   // 1. Database connectivity check

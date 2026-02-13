@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
   
-  if (!profile || !['admin', 'super_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
+  if (!profile || !['admin', 'super_admin', 'sup_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Manager, marketing admin, or admin access required' })
   }
 
@@ -86,14 +86,16 @@ export default defineEventHandler(async (event) => {
     logger.info('Fetched filtered contacts', 'ezyvet-analytics', { count: filteredContacts.length })
 
     const now = new Date()
-    const threeMonthsAgo = new Date(now)
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
-    const sixMonthsAgo = new Date(now)
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-    const twelveMonthsAgo = new Date(now)
-    twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1)
-    const twoYearsAgo = new Date(now)
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+    // Anchor recency boundaries to end-of-last-complete-month (consistent with Sauron)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const threeMonthsAgo = new Date(endOfLastMonth)
+    threeMonthsAgo.setMonth(endOfLastMonth.getMonth() - 3)
+    const sixMonthsAgo = new Date(endOfLastMonth)
+    sixMonthsAgo.setMonth(endOfLastMonth.getMonth() - 6)
+    const twelveMonthsAgo = new Date(endOfLastMonth)
+    twelveMonthsAgo.setFullYear(endOfLastMonth.getFullYear() - 1)
+    const twoYearsAgo = new Date(endOfLastMonth)
+    twoYearsAgo.setFullYear(endOfLastMonth.getFullYear() - 2)
     const oneYearAgo = twelveMonthsAgo
 
     // Run recency count queries in parallel (pushed to DB)

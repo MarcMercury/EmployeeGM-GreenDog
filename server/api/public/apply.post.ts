@@ -91,9 +91,10 @@ export default defineEventHandler(async (event) => {
 
   const userAgent = getHeader(event, 'user-agent') || null
 
-  // Create service role client for database operations
+  // Use anon key for rate-limit checks, service role only for the actual insert
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
+  const supabaseAnonKey = config.public.supabaseKey
   const supabaseServiceKey = config.supabaseServiceRoleKey
 
   if (!supabaseUrl || !supabaseServiceKey) {
@@ -103,6 +104,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Rate-limit checks use anon key (respects RLS)
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey || '')
+  // Actual candidate insert needs service role (anon can't write to candidates)
   const adminClient = createClient(supabaseUrl, supabaseServiceKey)
 
   // Serverless-safe rate limiting via Supabase (replaces in-memory Map)

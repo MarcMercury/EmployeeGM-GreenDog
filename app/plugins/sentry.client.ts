@@ -58,10 +58,10 @@ export default defineNuxtPlugin((nuxtApp) => {
       // Add user info if available
       try {
         const authStore = useAuthStore()
-        if (authStore.user) {
+        if (authStore.profile) {
           event.user = {
-            id: authStore.user.id,
-            email: authStore.user.email,
+            id: authStore.profile.id,
+            email: authStore.profile.email,
           }
         }
       } catch {

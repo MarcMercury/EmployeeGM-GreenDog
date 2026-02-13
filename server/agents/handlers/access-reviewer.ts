@@ -103,7 +103,6 @@ const KNOWN_APP_ROUTES: Array<{ path: string; name: string; section: string }> =
   { path: '/admin/agents', name: 'AI Agents', section: 'Admin & Settings' },
   { path: '/admin/email-templates', name: 'Email Templates', section: 'Admin & Settings' },
   { path: '/admin/skills-management', name: 'Skills Management', section: 'Admin & Settings' },
-  { path: '/admin/master-roster', name: 'Master Roster', section: 'Admin & Settings' },
   { path: '/admin/payroll', name: 'Payroll Admin', section: 'Admin & Settings' },
   { path: '/admin/scheduling-rules', name: 'Scheduling Rules', section: 'Admin & Settings' },
   { path: '/admin/services', name: 'Services Admin', section: 'Admin & Settings' },

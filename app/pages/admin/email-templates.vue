@@ -236,7 +236,7 @@
                 :rules="[v => !!v || 'Required']"
               />
               <v-card v-else variant="outlined" class="pa-4 min-h-300">
-                <div v-html="editForm.body" class="email-preview" />
+                <div v-html="sanitizeHtml(editForm.body)" class="email-preview" />
               </v-card>
             </v-col>
           </v-row>
@@ -280,7 +280,7 @@
             <div class="text-body-1">{{ previewingTemplate?.subject }}</div>
           </div>
           <v-divider class="mb-4" />
-          <div class="email-preview pa-4 bg-grey-lighten-4 rounded" v-html="previewingTemplate?.body" />
+          <div class="email-preview pa-4 bg-grey-lighten-4 rounded" v-html="sanitizeHtml(previewingTemplate?.body)" />
         </v-card-text>
         <v-divider />
         <v-card-actions>
@@ -315,6 +315,7 @@
 
 <script setup lang="ts">
 import type { EmailTemplate } from '~/types/admin.types'
+import DOMPurify from 'dompurify'
 
 definePageMeta({
   layout: 'default',
@@ -324,6 +325,10 @@ definePageMeta({
 useHead({
   title: 'Email Templates'
 })
+
+function sanitizeHtml(html: string | undefined | null): string {
+  return DOMPurify.sanitize(html || '')
+}
 
 const supabase = useSupabaseClient()
 

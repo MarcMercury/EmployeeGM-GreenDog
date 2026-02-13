@@ -141,6 +141,10 @@ export default defineNuxtConfig({
 
   // Vite build optimizations
   vite: {
+    plugins: [
+      // Auto-import Vuetify components for tree-shaking (only used components are bundled)
+      (await import('vite-plugin-vuetify')).default({ autoImport: true }),
+    ],
     build: {
       // Reduce memory: disable source maps for production
       sourcemap: false,

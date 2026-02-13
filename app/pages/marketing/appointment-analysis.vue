@@ -129,7 +129,6 @@
               density="compact"
               hide-details
               prepend-inner-icon="mdi-calendar-start"
-              @update:model-value="loadAppointmentData"
             />
           </v-col>
           <v-col cols="12" md="2">
@@ -141,7 +140,6 @@
               density="compact"
               hide-details
               prepend-inner-icon="mdi-calendar-end"
-              @update:model-value="loadAppointmentData"
             />
           </v-col>
           <v-col cols="12" md="2">
@@ -667,7 +665,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: ['auth'],
+  middleware: ['auth', 'marketing-admin'],
 })
 
 const supabase = useSupabaseClient()
@@ -954,21 +952,35 @@ async function loadAppointmentData() {
       .order('name')
     locationOptions.value = locs || []
 
-    // Load appointments
-    let query = supabase
-      .from('appointment_data')
-      .select('*')
-      .gte('appointment_date', filters.startDate)
-      .lte('appointment_date', filters.endDate)
-      .order('appointment_date', { ascending: false })
+    // Load appointments — paginate to get ALL rows (no arbitrary limit)
+    let allAppointments: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+    while (hasMore) {
+      let query = supabase
+        .from('appointment_data')
+        .select('*')
+        .gte('appointment_date', filters.startDate)
+        .lte('appointment_date', filters.endDate)
+        .order('appointment_date', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1)
 
-    if (filters.locationId) {
-      query = query.eq('location_id', filters.locationId)
+      if (filters.locationId) {
+        query = query.eq('location_id', filters.locationId)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      if (data && data.length > 0) {
+        allAppointments = allAppointments.concat(data)
+        hasMore = data.length === pageSize
+        page++
+      } else {
+        hasMore = false
+      }
     }
-
-    const { data, error } = await query.limit(5000)
-    if (error) throw error
-    appointments.value = data || []
+    appointments.value = allAppointments
 
     // Stats
     stats.totalAppointments = appointments.value.length
@@ -1198,6 +1210,20 @@ function loadHistoricalAnalysis(run: any) {
       }
     })
 }
+
+// ── Watch date filters ───────────────────────────────────────────────────
+
+let _dateReloadTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  () => [filters.startDate, filters.endDate],
+  () => {
+    if (_dateReloadTimer) clearTimeout(_dateReloadTimer)
+    _dateReloadTimer = setTimeout(() => {
+      loadAppointmentData()
+    }, 400)
+  },
+)
 
 // ── Init ─────────────────────────────────────────────────────────────────
 

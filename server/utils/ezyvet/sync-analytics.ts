@@ -312,7 +312,7 @@ export async function updateReferralStatsFromContacts(
     // 1. Get all referral partners
     const { data: partners, error: partnerError } = await supabase
       .from('referral_partners')
-      .select('id, name, clinic_name')
+      .select('id, hospital_name')
 
     if (partnerError) throw partnerError
     if (!partners || partners.length === 0) {
@@ -320,13 +320,11 @@ export async function updateReferralStatsFromContacts(
       return { partnersUpdated: 0, totalReferrals: 0, totalRevenue: 0 }
     }
 
-    // 2. Build a map of partner names/clinic names for matching
+    // 2. Build a map of partner names for matching
     const partnerMap = new Map<string, { id: string; name: string }>()
     for (const p of partners) {
-      const normName = (p.name || '').toLowerCase().trim()
-      const normClinic = (p.clinic_name || '').toLowerCase().trim()
-      if (normName) partnerMap.set(normName, { id: p.id, name: p.name })
-      if (normClinic && normClinic !== normName) partnerMap.set(normClinic, { id: p.id, name: p.name })
+      const normName = (p.hospital_name || '').toLowerCase().trim()
+      if (normName) partnerMap.set(normName, { id: p.id, name: p.hospital_name })
     }
 
     // 3. Query contacts with referral sources

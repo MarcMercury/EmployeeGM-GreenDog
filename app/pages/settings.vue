@@ -12,7 +12,7 @@ definePageMeta({
 useHead({ title: 'Settings' })
 
 const uiStore = useUIStore()
-const user = useSupabaseUser()
+const authStore = useAuthStore()
 
 const darkMode = computed({
   get: () => uiStore.isDarkMode,
@@ -21,10 +21,10 @@ const darkMode = computed({
 
 const notifications = ref(true)
 
-// Check if user has admin access
+// Check if user has admin access (use authStore.profile.role, NOT user_metadata)
 const isAdmin = computed(() => {
-  const role = (user.value as any)?.user_metadata?.role
-  return ['super_admin', 'admin'].includes(role)
+  const role = authStore.profile?.role
+  return ['super_admin', 'admin', 'sup_admin'].includes(role || '')
 })
 </script>
 

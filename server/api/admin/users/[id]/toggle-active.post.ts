@@ -8,8 +8,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-
-const LOCKED_PASSWORD = 'GDDGDD2026_DISABLED'
+import { randomUUID } from 'crypto'
 
 export default defineEventHandler(async (event) => {
   const userId = getRouterParam(event, 'id')
@@ -129,12 +128,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // If disabling, also set the password to a locked value
-  // If enabling, we don't change the password - admin should use reset-password if needed
+  // If disabling, set the password to a random unguessable value and ban the user
+  // If enabling, unban the user (password must be reset separately by admin)
   if (!is_active) {
+    const randomPassword = `LOCKED_${randomUUID()}${randomUUID()}`
     const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(
       targetProfile.auth_user_id,
-      { password: LOCKED_PASSWORD }
+      { password: randomPassword, ban_duration: '876000h' }
     )
 
     if (authUpdateError) {
@@ -149,6 +149,16 @@ export default defineEventHandler(async (event) => {
         statusCode: 500,
         message: `Failed to ${is_active ? 'enable' : 'disable'} login: ${authUpdateError.message}`
       })
+    }
+  } else {
+    // Re-enabling: unban the user so they can log in again (admin must reset password separately)
+    const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetProfile.auth_user_id,
+      { ban_duration: 'none' }
+    )
+
+    if (unbanError) {
+      logger.warn('Failed to unban user during re-enable', 'admin-toggle-active', { userId, error: unbanError.message })
     }
   }
 

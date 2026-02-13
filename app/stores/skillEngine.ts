@@ -85,6 +85,12 @@ export const useSkillEngineStore = defineStore('skillEngine', {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
       
+      // Emergency admin — no real employee record
+      if ((authStore.profile as any)?.is_emergency || authStore.profile?.id?.startsWith('emergency-')) {
+        this.isLoading = false
+        return
+      }
+
       this.isLoading = true
       this.error = null
 
@@ -204,6 +210,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
     async fetchXPAndLevel() {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+      if ((authStore.profile as any)?.is_emergency || authStore.profile?.id?.startsWith('emergency-')) return
 
       try {
         // Get employee ID
@@ -268,6 +275,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
     async getMentorsForSkill(skillId: string): Promise<PotentialMentor[]> {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+      if ((authStore.profile as any)?.is_emergency || authStore.profile?.id?.startsWith('emergency-')) return []
       
       this.isLoadingMentors = true
 
@@ -363,6 +371,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
     async fetchMentorshipRequests() {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+      if ((authStore.profile as any)?.is_emergency || authStore.profile?.id?.startsWith('emergency-')) return
 
       try {
         // Get current employee ID
@@ -495,6 +504,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
     async fetchAchievements() {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+      if ((authStore.profile as any)?.is_emergency || authStore.profile?.id?.startsWith('emergency-')) return
 
       try {
         // Get employee ID

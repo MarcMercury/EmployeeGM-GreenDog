@@ -95,6 +95,12 @@ export const useAuthStore = defineStore('auth', {
         return null
       }
 
+      // Emergency admin bypass — profile is already set by the auth plugin
+      if (authUserId.startsWith('emergency-') || (this.profile as any)?.is_emergency) {
+        console.log('[AuthStore] Emergency admin session — skipping Supabase profile fetch')
+        return this.profile
+      }
+
       // Skip fetch if we already have a profile for this user (unless forced)
       if (!force && this.profile && this.profile.auth_user_id === authUserId) {
         console.log('[AuthStore] Profile already loaded for this user, skipping fetch')

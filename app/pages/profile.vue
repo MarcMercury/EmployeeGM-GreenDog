@@ -453,6 +453,13 @@ onMounted(async () => {
   }
   
   console.log('[ProfilePage] No employee ID found, showing basic profile')
+  // In emergency mode skip Supabase-dependent skill/goal fetches
+  const { isEmergencyMode } = useEmergencyAuth()
+  if (isEmergencyMode.value) {
+    skillsLoading.value = false
+    goalsLoading.value = false
+    return
+  }
   // Otherwise load skills and goals for the basic profile
   await Promise.all([fetchMySkills(), fetchMyGoals()])
 })

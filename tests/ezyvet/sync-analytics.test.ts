@@ -328,8 +328,8 @@ describe('updateReferralStatsFromContacts', () => {
 
   it('matches contacts to partners by referral source and updates stats', async () => {
     const partners = [
-      { id: 'p1', name: 'Animal Hospital', clinic_name: 'AH Clinic' },
-      { id: 'p2', name: 'Pet Plus', clinic_name: '' },
+      { id: 'p1', hospital_name: 'Animal Hospital' },
+      { id: 'p2', hospital_name: 'Pet Plus' },
     ]
 
     const contacts = [

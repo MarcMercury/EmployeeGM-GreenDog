@@ -8,7 +8,6 @@
  *   - app/components/admin/CreateUserDialog.vue (PendingEmployee — duplicate, merged)
  *   - app/pages/admin/email-templates.vue (EmailTemplate)
  *   - app/pages/admin/system-health.vue (EmailTemplate — duplicate, merged)
- *   - app/pages/admin/master-roster.vue (RosterEmployee, RosterDepartment, RosterPosition, RosterLocation)
  *   - app/pages/contact-list.vue (ContactEmployee)
  *   - app/stores/user.ts (UserProfile, UserEmployee, UserData)
  *   - app/stores/dashboard.ts (StoreDashboardStats, TeamHealth, MentorshipMatch, GrowthStats, UpcomingShift)

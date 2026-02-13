@@ -13,6 +13,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
+  // Only admins/managers can trigger the reaper
+  const { data: profile } = await client
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  if (!profile || !['super_admin', 'admin', 'sup_admin', 'manager', 'hr_admin'].includes(profile.role)) {
+    throw createError({ statusCode: 403, message: 'Admin or manager access required' })
+  }
+
   // Find all claimed gigs that have expired
   const { data: expiredGigs, error: queryError } = await client
     .from('marketplace_gigs')

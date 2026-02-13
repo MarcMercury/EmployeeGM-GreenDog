@@ -8,14 +8,25 @@
           {{ filteredEmployees.length }} of {{ employees.length }} team members
         </p>
       </div>
-      <v-btn
-        v-if="isAdmin"
-        color="primary"
-        prepend-icon="mdi-plus"
-        @click="showAddDialog = true"
-      >
-        Add Employee
-      </v-btn>
+      <div class="d-flex gap-2">
+        <v-btn
+          v-if="isAdmin"
+          color="secondary"
+          variant="outlined"
+          prepend-icon="mdi-download"
+          @click="exportCSV"
+        >
+          Export CSV
+        </v-btn>
+        <v-btn
+          v-if="isAdmin"
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="showAddDialog = true"
+        >
+          Add Employee
+        </v-btn>
+      </div>
     </div>
 
     <!-- Stats Row -->
@@ -494,7 +505,7 @@
 
 <script setup lang="ts">
 definePageMeta({
-  middleware: ['auth']
+  middleware: ['auth', 'management']
 })
 
 // Get global app data
@@ -699,6 +710,29 @@ function editEmployee(emp: any) {
 
 async function refreshData() {
   await fetchGlobalData(true)
+}
+
+function exportCSV() {
+  const csvHeaders = ['Employee #', 'Name', 'Email', 'Phone', 'Department', 'Position', 'Status', 'Location']
+  const rows = filteredEmployees.value.map((e: any) => [
+    e.employee_number || '',
+    e.full_name || `${e.first_name} ${e.last_name}`,
+    e.email || e.email_work || '',
+    e.phone || e.phone_mobile || '',
+    e.department?.name || '',
+    e.position?.title || '',
+    e.employment_status || '',
+    e.location?.name || ''
+  ])
+
+  const csv = [csvHeaders.join(','), ...rows.map(r => r.map((c: any) => `"${c}"`).join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `team-roster-${new Date().toISOString().split('T')[0]}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 function closeAddDialog() {

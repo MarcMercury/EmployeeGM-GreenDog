@@ -1,0 +1,5 @@
+# Do NOT commit confidential data files to git.
+# These were moved here from public/ to prevent unauthenticated access.
+# They should be stored in Supabase Storage with auth-gated access instead.
+*
+!.gitignore

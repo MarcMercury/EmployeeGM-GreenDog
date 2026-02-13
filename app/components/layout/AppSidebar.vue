@@ -131,7 +131,7 @@
         <v-list-item v-if="hasPageAccess('/recruiting')" to="/recruiting" title="Recruiting Pipeline" prepend-icon="mdi-account-search" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/export-payroll')" to="/export-payroll" title="Export Payroll" prepend-icon="mdi-cash-multiple" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/payroll/review')" to="/admin/payroll/review" title="Payroll Review" prepend-icon="mdi-cash-check" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/admin/master-roster')" to="/admin/master-roster" title="Master Roster" prepend-icon="mdi-table-account" density="compact" rounded="lg" class="nav-item ml-4" />
+
         <v-list-item v-if="hasPageAccess('/admin/intake')" to="/admin/intake" title="Intake Management" prepend-icon="mdi-clipboard-flow" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasHrAccess" to="/schedule" prepend-icon="mdi-briefcase" title="HR" rounded="lg" class="nav-item mb-1" />
@@ -317,7 +317,7 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   '/time-off': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   '/recruiting': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
   '/export-payroll': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
-  '/admin/master-roster': ['super_admin', 'admin', 'manager', 'hr_admin', 'office_admin', 'sup_admin'],
+
   
   // Marketing
   '/marketing/calendar': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin', 'user'],
@@ -410,7 +410,7 @@ function hasSectionAccess(sectionName: string): boolean {
     'My Workspace': ['/profile', '/my-schedule', '/academy/my-training'],
     'Management': ['/roster', '/skills-library', '/people/skill-stats', '/academy/course-manager'],
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
-    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/master-roster', '/admin/intake', '/admin/payroll/review'],
+    'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/intake', '/admin/payroll/review'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
     'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis'],
     'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],

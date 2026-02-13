@@ -96,10 +96,10 @@
           </div>
         </v-form>
 
-        <!-- Demo Section -->
-        <div class="demo-section mt-6">
+        <!-- Demo Section (dev only) -->
+        <div v-if="isDev" class="demo-section mt-6">
           <div class="demo-divider">
-            <span>Quick Access</span>
+            <span>Quick Access (Dev Only)</span>
           </div>
           <v-btn 
             variant="tonal" 
@@ -230,7 +230,10 @@ const rules = {
   minLength: (v: string) => v.length >= 6 || 'Password must be at least 6 characters'
 }
 
+const isDev = process.dev
+
 function fillDemoCredentials() {
+  if (!isDev) return
   form.email = 'Marc.H.Mercury@gmail.com'
   form.password = 'admin123'
 }

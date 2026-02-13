@@ -73,6 +73,24 @@ export const useUserStore = defineStore('user', {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
 
+      // Emergency admin bypass — populate from the emergency profile instead of Supabase
+      if ((authStore.profile as any)?.is_emergency) {
+        const ep = authStore.profile!
+        this.profile = {
+          id: ep.id,
+          auth_user_id: ep.auth_user_id,
+          email: ep.email,
+          first_name: ep.first_name,
+          last_name: ep.last_name,
+          role: ep.role,
+          location_id: (ep as any).location_id ?? null,
+        } as any
+        this.employee = null
+        this.isLoading = false
+        console.log('[UserStore] Emergency admin mode — using synthetic profile')
+        return
+      }
+
       // First, try to get auth info from authStore (already fetched in layout)
       // Fall back to useSupabaseUser() if authStore not populated
       let authUserId: string | undefined

@@ -57,6 +57,7 @@ export const usePerformanceGoalsStore = defineStore('performance-goals', {
       const targetId = employeeId || authStore.profile?.id
 
       if (!targetId) return
+      if ((authStore.profile as any)?.is_emergency || targetId.startsWith('emergency-')) return
 
       this.loading = true
       try {

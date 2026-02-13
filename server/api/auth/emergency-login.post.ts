@@ -115,8 +115,18 @@ export default defineEventHandler(async (event) => {
 
   console.log(`[EmergencyLogin] Emergency admin login granted for ${allowedEmail}`)
 
+  // Set httpOnly cookie so the token is not accessible to client-side JS (XSS-resistant)
+  setCookie(event, 'emergency_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: TOKEN_TTL_MS / 1000, // seconds
+  })
+
+  // Profile is returned to the client for display (non-sensitive) but
+  // the token itself is ONLY in the httpOnly cookie.
   return {
-    token,
     profile,
     expiresAt: new Date(payload.exp).toISOString(),
   }

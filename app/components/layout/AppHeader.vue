@@ -176,6 +176,8 @@ const dbUnreadCount = computed(() => dbNotifications.value.filter(n => !n.is_rea
 
 async function loadDbNotifications() {
   if (!authStore.profile?.id) return
+  // Skip Supabase query when using emergency admin (fake non-UUID IDs)
+  if ((authStore.profile as any)?.is_emergency) return
   try {
     const { data } = await supabase
       .from('notifications')

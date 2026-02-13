@@ -60,6 +60,8 @@ export const useIntegrationsStore = defineStore('integrations', {
     async fetchNotifications() {
       const authStore = useAuthStore()
       if (!authStore.profile?.id) return
+      // Emergency admin — no real DB records to fetch
+      if ((authStore.profile as any)?.is_emergency || authStore.profile.id.startsWith('emergency-')) return
 
       const supabase = useSupabaseClient()
       this.loading = true
@@ -110,6 +112,7 @@ export const useIntegrationsStore = defineStore('integrations', {
     async markAllAsRead() {
       const authStore = useAuthStore()
       if (!authStore.profile?.id) return
+      if ((authStore.profile as any)?.is_emergency || authStore.profile.id.startsWith('emergency-')) return
 
       const supabase = useSupabaseClient()
 
@@ -619,6 +622,7 @@ export const useIntegrationsStore = defineStore('integrations', {
     async fetchActionItems() {
       const authStore = useAuthStore()
       if (!authStore.profile?.id) return
+      if ((authStore.profile as any)?.is_emergency || authStore.profile.id.startsWith('emergency-')) return
 
       const supabase = useSupabaseClient()
       this.loading = true

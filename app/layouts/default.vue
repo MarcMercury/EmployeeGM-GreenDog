@@ -105,6 +105,8 @@ let notificationChannel: ReturnType<typeof supabase.channel> | null = null
 
 const fetchUnreadCount = async () => {
   if (!profile.value?.id) return
+  // Skip Supabase query when using emergency admin (fake non-UUID IDs)
+  if ((profile.value as any)?.is_emergency) return
   
   try {
     const { count, error } = await supabase
@@ -124,7 +126,7 @@ const fetchUnreadCount = async () => {
 
 // Watch for profile changes to fetch notifications
 watch(() => profile.value?.id, (newId) => {
-  if (newId) {
+  if (newId && !(profile.value as any)?.is_emergency) {
     fetchUnreadCount()
     
     // Subscribe to realtime notification changes
@@ -155,7 +157,7 @@ async function handleSignOut() {
     // Clear emergency auth if active
     const { isEmergencyMode, emergencyLogout } = useEmergencyAuth()
     if (isEmergencyMode.value) {
-      emergencyLogout()
+      await emergencyLogout()
     }
     await supabase.auth.signOut()
     authStore.$reset()
@@ -163,7 +165,7 @@ async function handleSignOut() {
   } catch (e) {
     console.error('[Layout] Sign out error:', e)
     // Still clear emergency auth on error
-    try { useEmergencyAuth().emergencyLogout() } catch {}
+    try { await useEmergencyAuth().emergencyLogout() } catch {}
     window.location.href = '/auth/login'
   }
 }
@@ -413,10 +415,7 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>
                   Export Payroll
                 </NuxtLink>
-                <NuxtLink v-if="isAdmin" to="/admin/master-roster" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📋</div>
-                  Master Roster
-                </NuxtLink>
+
               </div>
             </div>
           </template>

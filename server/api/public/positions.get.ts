@@ -8,22 +8,22 @@
 import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
-  // Create service role client for database operations
+  // Use anon key for public endpoints — respects RLS policies
   const config = useRuntimeConfig()
   const supabaseUrl = config.public.supabaseUrl
-  const supabaseServiceKey = config.supabaseServiceRoleKey
+  const supabaseAnonKey = config.public.supabaseKey
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseAnonKey) {
     throw createError({
       statusCode: 500,
       message: 'Server configuration error'
     })
   }
 
-  const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+  const anonClient = createClient(supabaseUrl, supabaseAnonKey)
 
   try {
-    const { data, error } = await adminClient
+    const { data, error } = await anonClient
       .from('job_positions')
       .select(`
         id,

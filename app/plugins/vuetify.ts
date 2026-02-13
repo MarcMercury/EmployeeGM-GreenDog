@@ -1,13 +1,12 @@
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
+
+// Tree-shaking: Components and directives are auto-imported by vite-plugin-vuetify.
+// Do NOT use `import * as components` — that imports the entire library (~200+ components).
 
 export default defineNuxtPlugin((nuxtApp) => {
   const vuetify = createVuetify({
     ssr: true,
-    components,
-    directives,
     icons: {
       defaultSet: 'mdi',
       aliases,

@@ -271,6 +271,9 @@ export const useScheduleStore = defineStore('schedule', {
     async reviewTimeOff(id: string, status: 'approved' | 'denied', notes?: string) {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+      if ((authStore.profile as any)?.is_emergency) {
+        throw new Error('Cannot review time-off requests in emergency admin mode')
+      }
       
       try {
         this.error = null

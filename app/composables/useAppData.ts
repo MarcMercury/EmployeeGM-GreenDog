@@ -233,27 +233,43 @@ export const useAppData = () => {
     try {
       // 1. IDENTITY CHECK: Who am I?
       // Get session directly to avoid race condition with useSupabaseUser()
-      const { data: { session } } = await client.auth.getSession()
-      const authUserId = session?.user?.id
-      
-      if (authUserId) {
-        console.log('[useAppData] Fetching profile for user:', authUserId)
-        const { data: profile, error: profileError } = await client
-          .from('profiles')
-          .select('id, email, role, avatar_url, first_name, last_name, phone')
-          .eq('auth_user_id', authUserId)
-          .single()
-        
-        console.log('[useAppData] Profile result:', profile, 'Error:', profileError)
-        
-        if (profile) {
-          currentUserProfile.value = profile as AppUserProfile
-          // Check for admin roles (admin or super_admin)
-          isAdmin.value = ['admin', 'super_admin'].includes((profile as { role?: string }).role || '')
-          console.log('[useAppData] isAdmin set to:', isAdmin.value)
-        }
+      // Emergency admin bypass — session comes from localStorage, not Supabase
+      const { isEmergencyMode, profile: emergencyProfile } = useEmergencyAuth()
+      if (isEmergencyMode.value && emergencyProfile.value) {
+        currentUserProfile.value = {
+          id: emergencyProfile.value.id,
+          email: emergencyProfile.value.email,
+          role: emergencyProfile.value.role,
+          avatar_url: null,
+          first_name: emergencyProfile.value.first_name,
+          last_name: emergencyProfile.value.last_name,
+          phone: null,
+        } as AppUserProfile
+        isAdmin.value = ['admin', 'super_admin'].includes(emergencyProfile.value.role || '')
+        console.log('[useAppData] Emergency admin mode — using synthetic profile')
       } else {
-        console.log('[useAppData] No session/user, skipping profile fetch')
+        const { data: { session } } = await client.auth.getSession()
+        const authUserId = session?.user?.id
+        
+        if (authUserId) {
+          console.log('[useAppData] Fetching profile for user:', authUserId)
+          const { data: profile, error: profileError } = await client
+            .from('profiles')
+            .select('id, email, role, avatar_url, first_name, last_name, phone')
+            .eq('auth_user_id', authUserId)
+            .single()
+          
+          console.log('[useAppData] Profile result:', profile, 'Error:', profileError)
+          
+          if (profile) {
+            currentUserProfile.value = profile as AppUserProfile
+            // Check for admin roles (admin or super_admin)
+            isAdmin.value = ['admin', 'super_admin'].includes((profile as { role?: string }).role || '')
+            console.log('[useAppData] isAdmin set to:', isAdmin.value)
+          }
+        } else {
+          console.log('[useAppData] No session/user, skipping profile fetch')
+        }
       }
 
       // 2. DATA HYDRATION: Fetch all data in parallel for maximum speed

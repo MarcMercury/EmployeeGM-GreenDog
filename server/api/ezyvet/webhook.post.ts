@@ -23,8 +23,8 @@ export default defineEventHandler(async (event) => {
   const incomingSecret = getHeader(event, 'x-ezyvet-webhook-secret')
     || getHeader(event, 'x-webhook-secret')
 
-  if (webhookSecret && incomingSecret !== webhookSecret) {
-    logger.warn('ezyVet webhook: invalid secret', 'ezyvet-webhook')
+  if (!webhookSecret || incomingSecret !== webhookSecret) {
+    logger.warn('ezyVet webhook: invalid or missing secret', 'ezyvet-webhook')
     throw createError({ statusCode: 401, message: 'Invalid webhook secret' })
   }
 

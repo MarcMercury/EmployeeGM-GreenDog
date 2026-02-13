@@ -890,8 +890,9 @@ async function fetchRequests() {
   loadingRequests.value = true
   try {
     const profileId = authStore.profile?.id
-    if (!profileId) {
+    if (!profileId || (authStore.profile as any)?.is_emergency || profileId.startsWith('emergency-')) {
       allRequests.value = []
+      loadingRequests.value = false
       return
     }
     

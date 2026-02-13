@@ -131,7 +131,7 @@
         </v-chip>
       </v-card-title>
       <v-card-text>
-        <div class="ai-response" v-html="formattedAiResponse"></div>
+        <div class="ai-response" v-html="sanitize(formattedAiResponse)"></div>
         <v-alert type="info" variant="tonal" density="compact" class="mt-4">
           <v-icon start size="16">mdi-information</v-icon>
           AI-generated content is for reference. For company policy details, refer to the official documents linked above.
@@ -253,7 +253,7 @@
             </v-chip>
           </div>
 
-          <div v-html="selectedArticle.content" class="wiki-content"></div>
+          <div v-html="sanitize(selectedArticle.content)" class="wiki-content"></div>
         </v-card-text>
         
         <v-divider />
@@ -279,6 +279,8 @@ definePageMeta({
 useHead({
   title: 'Wiki - Green Dog Dental'
 })
+
+const { sanitize } = useSanitizedHtml()
 
 // State
 const searchQuery = ref('')

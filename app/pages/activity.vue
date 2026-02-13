@@ -552,6 +552,8 @@ const personalStats = computed(() => {
 // Fetch personal dashboard data
 async function fetchPersonalData() {
   if (!currentUserProfile.value?.id) return
+  // Emergency admin — skip fetching personal data from Supabase
+  if ((currentUserProfile.value as any)?.is_emergency || currentUserProfile.value.id.startsWith('emergency-')) return
   loadingPersonal.value = true
   
   try {
@@ -707,6 +709,14 @@ const loadNotifications = async () => {
   loadingNotifications.value = true
   page.value = 1
   
+  // Emergency admin: skip Supabase notification queries
+  const profileId = currentUserProfile.value?.id
+  if ((currentUserProfile.value as any)?.is_emergency || profileId?.startsWith('emergency-')) {
+    notifications.value = []
+    loadingNotifications.value = false
+    return
+  }
+
   try {
     let query = supabase
       .from('notifications')
@@ -716,7 +726,6 @@ const loadNotifications = async () => {
     
     // Personal view: filter to current user; Company view (admin only): show all
     if (viewMode.value === 'personal' || !isAdmin.value) {
-      const profileId = currentUserProfile.value?.id
       if (profileId) {
         query = query.eq('profile_id', profileId)
       }
@@ -736,6 +745,8 @@ const loadNotifications = async () => {
 }
 
 const loadMore = async () => {
+  // Emergency admin: nothing to load
+  if ((currentUserProfile.value as any)?.is_emergency || currentUserProfile.value?.id?.startsWith('emergency-')) return
   loadingMore.value = true
   page.value++
   

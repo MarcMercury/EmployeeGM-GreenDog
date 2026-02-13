@@ -29,8 +29,8 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 1. Get all referral partners
   const { data: partners, error: partErr } = await supabase
     .from('referral_partners')
-    .select('id, name, clinic_name, city, state, status, tier, referral_count, last_referral_date, notes, created_at')
-    .order('name')
+    .select('id, hospital_name, address, status, tier, total_referrals, last_contact_date, notes, created_at')
+    .order('hospital_name')
 
   if (partErr || !partners) {
     throw new Error(`Failed to fetch referral partners: ${partErr?.message}`)
@@ -73,7 +73,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   const partnerAnalysis = partners.map((p: any) => {
     const visits = (recentVisits ?? []).filter((v: any) => v.referral_partner_id === p.id)
     const notes = (partnerNotes ?? []).filter((n: any) => n.partner_id === p.id)
-    const lastReferral = p.last_referral_date ? new Date(p.last_referral_date) : null
+    const lastReferral = p.last_contact_date ? new Date(p.last_contact_date) : null
     const daysSinceLastReferral = lastReferral
       ? Math.floor((now.getTime() - lastReferral.getTime()) / (1000 * 60 * 60 * 24))
       : null
@@ -85,16 +85,15 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
 
     return {
       id: p.id,
-      name: p.clinic_name || p.name,
+      name: p.hospital_name,
       status: p.status,
       tier: p.tier,
-      referral_count: p.referral_count ?? 0,
+      referral_count: p.total_referrals ?? 0,
       days_since_last_referral: daysSinceLastReferral,
       visits_last_90_days: visits.length,
       days_since_last_visit: daysSinceLastVisit,
       notes_count: notes.length,
-      city: p.city,
-      state: p.state,
+      address: p.address,
     }
   })
 
@@ -135,13 +134,13 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
 REFERRAL PARTNER PORTFOLIO: ${partners.length} total partners
 
 TOP 10 BY VOLUME:
-${topPerformers.map((p: any) => `- ${p.name} (${p.city}, ${p.state}): ${p.referral_count} referrals, last referral ${p.days_since_last_referral ?? 'never'} days ago`).join('\n')}
+${topPerformers.map((p: any) => `- ${p.name} (${p.address ?? 'no address'}): ${p.referral_count} referrals, last referral ${p.days_since_last_referral ?? 'never'} days ago`).join('\n')}
 
 INACTIVE PARTNERS (>60 days since last referral): ${inactive.length}
 ${inactive.slice(0, 10).map((p: any) => `- ${p.name}: ${p.days_since_last_referral ?? 'no'} days since referral, ${p.visits_last_90_days} visits in 90d`).join('\n')}
 
 UNVISITED ACTIVE PARTNERS (no clinic visits in 90 days): ${unvisited.length}
-${unvisited.slice(0, 10).map((p: any) => `- ${p.name} (${p.city}): ${p.referral_count} total referrals`).join('\n')}
+${unvisited.slice(0, 10).map((p: any) => `- ${p.name} (${p.address ?? 'no address'}): ${p.referral_count} total referrals`).join('\n')}
 
 SYNC TREND (last 12 syncs):
 ${(syncHistory ?? []).slice(0, 6).map((s: any) => `- ${new Date(s.created_at).toLocaleDateString()}: ${s.new_referrals} new / ${s.total_referrals} total`).join('\n')}
