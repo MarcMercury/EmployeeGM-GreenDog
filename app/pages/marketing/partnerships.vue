@@ -12,8 +12,8 @@
         <v-btn color="success" variant="flat" prepend-icon="mdi-map-marker-plus" size="small" class="quick-visit-btn" @click="quickVisitRef?.open()">
           Quick Visit
         </v-btn>
-        <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
-          Upload EzyVet Report
+        <v-btn color="teal" variant="flat" prepend-icon="mdi-cloud-sync" size="small" :loading="syncingReferrals" @click="syncReferralsFromEzyVet">
+          Sync from ezyVet
         </v-btn>
         <v-btn 
           variant="outlined" 
@@ -27,6 +27,19 @@
         <v-btn variant="outlined" prepend-icon="mdi-file-export-outline" size="small" @click="showExportDialog = true">
           Export
         </v-btn>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn v-bind="props" variant="text" size="small" icon="mdi-dots-vertical" />
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-file-upload" @click="showUploadDialog = true">
+              <v-list-item-title>Upload EzyVet Report (Manual)</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-file-import-outline" @click="showImportWizard = true">
+              <v-list-item-title>Import CSV</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
         <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddPartner">
           Add Partner
         </v-btn>
@@ -859,6 +872,7 @@ const exportColumns = [
 const loading = ref(false)
 const saving = ref(false)
 const recalculating = ref(false)
+const syncingReferrals = ref(false)
 const mainTab = ref('list')
 const formTab = ref('basic')
 const search = ref('')
@@ -1436,6 +1450,40 @@ function closeUploadDialog() {
   showUploadDialog.value = false
   uploadFile.value = null
   uploadResult.value = null
+}
+
+// ezyVet API Sync for Referral Stats
+async function syncReferralsFromEzyVet() {
+  syncingReferrals.value = true
+  try {
+    const result = await $fetch('/api/ezyvet/sync-analytics', {
+      method: 'POST',
+      body: { syncType: 'all' },
+    }) as any
+
+    if (result.success) {
+      const first = Object.values(result.results)[0] as any
+      const partnersUpdated = first?.referrals?.partnersUpdated || 0
+      const contactsSynced = first?.contacts?.upserted || 0
+
+      snackbar.message = `Synced ${contactsSynced.toLocaleString()} contacts, updated ${partnersUpdated} referral partners`
+      snackbar.color = 'success'
+      snackbar.show = true
+      await loadPartners()
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || err.message || 'Sync failed'
+    if (msg.includes('No active ezyVet clinic')) {
+      snackbar.message = 'ezyVet API not configured yet. Use manual report upload or set up API credentials.'
+      snackbar.color = 'warning'
+    } else {
+      snackbar.message = 'Sync failed: ' + msg
+      snackbar.color = 'error'
+    }
+    snackbar.show = true
+  } finally {
+    syncingReferrals.value = false
+  }
 }
 
 // Upload Log functions

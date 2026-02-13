@@ -15,6 +15,14 @@
       </div>
       <div class="d-flex gap-2">
         <v-btn
+          color="success"
+          prepend-icon="mdi-cloud-sync"
+          :loading="syncing"
+          @click="syncFromEzyVet"
+        >
+          Sync from ezyVet
+        </v-btn>
+        <v-btn
           color="primary"
           variant="outlined"
           prepend-icon="mdi-history"
@@ -22,21 +30,23 @@
         >
           Analysis History
         </v-btn>
-        <v-btn
-          color="orange-darken-1"
-          variant="outlined"
-          prepend-icon="mdi-upload-multiple"
-          @click="showUploadHistory = true"
-        >
-          Upload Log
-        </v-btn>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-upload"
-          @click="showUploadDialog = true"
-        >
-          Upload Invoice Data
-        </v-btn>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="text"
+              icon="mdi-dots-vertical"
+            />
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-upload" @click="showUploadDialog = true">
+              <v-list-item-title>Upload CSV (Manual)</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-upload-multiple" @click="showUploadHistory = true">
+              <v-list-item-title>Upload Log</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
@@ -234,10 +244,13 @@
       <v-icon size="72" color="grey-lighten-1" class="mb-4">mdi-receipt-text-outline</v-icon>
       <h3 class="text-h6 mb-2">No Invoice Data Yet</h3>
       <p class="text-body-2 text-grey mb-4">
-        Upload an Invoice Lines report from EzyVet to get started. Each upload adds new data — duplicates are automatically skipped.
+        Sync invoice data directly from ezyVet, or upload a CSV manually as a fallback.
       </p>
-      <v-btn color="primary" prepend-icon="mdi-upload" @click="showUploadDialog = true">
-        Upload Invoice Lines
+      <v-btn color="success" prepend-icon="mdi-cloud-sync" :loading="syncing" class="mr-2" @click="syncFromEzyVet">
+        Sync from ezyVet
+      </v-btn>
+      <v-btn color="primary" variant="outlined" prepend-icon="mdi-upload" @click="showUploadDialog = true">
+        Upload CSV (Manual)
       </v-btn>
     </v-card>
 
@@ -768,6 +781,7 @@ const supabase = useSupabaseClient()
 const loading = ref(false)
 const analyzing = ref(false)
 const uploading = ref(false)
+const syncing = ref(false)
 const uploadProgress = ref('')
 const showUploadDialog = ref(false)
 const showHistory = ref(false)
@@ -1126,6 +1140,34 @@ function showNotification(message: string, color = 'success') {
   snackbar.message = message
   snackbar.color = color
   snackbar.show = true
+}
+
+// ── ezyVet API Sync ──────────────────────────────────────────────────────
+
+async function syncFromEzyVet() {
+  syncing.value = true
+  try {
+    const result = await $fetch('/api/ezyvet/sync-analytics', {
+      method: 'POST',
+      body: { syncType: 'invoices' },
+    }) as any
+
+    if (result.success) {
+      const stats = Object.values(result.results)[0] as any
+      const upserted = stats?.invoices?.upserted || 0
+      showNotification(`Synced ${upserted.toLocaleString()} invoice lines from ezyVet`, 'success')
+      await loadData()
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || err.message || 'Sync failed'
+    if (msg.includes('No active ezyVet clinic')) {
+      showNotification('ezyVet API not configured yet. Use CSV upload or set up API credentials in the ezyVet Integration page.', 'warning')
+    } else {
+      showNotification('Sync failed: ' + msg, 'error')
+    }
+  } finally {
+    syncing.value = false
+  }
 }
 
 // ── Data Loading ─────────────────────────────────────────────────────────

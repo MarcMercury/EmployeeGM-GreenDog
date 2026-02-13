@@ -114,6 +114,75 @@ export interface EzyVetAnimal {
   [key: string]: unknown
 }
 
+// ──────────────────────────── Invoice Lines (v1) ────────────────────────────
+export interface EzyVetInvoiceLine {
+  id: number
+  invoice_id?: number
+  invoice_line_reference?: string
+  date_created?: string
+  date_modified?: string
+  product_id?: number
+  product_name?: string
+  product_group?: string
+  quantity?: number
+  unit_price?: number
+  discount_percentage?: number
+  discount_amount?: number
+  line_total?: number
+  total_tax?: number
+  total_earned?: number
+  contact_id?: number
+  contact_name?: string
+  contact_code?: string
+  animal_id?: number
+  animal_name?: string
+  consult_id?: number
+  staff_user_id?: number
+  staff_name?: string
+  case_owner_user_id?: number
+  case_owner_name?: string
+  department?: string
+  division?: string
+  account?: string
+  invoice_type?: string
+  payment_terms?: string
+  [key: string]: unknown
+}
+
+// ──────────────────────────── Contacts (v1) ────────────────────────────
+export interface EzyVetContact {
+  id: number
+  contact_code?: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone_mobile?: string
+  phone_home?: string
+  address_physical_city?: string
+  address_physical_postcode?: string
+  address_physical_state?: string
+  is_active?: boolean
+  division?: string
+  hear_about_option?: string
+  created_at?: string
+  modified_at?: string
+  last_invoiced_date?: string
+  revenue_ytd?: number
+  [key: string]: unknown
+}
+
+// ──────────────────────────── Referral Report (v1) ────────────────────────────
+export interface EzyVetReferralEntry {
+  referring_vet_clinic?: string
+  referring_vet?: string
+  contact_name?: string
+  animal_name?: string
+  division?: string
+  amount?: number
+  date?: string
+  [key: string]: unknown
+}
+
 // ──────────────────────────── Webhooks ────────────────────────────
 export interface EzyVetWebhookPayload {
   event: string             // 'appointment.created', etc.
@@ -139,7 +208,7 @@ export interface EzyVetWebhookEvent {
 }
 
 // ──────────────────────────── Sync Log ────────────────────────────
-export type SyncType = 'users' | 'appointments' | 'consults' | 'animals' | 'full'
+export type SyncType = 'users' | 'appointments' | 'consults' | 'animals' | 'invoices' | 'contacts' | 'full'
 export type SyncStatus = 'running' | 'completed' | 'failed'
 
 export interface EzyVetSyncLogEntry {

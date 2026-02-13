@@ -15,12 +15,12 @@
       </div>
       <div class="d-flex gap-2">
         <v-btn
-          color="primary"
-          variant="outlined"
-          prepend-icon="mdi-upload"
-          @click="showUploadDialog = true"
+          color="success"
+          prepend-icon="mdi-cloud-sync"
+          :loading="syncingContacts"
+          @click="syncContactsFromEzyVet"
         >
-          Import CSV
+          Sync from ezyVet
         </v-btn>
         <v-btn
           color="primary"
@@ -38,6 +38,20 @@
         >
           Refresh
         </v-btn>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="text"
+              icon="mdi-dots-vertical"
+            />
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-upload" @click="showUploadDialog = true">
+              <v-list-item-title>Import CSV (Manual)</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
@@ -590,16 +604,26 @@
       <v-icon size="80" color="grey">mdi-chart-box-outline</v-icon>
       <div class="text-h5 mt-4">No Analytics Data</div>
       <div class="text-grey mt-2">
-        Import an EzyVet CSV export to populate your analytics dashboard.
+        Sync client data directly from ezyVet, or import a CSV manually as a fallback.
       </div>
-      <v-btn
-        color="primary"
-        class="mt-6"
-        prepend-icon="mdi-upload"
-        @click="showUploadDialog = true"
-      >
-        Import CSV
-      </v-btn>
+      <div class="d-flex gap-2 justify-center mt-6">
+        <v-btn
+          color="success"
+          prepend-icon="mdi-cloud-sync"
+          :loading="syncingContacts"
+          @click="syncContactsFromEzyVet"
+        >
+          Sync from ezyVet
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="outlined"
+          prepend-icon="mdi-upload"
+          @click="showUploadDialog = true"
+        >
+          Import CSV (Manual)
+        </v-btn>
+      </div>
     </v-card>
 
     <!-- Error State -->
@@ -769,6 +793,7 @@ definePageMeta({
 
 // State
 const loading = ref(false)
+const syncingContacts = ref(false)
 const error = ref<string | null>(null)
 const analytics = ref<any>(null)
 const divisions = ref<string[]>([])
@@ -885,6 +910,38 @@ function resetFilters() {
 
 function printReport() {
   window.print()
+}
+
+// ========================================
+// ezyVet API SYNC
+// ========================================
+
+async function syncContactsFromEzyVet() {
+  syncingContacts.value = true
+  try {
+    const result = await $fetch('/api/ezyvet/sync-analytics', {
+      method: 'POST',
+      body: { syncType: 'contacts' },
+    }) as any
+
+    if (result.success) {
+      const stats = Object.values(result.results)[0] as any
+      const upserted = stats?.contacts?.upserted || 0
+      // Show success notification via error ref (hacky but functional)
+      await loadAnalytics()
+      error.value = null
+      alert(`Synced ${upserted.toLocaleString()} contacts from ezyVet`)
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || err.message || 'Sync failed'
+    if (msg.includes('No active ezyVet clinic')) {
+      error.value = 'ezyVet API not configured yet. Use CSV import or set up API credentials in the ezyVet Integration page.'
+    } else {
+      error.value = 'Sync failed: ' + msg
+    }
+  } finally {
+    syncingContacts.value = false
+  }
 }
 
 // ========================================

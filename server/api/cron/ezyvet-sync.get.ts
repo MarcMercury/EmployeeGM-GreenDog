@@ -12,6 +12,7 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
 import { logger } from '../../utils/logger'
 import { syncAll } from '../../utils/ezyvet/sync'
+import { syncAllAnalytics } from '../../utils/ezyvet/sync-analytics'
 import type { EzyVetClinic } from '../../utils/ezyvet/types'
 
 export default defineEventHandler(async (event) => {
@@ -45,7 +46,12 @@ export default defineEventHandler(async (event) => {
       // Only sync recent changes (last 6 hours overlap for safety)
       const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
 
+      // Core sync: users, appointments, consults
       await syncAll(supabase, ezyClinic, { since, triggeredBy: 'cron' })
+
+      // Analytics sync: invoice lines, contacts, referral partner stats
+      await syncAllAnalytics(supabase, ezyClinic, { since, triggeredBy: 'cron' })
+
       results.push({ clinic: ezyClinic.label, status: 'completed' })
     } catch (err) {
       logger.error(`Cron sync failed for ${clinic.label}`, err instanceof Error ? err : null, 'ezyvet-cron')

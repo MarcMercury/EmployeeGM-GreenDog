@@ -10,6 +10,14 @@
       </div>
       <div class="d-flex gap-2">
         <v-btn
+          color="success"
+          prepend-icon="mdi-cloud-sync"
+          :loading="syncingEzyVet"
+          @click="syncAppointmentsFromEzyVet"
+        >
+          Sync from ezyVet
+        </v-btn>
+        <v-btn
           color="primary"
           variant="outlined"
           prepend-icon="mdi-history"
@@ -17,22 +25,23 @@
         >
           Analysis History
         </v-btn>
-        <v-btn
-          color="teal"
-          variant="outlined"
-          prepend-icon="mdi-hospital-building"
-          :loading="importingClinic"
-          @click="importClinicReports"
-        >
-          Import Clinic Reports
-        </v-btn>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-upload"
-          @click="showUploadDialog = true"
-        >
-          Upload Appointments
-        </v-btn>
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="text"
+              icon="mdi-dots-vertical"
+            />
+          </template>
+          <v-list density="compact">
+            <v-list-item prepend-icon="mdi-hospital-building" :disabled="importingClinic" @click="importClinicReports">
+              <v-list-item-title>Import Clinic Reports</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-upload" @click="showUploadDialog = true">
+              <v-list-item-title>Upload CSV (Manual)</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
       </div>
     </div>
 
@@ -181,12 +190,15 @@
     <v-card v-else-if="stats.totalAppointments === 0" class="mb-6 pa-8 text-center" elevation="2">
       <v-icon size="72" color="grey-lighten-1" class="mb-4">mdi-calendar-blank</v-icon>
       <h3 class="text-h6 mb-2">No Appointment Data Yet</h3>
-      <p class="text-body-2 text-grey mb-4">Import weekly clinic reports or upload CSV exports from your practice management system to get started.</p>
+      <p class="text-body-2 text-grey mb-4">Sync appointment data directly from ezyVet, or use manual import as a fallback.</p>
       <div class="d-flex gap-2 justify-center">
-        <v-btn color="teal" prepend-icon="mdi-hospital-building" :loading="importingClinic" @click="importClinicReports">
+        <v-btn color="success" prepend-icon="mdi-cloud-sync" :loading="syncingEzyVet" @click="syncAppointmentsFromEzyVet">
+          Sync from ezyVet
+        </v-btn>
+        <v-btn color="teal" variant="outlined" prepend-icon="mdi-hospital-building" :loading="importingClinic" @click="importClinicReports">
           Import Clinic Reports
         </v-btn>
-        <v-btn color="primary" variant="outlined" prepend-icon="mdi-upload" @click="showUploadDialog = true">
+        <v-btn color="primary" variant="text" prepend-icon="mdi-upload" @click="showUploadDialog = true">
           Upload CSV
         </v-btn>
       </div>
@@ -667,6 +679,7 @@ const loading = ref(false)
 const analyzing = ref(false)
 const uploading = ref(false)
 const importingClinic = ref(false)
+const syncingEzyVet = ref(false)
 const showUploadDialog = ref(false)
 const showHistory = ref(false)
 const tableSearch = ref('')
@@ -899,6 +912,33 @@ function showNotification(message: string, color = 'success') {
   snackbar.message = message
   snackbar.color = color
   snackbar.show = true
+}
+
+// ── ezyVet API Sync ──────────────────────────────────────────────────────
+
+async function syncAppointmentsFromEzyVet() {
+  syncingEzyVet.value = true
+  try {
+    // The main ezyVet sync already handles appointments via syncAll
+    const result = await $fetch('/api/ezyvet/sync-analytics', {
+      method: 'POST',
+      body: { syncType: 'all' },
+    }) as any
+
+    if (result.success) {
+      showNotification('Appointment data synced from ezyVet', 'success')
+      await loadAppointmentData()
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || err.message || 'Sync failed'
+    if (msg.includes('No active ezyVet clinic')) {
+      showNotification('ezyVet API not configured yet. Use CSV upload or set up API credentials.', 'warning')
+    } else {
+      showNotification('Sync failed: ' + msg, 'error')
+    }
+  } finally {
+    syncingEzyVet.value = false
+  }
 }
 
 // ── Data Loading ─────────────────────────────────────────────────────────
