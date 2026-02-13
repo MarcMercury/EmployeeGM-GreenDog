@@ -10,6 +10,14 @@
         <v-btn
           v-if="canManage"
           variant="outlined"
+          prepend-icon="mdi-qrcode"
+          @click="router.push('/med-ops/safety/qr-codes')"
+        >
+          <span class="desktop-only">QR Codes</span>
+        </v-btn>
+        <v-btn
+          v-if="canManage"
+          variant="outlined"
           prepend-icon="mdi-download"
           @click="exportLogs"
         >

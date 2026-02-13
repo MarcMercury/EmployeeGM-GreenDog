@@ -154,7 +154,7 @@ async function handleSubmit(payload: { location: SafetyLogLocation; form_data: R
       log_type: logTypeKey.value,
       location: payload.location,
       form_data: payload.form_data,
-      submitted_by: authStore.user?.id || '',
+      submitted_by: authStore.profile?.id || '',
       osha_recordable: payload.osha_recordable,
       status: 'submitted',
     })
