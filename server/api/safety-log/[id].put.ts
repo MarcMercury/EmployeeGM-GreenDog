@@ -4,7 +4,7 @@
  * Managers+ can update any log; users can only update their own drafts.
  */
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import { SafetyLogUpdateSchema } from '~/app/schemas/safety-log'
+import { SafetyLogUpdateSchema } from '~/schemas/safety-log'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)

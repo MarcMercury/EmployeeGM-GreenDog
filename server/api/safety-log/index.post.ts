@@ -4,7 +4,7 @@
  * All authenticated users can submit.
  */
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import { SafetyLogInsertSchema, validateFormData } from '~/app/schemas/safety-log'
+import { SafetyLogInsertSchema, validateFormData } from '~/schemas/safety-log'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
