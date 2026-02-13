@@ -18,8 +18,8 @@ import {
   syncContacts,
   updateReferralStatsFromContacts,
   syncAllAnalytics,
-} from '~/server/utils/ezyvet/sync-analytics'
-import type { EzyVetClinic } from '~/server/utils/ezyvet/types'
+} from '../../utils/ezyvet/sync-analytics'
+import type { EzyVetClinic } from '../../utils/ezyvet/types'
 
 export default defineEventHandler(async (event) => {
   // Auth check
