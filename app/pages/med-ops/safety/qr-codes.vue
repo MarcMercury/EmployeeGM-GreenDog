@@ -228,13 +228,14 @@ const router = useRouter()
 const toast = useToast()
 const { can } = usePermissions()
 const runtimeConfig = useRuntimeConfig()
+const { allTypes, fetchCustomTypes } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
 
 const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employeegm.greendog.vet')
 const activeTab = ref<SafetyLogLocation>('venice')
 
-const printableTypes = computed(() => SAFETY_LOG_TYPE_CONFIGS)
+const printableTypes = computed(() => allTypes.value)
 
 // ── Cadence options ────────────────────────────────────
 const CADENCE_OPTIONS = [
@@ -284,7 +285,7 @@ const hasUnsavedChanges = computed(() => {
 
 function locationCadenceCount(location: string): number {
   let count = 0
-  for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+  for (const cfg of allTypes.value) {
     const val = getCadence(location, cfg.key)
     if (val && val !== 'none') count++
   }
@@ -305,7 +306,7 @@ async function fetchSchedules() {
     console.error('Failed to fetch schedules:', err)
     // Initialize defaults
     for (const loc of SAFETY_LOCATIONS) {
-      for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+      for (const cfg of allTypes.value) {
         const key = scheduleKey(loc.value, cfg.key)
         localSchedules.value[key] = 'none'
         savedSchedules.value[key] = 'none'
@@ -318,7 +319,7 @@ async function fetchSchedules() {
 
 function applyBulkCadence() {
   if (!bulkCadence.value) return
-  for (const cfg of SAFETY_LOG_TYPE_CONFIGS) {
+  for (const cfg of allTypes.value) {
     const key = scheduleKey(activeTab.value, cfg.key)
     localSchedules.value[key] = bulkCadence.value
   }
@@ -360,7 +361,7 @@ async function saveSchedules() {
 
 // ── QR URL helpers ─────────────────────────────────────
 function getQrUrl(logType: SafetyLogType): string {
-  const slug = safetyKeyToSlug(logType)
+  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
   return `${baseUrl.value}/med-ops/safety/${slug}?location=${activeTab.value}`
 }
 
@@ -473,6 +474,7 @@ function printElement(el: HTMLElement, mode: 'single' | 'sheet', locationLabel?:
 // ── Lifecycle ──────────────────────────────────────────
 onMounted(() => {
   fetchSchedules()
+  fetchCustomTypes()
 })
 </script>
 

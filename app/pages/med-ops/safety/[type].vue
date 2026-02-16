@@ -12,18 +12,8 @@
       </v-btn>
     </div>
 
-    <!-- Emergency Contacts (static view — no form) -->
-    <template v-if="logTypeKey === 'emergency_contacts'">
-      <UiPageHeader
-        title="Emergency Contacts & Shutoffs"
-        subtitle="Read-only reference: emergency numbers and utility shutoff locations"
-        icon="mdi-phone-alert"
-      />
-      <SafetyEmergencyContactsView :initial-location="initialLocation || 'venice'" />
-    </template>
-
     <!-- Standard log form -->
-    <template v-else-if="logTypeConfig">
+    <template v-if="logTypeConfig">
       <UiPageHeader
         :title="logTypeConfig.label"
         :subtitle="logTypeConfig.description"
@@ -102,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { format } from 'date-fns'
 import {
   type SafetyLogType,
@@ -122,13 +112,21 @@ const router = useRouter()
 const store = useSafetyLogStore()
 const toast = useToast()
 const authStore = useAuthStore()
+const { findType, fetchCustomTypes, loaded: ctLoaded } = useCustomSafetyLogTypes()
 
 // Resolve log type from URL slug: /med-ops/safety/radiation-dosimetry → radiation_dosimetry
 const logTypeKey = computed<SafetyLogType>(() =>
   safetySlugToKey(route.params.type as string) as SafetyLogType
 )
 
-const logTypeConfig = computed(() => getSafetyLogTypeConfig(logTypeKey.value))
+// First check built-in, then custom types
+const logTypeConfig = computed(() => {
+  // Built-in lookup
+  const builtIn = getSafetyLogTypeConfig(logTypeKey.value)
+  if (builtIn) return builtIn
+  // Custom type lookup
+  return findType(logTypeKey.value)
+})
 
 // QR deep-link: ?location=venice pre-selects location
 const initialLocation = computed<SafetyLogLocation | null>(() => {
@@ -147,6 +145,11 @@ const userName = computed(() => {
 const todayFormatted = computed(() => format(new Date(), 'MMMM d, yyyy'))
 
 const showSuccess = ref(false)
+
+// Ensure custom types are loaded
+onMounted(async () => {
+  if (!ctLoaded.value) await fetchCustomTypes()
+})
 
 async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
   try {

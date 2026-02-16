@@ -23,6 +23,9 @@ export const SafetyLogTypeEnum = z.enum([
   'equipment_maintenance',
   'safety_meeting',
   'emergency_contacts',
+  'hazcom_chemical',
+  'ppe_assessment',
+  'employee_acknowledgment',
 ])
 
 export const SafetyLocationEnum = z.enum(['venice', 'sherman_oaks', 'van_nuys'])
@@ -114,6 +117,48 @@ export const SafetyMeetingSchema = z.object({
   action_items: z.string().optional().default(''),
 })
 
+export const EmergencyContactsSchema = z.object({
+  contact_type: z.string().min(1, 'Contact type is required'),
+  name: z.string().min(1, 'Contact name is required').transform(s => s.trim()),
+  phone: z.string().min(1, 'Phone number is required').transform(s => s.trim()),
+  address: z.string().optional().default(''),
+  shutoff_type: z.string().optional().default(''),
+  shutoff_location: z.string().optional().default(''),
+  assembly_point: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+})
+
+export const HazcomChemicalSchema = z.object({
+  chemical_name: z.string().min(1, 'Chemical name is required').transform(s => s.trim()),
+  manufacturer: z.string().optional().default(''),
+  sds_available: z.boolean().default(false),
+  properly_labeled: z.boolean().default(false),
+  storage_location: z.string().optional().default(''),
+  hazard_category: z.string().optional().default(''),
+  ppe_required: z.array(z.string()).default([]),
+  spill_procedure: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+})
+
+export const PpeAssessmentSchema = z.object({
+  assessment_type: z.string().min(1, 'Assessment type is required'),
+  area_assessed: z.string().min(1, 'Area is required').transform(s => s.trim()),
+  ppe_items_checked: z.array(z.string()).default([]),
+  condition: z.string().optional().default(''),
+  deficiencies_found: z.string().optional().default(''),
+  corrective_action: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+})
+
+export const EmployeeAcknowledgmentSchema = z.object({
+  employee_name: z.string().min(1, 'Employee name is required').transform(s => s.trim()),
+  acknowledgment_type: z.string().min(1, 'Acknowledgment type is required'),
+  sections_reviewed: z.array(z.string()).default([]),
+  acknowledgment_date: z.string().min(1, 'Date is required'),
+  annual_review_date: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+})
+
 // Map of log_type → form_data schema
 export const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   training_attendance: TrainingAttendanceSchema,
@@ -127,13 +172,17 @@ export const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   radiation_dosimetry: RadiationDosimetrySchema,
   equipment_maintenance: EquipmentMaintenanceSchema,
   safety_meeting: SafetyMeetingSchema,
+  emergency_contacts: EmergencyContactsSchema,
+  hazcom_chemical: HazcomChemicalSchema,
+  ppe_assessment: PpeAssessmentSchema,
+  employee_acknowledgment: EmployeeAcknowledgmentSchema,
 }
 
 /**
  * Full insert schema — validates the complete payload before DB insert.
  */
 export const SafetyLogInsertSchema = z.object({
-  log_type: SafetyLogTypeEnum,
+  log_type: z.string().min(1, 'Log type is required'),
   location: SafetyLocationEnum,
   form_data: z.record(z.unknown()),
   submitted_by: z.string().uuid(),
@@ -157,11 +206,14 @@ export const SafetyLogUpdateSchema = z.object({
 
 /**
  * Validate form_data against its type-specific schema.
+ * For custom types (not in FORM_DATA_SCHEMAS), validation is skipped
+ * and the data is passed through — UI form rules handle validation.
  */
 export function validateFormData(logType: string, formData: unknown) {
   const schema = FORM_DATA_SCHEMAS[logType]
   if (!schema) {
-    return { success: false as const, error: { message: `Unknown log type: ${logType}` } }
+    // Custom type — pass through, UI validates via required field rules
+    return { success: true as const, data: formData }
   }
   return schema.safeParse(formData)
 }

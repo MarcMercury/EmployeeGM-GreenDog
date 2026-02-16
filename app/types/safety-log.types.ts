@@ -20,6 +20,10 @@ export type SafetyLogType =
   | 'equipment_maintenance'
   | 'safety_meeting'
   | 'emergency_contacts'
+  | 'hazcom_chemical'
+  | 'ppe_assessment'
+  | 'employee_acknowledgment'
+  | string // custom types
 
 export type SafetyLogLocation = 'venice' | 'sherman_oaks' | 'van_nuys'
 
@@ -101,6 +105,7 @@ export interface SafetyLogTypeConfig {
   fields: SafetyFormField[]
   hasOshaToggle?: boolean
   complianceStandards?: string[]
+  isCustom?: boolean
 }
 
 // ── Filter / Query ─────────────────────────────────────
@@ -117,10 +122,10 @@ export interface SafetyLogFilters {
 
 // ── Constants ──────────────────────────────────────────
 
-export const SAFETY_LOCATIONS: { value: SafetyLogLocation; label: string }[] = [
-  { value: 'venice', label: 'Venice' },
-  { value: 'sherman_oaks', label: 'Sherman Oaks' },
-  { value: 'van_nuys', label: 'Van Nuys' },
+export const SAFETY_LOCATIONS: { value: SafetyLogLocation; label: string; address: string }[] = [
+  { value: 'venice', label: 'Venice', address: '210 Main St, Venice, CA 90291' },
+  { value: 'sherman_oaks', label: 'Sherman Oaks', address: '13907 Ventura Blvd. Ste 101, Sherman Oaks, CA 91423' },
+  { value: 'van_nuys', label: 'Van Nuys', address: '14661 Aetna St, Van Nuys, CA 91411' },
 ]
 
 export const SAFETY_STATUSES: { value: SafetyLogStatus; label: string; color: string; icon: string }[] = [
@@ -144,9 +149,11 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     complianceStandards: ['Cal/OSHA Title 8 §3203'],
     fields: [
       { key: 'employee_name', label: 'Employee Name', type: 'text', required: true, cols: 6 },
-      { key: 'topic', label: 'Training Topic', type: 'select', required: true, cols: 6, options: ['IIPP', 'Fire Safety', 'Hazard Communication', 'Bloodborne Pathogens', 'Radiation Safety', 'Emergency Preparedness', 'Workplace Violence', 'Ergonomics', 'PPE', 'Other'] },
+      { key: 'topic', label: 'Training Topic', type: 'select', required: true, cols: 6, options: ['IIPP', 'Fire Safety', 'Hazard Communication', 'Bloodborne Pathogens', 'Radiation Safety', 'Emergency Preparedness', 'Workplace Violence Prevention', 'Ergonomics', 'PPE', 'Zoonotic Disease Control', 'Chemical Safety / HazCom', 'Equipment Safety', 'Other'] },
+      { key: 'training_trigger', label: 'Training Trigger', type: 'select', cols: 6, options: ['At Hire', 'New Hazard Introduced', 'Procedure / Equipment Change', 'Unsafe Behavior Observed', 'Annual Refresher', 'Regulatory Update', 'Other'] },
       { key: 'training_date', label: 'Training Date', type: 'date', required: true, cols: 6 },
       { key: 'trainer', label: 'Trainer Name', type: 'text', cols: 6 },
+      { key: 'duration_minutes', label: 'Duration (minutes)', type: 'number', cols: 6 },
       { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
     ],
   },
@@ -190,7 +197,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     fields: [
       { key: 'assessor', label: 'Assessor Name', type: 'text', required: true, cols: 6 },
       { key: 'area', label: 'Area Assessed', type: 'text', required: true, cols: 6 },
-      { key: 'hazard_type', label: 'Hazard Type', type: 'select', cols: 6, options: ['Chemical', 'Biological', 'Physical', 'Ergonomic', 'Radiation', 'Electrical', 'Fire', 'Other'] },
+      { key: 'hazard_type', label: 'Hazard Type', type: 'select', cols: 6, options: ['Chemical', 'Biological', 'Physical', 'Ergonomic', 'Radiation', 'Electrical', 'Fire', 'Animal Handling', 'Zoonotic Disease', 'Sharps / Needlestick', 'Anesthetic Gas Exposure', 'Other'] },
       { key: 'risk_level', label: 'Risk Level', type: 'select', cols: 6, options: ['Low', 'Medium', 'High'] },
       { key: 'mitigation_plan', label: 'Mitigation Plan', type: 'textarea', cols: 12 },
     ],
@@ -204,7 +211,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     complianceStandards: ['Cal/OSHA Title 8 §3203', 'AAHA Facility Standards'],
     fields: [
       { key: 'inspector', label: 'Inspector Name', type: 'text', required: true, cols: 6 },
-      { key: 'checklist_items', label: 'Checklist Items', type: 'multiselect', cols: 6, options: ['Fire Extinguishers', 'PPE Availability', 'Eye Wash Station', 'First Aid Kit', 'Exit Signs', 'Emergency Lighting', 'Spill Kit', 'Sharps Containers', 'Ventilation', 'Chemical Storage'] },
+      { key: 'checklist_items', label: 'Checklist Items', type: 'multiselect', cols: 6, options: ['Fire Extinguishers', 'PPE Availability', 'Eye Wash Station', 'First Aid Kit', 'Exit Signs', 'Emergency Lighting', 'Spill Kit', 'Sharps Containers', 'Ventilation', 'Chemical Storage', 'SDS Accessible', 'Radiation Signage', 'Oxygen Storage', 'Anesthetic Equipment', 'Electrical Panels Clear', 'Smoke Detectors', 'Emergency Exits Clear'] },
       { key: 'findings', label: 'Findings', type: 'textarea', cols: 12 },
       { key: 'photos', label: 'Photo Upload', type: 'file', cols: 12, hint: 'Upload inspection photos' },
     ],
@@ -217,7 +224,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     description: 'Log fire, earthquake, and active threat drills.',
     complianceStandards: ['Cal/OSHA Title 8 §3220', 'AAHA Emergency Preparedness'],
     fields: [
-      { key: 'drill_type', label: 'Drill Type', type: 'select', required: true, cols: 6, options: ['Fire', 'Earthquake', 'Active Threat', 'Evacuation', 'Other'] },
+      { key: 'drill_type', label: 'Drill Type', type: 'select', required: true, cols: 6, options: ['Fire', 'Earthquake', 'Active Threat', 'Evacuation', 'Medical Emergency', 'Power Outage', 'Hazardous Material Spill', 'Other'] },
       { key: 'evacuation_time', label: 'Evacuation Time (minutes)', type: 'number', cols: 6, hint: 'Time in minutes for full evacuation' },
       { key: 'animal_safety_protocol_followed', label: 'Animal Safety Protocol Followed?', type: 'boolean', cols: 6 },
       { key: 'participants_count', label: 'Number of Participants', type: 'number', cols: 6 },
@@ -302,9 +309,71 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Emergency Contacts & Shutoffs',
     icon: 'mdi-phone-alert',
     color: 'red-darken-1',
-    description: 'View emergency contacts, shutoff locations, and emergency numbers.',
+    description: 'Log emergency contacts, utility shutoff locations, and assembly points.',
     complianceStandards: ['Cal/OSHA Title 8 §3220'],
-    fields: [], // Static / read-only — no form fields
+    fields: [
+      { key: 'contact_type', label: 'Contact Type', type: 'select', required: true, cols: 6, options: ['Fire Department', 'Police', 'Poison Control', 'Hospital / ER', 'Animal Control', 'Utility Company', 'Building Management', 'Insurance', 'Regulatory Agency', 'Other'] },
+      { key: 'name', label: 'Contact Name / Org', type: 'text', required: true, cols: 6 },
+      { key: 'phone', label: 'Phone Number', type: 'text', required: true, cols: 6 },
+      { key: 'address', label: 'Address', type: 'text', cols: 6 },
+      { key: 'shutoff_type', label: 'Utility Shutoff Type', type: 'select', cols: 6, options: ['Gas', 'Water', 'Electrical', 'HVAC', 'Oxygen Supply', 'N/A'] },
+      { key: 'shutoff_location', label: 'Shutoff Location', type: 'text', cols: 6, placeholder: 'e.g., Rear of building, utility closet' },
+      { key: 'assembly_point', label: 'Designated Assembly Point', type: 'text', cols: 12, hint: 'Where staff should gather after evacuation' },
+      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
+    ],
+  },
+  // ── New Built-in Types (Workplace Safety Program §6, §7, §11) ───
+  {
+    key: 'hazcom_chemical',
+    label: 'HazCom / Chemical Inventory',
+    icon: 'mdi-flask',
+    color: 'lime-darken-2',
+    description: 'Log hazardous chemical inventory, SDS availability, and safe handling per HazCom Program.',
+    complianceStandards: ['Cal/OSHA Title 8 §5194', 'GHS / HazCom'],
+    fields: [
+      { key: 'chemical_name', label: 'Chemical / Product Name', type: 'text', required: true, cols: 6 },
+      { key: 'manufacturer', label: 'Manufacturer', type: 'text', cols: 6 },
+      { key: 'sds_available', label: 'SDS Available & Accessible?', type: 'boolean', cols: 6 },
+      { key: 'properly_labeled', label: 'Container Properly Labeled?', type: 'boolean', cols: 6 },
+      { key: 'storage_location', label: 'Storage Location', type: 'text', cols: 6 },
+      { key: 'hazard_category', label: 'Hazard Category', type: 'select', cols: 6, options: ['Health Hazard', 'Physical Hazard', 'Environmental Hazard', 'Corrosive', 'Flammable', 'Oxidizer', 'Toxic', 'Irritant'] },
+      { key: 'ppe_required', label: 'PPE Required', type: 'multiselect', cols: 6, options: ['Gloves', 'Goggles', 'Mask / Respirator', 'Gown', 'Face Shield', 'Apron', 'None'] },
+      { key: 'spill_procedure', label: 'Spill / Exposure Response', type: 'textarea', cols: 12, hint: 'Reference SDS Section 6 for spill guidance' },
+      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
+    ],
+  },
+  {
+    key: 'ppe_assessment',
+    label: 'PPE Assessment / Inspection',
+    icon: 'mdi-shield-account',
+    color: 'cyan-darken-1',
+    description: 'Document PPE hazard assessments, inspections, and deficiency tracking per Cal/OSHA.',
+    complianceStandards: ['Cal/OSHA Title 8 §3380-3387', 'OSHA PPE Standard'],
+    fields: [
+      { key: 'assessment_type', label: 'Assessment Type', type: 'select', required: true, cols: 6, options: ['Hazard Assessment', 'PPE Inspection', 'Stock / Inventory Check', 'Annual Review'] },
+      { key: 'area_assessed', label: 'Area / Department', type: 'text', required: true, cols: 6 },
+      { key: 'ppe_items_checked', label: 'PPE Items Checked', type: 'multiselect', cols: 12, options: ['Exam Gloves', 'Utility Gloves', 'Masks / Respirators', 'Eye / Face Protection', 'Gowns / Lab Coats', 'Lead Aprons', 'Thyroid Shields', 'Lead Gloves', 'Closed-Toe Shoes', 'Aprons', 'Dosimetry Badges'] },
+      { key: 'condition', label: 'Overall Condition', type: 'select', cols: 6, options: ['Good — No Issues', 'Fair — Minor Wear', 'Replace Needed', 'Out of Stock'] },
+      { key: 'deficiencies_found', label: 'Deficiencies Found', type: 'textarea', cols: 12 },
+      { key: 'corrective_action', label: 'Corrective Action', type: 'textarea', cols: 12 },
+      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
+    ],
+  },
+  {
+    key: 'employee_acknowledgment',
+    label: 'Safety Program Acknowledgment',
+    icon: 'mdi-file-sign',
+    color: 'green-darken-2',
+    description: 'Record employee acknowledgment of receipt and understanding of workplace safety policies.',
+    complianceStandards: ['Cal/OSHA Title 8 §3203', 'IIPP Acknowledgment'],
+    fields: [
+      { key: 'employee_name', label: 'Employee Name', type: 'text', required: true, cols: 6 },
+      { key: 'acknowledgment_type', label: 'Acknowledgment Type', type: 'select', required: true, cols: 6, options: ['Initial Hire', 'Annual Review', 'Policy Update', 'Training Completion', 'Return from Leave'] },
+      { key: 'sections_reviewed', label: 'Program Sections Reviewed', type: 'multiselect', cols: 12, options: ['IIPP', 'Fire Prevention Plan', 'Emergency Action Plan', 'Hazard Communication (HazCom)', 'PPE Program', 'Radiation Safety', 'Zoonotic Disease Control', 'Sharps Safety', 'Equipment Safety', 'Full Safety Program'] },
+      { key: 'acknowledgment_date', label: 'Acknowledgment Date', type: 'date', required: true, cols: 6 },
+      { key: 'annual_review_date', label: 'Next Annual Review Date', type: 'date', cols: 6, hint: 'Per policy: annual review required' },
+      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
+    ],
   },
 ]
 

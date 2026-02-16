@@ -102,8 +102,8 @@ export default defineEventHandler(async (event) => {
       const logLabel = sched.log_type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
       const locLabel = LOCATION_LABELS[sched.location] || sched.location
 
-      // 4. Get manager/admin profiles for this location to send in-app notifications
-      const notifyRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin']
+      // 4. Get all non-base-role profiles to send in-app notifications
+      const notifyRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
       const { data: targets } = await supabase
         .from('profiles')
         .select('id')

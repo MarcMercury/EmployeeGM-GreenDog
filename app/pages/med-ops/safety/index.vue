@@ -70,10 +70,21 @@
     </div>
 
     <!-- Log Type Grid (quick-launch tiles) -->
-    <h2 class="text-h6 font-weight-bold mb-3">Log Types</h2>
+    <div class="d-flex align-center justify-space-between mb-3">
+      <h2 class="text-h6 font-weight-bold">Log Types</h2>
+      <v-btn
+        v-if="canManage"
+        variant="text"
+        size="small"
+        prepend-icon="mdi-cog"
+        @click="router.push('/med-ops/safety/manage-types')"
+      >
+        Manage Types
+      </v-btn>
+    </div>
     <v-row dense class="mb-6">
       <v-col
-        v-for="cfg in SAFETY_LOG_TYPE_CONFIGS"
+        v-for="cfg in allTypes"
         :key="cfg.key"
         cols="6"
         sm="4"
@@ -287,18 +298,17 @@ const store = useSafetyLogStore()
 const toast = useToast()
 const router = useRouter()
 const { can } = usePermissions()
+const { allTypes, submittableTypes: mergedSubmittable, fetchCustomTypes } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
 
 const showNewLogSheet = ref(false)
 
-// Submittable types (everything except emergency_contacts which is read-only)
-const submittableTypes = computed(() =>
-  SAFETY_LOG_TYPE_CONFIGS.filter(c => c.key !== 'emergency_contacts')
-)
+// Submittable types (everything with at least 1 field — built-in + custom)
+const submittableTypes = computed(() => mergedSubmittable.value)
 
 const logTypeOptions = computed(() =>
-  SAFETY_LOG_TYPE_CONFIGS.map(c => ({ key: c.key, label: c.label }))
+  allTypes.value.map(c => ({ key: c.key, label: c.label }))
 )
 
 // Filters
@@ -330,12 +340,8 @@ function resetFilters() {
 
 function navigateToLogForm(logType: SafetyLogType) {
   showNewLogSheet.value = false
-  if (logType === 'emergency_contacts') {
-    // Emergency contacts is a static view on this same page
-    router.push(`/med-ops/safety/${safetyKeyToSlug(logType)}`)
-  } else {
-    router.push(`/med-ops/safety/${safetyKeyToSlug(logType)}`)
-  }
+  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
+  router.push(`/med-ops/safety/${slug}`)
 }
 
 function openLogDetail(log: SafetyLog) {
@@ -360,6 +366,7 @@ async function exportLogs() {
 
 onMounted(() => {
   store.fetchLogs()
+  fetchCustomTypes()
 })
 </script>
 

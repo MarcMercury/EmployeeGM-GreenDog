@@ -80,7 +80,8 @@ const PERMISSION_ROLES: Record<string, UserRole[]> = {
   
   // Safety Logs - All users can submit; managers+ can review/export/see OSHA details
   'view:safety-logs': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
-  'manage:safety-logs': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin'],
+  'manage:safety-logs': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin'],
+  'create:safety-log-types': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin'],
   
   // Performance & Reviews
   'view:reviews': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin', 'user'],
