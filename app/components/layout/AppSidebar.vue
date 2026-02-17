@@ -54,8 +54,6 @@
           />
         </template>
         <v-list-item v-if="hasPageAccess('/wiki')" to="/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketplace')" to="/marketplace" title="Marketplace" prepend-icon="mdi-store" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasSectionAccess('Resources')" to="/wiki" prepend-icon="mdi-bookshelf" title="Resources" rounded="lg" class="nav-item mb-1" />
@@ -90,7 +88,6 @@
         </template>
         <v-list-item v-if="hasPageAccess('/roster')" to="/roster" title="Roster" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/admin/skills-management')" to="/admin/skills-management" title="Skills Management" prepend-icon="mdi-bookshelf" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facilities Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/academy/course-manager')" to="/academy/course-manager" title="Course Manager" prepend-icon="mdi-book-education" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasSectionAccess('Management')" to="/roster" prepend-icon="mdi-clipboard-text" title="Mgmt" rounded="lg" class="nav-item mb-1" />
@@ -106,10 +103,9 @@
             class="nav-item"
           />
         </template>
-        <v-list-item v-if="hasPageAccess('/med-ops/calculators')" to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/boards')" to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/calculators" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/boards" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== HR Group - Page-level access control ===== -->
       <v-list-group v-if="hasHrAccess && !rail" value="hr">

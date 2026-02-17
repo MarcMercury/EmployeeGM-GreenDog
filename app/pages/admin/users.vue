@@ -196,7 +196,7 @@
 
             <template #item.last_sign_in_at="{ item }">
               <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2">
-                {{ formatRelativeDate(item.last_sign_in_at || item.last_login_at) }}
+                {{ formatRelativeDate(getLatestDate(item.last_login_at, item.last_sign_in_at)) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -391,7 +391,7 @@
 
             <template #item.last_sign_in_at="{ item }">
               <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2 text-grey">
-                {{ formatRelativeDate(item.last_sign_in_at || item.last_login_at) }}
+                {{ formatRelativeDate(getLatestDate(item.last_login_at, item.last_sign_in_at)) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -907,16 +907,29 @@ function formatDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString()
 }
 
+function getLatestDate(a: string | null | undefined, b: string | null | undefined): string | null {
+  if (!a && !b) return null
+  if (!a) return b!
+  if (!b) return a
+  return new Date(a) >= new Date(b) ? a : b
+}
+
 function formatRelativeDate(dateStr: string | null): string {
   if (!dateStr) return 'Never'
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return 'Never'
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   
-  if (diffDays === 0) return 'Today'
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays === 1) return 'Yesterday'
   if (diffDays < 7) return `${diffDays} days ago`
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
   return date.toLocaleDateString()
 }
 

@@ -62,6 +62,7 @@
     "pdf-parse": "^2.4.5",
     "pdf2json": "^4.0.0",
     "pdfjs-dist": "^5.4.624",
+    "playwright": "^1.58.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.21.0",

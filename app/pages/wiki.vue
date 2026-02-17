@@ -11,38 +11,45 @@
     </div>
 
     <!-- Search Section -->
-    <v-card rounded="lg" class="mb-6 pa-6 text-center">
-      <v-icon size="64" color="primary" class="mb-4">mdi-book-open-page-variant</v-icon>
-      <h2 class="text-h5 font-weight-bold mb-2">What would you like to know?</h2>
-      <p class="text-body-2 text-grey mb-4">Search company policies, medical knowledge, procedures, and more</p>
+    <v-card rounded="lg" class="mb-6 pa-4 text-center" flat>
+      <p class="text-body-2 text-grey-darken-1 mb-3">Search resources, company policies, medical knowledge, procedures, and more</p>
       <v-text-field
         v-model="searchQuery"
-        placeholder="Try: PTO policy, time off, anesthesia protocols, safety manual..."
+        placeholder="Search..."
         variant="outlined"
         prepend-inner-icon="mdi-magnify"
         density="comfortable"
-        class="search-field mx-auto mb-4"
-        style="max-width: 700px;"
+        class="search-field mx-auto mb-3"
+        style="max-width: 600px;"
         @keyup.enter="performSearch('both')"
         clearable
+        hide-details
       />
-      <div class="d-flex justify-center gap-2 flex-wrap">
-        <v-btn color="primary" size="large" @click="performSearch('both')" :loading="searching" class="mr-2">
-          <v-icon start>mdi-magnify</v-icon>
-          Smart Search
-        </v-btn>
-        <v-btn variant="outlined" size="large" @click="performSearch('ai')" :loading="aiLoading">
-          <v-icon start>mdi-robot</v-icon>
-          Ask AI
-        </v-btn>
-      </div>
-      <p class="text-caption text-grey mt-3">
-        <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
-        Searches through GDD policies, wiki articles, medical knowledge, and AI-powered web results
-      </p>
+      <v-btn color="primary" size="large" @click="performSearch('both')" :loading="searching || aiLoading">
+        <v-icon start>mdi-magnify</v-icon>
+        Search
+      </v-btn>
     </v-card>
 
-    <!-- Quick Categories -->
+    <!-- Zone 1: Resources -->
+    <div class="mb-6">
+      <h3 class="text-subtitle-1 font-weight-bold mb-3">Resources</h3>
+      <v-row>
+        <v-col v-for="resource in resourceButtons" :key="resource.id" cols="6" sm="4" md="3">
+          <v-card
+            variant="outlined"
+            rounded="lg"
+            class="category-card text-center pa-4"
+            @click="navigateToResource(resource)"
+          >
+            <v-icon :color="resource.color" size="32" class="mb-2">{{ resource.icon }}</v-icon>
+            <div class="text-caption font-weight-medium">{{ resource.name }}</div>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
+
+    <!-- Zone 2: Browse by Category -->
     <div class="mb-6">
       <h3 class="text-subtitle-1 font-weight-bold mb-3">Browse by Category</h3>
       <v-row>
@@ -143,11 +150,7 @@
     <v-card v-if="hasSearched && !internalResults.length && !topicResults.length && !aiResponse" rounded="lg" class="mb-6 pa-6 text-center">
       <v-icon size="48" color="grey" class="mb-3">mdi-magnify-close</v-icon>
       <h3 class="text-h6 mb-2">No results found</h3>
-      <p class="text-body-2 text-grey mb-3">Try different search terms or ask the AI assistant for help</p>
-      <v-btn color="primary" variant="outlined" @click="performSearch('ai')" :loading="aiLoading">
-        <v-icon start>mdi-robot</v-icon>
-        Ask AI About "{{ searchQuery }}"
-      </v-btn>
+      <p class="text-body-2 text-grey mb-3">Try different search terms or refine your query</p>
     </v-card>
 
     <!-- Policies Section -->
@@ -409,30 +412,9 @@
       </v-card>
     </template>
 
-    <!-- Popular Topics (default view) -->
+    <!-- Recent Searches (default view) -->
     <template v-if="!hasSearched && !showPolicies && !showFacilityResources && !showMedPartners">
-      <h3 class="text-subtitle-1 font-weight-bold mb-3">Popular Topics</h3>
-      <v-row>
-        <v-col v-for="topic in popularTopics" :key="topic.id" cols="12" md="4">
-          <v-card rounded="lg" class="topic-card h-100" @click="openArticle(topic)">
-            <v-card-text>
-              <div class="d-flex align-center gap-3 mb-3">
-                <v-avatar :color="topic.category_color" size="40">
-                  <v-icon color="white" size="20">{{ topic.category_icon }}</v-icon>
-                </v-avatar>
-                <v-chip size="x-small" variant="tonal" :color="topic.category_color">
-                  {{ topic.category }}
-                </v-chip>
-              </div>
-              <h4 class="text-subtitle-1 font-weight-bold mb-2">{{ topic.title }}</h4>
-              <p class="text-body-2 text-grey mb-0">{{ topic.excerpt }}</p>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Recent Searches -->
-      <div class="mt-6" v-if="recentSearches.length > 0">
+      <div class="mt-2" v-if="recentSearches.length > 0">
         <h3 class="text-subtitle-1 font-weight-bold mb-3">Recent Searches</h3>
         <v-chip-group>
           <v-chip
@@ -579,16 +561,24 @@ const policyCategories = [
   }
 ]
 
+const resourceButtons = [
+  { id: 'facility-resources', name: 'Facility Resources', icon: 'mdi-office-building', color: 'brown', action: 'facility-resources' },
+  { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal', action: 'policies' },
+  { id: 'contact-list', name: 'Contact List', icon: 'mdi-contacts', color: 'blue', route: '/contact-list' },
+  { id: 'med-partners', name: 'Med Ops Partners', icon: 'mdi-handshake', color: 'indigo', action: 'med-partners' },
+  { id: 'list-hygiene', name: 'List Hygiene', icon: 'mdi-broom', color: 'green', route: '/marketing/list-hygiene' },
+  { id: 'safety-logs', name: 'Safety Logs', icon: 'mdi-shield-check', color: 'red', route: '/med-ops/safety' },
+  { id: 'drug-calculators', name: 'Drug Calculators', icon: 'mdi-calculator', color: 'purple', route: '/med-ops/calculators' },
+  { id: 'event-calendar', name: 'Event Calendar', icon: 'mdi-calendar-month', color: 'amber-darken-2', route: '/marketing/calendar' }
+]
+
 const categories = [
   { id: 'conditions', name: 'Conditions', icon: 'mdi-hospital', color: 'red' },
   { id: 'procedures', name: 'Procedures', icon: 'mdi-medical-bag', color: 'blue' },
   { id: 'medications', name: 'Medications', icon: 'mdi-pill', color: 'green' },
   { id: 'diagnostics', name: 'Diagnostics', icon: 'mdi-test-tube', color: 'purple' },
   { id: 'nutrition', name: 'Nutrition', icon: 'mdi-food-apple', color: 'orange' },
-  { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' },
-  { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal' },
-  { id: 'facility-resources', name: 'Facility Resources', icon: 'mdi-tools', color: 'brown' },
-  { id: 'med-partners', name: 'Medical Partners', icon: 'mdi-handshake', color: 'indigo' }
+  { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' }
 ]
 
 const popularTopics = [
@@ -889,6 +879,45 @@ function markHelpful() {
 
 function printArticle() {
   window.print()
+}
+
+// Resource navigation
+const router = useRouter()
+function navigateToResource(resource: any) {
+  if (resource.route) {
+    router.push(resource.route)
+    return
+  }
+  if (resource.action === 'policies') {
+    showPolicies.value = true
+    showFacilityResources.value = false
+    showMedPartners.value = false
+    hasSearched.value = false
+    searchQuery.value = ''
+    aiResponse.value = ''
+    internalResults.value = []
+    topicResults.value = []
+  } else if (resource.action === 'facility-resources') {
+    showFacilityResources.value = true
+    showPolicies.value = false
+    showMedPartners.value = false
+    hasSearched.value = false
+    searchQuery.value = ''
+    aiResponse.value = ''
+    internalResults.value = []
+    topicResults.value = []
+    loadFacilityResources()
+  } else if (resource.action === 'med-partners') {
+    showMedPartners.value = true
+    showPolicies.value = false
+    showFacilityResources.value = false
+    hasSearched.value = false
+    searchQuery.value = ''
+    aiResponse.value = ''
+    internalResults.value = []
+    topicResults.value = []
+    loadMedPartners()
+  }
 }
 
 // Facility Resources

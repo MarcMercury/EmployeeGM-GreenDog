@@ -1,0 +1,1861 @@
+{
+  "summary": {
+    "totalPages": 80,
+    "ok": 0,
+    "loadFailed": 80,
+    "redirectedToLogin": 0,
+    "withConsoleErrors": 0,
+    "withJsExceptions": 0,
+    "withNetworkErrors": 0,
+    "totalConsoleErrors": 0,
+    "totalJsExceptions": 0,
+    "totalNetworkErrors": 0,
+    "buttonsFound": 0,
+    "buttonsClicked": 0,
+    "buttonClickErrors": 0,
+    "formsFound": 0
+  },
+  "results": [
+    {
+      "path": "/auth/login",
+      "section": "Auth",
+      "isPublic": true,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 12210,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/auth/login\", waiting until \"networkidle\"\u001b[22m\n"
+      ]
+    },
+    {
+      "path": "/auth/callback",
+      "section": "Auth",
+      "isPublic": true,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 5,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/auth/callback\", waiting until \"networkidle\"\u001b[22m\n"
+      ]
+    },
+    {
+      "path": "/public/careers",
+      "section": "Public",
+      "isPublic": true,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 4,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/public/careers\", waiting until \"networkidle\"\u001b[22m\n"
+      ]
+    },
+    {
+      "path": "/",
+      "section": "Dashboard",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 57,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/activity",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 6,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/contact-list",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/development",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 5,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/export-payroll",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/goals",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/leads",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketplace",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/mentorship",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/my-ops",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/my-schedule",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/profile",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/reviews",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/settings",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 4,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/skills-library",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/time-off",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/wiki",
+      "section": "Core",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/agents",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/email-templates",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/scheduling-rules",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/services",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/skills-management",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 31,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/slack",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 4,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/system-health",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 3,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/intake",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/admin/payroll/review",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy/catalog",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy/course-manager",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy/my-training",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy/signoffs",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/academy/manager/create",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/employees",
+      "section": "Employees",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/gdu/students",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 22,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/gdu/visitors",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/gdu/events",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/gdu/events/new",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/growth/events",
+      "section": "Growth",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/growth/goals",
+      "section": "Growth",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/growth/leads",
+      "section": "Growth",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/growth/partners",
+      "section": "Growth",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/appointment-analysis",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/calendar",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/command-center",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/ezyvet-analytics",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/ezyvet-integration",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/influencers",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 2,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/inventory",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/invoice-analysis",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/list-hygiene",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/partners",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/partnerships",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/practice-analytics",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 3,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/resources",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/marketing/sauron",
+      "section": "Marketing",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/boards",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/calculators",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/facilities",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/partners",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/wiki",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/safety",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/safety/manage-types",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/med-ops/safety/qr-codes",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/people/my-skills",
+      "section": "People",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/people/skill-stats",
+      "section": "People",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/recruiting",
+      "section": "Recruiting",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/recruiting/candidates",
+      "section": "Recruiting",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/recruiting/interviews",
+      "section": "Recruiting",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/recruiting/onboarding",
+      "section": "Recruiting",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/roster",
+      "section": "Roster",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/schedule",
+      "section": "Schedule",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/schedule/builder",
+      "section": "Schedule",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/schedule/services",
+      "section": "Schedule",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 1,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/schedule/wizard",
+      "section": "Schedule",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    },
+    {
+      "path": "/training",
+      "section": "Training",
+      "isPublic": false,
+      "status": "load-failed",
+      "httpStatus": null,
+      "loadTimeMs": 0,
+      "redirectedTo": null,
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 0,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 0,
+      "vuetifyComponents": 0,
+      "notes": [
+        "Load error: page.goto: Target page, context or browser has been closed"
+      ]
+    }
+  ],
+  "timestamp": "2026-02-17T21:37:12.893Z"
+}
