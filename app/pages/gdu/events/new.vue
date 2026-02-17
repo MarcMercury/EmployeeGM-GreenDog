@@ -10,8 +10,10 @@ const { showSuccess, showError } = useToast()
 
 // Wizard step
 const currentStep = ref(1)
-const totalSteps = 5
+const totalSteps = 6
 const saving = ref(false)
+const createdEventId = ref<string | null>(null)
+const signupLinkCopied = ref(false)
 
 import type { GDUInventoryItem, SelectedInventoryItem } from '~/types/gdu.types'
 
@@ -368,8 +370,10 @@ async function saveEvent() {
       console.error('Failed to send Slack notification:', slackError)
     }
     
-    // Navigate to the event detail page
-    router.push(`/gdu/events/${data.id}`)
+    // Show success step with sign-up link
+    createdEventId.value = data.id
+    currentStep.value = 6
+    window.scrollTo(0, 0)
   } catch (e) {
     console.error('Error saving event:', e)
     showError('Error saving event. Please try again.')
@@ -384,10 +388,25 @@ const stepValid = computed(() => ({
   2: true, // Provider info is optional
   3: formData.value.ce_hours_offered > 0,
   4: true, // Speaker info is optional
-  5: true  // Logistics are optional
+  5: true, // Logistics are optional
+  6: true  // Success page
 }))
 
 const canProceed = computed(() => stepValid.value[currentStep.value as keyof typeof stepValid.value])
+
+// Sign-up form link
+const signupFormUrl = computed(() => {
+  if (!createdEventId.value) return ''
+  const base = window.location.origin
+  return `${base}/public/ce-signup/${createdEventId.value}`
+})
+
+function copySignupLink() {
+  if (!signupFormUrl.value) return
+  navigator.clipboard.writeText(signupFormUrl.value)
+  signupLinkCopied.value = true
+  setTimeout(() => { signupLinkCopied.value = false }, 3000)
+}
 </script>
 
 <template>
@@ -401,7 +420,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
         <h1 class="text-h4 font-weight-bold">Create CE Event</h1>
         <p class="text-subtitle-1 text-medium-emphasis">
           Step {{ currentStep }} of {{ totalSteps }}: 
-          {{ ['Event Information', 'Provider Information', 'Course Content', 'Speaker Information', 'Logistics & Review'][currentStep - 1] }}
+          {{ ['Event Information', 'Provider Information', 'Course Content', 'Speaker Information', 'Logistics & Review', 'Event Created'][currentStep - 1] }}
         </p>
       </div>
     </div>
@@ -444,9 +463,16 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
         />
         <v-divider />
         <v-stepper-item
+          :complete="currentStep > 5"
           :value="5"
           title="Logistics"
           icon="mdi-clipboard-check"
+        />
+        <v-divider />
+        <v-stepper-item
+          :value="6"
+          title="Done"
+          icon="mdi-check-circle"
         />
       </v-stepper-header>
     </v-stepper>
@@ -1032,11 +1058,113 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
             </v-col>
           </v-row>
         </div>
+
+        <!-- Step 6: Success / Sign-Up Link -->
+        <div v-if="currentStep === 6">
+          <div class="text-center py-6">
+            <v-icon size="80" color="success" class="mb-4">mdi-check-circle</v-icon>
+            <h3 class="text-h5 mb-2">Event Created Successfully!</h3>
+            <p class="text-medium-emphasis mb-6">Your CE event "{{ formData.title }}" has been created with a full operations checklist.</p>
+          </div>
+
+          <!-- Sign-Up Form Link Card -->
+          <v-card variant="outlined" color="primary" class="mb-6">
+            <v-card-title class="d-flex align-center">
+              <v-icon start color="primary">mdi-link-variant</v-icon>
+              Attendee Sign-Up Form Link
+            </v-card-title>
+            <v-card-subtitle class="text-wrap pb-0">
+              Share this link via email or marketing channels so attendees can register for the event. Their information will automatically appear in the CE CRM visitor list.
+            </v-card-subtitle>
+            <v-card-text>
+              <div class="d-flex align-center gap-2 mt-2">
+                <v-text-field
+                  :model-value="signupFormUrl"
+                  variant="outlined"
+                  density="compact"
+                  readonly
+                  hide-details
+                  prepend-inner-icon="mdi-link"
+                  class="flex-grow-1"
+                  @click="copySignupLink"
+                />
+                <v-btn
+                  :color="signupLinkCopied ? 'success' : 'primary'"
+                  variant="flat"
+                  @click="copySignupLink"
+                  min-width="130"
+                >
+                  <v-icon start>{{ signupLinkCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                  {{ signupLinkCopied ? 'Copied!' : 'Copy Link' }}
+                </v-btn>
+              </div>
+              <v-alert type="info" variant="tonal" density="compact" class="mt-4">
+                <div class="text-body-2">
+                  <strong>How it works:</strong> When someone fills out this form, they are added to the
+                  <strong>GDU Visitor List</strong> as a CE Attendee and linked to this event's attendee roster.
+                  You'll have their information ready before they arrive.
+                </div>
+              </v-alert>
+            </v-card-text>
+          </v-card>
+
+          <!-- Email Template Suggestion -->
+          <v-card variant="outlined" class="mb-6">
+            <v-card-title class="d-flex align-center">
+              <v-icon start>mdi-email-edit</v-icon>
+              Email Marketing Suggestion
+            </v-card-title>
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-3">
+                Copy the link above and include it in your event marketing email. Here's a sample snippet:
+              </p>
+              <v-sheet rounded="lg" class="pa-4 bg-grey-darken-3">
+                <p class="text-body-2 mb-2">📚 <strong>{{ formData.title }}</strong></p>
+                <p class="text-body-2 mb-1">📅 {{ formData.event_date_start ? new Date(formData.event_date_start + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '' }}</p>
+                <p class="text-body-2 mb-1">📍 {{ formData.location_name || 'TBD' }}</p>
+                <p class="text-body-2 mb-1">🎓 {{ formData.ce_hours_offered }} CE Hours</p>
+                <p v-if="formData.speaker_name" class="text-body-2 mb-3">🎤 Speaker: {{ formData.speaker_name }}</p>
+                <p class="text-body-2">
+                  👉 <strong>Register here:</strong> <span class="text-primary">{{ signupFormUrl }}</span>
+                </p>
+              </v-sheet>
+            </v-card-text>
+          </v-card>
+
+          <!-- Action Buttons -->
+          <div class="d-flex gap-3 justify-center">
+            <v-btn
+              color="primary"
+              variant="flat"
+              size="large"
+              :to="`/gdu/events/${createdEventId}`"
+            >
+              <v-icon start>mdi-eye</v-icon>
+              View Event Details
+            </v-btn>
+            <v-btn
+              variant="outlined"
+              size="large"
+              to="/gdu/events"
+            >
+              <v-icon start>mdi-format-list-bulleted</v-icon>
+              All Events
+            </v-btn>
+            <v-btn
+              variant="outlined"
+              size="large"
+              to="/gdu/visitors"
+            >
+              <v-icon start>mdi-account-group</v-icon>
+              Visitor List
+            </v-btn>
+          </div>
+        </div>
       </v-card-text>
       
-      <v-divider />
+      <v-divider v-if="currentStep < 6" />
       
-      <v-card-actions class="pa-4">
+      <v-card-actions v-if="currentStep < 6" class="pa-4">
         <v-btn
           v-if="currentStep > 1"
           variant="outlined"
@@ -1047,7 +1175,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
         </v-btn>
         <v-spacer />
         <v-btn
-          v-if="currentStep < totalSteps"
+          v-if="currentStep < 5"
           color="primary"
           :disabled="!canProceed"
           @click="nextStep"
@@ -1056,7 +1184,7 @@ const canProceed = computed(() => stepValid.value[currentStep.value as keyof typ
           <v-icon end>mdi-arrow-right</v-icon>
         </v-btn>
         <v-btn
-          v-else
+          v-else-if="currentStep === 5"
           color="success"
           :loading="saving"
           :disabled="!stepValid[1]"

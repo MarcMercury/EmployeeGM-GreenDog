@@ -15,7 +15,7 @@ const sidebarCollapsed = ref(false)
 // Collapsible section states - all collapsed by default
 // 4-TIER ROLE STRUCTURE: admin, office_admin, marketing_admin, user
 const sections = ref({
-  resources: false,      // Wiki, Facility Resources, Contact List, List Hygiene
+  resources: false,      // Wiki, Contact List, List Hygiene
   myWorkspace: false,    // All users: My Profile (skills/goals/reviews), My Schedule, My Training
   management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
   hr: false,             // HR Admin + Admin: Team Schedule, Time Off, Recruiting, Payroll
@@ -260,10 +260,6 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
                 Wiki
               </NuxtLink>
-              <NuxtLink to="/med-ops/facilities" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔧</div>
-                Facility Resources
-              </NuxtLink>
               <NuxtLink to="/contact-list" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-cyan-500/20">📇</div>
                 Contact List
@@ -440,10 +436,6 @@ const closeMobileMenu = () => {
               <NuxtLink to="/med-ops/boards" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-blue-500/20">📋</div>
                 Medical Boards
-              </NuxtLink>
-              <NuxtLink to="/med-ops/partners" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-purple-500/20">🏭</div>
-                Med Ops Partners
               </NuxtLink>
               <NuxtLink to="/med-ops/safety" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">🛡️</div>

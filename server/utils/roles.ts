@@ -33,7 +33,7 @@ export const MARKETING_ROLES: readonly UserRole[] = ['super_admin', 'admin', 'ma
 /** CRM & Analytics: EzyVet CRM, Analytics, List Hygiene */
 export const CRM_ROLES: readonly UserRole[] = ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'] as const
 
-/** Education/GDU: GDU Dash, Student CRM, Visitor CRM, CE Events */
+/** Education/GDU: Student CRM, CE Attendees, CE Events */
 export const EDUCATION_ROLES: readonly UserRole[] = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'] as const
 
 /** Schedule management: Create/edit schedules */

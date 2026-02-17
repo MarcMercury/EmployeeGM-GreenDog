@@ -189,8 +189,228 @@
       </v-row>
     </template>
 
+    <!-- Facility Resources Section -->
+    <template v-if="showFacilityResources">
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6 font-weight-bold">
+          <v-icon color="brown" class="mr-2">mdi-tools</v-icon>
+          Facility Resources
+        </h3>
+        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showFacilityResources = false">
+          Back to Wiki
+        </v-btn>
+      </div>
+
+      <!-- Facility Search & Filter -->
+      <v-card variant="outlined" rounded="lg" class="mb-4">
+        <v-card-text class="pb-3">
+          <v-row dense>
+            <v-col cols="12" sm="6" md="6">
+              <v-text-field
+                v-model="facilitySearch"
+                prepend-inner-icon="mdi-magnify"
+                label="Search vendors..."
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-select
+                v-model="facilityTypeFilter"
+                :items="facilityTypeOptions"
+                label="Service Type"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="2" class="d-flex align-center">
+              <v-chip size="small" variant="tonal" color="brown">
+                {{ filteredFacilityResources.length }} vendor{{ filteredFacilityResources.length !== 1 ? 's' : '' }}
+              </v-chip>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
+      <!-- Loading State -->
+      <div v-if="facilityResourcesLoading" class="text-center py-6">
+        <v-progress-circular indeterminate color="brown" />
+        <p class="text-body-2 text-grey mt-2">Loading facility resources...</p>
+      </div>
+
+      <!-- Resource Cards -->
+      <v-row v-else-if="filteredFacilityResources.length > 0">
+        <v-col v-for="resource in filteredFacilityResources" :key="resource.id" cols="12" sm="6" md="4">
+          <v-card variant="outlined" rounded="lg" class="h-100 facility-card">
+            <v-card-text>
+              <div class="d-flex align-center gap-3 mb-3">
+                <v-avatar :color="getFacilityTypeColor(resource.resource_type)" size="44">
+                  <v-icon size="22" color="white">{{ getFacilityTypeIcon(resource.resource_type) }}</v-icon>
+                </v-avatar>
+                <div class="flex-grow-1">
+                  <h4 class="text-subtitle-2 font-weight-bold">{{ resource.name }}</h4>
+                  <v-chip size="x-small" variant="tonal" :color="getFacilityTypeColor(resource.resource_type)">
+                    {{ formatFacilityType(resource.resource_type) }}
+                  </v-chip>
+                </div>
+                <div class="d-flex flex-column align-end gap-1">
+                  <v-chip v-if="resource.emergency_contact" size="x-small" color="error" variant="flat">
+                    <v-icon start size="10">mdi-alert</v-icon>
+                    Emergency
+                  </v-chip>
+                  <v-chip v-if="resource.is_preferred" size="x-small" color="amber" variant="flat">
+                    <v-icon start size="10">mdi-star</v-icon>
+                    Preferred
+                  </v-chip>
+                </div>
+              </div>
+              <div v-if="resource.company_name" class="text-body-2 text-grey mb-1">
+                <v-icon size="14" class="mr-1">mdi-domain</v-icon>
+                {{ resource.company_name }}
+              </div>
+              <div v-if="resource.phone" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-phone</v-icon>
+                <a :href="'tel:' + resource.phone" class="text-decoration-none">{{ resource.phone }}</a>
+              </div>
+              <div v-if="resource.email" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>
+                <a :href="'mailto:' + resource.email" class="text-decoration-none">{{ resource.email }}</a>
+              </div>
+              <div v-if="resource.hours_of_operation" class="text-body-2 text-grey mb-1">
+                <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
+                {{ resource.hours_of_operation }}
+              </div>
+              <div v-if="resource.notes" class="text-caption text-grey mt-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                {{ resource.notes }}
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- No Results -->
+      <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
+        <v-icon size="48" color="grey" class="mb-3">mdi-tools</v-icon>
+        <h3 class="text-h6 mb-2">No vendors found</h3>
+        <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
+      </v-card>
+    </template>
+
+    <!-- Medical Partners Section -->
+    <template v-if="showMedPartners">
+      <div class="d-flex align-center justify-space-between mb-4">
+        <h3 class="text-h6 font-weight-bold">
+          <v-icon color="indigo" class="mr-2">mdi-handshake</v-icon>
+          Medical Partners
+        </h3>
+        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedPartners = false">
+          Back to Wiki
+        </v-btn>
+      </div>
+
+      <!-- Partner Search & Filter -->
+      <v-card variant="outlined" rounded="lg" class="mb-4">
+        <v-card-text class="pb-3">
+          <v-row dense>
+            <v-col cols="12" sm="6" md="6">
+              <v-text-field
+                v-model="medPartnerSearch"
+                prepend-inner-icon="mdi-magnify"
+                label="Search partners..."
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-select
+                v-model="medPartnerCategoryFilter"
+                :items="medPartnerCategoryOptions"
+                label="Category"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+              />
+            </v-col>
+            <v-col cols="12" md="2" class="d-flex align-center">
+              <v-chip size="small" variant="tonal" color="indigo">
+                {{ filteredMedPartners.length }} partner{{ filteredMedPartners.length !== 1 ? 's' : '' }}
+              </v-chip>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
+
+      <!-- Loading State -->
+      <div v-if="medPartnersLoading" class="text-center py-6">
+        <v-progress-circular indeterminate color="indigo" />
+        <p class="text-body-2 text-grey mt-2">Loading medical partners...</p>
+      </div>
+
+      <!-- Partner Cards -->
+      <v-row v-else-if="filteredMedPartners.length > 0">
+        <v-col v-for="partner in filteredMedPartners" :key="partner.id" cols="12" sm="6" md="4">
+          <v-card variant="outlined" rounded="lg" class="h-100 partner-wiki-card">
+            <v-card-text>
+              <div class="d-flex align-center gap-3 mb-3">
+                <v-avatar :color="partner.color || 'indigo'" size="44">
+                  <v-icon size="22" color="white">{{ partner.icon || 'mdi-factory' }}</v-icon>
+                </v-avatar>
+                <div class="flex-grow-1">
+                  <h4 class="text-subtitle-2 font-weight-bold">{{ partner.name }}</h4>
+                  <v-chip size="x-small" variant="tonal" color="indigo">
+                    {{ partner.category || 'Other' }}
+                  </v-chip>
+                </div>
+              </div>
+              <p v-if="partner.description" class="text-body-2 text-grey mb-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                {{ partner.description }}
+              </p>
+              <div v-if="partner.contact_name" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-account</v-icon>
+                {{ partner.contact_name }}
+              </div>
+              <div v-if="partner.contact_phone" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-phone</v-icon>
+                <a :href="'tel:' + partner.contact_phone" class="text-decoration-none">{{ partner.contact_phone }}</a>
+              </div>
+              <div v-if="partner.contact_email" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>
+                <a :href="'mailto:' + partner.contact_email" class="text-decoration-none">{{ partner.contact_email }}</a>
+              </div>
+              <div v-if="partner.website" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-web</v-icon>
+                <a :href="partner.website" target="_blank" class="text-decoration-none">{{ partner.website }}</a>
+              </div>
+              <div v-if="partner.products?.length" class="mt-2 d-flex flex-wrap gap-1">
+                <v-chip v-for="product in partner.products.slice(0, 3)" :key="product" size="x-small" variant="outlined">
+                  {{ product }}
+                </v-chip>
+                <v-chip v-if="partner.products.length > 3" size="x-small" variant="outlined">
+                  +{{ partner.products.length - 3 }} more
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- No Results -->
+      <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
+        <v-icon size="48" color="grey" class="mb-3">mdi-handshake</v-icon>
+        <h3 class="text-h6 mb-2">No partners found</h3>
+        <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
+      </v-card>
+    </template>
+
     <!-- Popular Topics (default view) -->
-    <template v-if="!hasSearched && !showPolicies">
+    <template v-if="!hasSearched && !showPolicies && !showFacilityResources && !showMedPartners">
       <h3 class="text-subtitle-1 font-weight-bold mb-3">Popular Topics</h3>
       <v-row>
         <v-col v-for="topic in popularTopics" :key="topic.id" cols="12" md="4">
@@ -294,6 +514,16 @@ const articleDialog = ref(false)
 const selectedArticle = ref<any>(null)
 const recentSearches = ref<string[]>([])
 const showPolicies = ref(false)
+const showFacilityResources = ref(false)
+const facilityResources = ref<any[]>([])
+const facilityResourcesLoading = ref(false)
+const facilitySearch = ref('')
+const facilityTypeFilter = ref<string | null>(null)
+const showMedPartners = ref(false)
+const medPartners = ref<any[]>([])
+const medPartnersLoading = ref(false)
+const medPartnerSearch = ref('')
+const medPartnerCategoryFilter = ref<string | null>(null)
 const hasSearched = ref(false)
 
 // Load recent searches from localStorage
@@ -356,7 +586,9 @@ const categories = [
   { id: 'diagnostics', name: 'Diagnostics', icon: 'mdi-test-tube', color: 'purple' },
   { id: 'nutrition', name: 'Nutrition', icon: 'mdi-food-apple', color: 'orange' },
   { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' },
-  { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal' }
+  { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal' },
+  { id: 'facility-resources', name: 'Facility Resources', icon: 'mdi-tools', color: 'brown' },
+  { id: 'med-partners', name: 'Medical Partners', icon: 'mdi-handshake', color: 'indigo' }
 ]
 
 const popularTopics = [
@@ -486,6 +718,8 @@ async function performSearch(mode: 'search' | 'ai' | 'both') {
   
   hasSearched.value = true
   showPolicies.value = false
+  showFacilityResources.value = false
+  showMedPartners.value = false
   
   // Clear previous results
   if (!isAiOnly) {
@@ -556,11 +790,15 @@ function clearResults() {
   topicResults.value = []
   aiResponse.value = ''
   hasSearched.value = false
+  showFacilityResources.value = false
+  showMedPartners.value = false
 }
 
 function selectCategory(category: any) {
   if (category.id === 'policies') {
     showPolicies.value = true
+    showFacilityResources.value = false
+    showMedPartners.value = false
     hasSearched.value = false
     searchQuery.value = ''
     aiResponse.value = ''
@@ -568,8 +806,36 @@ function selectCategory(category: any) {
     topicResults.value = []
     return
   }
+
+  if (category.id === 'facility-resources') {
+    showFacilityResources.value = true
+    showPolicies.value = false
+    showMedPartners.value = false
+    hasSearched.value = false
+    searchQuery.value = ''
+    aiResponse.value = ''
+    internalResults.value = []
+    topicResults.value = []
+    loadFacilityResources()
+    return
+  }
+
+  if (category.id === 'med-partners') {
+    showMedPartners.value = true
+    showPolicies.value = false
+    showFacilityResources.value = false
+    hasSearched.value = false
+    searchQuery.value = ''
+    aiResponse.value = ''
+    internalResults.value = []
+    topicResults.value = []
+    loadMedPartners()
+    return
+  }
   
   showPolicies.value = false
+  showFacilityResources.value = false
+  showMedPartners.value = false
   searchQuery.value = category.name
   performSearch('both')
 }
@@ -624,6 +890,144 @@ function markHelpful() {
 function printArticle() {
   window.print()
 }
+
+// Facility Resources
+const supabase = useSupabaseClient()
+
+const facilityResourceTypes = [
+  { value: 'plumber', title: 'Plumber' },
+  { value: 'electrician', title: 'Electrician' },
+  { value: 'hvac', title: 'HVAC' },
+  { value: 'handyman', title: 'Handyman' },
+  { value: 'landlord', title: 'Landlord' },
+  { value: 'cleaning', title: 'Cleaning' },
+  { value: 'landscaping', title: 'Landscaping' },
+  { value: 'pest_control', title: 'Pest Control' },
+  { value: 'security', title: 'Security' },
+  { value: 'it_support', title: 'IT Support' },
+  { value: 'appliance_repair', title: 'Appliance Repair' },
+  { value: 'roofing', title: 'Roofing' },
+  { value: 'painting', title: 'Painting' },
+  { value: 'design', title: 'Design / Signage' },
+  { value: 'cabinetry', title: 'Cabinetry' },
+  { value: 'countertops', title: 'Stone / Counters' },
+  { value: 'general_contractor', title: 'General Contractor' },
+  { value: 'other', title: 'Other' }
+]
+
+function getFacilityTypeColor(type: string) {
+  const colors: Record<string, string> = {
+    plumber: 'blue', electrician: 'amber', hvac: 'cyan', handyman: 'brown',
+    landlord: 'purple', cleaning: 'teal', landscaping: 'green', pest_control: 'orange',
+    security: 'red', it_support: 'indigo', appliance_repair: 'blue-grey',
+    roofing: 'deep-orange', painting: 'pink', design: 'lime', cabinetry: 'brown-darken-2',
+    countertops: 'grey', general_contractor: 'deep-purple', other: 'grey'
+  }
+  return colors[type] || 'grey'
+}
+
+function getFacilityTypeIcon(type: string) {
+  const icons: Record<string, string> = {
+    plumber: 'mdi-pipe-wrench', electrician: 'mdi-flash', hvac: 'mdi-air-conditioner',
+    handyman: 'mdi-hammer-wrench', landlord: 'mdi-home-city', cleaning: 'mdi-broom',
+    landscaping: 'mdi-flower', pest_control: 'mdi-bug', security: 'mdi-shield-lock',
+    it_support: 'mdi-desktop-classic', appliance_repair: 'mdi-dishwasher',
+    roofing: 'mdi-home-roof', painting: 'mdi-format-paint', design: 'mdi-palette',
+    cabinetry: 'mdi-cupboard', countertops: 'mdi-counter',
+    general_contractor: 'mdi-hard-hat', other: 'mdi-tools'
+  }
+  return icons[type] || 'mdi-tools'
+}
+
+function formatFacilityType(type: string) {
+  return type?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Other'
+}
+
+async function loadFacilityResources() {
+  facilityResourcesLoading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('facility_resources')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+    if (error) throw error
+    facilityResources.value = data || []
+  } catch (err) {
+    console.error('[Wiki] Failed to load facility resources:', err)
+  } finally {
+    facilityResourcesLoading.value = false
+  }
+}
+
+const filteredFacilityResources = computed(() => {
+  let filtered = facilityResources.value
+  if (facilitySearch.value) {
+    const q = facilitySearch.value.toLowerCase()
+    filtered = filtered.filter(r =>
+      r.name?.toLowerCase().includes(q) ||
+      r.company_name?.toLowerCase().includes(q) ||
+      r.phone?.includes(facilitySearch.value) ||
+      r.email?.toLowerCase().includes(q) ||
+      r.resource_type?.toLowerCase().includes(q) ||
+      r.notes?.toLowerCase().includes(q)
+    )
+  }
+  if (facilityTypeFilter.value) {
+    filtered = filtered.filter(r => r.resource_type === facilityTypeFilter.value)
+  }
+  return filtered
+})
+
+const facilityTypeOptions = computed(() =>
+  [...new Set(facilityResources.value.map(r => r.resource_type))]
+    .filter(Boolean)
+    .map(t => ({ value: t, title: formatFacilityType(t) }))
+    .sort((a, b) => a.title.localeCompare(b.title))
+)
+
+// Medical Partners
+async function loadMedPartners() {
+  medPartnersLoading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('med_ops_partners')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+    if (error) throw error
+    medPartners.value = data || []
+  } catch (err) {
+    console.error('[Wiki] Failed to load medical partners:', err)
+  } finally {
+    medPartnersLoading.value = false
+  }
+}
+
+const filteredMedPartners = computed(() => {
+  let filtered = medPartners.value
+  if (medPartnerSearch.value) {
+    const q = medPartnerSearch.value.toLowerCase()
+    filtered = filtered.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.description?.toLowerCase().includes(q) ||
+      p.contact_name?.toLowerCase().includes(q) ||
+      p.contact_email?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q) ||
+      p.products?.some((pr: string) => pr.toLowerCase().includes(q))
+    )
+  }
+  if (medPartnerCategoryFilter.value) {
+    filtered = filtered.filter(p => p.category === medPartnerCategoryFilter.value)
+  }
+  return filtered
+})
+
+const medPartnerCategoryOptions = computed(() =>
+  [...new Set(medPartners.value.map(p => p.category))]
+    .filter(Boolean)
+    .sort()
+)
 </script>
 
 <style scoped>
@@ -691,5 +1095,25 @@ function printArticle() {
 
 .policy-link:hover {
   background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.facility-card {
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.facility-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.partner-wiki-card {
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.partner-wiki-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 </style>

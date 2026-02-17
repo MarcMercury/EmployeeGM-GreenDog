@@ -79,9 +79,8 @@ const KNOWN_APP_ROUTES: Array<{ path: string; name: string; section: string }> =
   { path: '/growth/partners', name: 'Growth Partners', section: 'Marketing' },
 
   // GDU (Education)
-  { path: '/gdu', name: 'GDU Dashboard', section: 'GDU (Education)' },
   { path: '/gdu/students', name: 'Student Contacts', section: 'GDU (Education)' },
-  { path: '/gdu/visitors', name: 'CE Course Contacts', section: 'GDU (Education)' },
+  { path: '/gdu/visitors', name: 'CE Attendees', section: 'GDU (Education)' },
   { path: '/gdu/events', name: 'CE Events', section: 'GDU (Education)' },
 
   // Academy

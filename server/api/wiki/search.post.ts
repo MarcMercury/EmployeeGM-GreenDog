@@ -321,6 +321,64 @@ export default defineEventHandler(async (event) => {
     const policyResults = searchPolicies(query)
     results.internalResults.push(...policyResults)
     
+    // 2b. Search facility resources
+    const { data: facilityResults } = await client
+      .from('facility_resources')
+      .select('id, name, company_name, resource_type, phone, email, notes')
+      .eq('is_active', true)
+      .or(`name.ilike.%${safeQuery}%,company_name.ilike.%${safeQuery}%,resource_type.ilike.%${safeQuery}%,notes.ilike.%${safeQuery}%`)
+      .limit(10)
+    
+    if (facilityResults?.length) {
+      for (const fr of facilityResults) {
+        let relevance = 0
+        const q = query.toLowerCase()
+        if (fr.name?.toLowerCase().includes(q)) relevance += 15
+        if (fr.resource_type?.toLowerCase().includes(q)) relevance += 10
+        if (fr.company_name?.toLowerCase().includes(q)) relevance += 8
+        if (fr.notes?.toLowerCase().includes(q)) relevance += 3
+        
+        const typeName = fr.resource_type?.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) || 'Vendor'
+        results.internalResults.push({
+          id: fr.id,
+          title: fr.name || fr.company_name || 'Facility Vendor',
+          excerpt: [typeName, fr.phone, fr.email].filter(Boolean).join(' · ') + (fr.notes ? ` — ${fr.notes.substring(0, 100)}` : ''),
+          category: 'Facility Resources',
+          source: 'system_data',
+          relevance
+        })
+      }
+    }
+    
+    // 2c. Search medical partners
+    const { data: partnerResults } = await client
+      .from('med_ops_partners')
+      .select('id, name, category, description, contact_name, contact_email, contact_phone, website, products')
+      .eq('is_active', true)
+      .or(`name.ilike.%${safeQuery}%,category.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,contact_name.ilike.%${safeQuery}%`)
+      .limit(10)
+    
+    if (partnerResults?.length) {
+      for (const mp of partnerResults) {
+        let relevance = 0
+        const q = query.toLowerCase()
+        if (mp.name?.toLowerCase().includes(q)) relevance += 15
+        if (mp.category?.toLowerCase().includes(q)) relevance += 10
+        if (mp.description?.toLowerCase().includes(q)) relevance += 5
+        if (mp.contact_name?.toLowerCase().includes(q)) relevance += 3
+        if (mp.products?.some((p: string) => p.toLowerCase().includes(q))) relevance += 8
+        
+        results.internalResults.push({
+          id: mp.id,
+          title: mp.name || 'Medical Partner',
+          excerpt: [mp.category, mp.description?.substring(0, 120)].filter(Boolean).join(' — ') + (mp.contact_name ? ` · Contact: ${mp.contact_name}` : ''),
+          category: 'Medical Partners',
+          source: 'system_data',
+          relevance
+        })
+      }
+    }
+    
     // 3. Sort all internal results by relevance
     results.internalResults.sort((a, b) => b.relevance - a.relevance)
     results.totalInternalHits = results.internalResults.length

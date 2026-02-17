@@ -111,7 +111,7 @@
                       <v-icon start size="large">mdi-account-multiple-check</v-icon>
                       <div>
                         <div class="font-weight-bold">{{ duplicateEmails.length }} Duplicate Visitors Found</div>
-                        <div class="text-body-2">These emails already exist in the Visitor CRM. They will be skipped during import.</div>
+                        <div class="text-body-2">These emails already exist in CE Attendees. They will be skipped during import.</div>
                       </div>
                     </div>
                   </v-alert>
@@ -225,7 +225,7 @@
                 <v-icon color="success" size="80" class="mb-4">mdi-check-circle</v-icon>
                 <h3 class="text-h5 mb-2">Import Complete!</h3>
                 <p class="text-body-1 text-grey-darken-1 mb-4">
-                  <strong>{{ uploadedCount }}</strong> new visitors added to the Visitor CRM.
+                  <strong>{{ uploadedCount }}</strong> new visitors added to CE Attendees.
                   <span v-if="duplicateEmails.length > 0">
                     <br><span class="text-warning">{{ duplicateEmails.length }} duplicates were skipped.</span>
                   </span>

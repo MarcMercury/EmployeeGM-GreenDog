@@ -54,7 +54,6 @@
           />
         </template>
         <v-list-item v-if="hasPageAccess('/wiki')" to="/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/med-ops/facilities')" to="/med-ops/facilities" title="Facility Resources" prepend-icon="mdi-office-building" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/contact-list')" to="/contact-list" title="Contact List" prepend-icon="mdi-contacts" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/list-hygiene')" to="/marketing/list-hygiene" title="List Hygiene" prepend-icon="mdi-broom" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketplace')" to="/marketplace" title="Marketplace" prepend-icon="mdi-store" density="compact" rounded="lg" class="nav-item ml-4" />
@@ -109,7 +108,6 @@
         </template>
         <v-list-item v-if="hasPageAccess('/med-ops/calculators')" to="/med-ops/calculators" title="Drug Calculators" prepend-icon="mdi-calculator" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/med-ops/boards')" to="/med-ops/boards" title="Medical Boards" prepend-icon="mdi-clipboard-pulse" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/med-ops/partners')" to="/med-ops/partners" title="Med Ops Partners" prepend-icon="mdi-handshake" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasMedOpsAccess" to="/med-ops/calculators" prepend-icon="mdi-medical-bag" title="Med" rounded="lg" class="nav-item mb-1" />
 
@@ -186,9 +184,8 @@
             class="nav-item"
           />
         </template>
-        <v-list-item v-if="hasPageAccess('/gdu')" to="/gdu" title="GDU Dash" prepend-icon="mdi-view-dashboard" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/gdu/students')" to="/gdu/students" title="Student CRM" prepend-icon="mdi-account-school" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/gdu/visitors')" to="/gdu/visitors" title="Visitor CRM" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/gdu/visitors')" to="/gdu/visitors" title="CE Attendees" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/gdu/events')" to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
       <v-list-item v-else-if="hasEducationAccess" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
@@ -409,7 +406,7 @@ function hasSectionAccess(sectionName: string): boolean {
     'Resources': ['/wiki', '/med-ops/facilities', '/contact-list', '/marketing/list-hygiene', '/marketplace'],
     'My Workspace': ['/profile', '/my-schedule', '/academy/my-training'],
     'Management': ['/roster', '/skills-library', '/people/skill-stats', '/academy/course-manager'],
-    'Med Ops': ['/med-ops/calculators', '/med-ops/boards', '/med-ops/partners'],
+    'Med Ops': ['/med-ops/calculators', '/med-ops/boards'],
     'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/intake', '/admin/payroll/review'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
     'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis'],

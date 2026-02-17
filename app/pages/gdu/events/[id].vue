@@ -331,6 +331,20 @@ function taskStatusColor(status: string) {
 
 // Expanded categories for accordion
 const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
+
+// Sign-up form link
+const signupLinkCopied = ref(false)
+const signupFormUrl = computed(() => {
+  if (typeof window === 'undefined') return ''
+  return `${window.location.origin}/public/ce-signup/${eventId}`
+})
+
+function copySignupLink() {
+  if (!signupFormUrl.value) return
+  navigator.clipboard.writeText(signupFormUrl.value)
+  signupLinkCopied.value = true
+  setTimeout(() => { signupLinkCopied.value = false }, 3000)
+}
 </script>
 
 <template>
@@ -591,7 +605,7 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
             </v-card>
             
             <!-- Quick Actions -->
-            <v-card>
+            <v-card class="mb-4">
               <v-card-title class="d-flex align-center">
                 <v-icon start>mdi-lightning-bolt</v-icon>
                 Quick Actions
@@ -615,6 +629,51 @@ const expandedCategories = ref<string[]>(taskCategories.value.slice(0, 2))
                   <v-icon start>mdi-open-in-new</v-icon>
                   Registration Page
                 </v-btn>
+              </v-card-text>
+            </v-card>
+
+            <!-- Sign-Up Form Link -->
+            <v-card variant="outlined" color="primary">
+              <v-card-title class="d-flex align-center">
+                <v-icon start color="primary">mdi-link-variant</v-icon>
+                Sign-Up Form
+              </v-card-title>
+              <v-card-subtitle class="text-wrap">
+                Share this link via email to collect attendee registrations.
+              </v-card-subtitle>
+              <v-card-text>
+                <v-text-field
+                  :model-value="signupFormUrl"
+                  variant="outlined"
+                  density="compact"
+                  readonly
+                  hide-details
+                  prepend-inner-icon="mdi-link"
+                  class="mb-3"
+                  @click="copySignupLink"
+                />
+                <v-btn
+                  block
+                  :color="signupLinkCopied ? 'success' : 'primary'"
+                  variant="flat"
+                  @click="copySignupLink"
+                  class="mb-2"
+                >
+                  <v-icon start>{{ signupLinkCopied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+                  {{ signupLinkCopied ? 'Copied to Clipboard!' : 'Copy Sign-Up Link' }}
+                </v-btn>
+                <v-btn
+                  block
+                  variant="outlined"
+                  :href="signupFormUrl"
+                  target="_blank"
+                >
+                  <v-icon start>mdi-open-in-new</v-icon>
+                  Preview Form
+                </v-btn>
+                <p class="text-caption text-medium-emphasis mt-3">
+                  Registrations appear in the Attendees tab and the GDU Visitor List.
+                </p>
               </v-card-text>
             </v-card>
           </v-col>

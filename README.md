@@ -93,7 +93,7 @@ Deliver a cohesive operating system capable of replacing multiple third-party Sa
 - **Program Types** - Internships, Externships, Paid Cohorts, Intensives, Shadows
 - **Student Management** - Full lifecycle from inquiry to completion
 - **Student Invite Wizard** - Identity resolution and unified onboarding
-- **Visitor CRM** - Track educational inquiries and conversions
+- **CE Attendees** - Track educational inquiries and conversions
 
 ### 🔍 Recruiting Pipeline (ATS)
 - **AI Resume Parsing** - OpenAI extracts structured data from unstructured PDFs
