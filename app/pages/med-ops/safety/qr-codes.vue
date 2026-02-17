@@ -388,11 +388,17 @@ function copyUrl(logType: SafetyLogType) {
 function downloadQr(key: string, label: string) {
   const cardId = `qr-card-${activeTab.value}-${key}`
   const card = document.getElementById(cardId)
-  if (!card) return
+  if (!card) {
+    toast.error('Card element not found')
+    return
+  }
 
-  const svg = card.querySelector('.qr-svg svg') as SVGSVGElement | null
+  // qrcode.vue with render-as="svg" renders the <svg> as the root element with class qr-svg
+  const svg = card.querySelector('svg.qr-svg') as SVGSVGElement | null
+    ?? card.querySelector('.qr-svg svg') as SVGSVGElement | null
+    ?? card.querySelector('.qr-code-container svg') as SVGSVGElement | null
   if (!svg) {
-    toast.error('QR code not found')
+    toast.error('QR code SVG not found')
     return
   }
 
@@ -417,6 +423,10 @@ function downloadQr(key: string, label: string) {
     link.click()
     URL.revokeObjectURL(url)
     toast.success(`Downloaded QR for ${label}`)
+  }
+  img.onerror = () => {
+    URL.revokeObjectURL(url)
+    toast.error('Failed to render QR image')
   }
   img.src = url
 }

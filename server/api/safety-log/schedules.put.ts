@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
 
-  const managerRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+  const managerRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
   if (!profile || !managerRoles.includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Manager+ role required' })
   }
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    const { data, error } = await client
+    const { data, error } = await (client as any)
       .from('safety_log_schedules')
       .update({ cadence: u.cadence })
       .eq('log_type', u.log_type)

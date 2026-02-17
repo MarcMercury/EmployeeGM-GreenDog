@@ -1,6 +1,6 @@
 /**
  * GET /api/safety-log/schedules
- * Fetch all 36 schedule rows (12 types × 3 locations).
+ * Fetch all schedule rows (types × locations).
  */
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
@@ -10,13 +10,16 @@ export default defineEventHandler(async (event) => {
 
   const client = await serverSupabaseClient(event)
 
-  const { data, error } = await client
+  const { data, error } = await (client as any)
     .from('safety_log_schedules')
     .select('*')
     .order('location')
     .order('log_type')
 
-  if (error) throw createError({ statusCode: 500, message: error.message })
+  if (error) {
+    console.error('[schedules.get] Supabase error:', error)
+    throw createError({ statusCode: 500, message: error.message })
+  }
 
-  return data
+  return data || []
 })
