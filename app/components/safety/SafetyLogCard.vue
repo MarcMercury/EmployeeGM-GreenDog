@@ -75,7 +75,9 @@ const props = defineProps<Props>()
 
 defineEmits<{ click: [log: SafetyLog] }>()
 
-const typeConfig = computed(() => getSafetyLogTypeConfig(props.log.log_type))
+const { findType } = useCustomSafetyLogTypes()
+// Look up built-in first, then custom types
+const typeConfig = computed(() => getSafetyLogTypeConfig(props.log.log_type) || findType(props.log.log_type))
 const statusConfig = computed(() => SAFETY_STATUSES.find(s => s.value === props.log.status))
 const locationLabel = computed(() => SAFETY_LOCATIONS.find(l => l.value === props.log.location)?.label || props.log.location)
 

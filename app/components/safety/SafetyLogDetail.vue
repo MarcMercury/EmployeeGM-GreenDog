@@ -74,7 +74,7 @@
               >
                 {{ item }}
               </v-chip>
-              <span v-if="!(formDataValue(field.key) || []).length" class="text-body-2 text-grey">—</span>
+              <span v-if="isEmptyArray(formDataValue(field.key))" class="text-body-2 text-grey">—</span>
             </div>
             <!-- Text display -->
             <div v-else class="text-body-2">
@@ -156,6 +156,7 @@ import {
   SAFETY_LOCATIONS,
   SAFETY_STATUSES,
 } from '~/types/safety-log.types'
+import { useCustomSafetyLogTypes } from '~/composables/useCustomSafetyLogTypes'
 
 interface Props {
   log: SafetyLog
@@ -170,9 +171,11 @@ defineEmits<{
   review: [payload: { status: string; review_notes: string }]
 }>()
 
+const { findType } = useCustomSafetyLogTypes()
 const reviewNotes = ref('')
 
-const typeConfig = computed(() => getSafetyLogTypeConfig(props.log.log_type))
+// Look up built-in first, then custom types
+const typeConfig = computed(() => getSafetyLogTypeConfig(props.log.log_type) || findType(props.log.log_type))
 const statusConfig = computed(() => SAFETY_STATUSES.find(s => s.value === props.log.status))
 const locationLabel = computed(() => SAFETY_LOCATIONS.find(l => l.value === props.log.location)?.label || props.log.location)
 const displayFields = computed(() => typeConfig.value?.fields || [])
@@ -197,7 +200,11 @@ const formattedReviewDate = computed(() => {
   catch { return '' }
 })
 
-function formDataValue(key: string) {
+function formDataValue(key: string): unknown {
   return props.log.form_data?.[key]
+}
+
+function isEmptyArray(val: unknown): boolean {
+  return !Array.isArray(val) || val.length === 0
 }
 </script>

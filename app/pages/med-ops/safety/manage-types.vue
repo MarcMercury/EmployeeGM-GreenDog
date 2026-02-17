@@ -339,6 +339,14 @@ const { can } = usePermissions()
 const { customTypes, loading: ctLoading, fetchCustomTypes, createCustomType, updateCustomType, deleteCustomType } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
+
+// Redirect base users who shouldn't access this page
+onMounted(() => {
+  if (!canManage.value) {
+    toast.error('You do not have permission to manage log types')
+    router.replace('/med-ops/safety')
+  }
+})
 const builtInTypes = computed(() => SAFETY_LOG_TYPE_CONFIGS)
 
 // ── Dialog state ───────────────────────────────────────

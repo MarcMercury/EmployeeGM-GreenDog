@@ -3,7 +3,7 @@
     <!-- Page Header -->
     <UiPageHeader
       title="Safety Log QR Codes"
-      subtitle="36 permanent QR codes — one per log type per location. Print, post around the hospital, scan to submit."
+      :subtitle="`${allTypes.length * SAFETY_LOCATIONS.length} QR codes — one per log type per location. Print, post around the hospital, scan to submit.`"
       icon="mdi-qrcode"
     >
       <template #actions>

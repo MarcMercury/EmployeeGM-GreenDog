@@ -29,7 +29,7 @@
       </v-col>
     </v-row>
 
-    <!-- OSHA Recordable Toggle (only for injury_illness type) -->
+    <!-- OSHA Recordable Toggle (shown when config.hasOshaToggle is true) -->
     <v-row v-if="config?.hasOshaToggle" dense class="mb-4">
       <v-col cols="12">
         <v-card variant="outlined" rounded="lg" class="pa-3">
@@ -236,8 +236,12 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const { findType } = useCustomSafetyLogTypes()
 const formRef = ref()
-const config = computed<SafetyLogTypeConfig | undefined>(() => getSafetyLogTypeConfig(props.logType))
+// Look up built-in first, then custom types
+const config = computed<SafetyLogTypeConfig | undefined>(() =>
+  getSafetyLogTypeConfig(props.logType) || findType(props.logType)
+)
 
 // Form state
 const formLocation = ref<SafetyLogLocation | null>(props.initialLocation)

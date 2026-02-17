@@ -449,11 +449,11 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">🛡️</div>
                 Safety Logs
               </NuxtLink>
-              <NuxtLink to="/med-ops/safety/qr-codes" class="nav-link group" active-class="nav-link-active">
+              <NuxtLink v-if="userRole !== 'user'" to="/med-ops/safety/qr-codes" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">📱</div>
                 Safety QR Codes
               </NuxtLink>
-              <NuxtLink to="/med-ops/safety/manage-types" class="nav-link group" active-class="nav-link-active">
+              <NuxtLink v-if="userRole !== 'user'" to="/med-ops/safety/manage-types" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">⚙️</div>
                 Manage Log Types
               </NuxtLink>
