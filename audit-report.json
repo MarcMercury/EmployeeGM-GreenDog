@@ -1,1861 +1,2422 @@
 {
+  "meta": {
+    "version": "v4-auth",
+    "timestamp": "2026-02-17T22:19:05.511Z",
+    "baseUrl": "http://localhost:3000",
+    "totalRoutes": 79,
+    "authenticated": true
+  },
   "summary": {
-    "totalPages": 80,
-    "ok": 0,
-    "loadFailed": 80,
-    "redirectedToLogin": 0,
-    "withConsoleErrors": 0,
+    "totalPages": 79,
+    "ok": 2,
+    "loadFailed": 0,
+    "redirectedToLogin": 75,
+    "withConsoleErrors": 1,
     "withJsExceptions": 0,
-    "withNetworkErrors": 0,
-    "totalConsoleErrors": 0,
+    "withNetworkErrors": 2,
+    "totalConsoleErrors": 3,
     "totalJsExceptions": 0,
-    "totalNetworkErrors": 0,
-    "buttonsFound": 0,
-    "buttonsClicked": 0,
+    "totalNetworkErrors": 3,
+    "buttonsFound": 365,
+    "buttonsClicked": 14,
     "buttonClickErrors": 0,
-    "formsFound": 0
+    "formsFound": 76,
+    "authenticated": true
   },
   "results": [
     {
       "path": "/auth/login",
       "section": "Auth",
       "isPublic": true,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 12210,
+      "status": "ok",
+      "httpStatus": 200,
+      "loadTimeMs": 2171,
       "redirectedTo": null,
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
       "consoleWarnings": [],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
-        "clicked": 0,
+        "total": 4,
+        "clicked": 7,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/auth/login\", waiting until \"networkidle\"\u001b[22m\n"
-      ]
-    },
-    {
-      "path": "/auth/callback",
-      "section": "Auth",
-      "isPublic": true,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 5,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/auth/callback\", waiting until \"networkidle\"\u001b[22m\n"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/public/careers",
       "section": "Public",
       "isPublic": true,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 4,
+      "status": "has-errors",
+      "httpStatus": 200,
+      "loadTimeMs": 2223,
       "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
+      "finalUrl": "http://localhost:3000/public/careers",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Server Error)",
+        "Failed to load resource: the server responded with a status of 500 (Server Error)",
+        "Error fetching positions: FetchError: [GET] \"/api/public/positions\": 500 Server Error\n    at async $fetchRaw2 (http://localhost:3000/_nuxt/@fs/workspaces/EmployeeGM-GreenDog/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=dd070b1d:327:14)\n    at async $fetch2 (http://localhost:3000/_nuxt/@fs/workspaces/EmployeeGM-GreenDog/node_modules/ofetch/dist/shared/ofetch.CWycOUEr.mjs?v=dd070b1d:332:15)\n    at async fetchPositions (http://localhost:3000/_nuxt/pages/public/careers.vue:94:26)"
+      ],
+      "consoleWarnings": [
+        "definePageMeta() is a compiler-hint helper that is only usable inside the script block of a single file component which is also a page. Its arguments should be compiled away and passing it at runtime has no effect."
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
-        "clicked": 0,
+        "total": 1,
+        "clicked": 4,
         "errors": []
       },
       "forms": 0,
+      "inputs": 0,
+      "tables": 0,
       "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/public/careers\", waiting until \"networkidle\"\u001b[22m\n"
-      ]
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 419,
+      "h1": "GreenDog",
+      "notes": []
     },
     {
       "path": "/",
       "section": "Dashboard",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 57,
-      "redirectedTo": null,
+      "status": "redirected",
+      "httpStatus": 200,
+      "loadTimeMs": 3948,
+      "redirectedTo": "/activity",
+      "finalUrl": "http://localhost:3000/activity",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\""
+      ],
       "jsExceptions": [],
-      "networkErrors": [],
+      "networkErrors": [
+        {
+          "url": "https://uekumyupkhnpjpdcjfxb.supabase.co/rest/v1/notifications?select=*&profile_id=eq.ebf8ea08-d6c5-453f-9204-a4b35d6b92ec&is_read=eq.false&closed_at=is.null",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
       "buttons": {
-        "total": 0,
+        "total": 30,
         "clicked": 0,
         "errors": []
       },
       "forms": 0,
-      "vuetifyComponents": 0,
+      "inputs": 0,
+      "tables": 0,
+      "vuetifyComponents": 564,
+      "brokenImages": [],
+      "pageTitle": "Activity Hub",
+      "bodyLength": 2641,
+      "h1": "🔔 Activity Hub",
       "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
+        "Redirected to: /activity"
       ]
     },
     {
       "path": "/activity",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 6,
+      "status": "ok",
+      "httpStatus": 200,
+      "loadTimeMs": 3906,
       "redirectedTo": null,
+      "finalUrl": "http://localhost:3000/activity",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\"",
+        "[Vue Router warn]: No match found for location with path \"/gdu\""
+      ],
       "jsExceptions": [],
-      "networkErrors": [],
+      "networkErrors": [
+        {
+          "url": "https://uekumyupkhnpjpdcjfxb.supabase.co/rest/v1/notifications?select=*&profile_id=eq.ebf8ea08-d6c5-453f-9204-a4b35d6b92ec&is_read=eq.false&closed_at=is.null",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "url": "https://uekumyupkhnpjpdcjfxb.supabase.co/auth/v1/logout?scope=global",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
       "buttons": {
-        "total": 0,
-        "clicked": 0,
+        "total": 30,
+        "clicked": 3,
         "errors": []
       },
       "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "inputs": 0,
+      "tables": 0,
+      "vuetifyComponents": 564,
+      "brokenImages": [],
+      "pageTitle": "Activity Hub",
+      "bodyLength": 2641,
+      "h1": "🔔 Activity Hub",
+      "notes": []
     },
     {
       "path": "/contact-list",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1813,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/development",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 5,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1948,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/export-payroll",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2008,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/goals",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1955,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/leads",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2420,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketplace",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2104,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/mentorship",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1720,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/my-ops",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1842,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/my-schedule",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1826,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/profile",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2072,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/reviews",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1790,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/settings",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 4,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1830,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/skills-library",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1978,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/time-off",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2009,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/wiki",
       "section": "Core",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1881,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/admin/agents",
       "section": "Admin",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2330,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/admin/email-templates",
       "section": "Admin",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1996,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/scheduling-rules",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/services",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/skills-management",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 31,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/slack",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 4,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/system-health",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/admin/users",
-      "section": "Admin",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 3,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/admin/intake",
       "section": "Admin",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1758,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/admin/payroll/review",
       "section": "Admin",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2127,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/scheduling-rules",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1832,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/services",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1869,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/skills-management",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2011,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/slack",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1820,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/system-health",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1912,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/admin/users",
+      "section": "Admin",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1865,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/academy",
       "section": "Academy",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1968,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/academy/catalog",
       "section": "Academy",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1899,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/academy/course-manager",
       "section": "Academy",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1903,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/academy/my-training",
-      "section": "Academy",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/academy/signoffs",
-      "section": "Academy",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/academy/manager/create",
       "section": "Academy",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1906,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/academy/my-training",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2075,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/academy/signoffs",
+      "section": "Academy",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1843,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/employees",
       "section": "Employees",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1915,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/gdu/students",
-      "section": "GDU",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 22,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/gdu/visitors",
-      "section": "GDU",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/gdu/events",
       "section": "GDU",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1787,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/gdu/events/new",
       "section": "GDU",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1890,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/gdu/students",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1968,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/gdu/visitors",
+      "section": "GDU",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2493,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/growth/events",
       "section": "Growth",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1893,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/growth/goals",
       "section": "Growth",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2001,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/growth/leads",
       "section": "Growth",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2227,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/growth/partners",
       "section": "Growth",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1912,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1787,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/appointment-analysis",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1919,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/calendar",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1955,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/command-center",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1807,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/ezyvet-analytics",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1990,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/ezyvet-integration",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1902,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/influencers",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 2,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1921,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/inventory",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2014,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/invoice-analysis",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1953,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/list-hygiene",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1803,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/partners",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1933,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/partnerships",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1896,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/practice-analytics",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 3,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1840,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/resources",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1872,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/marketing/sauron",
       "section": "Marketing",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1942,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/boards",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1808,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/calculators",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2092,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/facilities",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2034,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/partners",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1880,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
-    },
-    {
-      "path": "/med-ops/wiki",
-      "section": "Med-Ops",
-      "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
-      "consoleErrors": [],
-      "consoleWarnings": [],
-      "jsExceptions": [],
-      "networkErrors": [],
-      "buttons": {
-        "total": 0,
-        "clicked": 0,
-        "errors": []
-      },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/safety",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1885,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/safety/manage-types",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1856,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/med-ops/safety/qr-codes",
       "section": "Med-Ops",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1866,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
+    },
+    {
+      "path": "/med-ops/wiki",
+      "section": "Med-Ops",
+      "isPublic": false,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1727,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
+      "consoleErrors": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
+      "jsExceptions": [],
+      "networkErrors": [],
+      "buttons": {
+        "total": 4,
+        "clicked": 0,
+        "errors": []
+      },
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/people/my-skills",
       "section": "People",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1747,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/people/skill-stats",
       "section": "People",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1757,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/recruiting",
       "section": "Recruiting",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1990,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/recruiting/candidates",
       "section": "Recruiting",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1959,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/recruiting/interviews",
       "section": "Recruiting",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2063,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/recruiting/onboarding",
       "section": "Recruiting",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1830,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/roster",
       "section": "Roster",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1919,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/schedule",
       "section": "Schedule",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1910,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/schedule/builder",
       "section": "Schedule",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1947,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/schedule/services",
       "section": "Schedule",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 1,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1947,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/schedule/wizard",
       "section": "Schedule",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 2006,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     },
     {
       "path": "/training",
       "section": "Training",
       "isPublic": false,
-      "status": "load-failed",
-      "httpStatus": null,
-      "loadTimeMs": 0,
-      "redirectedTo": null,
+      "status": "redirected-to-login",
+      "httpStatus": 200,
+      "loadTimeMs": 1772,
+      "redirectedTo": "/auth/login",
+      "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
-      "consoleWarnings": [],
+      "consoleWarnings": [
+        "[AuthMiddleware] Auth check failed: Auth session missing!"
+      ],
       "jsExceptions": [],
       "networkErrors": [],
       "buttons": {
-        "total": 0,
+        "total": 4,
         "clicked": 0,
         "errors": []
       },
-      "forms": 0,
-      "vuetifyComponents": 0,
-      "notes": [
-        "Load error: page.goto: Target page, context or browser has been closed"
-      ]
+      "forms": 1,
+      "inputs": 4,
+      "tables": 0,
+      "vuetifyComponents": 89,
+      "brokenImages": [],
+      "pageTitle": "EmployeeGM - Green Dog Veterinary",
+      "bodyLength": 260,
+      "h1": "Green Dog Dental Veterinary Center",
+      "notes": []
     }
-  ],
-  "timestamp": "2026-02-17T21:37:12.893Z"
+  ]
 }
