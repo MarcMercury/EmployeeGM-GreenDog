@@ -138,10 +138,16 @@
             />
           </div>
 
-          <!-- URL -->
-          <div class="text-caption text-grey-darken-1 mb-2 url-text" style="word-break: break-all; font-size: 0.6rem; line-height: 1.2;">
-            {{ getQrUrl(cfg.key) }}
-          </div>
+          <!-- Link -->
+          <a
+            :href="getQrUrl(cfg.key)"
+            target="_blank"
+            rel="noopener"
+            class="text-caption font-weight-bold text-primary text-decoration-none d-inline-block mb-2"
+            style="cursor: pointer;"
+          >
+            Open ↗
+          </a>
 
           <!-- Cadence selector (managers only) -->
           <v-select
@@ -232,7 +238,7 @@ const { allTypes, fetchCustomTypes } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
 
-const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employeegm.greendog.vet')
+const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employee-gm-green-dog.vercel.app')
 const activeTab = ref<SafetyLogLocation>('venice')
 
 const printableTypes = computed(() => allTypes.value)
@@ -459,7 +465,7 @@ function printElement(el: HTMLElement, mode: 'single' | 'sheet', locationLabel?:
       p.sub { text-align: center; color: #666; margin-bottom: 20px; font-size: 13px; }
       .action-btns, .cadence-select, .v-select, .compliance-tags { display: none !important; }
       svg { max-width: 160px; max-height: 160px; display: block; margin: 0 auto; }
-      .url-text { font-size: 8px !important; }
+      a { display: none !important; }
       @media print { body { padding: 0; } }
     </style>
   </head><body>
