@@ -35,6 +35,7 @@ const KNOWN_APP_ROUTES: Array<{ path: string; name: string; section: string }> =
   { path: '/goals', name: 'Goals', section: 'Dashboard & Profile' },
   { path: '/reviews', name: 'Reviews', section: 'Dashboard & Profile' },
   { path: '/mentorship', name: 'Mentorship', section: 'Dashboard & Profile' },
+  { path: '/wiki', name: 'Wiki', section: 'Global' },
 
   // Contact List
   { path: '/roster', name: 'All Staff (Roster)', section: 'Contact List' },
@@ -91,7 +92,8 @@ const KNOWN_APP_ROUTES: Array<{ path: string; name: string; section: string }> =
   { path: '/academy/signoffs', name: 'Sign-offs', section: 'GDU (Education)' },
 
   // Med Ops
-  { path: '/med-ops/wiki', name: 'Med Ops Wiki', section: 'Med Ops' },
+  // NOTE: /med-ops/wiki redirects to /wiki (see app/pages/med-ops/wiki.vue)
+  // Individual Med Ops resources (calculators, boards) are now accessed through the Wiki page at /wiki
   { path: '/med-ops/calculators', name: 'Calculators', section: 'Med Ops' },
   { path: '/med-ops/boards', name: 'Med Ops Boards', section: 'Med Ops' },
   { path: '/med-ops/facilities', name: 'Facilities', section: 'Med Ops' },

@@ -89,6 +89,7 @@ export function useAccessMatrix() {
   const pageSections = computed<PageSection[]>(() => {
     const sectionMap = new Map<string, PageDefinition[]>()
     const sectionIcons: Record<string, string> = {
+      'Global': 'mdi-earth',
       'My Workspace': 'mdi-account',
       'Management': 'mdi-account-group',
       'Med Ops': 'mdi-hospital-box',

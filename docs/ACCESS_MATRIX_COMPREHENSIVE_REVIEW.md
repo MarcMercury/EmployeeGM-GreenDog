@@ -69,16 +69,21 @@ The access matrix system has **critical inconsistencies** between Migration 143 
 ### Per-Role Page Access Matrix
 
 ```
+NOTE: As of Feb 2026, Wiki is centralized at /wiki (Global section)
+All Med Ops medical knowledge is accessed through the Wiki hub.
+
 SUPER_ADMIN
+  Global: FULL (/activity, /wiki, /marketplace)
   My Workspace: FULL
   Management: FULL  
-  Med Ops: FULL
+  Med Ops: FULL (boards, calculators, facilities, partners)
   Marketing: FULL
   CRM & Analytics: FULL
   GDU: FULL
   Admin Ops: FULL
 
 ADMIN
+  Global: FULL
   My Workspace: FULL
   Management: FULL
   Med Ops: FULL
@@ -88,6 +93,7 @@ ADMIN
   Admin Ops: FULL (except /admin/users: VIEW only)
 
 MANAGER
+  Global: FULL
   My Workspace: FULL (except /marketplace: NONE)
   Management: FULL
   Med Ops: FULL
@@ -97,6 +103,7 @@ MANAGER
   Admin Ops: NONE
 
 HR_ADMIN
+  Global: FULL
   My Workspace: FULL (except /marketplace: NONE)
   Management: FULL (except /schedule/builder: NONE)
   Med Ops: FULL
@@ -106,6 +113,7 @@ HR_ADMIN
   Admin Ops: NONE
 
 OFFICE_ADMIN
+  Global: FULL
   My Workspace: FULL (except /marketplace: NONE)
   Management: FULL
   Med Ops: FULL
@@ -115,6 +123,7 @@ OFFICE_ADMIN
   Admin Ops: NONE
 
 MARKETING_ADMIN
+  Global: FULL
   My Workspace: FULL (except /marketplace: NONE)
   Management: VIEW (roster, time-off only)
   Med Ops: FULL
@@ -124,6 +133,7 @@ MARKETING_ADMIN
   Admin Ops: NONE
 
 USER
+  Global: FULL
   My Workspace: FULL (except /marketplace: NONE)
   Management: VIEW (roster, schedule, time-off only)
   Med Ops: FULL
@@ -132,6 +142,12 @@ USER
   GDU: NONE
   Admin Ops: NONE
 ```
+
+### Global Section (Feb 2026 Addition)
+- **Activity Hub** (`/activity`) - Notifications and activity feed (all users)
+- **Wiki** (`/wiki`) - Central knowledge base with medical resources, procedures, policies (all users)
+- **Marketplace** (`/marketplace`) - Super admin only marketplace features
+
 
 ---
 

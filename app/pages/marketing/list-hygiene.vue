@@ -802,7 +802,8 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
 
   // Filter target rows, keeping most populated per match value
   const valueMap = new Map<string, Record<string, any>>()
-  const removed: Record<string, any>[] = []  // Track removed records
+  const removed: Array<Record<string, any> & { _removeReason?: string }> = []  // Track suppressed records
+  const internalDupes: Array<Record<string, any> & { _removeReason?: string }> = []  // Track internal duplicates
   let noValueCount = 0
   let suppressedCount = 0
   
@@ -814,24 +815,34 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
     }
     if (suppressionValues.has(value)) {
       suppressedCount++
-      removed.push(row)  // Store removed record
+      removed.push({ ...row, _removeReason: 'Suppression List Match' })  // Store suppressed record with reason
       continue
     }
 
     const existing = valueMap.get(value)
-    if (!existing || countPopulatedFields(row) > countPopulatedFields(existing)) {
+    if (!existing) {
       valueMap.set(value, row)
+    } else {
+      // Track the less-populated duplicate being discarded
+      if (countPopulatedFields(row) > countPopulatedFields(existing)) {
+        internalDupes.push({ ...existing, _removeReason: 'Internal Duplicate' })
+        valueMap.set(value, row)
+      } else {
+        internalDupes.push({ ...row, _removeReason: 'Internal Duplicate' })
+      }
     }
   }
 
-  // Store removed records for viewing
-  removedRecords.value = removed
+  // Combine suppressed + internal duplicates for the full removed list
+  removedRecords.value = [...removed, ...internalDupes]
 
   console.log('[List Hygiene] processFindNew results:', {
     matchField: fieldName,
     targetRowsProcessed: targetRows.length,
     noValueCount,
     suppressedCount,
+    internalDuplicates: internalDupes.length,
+    totalRemoved: removed.length + internalDupes.length,
     uniqueNewLeads: valueMap.size
   })
 
@@ -1510,7 +1521,7 @@ const previewHeaders = computed(() => {
           Removed Records ({{ removedRecords.length }})
         </v-card-title>
         <v-card-subtitle>
-          Records removed because they matched the suppression list
+          Records filtered out during processing (suppression matches + internal duplicates)
         </v-card-subtitle>
         <v-divider />
         <v-card-text class="pa-0" style="max-height: 600px;">
@@ -1518,23 +1529,31 @@ const previewHeaders = computed(() => {
             <thead>
               <tr>
                 <th class="text-left">#</th>
+                <th class="text-left">Reason</th>
                 <th class="text-left">Email</th>
                 <th class="text-left">First Name</th>
                 <th class="text-left">Last Name</th>
                 <th class="text-left">Phone</th>
                 <th class="text-left">Company</th>
-                <th class="text-left">Source</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(record, idx) in removedRecords" :key="idx">
                 <td>{{ idx + 1 }}</td>
+                <td>
+                  <v-chip 
+                    :color="record._removeReason === 'Suppression List Match' ? 'error' : 'warning'" 
+                    size="x-small" 
+                    variant="tonal"
+                  >
+                    {{ record._removeReason || 'Unknown' }}
+                  </v-chip>
+                </td>
                 <td>{{ record.email || '-' }}</td>
                 <td>{{ record.first_name || '-' }}</td>
                 <td>{{ record.last_name || '-' }}</td>
                 <td>{{ record.phone || '-' }}</td>
                 <td>{{ record.company || '-' }}</td>
-                <td>{{ record.source || '-' }}</td>
               </tr>
             </tbody>
           </v-table>

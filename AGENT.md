@@ -279,6 +279,8 @@ All documentation is centralized in the `/docs` folder:
 | [`docs/UNIFIED_USER_LIFECYCLE.md`](docs/UNIFIED_USER_LIFECYCLE.md) | Person lifecycle & "hats" architecture |
 | [`docs/SLACK_INTEGRATION.md`](docs/SLACK_INTEGRATION.md) | Slack sync & notifications |
 | [`docs/AUDIT_HISTORY.md`](docs/AUDIT_HISTORY.md) | Historical audit reports (resolved issues) |
+| [`docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md`](docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md) | Complete access control architecture |
+| [`docs/ACCESS_MATRIX_WIKI_CONSOLIDATION.md`](docs/ACCESS_MATRIX_WIKI_CONSOLIDATION.md) | **Wiki page consolidation & access changes (Feb 2026)** |
 
 ### Claude Agents (`.claude/agents/`)
 
@@ -802,7 +804,10 @@ curl -s -X POST "https://api.supabase.com/v1/projects/uekumyupkhnpjpdcjfxb/datab
 
 ## 🔐 Access Matrix & Role-Based Access Control (RBAC)
 
-> **Last Updated:** January 2026
+> **Last Updated:** February 18, 2026 (Wiki Consolidation)
+
+### Recent Changes (February 2026)
+**Wiki Consolidation**: The Medical Wiki has been consolidated into a central `/wiki` page (Global section) with access granted to all authenticated users. All medical resources (policies, procedures, facility information, medical partners) are now accessed through this single Wiki hub. See [ACCESS_MATRIX_WIKI_CONSOLIDATION.md](docs/ACCESS_MATRIX_WIKI_CONSOLIDATION.md) for detailed analysis.
 
 ### System Overview
 The system uses a **role-based access matrix** where each user role has specific access levels (full/view/none) to pages/sections.

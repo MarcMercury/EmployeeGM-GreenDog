@@ -1,7 +1,21 @@
 # ACCESS MATRIX REVIEW - EXECUTIVE SUMMARY
 
-**Date**: January 24, 2026  
-**Status**: ✅ Investigation Complete | 📋 Fix Ready | ⏳ Awaiting Implementation
+**Date**: January 24, 2026 | **Updated**: February 18, 2026 (Wiki Consolidation)  
+**Status**: ✅ Investigation Complete | ✅ Wiki Migration Complete | 📋 Primary Fix Ready
+
+---
+
+## Recent Updates (February 2026)
+
+### Wiki Consolidation
+- **Change**: Medical knowledge resources moved from `/med-ops/wiki` to a centralized `/wiki` hub
+- **Impact on Access Control**: 
+  - Single `/wiki` page now provides access to all medical resources (policies, procedures, facility info, partners)
+  - All authenticated users (all 8 roles) have **FULL** access to `/wiki`
+  - Reduced complexity: 1 page access entry vs 5+ individual Med Ops page entries
+  - Backward compatibility maintained: `/med-ops/wiki` redirects to `/wiki`
+
+**See** [ACCESS_MATRIX_WIKI_CONSOLIDATION.md](ACCESS_MATRIX_WIKI_CONSOLIDATION.md) for detailed analysis.
 
 ---
 
