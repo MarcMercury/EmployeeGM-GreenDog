@@ -188,7 +188,7 @@
         <v-list-item v-if="hasPageAccess('/gdu/visitors')" to="/gdu/visitors" title="CE Attendees" prepend-icon="mdi-account-group" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/gdu/events')" to="/gdu/events" title="CE Events" prepend-icon="mdi-calendar-star" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
-      <v-list-item v-else-if="hasEducationAccess" to="/gdu" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
+      <v-list-item v-else-if="hasEducationAccess" to="/gdu/students" prepend-icon="mdi-school" title="GDU" rounded="lg" class="nav-item mb-1" />
 
       <!-- ===== Admin Ops Group - Database-driven Access ===== -->
       <v-list-group v-if="hasAdminAccess && !rail" value="admin-ops">

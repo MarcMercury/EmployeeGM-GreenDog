@@ -517,7 +517,7 @@ async function postVisitorToSlack() {
   <div>
     <!-- Header -->
     <div class="d-flex align-center mb-4">
-      <v-btn icon variant="text" aria-label="Go back" to="/gdu" class="mr-2">
+      <v-btn icon variant="text" aria-label="Go back" to="/gdu/students" class="mr-2">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <div>
