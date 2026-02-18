@@ -3,7 +3,7 @@
  * Create a new safety log entry.
  * All authenticated users can submit.
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { SafetyLogInsertSchema, validateFormData } from '~/schemas/safety-log'
 
 export default defineEventHandler(async (event) => {
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
-  const supabase = await serverSupabaseClient(event)
+  const supabase = await serverSupabaseServiceRole(event)
 
   // Resolve profile ID from auth user (submitted_by uses profile UUID, not auth UUID)
   const { data: profile } = await supabase

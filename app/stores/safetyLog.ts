@@ -2,18 +2,16 @@
  * Safety Log Store (Pinia Options API)
  *
  * Manages safety log state: list, filters, CRUD operations.
- * Uses useSupabaseClient() for direct DB access (same pattern as other stores).
+ * Routes all DB access through server API endpoints for consistent
+ * authorization, validation, and row-level scoping.
  */
 
 import { defineStore } from 'pinia'
 import type {
   SafetyLog,
-  SafetyLogInsert,
   SafetyLogUpdate,
   SafetyLogFilters,
   SafetyLogType,
-  SafetyLogLocation,
-  SafetyLogStatus,
 } from '~/types/safety-log.types'
 
 interface SafetyLogState {
@@ -72,48 +70,30 @@ export const useSafetyLogStore = defineStore('safetyLog', {
 
   actions: {
     /**
-     * Fetch logs with server-side filtering & pagination.
+     * Fetch logs with server-side filtering & pagination via API.
      */
     async fetchLogs() {
       this.loading = true
       try {
-        const supabase = useSupabaseClient()
-        let query = supabase
-          .from('safety_logs')
-          .select('*, submitter:submitted_by(id, first_name, last_name), reviewer:reviewed_by(id, first_name, last_name)', { count: 'exact' })
-          .order('submitted_at', { ascending: false })
-
-        // Apply filters
-        if (this.filters.log_type) {
-          query = query.eq('log_type', this.filters.log_type)
+        const params: Record<string, string> = {
+          page: String(this.page),
+          pageSize: String(this.pageSize),
         }
-        if (this.filters.location) {
-          query = query.eq('location', this.filters.location)
-        }
-        if (this.filters.status) {
-          query = query.eq('status', this.filters.status)
-        }
+        if (this.filters.log_type) params.log_type = this.filters.log_type
+        if (this.filters.location) params.location = this.filters.location
+        if (this.filters.status) params.status = this.filters.status
         if (this.filters.osha_recordable !== null && this.filters.osha_recordable !== undefined) {
-          query = query.eq('osha_recordable', this.filters.osha_recordable)
+          params.osha_recordable = String(this.filters.osha_recordable)
         }
-        if (this.filters.date_from) {
-          query = query.gte('submitted_at', this.filters.date_from)
-        }
-        if (this.filters.date_to) {
-          query = query.lte('submitted_at', this.filters.date_to + 'T23:59:59')
-        }
+        if (this.filters.date_from) params.date_from = this.filters.date_from
+        if (this.filters.date_to) params.date_to = this.filters.date_to
 
-        // Pagination
-        const from = (this.page - 1) * this.pageSize
-        const to = from + this.pageSize - 1
-        query = query.range(from, to)
+        const result = await $fetch<{ data: SafetyLog[]; total: number; page: number; pageSize: number }>('/api/safety-log', {
+          params,
+        })
 
-        const { data, error, count } = await query
-
-        if (error) throw error
-
-        this.logs = (data as unknown as SafetyLog[]) || []
-        this.totalCount = count || 0
+        this.logs = result.data || []
+        this.totalCount = result.total || 0
       } catch (err) {
         console.error('[SafetyLogStore] fetchLogs error:', err)
         throw err
@@ -123,20 +103,13 @@ export const useSafetyLogStore = defineStore('safetyLog', {
     },
 
     /**
-     * Fetch a single log by ID.
+     * Fetch a single log by ID via API.
      */
     async fetchLog(id: string) {
       this.loading = true
       try {
-        const supabase = useSupabaseClient()
-        const { data, error } = await supabase
-          .from('safety_logs')
-          .select('*, submitter:submitted_by(id, first_name, last_name), reviewer:reviewed_by(id, first_name, last_name)')
-          .eq('id', id)
-          .single()
-
-        if (error) throw error
-        this.currentLog = data as unknown as SafetyLog
+        const result = await $fetch<{ data: SafetyLog }>(`/api/safety-log/${id}`)
+        this.currentLog = result.data
         return this.currentLog
       } catch (err) {
         console.error('[SafetyLogStore] fetchLog error:', err)
@@ -147,50 +120,24 @@ export const useSafetyLogStore = defineStore('safetyLog', {
     },
 
     /**
-     * Create a new safety log entry.
-     */
-    async createLog(payload: SafetyLogInsert) {
-      this.submitting = true
-      try {
-        const supabase = useSupabaseClient()
-        const { data, error } = await supabase
-          .from('safety_logs')
-          .insert(payload)
-          .select()
-          .single()
-
-        if (error) throw error
-        return data as unknown as SafetyLog
-      } catch (err) {
-        console.error('[SafetyLogStore] createLog error:', err)
-        throw err
-      } finally {
-        this.submitting = false
-      }
-    },
-
-    /**
-     * Update a log (review, flag, edit).
+     * Update a log (review, flag, edit) via API.
      */
     async updateLog(id: string, payload: SafetyLogUpdate) {
       this.submitting = true
       try {
-        const supabase = useSupabaseClient()
-        const { data, error } = await supabase
-          .from('safety_logs')
-          .update(payload)
-          .eq('id', id)
-          .select()
-          .single()
+        const result = await $fetch<{ data: SafetyLog }>(`/api/safety-log/${id}`, {
+          method: 'PUT',
+          body: payload,
+        })
 
-        if (error) throw error
+        const updated = result.data
 
         // Update in local state
         const idx = this.logs.findIndex(l => l.id === id)
-        if (idx >= 0) this.logs[idx] = data as unknown as SafetyLog
-        if (this.currentLog?.id === id) this.currentLog = data as unknown as SafetyLog
+        if (idx >= 0) this.logs[idx] = updated
+        if (this.currentLog?.id === id) this.currentLog = updated
 
-        return data as unknown as SafetyLog
+        return updated
       } catch (err) {
         console.error('[SafetyLogStore] updateLog error:', err)
         throw err

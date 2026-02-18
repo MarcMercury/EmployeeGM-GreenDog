@@ -217,3 +217,50 @@ export function validateFormData(logType: string, formData: unknown) {
   }
   return schema.safeParse(formData)
 }
+
+// ── Custom Type Validation ─────────────────────────────
+
+const VALID_FIELD_TYPES = ['text', 'textarea', 'select', 'boolean', 'date', 'number', 'multiselect', 'file'] as const
+
+/** Schema for a single field definition in a custom safety log type */
+export const SafetyFormFieldSchema = z.object({
+  key: z.string().min(1, 'Field key is required').regex(/^[a-z][a-z0-9_]*$/, 'Field key must be snake_case'),
+  label: z.string().min(1, 'Field label is required'),
+  type: z.enum(VALID_FIELD_TYPES),
+  required: z.boolean().optional(),
+  options: z.array(z.string()).optional(),
+  placeholder: z.string().optional(),
+  hint: z.string().optional(),
+  cols: z.number().min(1).max(12).optional(),
+})
+
+/** Schema for custom type key — must be snake_case, no collision with built-in types */
+export const CustomTypeKeySchema = z.string()
+  .min(2, 'Key must be at least 2 characters')
+  .max(64, 'Key must be at most 64 characters')
+  .regex(/^[a-z][a-z0-9_]*$/, 'Key must be lowercase snake_case (letters, numbers, underscores)')
+
+/** Schema for creating a new custom safety log type */
+export const CustomSafetyLogTypeCreateSchema = z.object({
+  key: CustomTypeKeySchema,
+  label: z.string().min(1, 'Label is required').max(100),
+  icon: z.string().default('mdi-clipboard-text'),
+  color: z.string().default('grey'),
+  description: z.string().default(''),
+  fields: z.array(SafetyFormFieldSchema).min(1, 'At least one field is required'),
+  has_osha_toggle: z.boolean().default(false),
+  compliance_standards: z.array(z.string()).default([]),
+})
+
+/** Schema for updating a custom safety log type */
+export const CustomSafetyLogTypeUpdateSchema = z.object({
+  id: z.string().uuid('Valid type ID is required'),
+  label: z.string().min(1).max(100).optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  description: z.string().optional(),
+  fields: z.array(SafetyFormFieldSchema).min(1).optional(),
+  has_osha_toggle: z.boolean().optional(),
+  compliance_standards: z.array(z.string()).optional(),
+  is_active: z.boolean().optional(),
+})

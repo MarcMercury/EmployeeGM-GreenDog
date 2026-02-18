@@ -1,8 +1,11 @@
 /**
  * GET /api/safety-log/:id
  * Fetch a single safety log by ID.
+ * Managers+ can view any log; regular users can only view their own.
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+
+const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
@@ -11,11 +14,23 @@ export default defineEventHandler(async (event) => {
   }
 
   const id = getRouterParam(event, 'id')
-  if (!id) {
-    throw createError({ statusCode: 400, message: 'Log ID is required' })
+  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw createError({ statusCode: 400, message: 'Valid Log ID (UUID) is required' })
   }
 
-  const supabase = await serverSupabaseClient(event)
+  const supabase = await serverSupabaseServiceRole(event)
+
+  // Resolve the caller's profile and role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  if (!profile) {
+    throw createError({ statusCode: 403, message: 'Profile not found' })
+  }
+
   const { data, error } = await supabase
     .from('safety_logs')
     .select('*, submitter:submitted_by(id, first_name, last_name), reviewer:reviewed_by(id, first_name, last_name)')
@@ -24,6 +39,12 @@ export default defineEventHandler(async (event) => {
 
   if (error) {
     throw createError({ statusCode: error.code === 'PGRST116' ? 404 : 500, message: error.message })
+  }
+
+  // Non-managers can only view their own logs
+  const isManager = MANAGER_ROLES.includes(profile.role)
+  if (!isManager && data.submitted_by !== profile.id) {
+    throw createError({ statusCode: 403, message: 'You can only view your own logs' })
   }
 
   return { data }

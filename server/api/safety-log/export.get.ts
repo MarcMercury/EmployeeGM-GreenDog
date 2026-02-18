@@ -2,7 +2,21 @@
  * GET /api/safety-log/export
  * Export safety logs as CSV. Managers+ only.
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+
+const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
+const MAX_EXPORT_ROWS = 10_000
+
+/**
+ * Sanitize a cell value to prevent CSV formula injection.
+ * Prefixes dangerous leading characters with a single quote.
+ */
+function sanitizeCsvCell(val: string): string {
+  if (/^[=+\-@\t\r]/.test(val)) {
+    return `'${val}`
+  }
+  return val
+}
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
@@ -11,15 +25,14 @@ export default defineEventHandler(async (event) => {
   }
 
   // Verify manager+ role
-  const supabase = await serverSupabaseClient(event)
+  const supabase = await serverSupabaseServiceRole(event)
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('auth_user_id', user.id)
     .single()
 
-  const managerRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
-  if (!profile || !managerRoles.includes(profile.role)) {
+  if (!profile || !MANAGER_ROLES.includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Export requires manager-level access' })
   }
 
@@ -29,6 +42,7 @@ export default defineEventHandler(async (event) => {
     .from('safety_logs')
     .select('*, submitter:submitted_by(id, first_name, last_name)')
     .order('submitted_at', { ascending: false })
+    .limit(MAX_EXPORT_ROWS)
 
   if (query.log_type) dbQuery = dbQuery.eq('log_type', query.log_type as string)
   if (query.location) dbQuery = dbQuery.eq('location', query.location as string)
@@ -60,7 +74,7 @@ export default defineEventHandler(async (event) => {
     headers.join(','),
     ...rows.map((r: any) =>
       headers.map(h => {
-        const val = String(r[h] ?? '').replace(/"/g, '""')
+        const val = sanitizeCsvCell(String(r[h] ?? '').replace(/"/g, '""'))
         return `"${val}"`
       }).join(',')
     ),

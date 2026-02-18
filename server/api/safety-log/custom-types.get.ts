@@ -2,13 +2,13 @@
  * GET /api/safety-log/custom-types
  * List all custom safety log types.
  */
-import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
   if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
-  const client = await serverSupabaseClient(event)
+  const client = await serverSupabaseServiceRole(event)
 
   const { data, error } = await (client as any)
     .from('custom_safety_log_types')

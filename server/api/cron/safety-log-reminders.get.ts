@@ -101,6 +101,7 @@ export default defineEventHandler(async (event) => {
 
       const logLabel = sched.log_type.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
       const locLabel = LOCATION_LABELS[sched.location] || sched.location
+      let notificationSucceeded = false
 
       // 4. Get all non-base-role profiles to send in-app notifications
       const notifyRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
@@ -134,6 +135,7 @@ export default defineEventHandler(async (event) => {
           results.errors.push(`In-app notify error for ${sched.log_type}@${sched.location}: ${notifErr.message}`)
         } else {
           results.notificationsSent += notifications.length
+          notificationSucceeded = true
         }
       }
 
@@ -160,16 +162,19 @@ export default defineEventHandler(async (event) => {
             },
           })
           results.notificationsSent++
+          notificationSucceeded = true
         }
       } catch {
         // Slack channel not configured — skip silently
       }
 
-      // 6. Update last_notified_at
-      await supabase
-        .from('safety_log_schedules')
-        .update({ last_notified_at: now.toISOString() })
-        .eq('id', sched.id)
+      // 6. Only update last_notified_at if at least one notification was sent successfully
+      if (notificationSucceeded) {
+        await supabase
+          .from('safety_log_schedules')
+          .update({ last_notified_at: now.toISOString() })
+          .eq('id', sched.id)
+      }
     }
   } catch (err: any) {
     results.errors.push(err.message || 'Unknown error')
