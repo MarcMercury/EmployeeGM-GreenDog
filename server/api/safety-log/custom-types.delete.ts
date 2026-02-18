@@ -13,11 +13,15 @@ export default defineEventHandler(async (event) => {
   const client = await serverSupabaseServiceRole(event)
 
   // Verify admin role
-  const { data: profile } = await client
+  const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   if (!profile || !['super_admin', 'admin'].includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Admin role required' })

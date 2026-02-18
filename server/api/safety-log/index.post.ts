@@ -15,11 +15,15 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseServiceRole(event)
 
   // Resolve profile ID from auth user (submitted_by uses profile UUID, not auth UUID)
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   if (!profile) {
     throw createError({ statusCode: 403, message: 'Profile not found' })

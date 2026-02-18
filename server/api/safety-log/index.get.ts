@@ -18,11 +18,15 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseServiceRole(event)
 
   // Resolve the caller's profile and role
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   if (!profile) {
     throw createError({ statusCode: 403, message: 'Profile not found' })

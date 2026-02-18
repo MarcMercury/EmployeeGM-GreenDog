@@ -15,11 +15,15 @@ export default defineEventHandler(async (event) => {
   const client = await serverSupabaseServiceRole(event)
 
   // Verify non-base role
-  const { data: profile } = await client
+  const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, role')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   if (!profile || !ALLOWED_ROLES.includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Insufficient permissions' })

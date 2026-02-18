@@ -26,11 +26,15 @@ export default defineEventHandler(async (event) => {
 
   // Verify manager+ role
   const supabase = await serverSupabaseServiceRole(event)
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   if (!profile || !MANAGER_ROLES.includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Export requires manager-level access' })

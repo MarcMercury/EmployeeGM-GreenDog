@@ -12,11 +12,15 @@ export default defineEventHandler(async (event) => {
   const client = await serverSupabaseServiceRole(event)
 
   // Verify manager+ role
-  const { data: profile } = await client
+  const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('role')
     .eq('auth_user_id', user.id)
     .single()
+
+  if (profileError) {
+    throw createError({ statusCode: 500, message: `Error fetching profile: ${profileError.message}` })
+  }
 
   const managerRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
   if (!profile || !managerRoles.includes(profile.role)) {
