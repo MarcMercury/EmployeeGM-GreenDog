@@ -15,7 +15,7 @@ const sidebarCollapsed = ref(false)
 // Collapsible section states - all collapsed by default
 // 4-TIER ROLE STRUCTURE: admin, office_admin, marketing_admin, user
 const sections = ref({
-  resources: false,      // Wiki, Contact List, List Hygiene
+  resources: false,      // Wiki, Marketplace
   myWorkspace: false,    // All users: My Profile (skills/goals/reviews), My Schedule, My Training
   management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
   hr: false,             // HR Admin + Admin: Team Schedule, Time Off, Recruiting, Payroll
@@ -260,14 +260,6 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
                 Wiki
               </NuxtLink>
-              <NuxtLink to="/contact-list" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-cyan-500/20">📇</div>
-                Contact List
-              </NuxtLink>
-              <NuxtLink to="/marketing/list-hygiene" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-lime-500/20">🧹</div>
-                List Hygiene
-              </NuxtLink>
               <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
                 Marketplace
@@ -429,17 +421,9 @@ const closeMobileMenu = () => {
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <div class="section-content" :class="{ 'section-open': sections.medOps }">
-              <NuxtLink to="/med-ops/calculators" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-red-500/20">💊</div>
-                Drug Calculators
-              </NuxtLink>
               <NuxtLink to="/med-ops/boards" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-blue-500/20">📋</div>
                 Medical Boards
-              </NuxtLink>
-              <NuxtLink to="/med-ops/safety" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-green-500/20">🛡️</div>
-                Safety Logs
               </NuxtLink>
               <NuxtLink v-if="userRole !== 'user'" to="/med-ops/safety/qr-codes" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">📱</div>

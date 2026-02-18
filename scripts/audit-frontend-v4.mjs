@@ -364,11 +364,10 @@ async function main() {
     ],
   });
 
-  // The @nuxtjs/supabase module reads from cookies
-  // Cookie name: sb-<ref>-auth-token  (stores JSON-encoded session)
-  // It also splits into chunk cookies for large values:
-  //   sb-<ref>-auth-token.0, sb-<ref>-auth-token.1, etc.
-  const cookieValue = JSON.stringify({
+  // @supabase/ssr stores cookies in format: base64-{base64url_encoded_session_json}
+  // Cookie name: sb-<ref>-auth-token (or .0, .1, etc. for chunked)
+  // MAX_CHUNK_SIZE in @supabase/ssr is 3180 (URL-encoded length)
+  const sessionJson = JSON.stringify({
     access_token: session.access_token,
     refresh_token: session.refresh_token,
     token_type: session.token_type || 'bearer',
@@ -377,19 +376,16 @@ async function main() {
     user: session.user,
   });
 
-  // The module uses base64url encoding for cookies and splits into ~3500 byte chunks
-  const encoded = Buffer.from(cookieValue).toString('base64url');
-  const CHUNK_SIZE = 3500;
-  const chunks = [];
-  for (let i = 0; i < encoded.length; i += CHUNK_SIZE) {
-    chunks.push(encoded.substring(i, i + CHUNK_SIZE));
-  }
+  const base64urlEncoded = Buffer.from(sessionJson).toString('base64url');
+  const cookieValue = `base64-${base64urlEncoded}`;
+  const CHUNK_SIZE = 3180;
+  const encodedLen = encodeURIComponent(cookieValue).length;
 
-  const cookies = [];
-  if (chunks.length === 1) {
+  let cookies = [];
+  if (encodedLen <= CHUNK_SIZE) {
     cookies.push({
       name: `sb-${PROJECT_REF}-auth-token`,
-      value: encoded,
+      value: cookieValue,
       domain: 'localhost',
       path: '/',
       httpOnly: false,
@@ -397,10 +393,12 @@ async function main() {
       sameSite: 'Lax',
     });
   } else {
-    for (let i = 0; i < chunks.length; i++) {
+    // Chunk the value (base64url chars are URL-safe, so raw length ≈ encoded length)
+    const chunkLen = Math.floor(CHUNK_SIZE * 0.95); // safety margin for URI encoding
+    for (let i = 0, idx = 0; i < cookieValue.length; i += chunkLen, idx++) {
       cookies.push({
-        name: `sb-${PROJECT_REF}-auth-token.${i}`,
-        value: chunks[i],
+        name: `sb-${PROJECT_REF}-auth-token.${idx}`,
+        value: cookieValue.substring(i, i + chunkLen),
         domain: 'localhost',
         path: '/',
         httpOnly: false,
@@ -416,7 +414,7 @@ async function main() {
   });
 
   await context.addCookies(cookies);
-  console.log(`   Set ${cookies.length} auth cookie(s) (${encoded.length} bytes total)`);
+  console.log(`   Set ${cookies.length} auth cookie(s) (${cookieValue.length} bytes, URI-encoded: ${encodedLen} bytes)`);
 
   // Step 3: Verify auth works
   console.log('\n🔍 Verifying authentication...');
@@ -429,64 +427,10 @@ async function main() {
   console.log(`   Auth status: ${isAuthed ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'}`);
 
   if (!isAuthed) {
-    // Try alternate cookie format (non-encoded, direct JSON value)
-    console.log('   Trying alternate cookie format...');
-    await context.clearCookies();
-    
-    // Try plain JSON in cookie
-    const plainCookies = [{
-      name: `sb-${PROJECT_REF}-auth-token`,
-      value: cookieValue,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: false,
-      secure: false,
-      sameSite: 'Lax',
-    }];
-    await context.addCookies(plainCookies);
-    
-    await testPage.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 30000 });
-    await testPage.waitForTimeout(4000);
-    const testUrl2 = testPage.url();
-    const isAuthed2 = !testUrl2.includes('/auth/login');
-    console.log(`   Dashboard URL (attempt 2): ${testUrl2}`);
-    console.log(`   Auth status: ${isAuthed2 ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'}`);
-
-    if (!isAuthed2) {
-      // Try setting via page context (localStorage + cookie)
-      console.log('   Trying localStorage injection...');
-      await testPage.goto(`${BASE}/auth/login`, { waitUntil: 'networkidle', timeout: 15000 });
-      await testPage.waitForTimeout(2000);
-      
-      await testPage.evaluate((sessionStr) => {
-        const session = JSON.parse(sessionStr);
-        // Try multiple storage keys
-        const ref = 'uekumyupkhnpjpdcjfxb';
-        localStorage.setItem(`sb-${ref}-auth-token`, sessionStr);
-        
-        // Also set in the format Supabase JS client uses
-        const storageKey = `sb-${ref}-auth-token`;
-        const sessionObj = {
-          currentSession: {
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
-            token_type: 'bearer',
-            expires_in: session.expires_in,
-            expires_at: session.expires_at,
-            user: session.user,
-          },
-          expiresAt: session.expires_at,
-        };
-        localStorage.setItem(storageKey, JSON.stringify(sessionObj));
-      }, cookieValue);
-
-      await testPage.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 30000 });
-      await testPage.waitForTimeout(4000);
-      const testUrl3 = testPage.url();
-      const isAuthed3 = !testUrl3.includes('/auth/login');
-      console.log(`   Dashboard URL (attempt 3): ${testUrl3}`);
-      console.log(`   Auth status: ${isAuthed3 ? '✅ AUTHENTICATED' : '❌ NOT AUTHENTICATED'}`);
-    }
+    console.log('   ❌ Authentication failed. Cannot proceed with authenticated audit.');
+    await testPage.close();
+    await browser.close();
+    process.exit(1);
   }
 
   await testPage.close();

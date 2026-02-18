@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "v4-auth",
-    "timestamp": "2026-02-17T22:19:05.511Z",
+    "timestamp": "2026-02-17T22:47:55.605Z",
     "baseUrl": "http://localhost:3000",
     "totalRoutes": 79,
     "authenticated": true
@@ -11,14 +11,14 @@
     "ok": 2,
     "loadFailed": 0,
     "redirectedToLogin": 75,
-    "withConsoleErrors": 1,
+    "withConsoleErrors": 76,
     "withJsExceptions": 0,
     "withNetworkErrors": 2,
-    "totalConsoleErrors": 3,
+    "totalConsoleErrors": 303,
     "totalJsExceptions": 0,
     "totalNetworkErrors": 3,
     "buttonsFound": 365,
-    "buttonsClicked": 14,
+    "buttonsClicked": 13,
     "buttonClickErrors": 0,
     "formsFound": 76,
     "authenticated": true
@@ -30,7 +30,7 @@
       "isPublic": true,
       "status": "ok",
       "httpStatus": 200,
-      "loadTimeMs": 2171,
+      "loadTimeMs": 2037,
       "redirectedTo": null,
       "finalUrl": "http://localhost:3000/auth/login",
       "consoleErrors": [],
@@ -58,7 +58,7 @@
       "isPublic": true,
       "status": "has-errors",
       "httpStatus": 200,
-      "loadTimeMs": 2223,
+      "loadTimeMs": 2141,
       "redirectedTo": null,
       "finalUrl": "http://localhost:3000/public/careers",
       "consoleErrors": [
@@ -92,7 +92,7 @@
       "isPublic": false,
       "status": "redirected",
       "httpStatus": 200,
-      "loadTimeMs": 3948,
+      "loadTimeMs": 3925,
       "redirectedTo": "/activity",
       "finalUrl": "http://localhost:3000/activity",
       "consoleErrors": [],
@@ -132,7 +132,7 @@
       "isPublic": false,
       "status": "ok",
       "httpStatus": 200,
-      "loadTimeMs": 3906,
+      "loadTimeMs": 3633,
       "redirectedTo": null,
       "finalUrl": "http://localhost:3000/activity",
       "consoleErrors": [],
@@ -155,7 +155,7 @@
       ],
       "buttons": {
         "total": 30,
-        "clicked": 3,
+        "clicked": 2,
         "errors": []
       },
       "forms": 0,
@@ -174,12 +174,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1813,
+      "loadTimeMs": 2450,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -204,12 +210,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1948,
+      "loadTimeMs": 2198,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -234,12 +246,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2008,
+      "loadTimeMs": 2440,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -264,12 +282,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1955,
+      "loadTimeMs": 2410,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -294,12 +318,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2420,
+      "loadTimeMs": 2315,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -324,12 +354,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2104,
+      "loadTimeMs": 2498,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -354,12 +390,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1720,
+      "loadTimeMs": 2221,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -384,12 +426,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1842,
+      "loadTimeMs": 2381,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -414,12 +462,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1826,
+      "loadTimeMs": 2433,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -444,12 +498,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2072,
+      "loadTimeMs": 2497,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -474,12 +534,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1790,
+      "loadTimeMs": 2272,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -504,12 +570,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1830,
+      "loadTimeMs": 2394,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -534,12 +606,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1978,
+      "loadTimeMs": 2119,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -564,12 +642,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2009,
+      "loadTimeMs": 2304,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -594,12 +678,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1881,
+      "loadTimeMs": 2378,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -624,12 +714,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2330,
+      "loadTimeMs": 2447,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -654,12 +750,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1996,
+      "loadTimeMs": 2560,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -684,12 +786,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1758,
+      "loadTimeMs": 2151,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -714,12 +822,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2127,
+      "loadTimeMs": 2418,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -744,12 +858,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1832,
+      "loadTimeMs": 2566,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -774,12 +894,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1869,
+      "loadTimeMs": 2449,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -804,12 +930,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2011,
+      "loadTimeMs": 2378,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -834,12 +966,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1820,
+      "loadTimeMs": 2323,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -864,12 +1002,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1912,
+      "loadTimeMs": 2689,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -894,12 +1038,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1865,
+      "loadTimeMs": 2473,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -924,12 +1074,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1968,
+      "loadTimeMs": 2232,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -954,12 +1110,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1899,
+      "loadTimeMs": 2388,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -984,12 +1146,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1903,
+      "loadTimeMs": 2490,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1014,12 +1182,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1906,
+      "loadTimeMs": 2499,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1044,12 +1218,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2075,
+      "loadTimeMs": 2290,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1074,12 +1254,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1843,
+      "loadTimeMs": 2564,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1104,12 +1290,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1915,
+      "loadTimeMs": 2548,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1134,12 +1326,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1787,
+      "loadTimeMs": 2418,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1164,12 +1362,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1890,
+      "loadTimeMs": 2467,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1194,12 +1398,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1968,
+      "loadTimeMs": 2566,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1224,12 +1434,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2493,
+      "loadTimeMs": 2489,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1254,12 +1470,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1893,
+      "loadTimeMs": 2432,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1284,12 +1506,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2001,
+      "loadTimeMs": 2409,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1314,12 +1542,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2227,
+      "loadTimeMs": 2352,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1344,12 +1578,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1912,
+      "loadTimeMs": 2588,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1374,12 +1614,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1787,
+      "loadTimeMs": 2230,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1404,12 +1650,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1919,
+      "loadTimeMs": 2638,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1434,12 +1686,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1955,
+      "loadTimeMs": 2313,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1464,12 +1722,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1807,
+      "loadTimeMs": 2365,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1494,12 +1758,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1990,
+      "loadTimeMs": 2754,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1524,12 +1794,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1902,
+      "loadTimeMs": 2473,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1554,12 +1830,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1921,
+      "loadTimeMs": 2448,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1584,12 +1866,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2014,
+      "loadTimeMs": 2436,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1614,12 +1902,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1953,
+      "loadTimeMs": 2334,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1644,12 +1938,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1803,
+      "loadTimeMs": 2385,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1674,12 +1974,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1933,
+      "loadTimeMs": 2476,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1704,12 +2010,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1896,
+      "loadTimeMs": 2641,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1734,12 +2046,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1840,
+      "loadTimeMs": 2237,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1764,12 +2082,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1872,
+      "loadTimeMs": 2566,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1794,12 +2118,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1942,
+      "loadTimeMs": 2315,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1824,12 +2154,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1808,
+      "loadTimeMs": 2342,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1854,12 +2190,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2092,
+      "loadTimeMs": 2475,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1884,12 +2226,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2034,
+      "loadTimeMs": 2561,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1914,12 +2262,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1880,
+      "loadTimeMs": 2366,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1944,12 +2298,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1885,
+      "loadTimeMs": 2339,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -1974,12 +2334,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1856,
+      "loadTimeMs": 2501,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2004,12 +2370,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1866,
+      "loadTimeMs": 2483,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2034,12 +2406,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1727,
+      "loadTimeMs": 2303,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2064,12 +2442,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1747,
+      "loadTimeMs": 2258,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2094,12 +2478,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1757,
+      "loadTimeMs": 2161,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2124,12 +2514,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1990,
+      "loadTimeMs": 2425,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2154,12 +2550,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1959,
+      "loadTimeMs": 2549,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2184,12 +2586,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2063,
+      "loadTimeMs": 2287,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2214,12 +2622,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1830,
+      "loadTimeMs": 2478,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2244,12 +2658,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1919,
+      "loadTimeMs": 2616,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2274,12 +2694,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1910,
+      "loadTimeMs": 2306,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2304,12 +2730,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1947,
+      "loadTimeMs": 2394,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2334,12 +2766,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1947,
+      "loadTimeMs": 2419,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2364,12 +2802,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 2006,
+      "loadTimeMs": 2539,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
@@ -2394,12 +2838,18 @@
       "isPublic": false,
       "status": "redirected-to-login",
       "httpStatus": 200,
-      "loadTimeMs": 1772,
+      "loadTimeMs": 2174,
       "redirectedTo": "/auth/login",
       "finalUrl": "http://localhost:3000/auth/login",
-      "consoleErrors": [],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 403 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()",
+        "Failed to load resource: the server responded with a status of 406 ()"
+      ],
       "consoleWarnings": [
-        "[AuthMiddleware] Auth check failed: Auth session missing!"
+        "[AuthMiddleware] Auth check failed: Auth session missing!",
+        "[AuthPlugin] No profile found to update last_login_at for auth_user_id: 6d899158-0652-4d91-b151-3439479fbabc"
       ],
       "jsExceptions": [],
       "networkErrors": [],
