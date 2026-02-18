@@ -1,0 +1,125 @@
+name: Endpoint Validation & Audit
+
+on:
+  pull_request:
+    paths:
+      - 'app/**/*.vue'
+      - 'app/**/*.ts'
+      - 'server/api/**/*.ts'
+      - '.github/workflows/endpoint-validation.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**/*.vue'
+      - 'app/**/*.ts'
+      - 'server/api/**/*.ts'
+
+jobs:
+  endpoint-audit:
+    name: Validate API Endpoints
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run endpoint audit
+        run: node scripts/audit-all-endpoints.ts
+        continue-on-error: true
+
+      - name: Check for missing endpoints
+        run: |
+          MISSING=$(cat audit-endpoints-report.json | grep -c '"exists": false' || echo 0)
+          if [ "$MISSING" -gt 0 ]; then
+            echo "❌ Found $MISSING missing endpoints!"
+            cat audit-endpoints-report.json | jq '.missing'
+            exit 1
+          else
+            echo "✅ All endpoints verified"
+          fi
+
+      - name: Generate audit report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: endpoint-audit-report
+          path: audit-endpoints-report.json
+          retention-days: 30
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('audit-endpoints-report.json', 'utf8'));
+            
+            const summary = `## 🔍 API Endpoint Audit Results
+            
+| Metric | Count |
+|--------|-------|
+| Total API Calls | ${report.summary.totalApiCalls} |
+| Unique Endpoints | ${report.summary.uniqueEndpoints} |
+| Working Endpoints ✅ | ${report.summary.existingEndpoints} |
+| Missing Endpoints ❌ | ${report.summary.missingEndpoints} |
+
+${report.summary.missingEndpoints > 0 ? `
+### ❌ Missing Endpoints Found:
+${report.missing.map(m => `- **${m.endpoint}** (called from ${m.callCount} location(s))`).join('\n')}
+
+⚠️ **Action Required**: Please create these API endpoints before merging.
+` : '✅ All endpoints exist!'}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  lint-api-files:
+    name: Lint API Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint server API files
+        run: npm run lint:server 2>/dev/null || echo "No server lint script"
+        continue-on-error: true
+
+  security-check:
+    name: Check for Exposed API Keys
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for hardcoded secrets
+        run: |
+          if grep -r "OPENAI_API_KEY\|SLACK_TOKEN\|SUPABASE_KEY" --include="*.ts" --include="*.vue" app/ server/ | grep -v "process.env" | grep -v "const.*=.*process"; then
+            echo "❌ Found hardcoded API keys!"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"
