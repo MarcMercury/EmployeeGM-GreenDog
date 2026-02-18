@@ -284,7 +284,8 @@ function getSavedCadence(key: string): string {
 
 const hasUnsavedChanges = computed(() => {
   for (const key in localSchedules.value) {
-    if (getCadence(key.split('::')[0], key.split('::')[1]) !== getSavedCadence(key)) return true
+    const [loc = '', lt = ''] = key.split('::')
+    if (getCadence(loc, lt) !== getSavedCadence(key)) return true
   }
   return false
 })
@@ -338,7 +339,7 @@ async function saveSchedules() {
   try {
     const updates: { log_type: string; location: string; cadence: string }[] = []
     for (const key in localSchedules.value) {
-      const [loc, lt] = key.split('::')
+      const [loc = '', lt = ''] = key.split('::')
       const current = getCadence(loc, lt)
       if (current !== getSavedCadence(key)) {
         updates.push({ log_type: lt, location: loc, cadence: current })
@@ -354,7 +355,7 @@ async function saveSchedules() {
 
     // Sync saved state
     for (const key in localSchedules.value) {
-      const [loc, lt] = key.split('::')
+      const [loc = '', lt = ''] = key.split('::')
       savedSchedules.value[key] = getCadence(loc, lt)
     }
     toast.success(`Saved ${updates.length} schedule update(s)`)

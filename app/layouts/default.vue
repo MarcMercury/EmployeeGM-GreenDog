@@ -7,7 +7,8 @@ const { currentUserProfile, isAdmin: appDataIsAdmin, fetchGlobalData, initialize
 const supabase = useSupabaseClient()
 
 // Connection state for offline resilience
-const { isOnline, connectionQuality, queuedActions, isStale, staleDuration } = useConnectionState()
+const { isOnline, connectionQuality, queuedActions } = useConnectionState()
+const { isStale, staleDuration } = useStaleDataWarning()
 
 // Sidebar collapsed state
 const sidebarCollapsed = ref(false)
@@ -67,14 +68,14 @@ const isOfficeAdmin = computed(() => userRole.value === 'office_admin' || isSupe
 const isMarketingAdmin = computed(() => userRole.value === 'marketing_admin' || isSuperAdmin.value)
 
 // Section access checks — single source of truth from SECTION_ACCESS in ~/types
-const hasManagementAccess = computed(() => SECTION_ACCESS.management.includes(userRole.value as UserRole))
-const hasHrAccess = computed(() => SECTION_ACCESS.hr.includes(userRole.value as UserRole))
-const hasMarketingEditAccess = computed(() => SECTION_ACCESS.marketing.includes(userRole.value as UserRole))
+const hasManagementAccess = computed(() => SECTION_ACCESS.management?.includes(userRole.value as UserRole) ?? false)
+const hasHrAccess = computed(() => SECTION_ACCESS.hr?.includes(userRole.value as UserRole) ?? false)
+const hasMarketingEditAccess = computed(() => SECTION_ACCESS.marketing?.includes(userRole.value as UserRole) ?? false)
 const hasMarketingViewAccess = computed(() => SECTION_ACCESS.marketing_view?.includes(userRole.value as UserRole) ?? false)
-const hasCrmAnalyticsAccess = computed(() => SECTION_ACCESS.crm_analytics.includes(userRole.value as UserRole))
-const hasGduAccess = computed(() => SECTION_ACCESS.education.includes(userRole.value as UserRole))
-const hasAdminOpsAccess = computed(() => SECTION_ACCESS.admin.includes(userRole.value as UserRole))
-const hasScheduleManageAccess = computed(() => SECTION_ACCESS.schedules_manage.includes(userRole.value as UserRole))
+const hasCrmAnalyticsAccess = computed(() => SECTION_ACCESS.crm_analytics?.includes(userRole.value as UserRole) ?? false)
+const hasGduAccess = computed(() => SECTION_ACCESS.education?.includes(userRole.value as UserRole) ?? false)
+const hasAdminOpsAccess = computed(() => SECTION_ACCESS.admin?.includes(userRole.value as UserRole) ?? false)
+const hasScheduleManageAccess = computed(() => SECTION_ACCESS.schedules_manage?.includes(userRole.value as UserRole) ?? false)
 
 // Display helpers
 const firstName = computed(() => profile.value?.first_name || 'User')
@@ -95,7 +96,7 @@ const roleDisplay = computed(() => {
     marketing_admin: { label: '📣 Marketing', class: 'text-purple-400 font-semibold' },
     user: { label: 'Team Member', class: 'text-slate-400' }
   }
-  return displays[userRole.value] || displays.user
+  return displays[userRole.value] ?? displays.user!
 })
 
 // Unread notification count
@@ -398,10 +399,6 @@ const closeMobileMenu = () => {
                 <div class="nav-icon-wrap group-hover:bg-blue-500/20">📋</div>
                 Medical Boards
               </NuxtLink>
-              <NuxtLink v-if="userRole !== 'user'" to="/med-ops/safety/qr-codes" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-green-500/20">📱</div>
-                Safety QR Codes
-              </NuxtLink>
               <NuxtLink v-if="userRole !== 'user'" to="/med-ops/safety/manage-types" class="nav-link group" active-class="nav-link-active">
                 <div class="nav-icon-wrap group-hover:bg-green-500/20">⚙️</div>
                 Manage Log Types
@@ -658,7 +655,7 @@ const closeMobileMenu = () => {
           <div 
             v-if="isStale && isOnline" 
             class="bg-blue-500 text-white px-4 py-1.5 text-center text-xs font-medium cursor-pointer hover:bg-blue-600 transition-colors"
-            @click="window.location.reload()"
+            @click="() => globalThis.location.reload()"
           >
             <span class="inline-flex items-center gap-1.5">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

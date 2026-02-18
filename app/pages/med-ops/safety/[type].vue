@@ -139,7 +139,7 @@ const initialLocation = computed<SafetyLogLocation | null>(() => {
 const userName = computed(() => {
   const p = authStore.profile
   if (p?.first_name && p?.last_name) return `${p.first_name} ${p.last_name}`
-  return authStore.user?.email || 'You'
+  return authStore.profile?.email || 'You'
 })
 
 const todayFormatted = computed(() => format(new Date(), 'MMMM d, yyyy'))
@@ -152,19 +152,25 @@ onMounted(async () => {
 })
 
 async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
+  store.submitting = true
   try {
-    await store.createLog({
-      log_type: logTypeKey.value,
-      location: payload.location,
-      form_data: payload.form_data,
-      submitted_by: authStore.profile?.id || '',
-      osha_recordable: payload.osha_recordable,
-      status: 'submitted',
+    await $fetch('/api/safety-log', {
+      method: 'POST',
+      body: {
+        log_type: logTypeKey.value,
+        location: payload.location,
+        form_data: payload.form_data,
+        osha_recordable: payload.osha_recordable,
+        status: 'submitted',
+      },
     })
     showSuccess.value = true
     toast.success('Safety log submitted successfully')
   } catch (err: any) {
-    toast.error(err?.message || 'Failed to submit safety log')
+    const message = err?.data?.message || err?.message || 'Failed to submit safety log'
+    toast.error(message)
+  } finally {
+    store.submitting = false
   }
 }
 

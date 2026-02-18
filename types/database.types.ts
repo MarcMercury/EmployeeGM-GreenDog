@@ -2495,6 +2495,62 @@ export type Database = {
           },
         ]
       }
+      custom_safety_log_types: {
+        Row: {
+          id: string
+          key: string
+          label: string
+          icon: string
+          color: string
+          description: string
+          fields: Json
+          has_osha_toggle: boolean | null
+          compliance_standards: string[] | null
+          is_active: boolean | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key: string
+          label: string
+          icon?: string
+          color?: string
+          description?: string
+          fields?: Json
+          has_osha_toggle?: boolean | null
+          compliance_standards?: string[] | null
+          is_active?: boolean | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key?: string
+          label?: string
+          icon?: string
+          color?: string
+          description?: string
+          fields?: Json
+          has_osha_toggle?: boolean | null
+          compliance_standards?: string[] | null
+          is_active?: boolean | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_safety_log_types_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           code: string | null
@@ -11612,6 +11668,119 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      safety_log_schedules: {
+        Row: {
+          id: string
+          log_type: string
+          location: string
+          cadence: string
+          last_completed_at: string | null
+          last_notified_at: string | null
+          notify_roles: string[] | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          log_type: string
+          location: string
+          cadence?: string
+          last_completed_at?: string | null
+          last_notified_at?: string | null
+          notify_roles?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          log_type?: string
+          location?: string
+          cadence?: string
+          last_completed_at?: string | null
+          last_notified_at?: string | null
+          notify_roles?: string[] | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_log_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      safety_logs: {
+        Row: {
+          id: string
+          log_type: string
+          location: string
+          form_data: Json
+          submitted_by: string
+          submitted_at: string
+          osha_recordable: boolean | null
+          photo_urls: string[] | null
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          log_type: string
+          location: string
+          form_data?: Json
+          submitted_by: string
+          submitted_at?: string
+          osha_recordable?: boolean | null
+          photo_urls?: string[] | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          log_type?: string
+          location?: string
+          form_data?: Json
+          submitted_by?: string
+          submitted_at?: string
+          osha_recordable?: boolean | null
+          photo_urls?: string[] | null
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          review_notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_logs_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_logs_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_queries: {
         Row: {

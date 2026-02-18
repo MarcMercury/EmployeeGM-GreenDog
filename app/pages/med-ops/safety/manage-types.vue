@@ -28,28 +28,44 @@
       </v-card-text>
     </v-card>
 
-    <!-- Built-in Types -->
+    <!-- All Log Types -->
     <h3 class="text-h6 font-weight-bold mb-3">
-      Built-in Log Types ({{ builtInTypes.length }})
-      <v-chip size="x-small" variant="tonal" color="info" class="ml-2">Read-only</v-chip>
+      All Log Types ({{ allTypes.length }})
     </h3>
-    <v-row dense class="mb-6">
+
+    <div v-if="ctLoading" class="d-flex justify-center pa-6">
+      <v-progress-circular indeterminate color="primary" />
+    </div>
+
+    <v-row v-else dense class="mb-6">
       <v-col
-        v-for="cfg in builtInTypes"
+        v-for="cfg in allTypes"
         :key="cfg.key"
         cols="12"
         sm="6"
         md="4"
       >
-        <v-card variant="outlined" rounded="lg" class="pa-3">
-          <div class="d-flex align-center gap-2 mb-2">
-            <v-avatar :color="cfg.color" size="32" variant="tonal">
-              <v-icon size="18">{{ cfg.icon }}</v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-subtitle-2 font-weight-medium">{{ cfg.label }}</div>
-              <div class="text-caption text-grey">{{ cfg.fields.length }} fields</div>
+        <v-card
+          variant="outlined"
+          rounded="lg"
+          class="pa-3 cursor-pointer type-tile"
+          @click="navigateToType(cfg.key)"
+        >
+          <div class="d-flex align-center justify-space-between mb-2">
+            <div class="d-flex align-center gap-2">
+              <v-avatar :color="cfg.color" size="36" variant="tonal">
+                <v-icon size="20">{{ cfg.icon }}</v-icon>
+              </v-avatar>
+              <div>
+                <div class="text-subtitle-2 font-weight-medium">{{ cfg.label }}</div>
+                <div class="text-caption text-grey">
+                  {{ cfg.fields.length }} fields
+                  <v-chip v-if="cfg.isCustom" size="x-small" variant="tonal" color="purple" class="ml-1">Custom</v-chip>
+                  <v-chip v-else size="x-small" variant="tonal" color="info" class="ml-1">Built-in</v-chip>
+                </div>
+              </div>
             </div>
+            <v-icon size="18" color="grey">mdi-chevron-right</v-icon>
           </div>
           <div class="text-caption text-grey-darken-1 mb-2" style="min-height: 32px;">
             {{ truncate(cfg.description, 80) }}
@@ -69,49 +85,8 @@
       </v-col>
     </v-row>
 
-    <!-- Custom Types -->
-    <h3 class="text-h6 font-weight-bold mb-3">
-      Custom Log Types ({{ customTypes.length }})
-    </h3>
-
-    <div v-if="ctLoading" class="d-flex justify-center pa-6">
-      <v-progress-circular indeterminate color="primary" />
-    </div>
-
-    <template v-else-if="customTypes.length > 0">
-      <v-row dense class="mb-6">
-        <v-col
-          v-for="ct in customTypes"
-          :key="ct.key"
-          cols="12"
-          sm="6"
-          md="4"
-        >
-          <v-card variant="outlined" rounded="lg" class="pa-3">
-            <div class="d-flex align-center justify-space-between mb-2">
-              <div class="d-flex align-center gap-2">
-                <v-avatar :color="ct.color" size="32" variant="tonal">
-                  <v-icon size="18">{{ ct.icon }}</v-icon>
-                </v-avatar>
-                <div>
-                  <div class="text-subtitle-2 font-weight-medium">{{ ct.label }}</div>
-                  <div class="text-caption text-grey">{{ ct.fields.length }} fields · Custom</div>
-                </div>
-              </div>
-              <div class="d-flex gap-1">
-                <v-btn icon="mdi-pencil" variant="text" size="x-small" @click="openEditDialog(ct)" />
-                <v-btn icon="mdi-delete" variant="text" size="x-small" color="error" @click="confirmDelete(ct)" />
-              </div>
-            </div>
-            <div class="text-caption text-grey-darken-1">
-              {{ truncate(ct.description, 80) }}
-            </div>
-          </v-card>
-        </v-col>
-      </v-row>
-    </template>
-
-    <v-card v-else variant="outlined" rounded="lg" class="text-center pa-8 mb-6">
+    <!-- Empty custom types hint -->
+    <v-card v-if="!ctLoading && customTypes.length === 0" variant="outlined" rounded="lg" class="text-center pa-8 mb-6">
       <v-icon size="48" color="grey">mdi-clipboard-plus-outline</v-icon>
       <div class="text-body-1 mt-2">No custom log types yet</div>
       <div class="text-caption text-grey mb-4">Create a new log type to define your own safety compliance forms</div>
@@ -326,6 +301,7 @@ import {
   SAFETY_LOG_TYPE_CONFIGS,
   type SafetyLogTypeConfig,
   type SafetyFormField,
+  safetyKeyToSlug,
 } from '~/types/safety-log.types'
 
 definePageMeta({
@@ -336,7 +312,7 @@ definePageMeta({
 const router = useRouter()
 const toast = useToast()
 const { can } = usePermissions()
-const { customTypes, loading: ctLoading, fetchCustomTypes, createCustomType, updateCustomType, deleteCustomType } = useCustomSafetyLogTypes()
+const { customTypes, allTypes, loading: ctLoading, fetchCustomTypes, createCustomType, updateCustomType, deleteCustomType } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
 
@@ -347,7 +323,11 @@ onMounted(() => {
     router.replace('/med-ops/safety')
   }
 })
-const builtInTypes = computed(() => SAFETY_LOG_TYPE_CONFIGS)
+
+function navigateToType(key: string) {
+  const slug = key.replace(/_/g, '-')
+  router.push(`/med-ops/safety/manage-types/${slug}`)
+}
 
 // ── Dialog state ───────────────────────────────────────
 const dialog = ref(false)
@@ -473,7 +453,7 @@ async function saveType() {
 
     if (editingId.value) {
       // Find the DB record to get actual UUID
-      const supabase = useSupabaseClient()
+      const supabase = useSupabaseClient() as any
       const { data: existing } = await supabase
         .from('custom_safety_log_types')
         .select('id')
@@ -536,7 +516,7 @@ async function doDelete() {
   if (!deletingType.value) return
   deleting.value = true
   try {
-    const supabase = useSupabaseClient()
+    const supabase = useSupabaseClient() as any
     const { data } = await supabase
       .from('custom_safety_log_types')
       .select('id')
@@ -567,5 +547,12 @@ onMounted(() => {
 }
 .field-builder-row {
   transition: opacity 0.15s;
+}
+.type-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.type-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 </style>

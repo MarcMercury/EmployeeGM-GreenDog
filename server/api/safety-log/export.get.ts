@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('auth_user_id', user.id)
     .single()
 
   const managerRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']

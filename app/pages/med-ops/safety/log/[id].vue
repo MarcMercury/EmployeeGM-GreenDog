@@ -64,7 +64,7 @@ async function handleReview(payload: { status: string; review_notes: string }) {
     await store.updateLog(store.currentLog!.id, {
       status: payload.status as any,
       review_notes: payload.review_notes,
-      reviewed_by: authStore.user?.id,
+      reviewed_by: authStore.profile?.id,
       reviewed_at: new Date().toISOString(),
     })
     toast.success(`Log ${payload.status === 'reviewed' ? 'reviewed' : 'flagged'} successfully`)

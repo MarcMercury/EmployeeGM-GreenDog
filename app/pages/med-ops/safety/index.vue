@@ -10,14 +10,6 @@
         <v-btn
           v-if="canManage"
           variant="outlined"
-          prepend-icon="mdi-qrcode"
-          @click="router.push('/med-ops/safety/qr-codes')"
-        >
-          <span class="desktop-only">QR Codes</span>
-        </v-btn>
-        <v-btn
-          v-if="canManage"
-          variant="outlined"
           prepend-icon="mdi-download"
           @click="exportLogs"
         >
@@ -95,7 +87,7 @@
           variant="outlined"
           rounded="lg"
           class="text-center pa-3 cursor-pointer hover-elevate"
-          @click="navigateToLogForm(cfg.key)"
+          @click="navigateToEntries(cfg.key)"
         >
           <v-avatar :color="cfg.color" size="44" variant="tonal" class="mb-2">
             <v-icon size="24">{{ cfg.icon }}</v-icon>
@@ -342,6 +334,11 @@ function navigateToLogForm(logType: SafetyLogType) {
   showNewLogSheet.value = false
   const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
   router.push(`/med-ops/safety/${slug}`)
+}
+
+function navigateToEntries(logType: SafetyLogType) {
+  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
+  router.push(`/med-ops/safety/entries/${slug}`)
 }
 
 function openLogDetail(log: SafetyLog) {
