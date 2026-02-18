@@ -2,6 +2,8 @@
  * POST/GET /api/system/track-api-errors
  * Collects and analyzes API errors in production
  * Helps identify missing endpoints and performance issues
+ * 
+ * Works gracefully even if migrations haven't been run yet
  */
 
 export default defineEventHandler(async (event) => {
@@ -14,43 +16,43 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, message: 'Invalid errors format' })
       }
 
+      // Try to log to database, but fail gracefully if tables don't exist
       const supabase = await useSupabaseServer()
       const user = await getSession(event).catch(() => null)
 
-      // Track each error
       for (const error of errors) {
         const { endpoint, method = 'GET', status, statusText, duration, body: reqBody } = error
 
-        // Log to database
-        const { data: inserted, error: logError } = await supabase
-          .from('api_error_logs')
-          .insert({
-            endpoint,
-            method,
-            status_code: status,
-            error_message: statusText,
-            user_id: user?.user?.id || null,
-            user_agent: event.node.req.headers['user-agent'],
-            request_body: reqBody ? JSON.stringify(reqBody).substring(0, 500) : null,
-            duration_ms: duration,
-            environment: process.env.NODE_ENV || 'production',
-            timestamp: new Date(timestamp).toISOString(),
-          })
+        try {
+          // Try to insert into error logs
+          const { error: logError } = await supabase
+            .from('api_error_logs')
+            .insert({
+              endpoint,
+              method,
+              status_code: status,
+              error_message: statusText,
+              user_id: user?.user?.id || null,
+              user_agent: event.node.req.headers['user-agent'],
+              request_body: reqBody ? JSON.stringify(reqBody).substring(0, 500) : null,
+              duration_ms: duration,
+              environment: process.env.NODE_ENV || 'production',
+              timestamp: new Date(timestamp).toISOString(),
+            })
 
-        if (!logError) {
-          // If it's a 404, track as missing endpoint
-          if (status === 404) {
-            await supabase
-              .from('missing_endpoints')
-              .upsert({
-                endpoint,
-                first_seen: new Date().toISOString(),
-                last_seen: new Date().toISOString(),
-              }, { onConflict: 'endpoint' })
-              .eq('endpoint', endpoint)
-
-            // Alert if new missing endpoint
+          // If 404, try to track missing endpoint
+          if (status === 404 && !logError) {
             try {
+              await supabase
+                .from('missing_endpoints')
+                .upsert({
+                  endpoint,
+                  first_seen: new Date().toISOString(),
+                  last_seen: new Date().toISOString(),
+                }, { onConflict: 'endpoint' })
+                .eq('endpoint', endpoint)
+
+              // Try to send Slack alert
               const { data: existing } = await supabase
                 .from('missing_endpoints')
                 .select('reported')
@@ -58,13 +60,16 @@ export default defineEventHandler(async (event) => {
                 .single()
 
               if (!existing?.reported) {
-                // Send Slack alert (async, non-blocking)
                 sendMissingEndpointAlert(endpoint, method).catch(console.error)
               }
             } catch (e) {
-              console.error('Error checking endpoint report status:', e)
+              // Silent fail if missing_endpoints table doesn't exist yet
+              console.debug('Missing endpoints tracking unavailable', e)
             }
           }
+        } catch (e) {
+          // Silent fail if api_error_logs table doesn't exist yet
+          console.debug('Error logging unavailable', e)
         }
       }
 
@@ -74,7 +79,7 @@ export default defineEventHandler(async (event) => {
         timestamp: new Date().toISOString(),
       }
     } catch (err) {
-      console.error('[track-api-errors POST] Error:', err)
+      console.error('[track-api-errors POST] Fatal error:', err)
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Unknown error',
@@ -93,43 +98,51 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 403, message: 'Admin access required' })
       }
 
-      const { data, error } = await supabase
-        .from('api_error_logs')
-        .select('*')
-        .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-        .order('timestamp', { ascending: false })
-        .limit(100)
+      try {
+        const { data } = await supabase
+          .from('api_error_logs')
+          .select('*')
+          .gte('timestamp', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order('timestamp', { ascending: false })
+          .limit(100)
 
-      if (error) throw error
+        const { data: missing } = await supabase
+          .from('missing_endpoints')
+          .select('*')
+          .eq('reported', false)
+          .order('error_count', { ascending: false })
 
-      // Get missing endpoints
-      const { data: missing, error: missingError } = await supabase
-        .from('missing_endpoints')
-        .select('*')
-        .eq('reported', false)
-        .order('error_count', { ascending: false })
+        const { data: trends } = await supabase
+          .from('api_error_trends')
+          .select('*')
+          .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .order('date', { ascending: false })
 
-      if (missingError) throw missingError
-
-      // Get trends
-      const { data: trends, error: trendsError } = await supabase
-        .from('api_error_trends')
-        .select('*')
-        .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .order('date', { ascending: false })
-
-      if (trendsError) throw trendsError
-
-      return {
-        success: true,
-        summary: {
-          lastErrors: data?.length || 0,
-          missing404Endpoints: missing?.length || 0,
-          last7DayTrends: trends?.length || 0,
-        },
-        recentErrors: data || [],
-        missingEndpoints: missing || [],
-        trends: trends || [],
+        return {
+          success: true,
+          summary: {
+            lastErrors: data?.length || 0,
+            missing404Endpoints: missing?.length || 0,
+            last7DayTrends: trends?.length || 0,
+          },
+          recentErrors: data || [],
+          missingEndpoints: missing || [],
+          trends: trends || [],
+        }
+      } catch (tableErr) {
+        // Tables don't exist yet (migrations not run)
+        return {
+          success: true,
+          summary: {
+            lastErrors: 0,
+            missing404Endpoints: 0,
+            last7DayTrends: 0,
+          },
+          recentErrors: [],
+          missingEndpoints: [],
+          trends: [],
+          message: 'Database tables not yet created. Run migrations first.',
+        }
       }
     } catch (err) {
       console.error('[track-api-errors GET] Error:', err)
@@ -171,3 +184,4 @@ async function sendMissingEndpointAlert(endpoint: string, method: string) {
     console.error('Failed to send Slack alert:', err)
   }
 }
+

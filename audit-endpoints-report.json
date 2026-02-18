@@ -1,24 +1,12 @@
 {
-  "timestamp": "2026-02-18T20:10:17.460Z",
+  "timestamp": "2026-02-18T20:29:35.675Z",
   "summary": {
-    "totalApiCalls": 137,
-    "uniqueEndpoints": 88,
-    "existingEndpoints": 81,
-    "missingEndpoints": 7
+    "totalApiCalls": 138,
+    "uniqueEndpoints": 89,
+    "existingEndpoints": 83,
+    "missingEndpoints": 6
   },
   "missing": [
-    {
-      "endpoint": "/api/agents/health",
-      "callCount": 1,
-      "calledFrom": [
-        {
-          "file": "/app/components/admin/system/IntegrationsData.vue",
-          "line": 75,
-          "method": "GET",
-          "context": "const health = await $fetch('/api/agents/health')"
-        }
-      ]
-    },
     {
       "endpoint": "/api/ezyvet/dashboard[param]",
       "callCount": 1,
@@ -102,6 +90,11 @@
       "endpoint": "/api/slack/health",
       "callCount": 2,
       "actualFile": "/api/slack/health"
+    },
+    {
+      "endpoint": "/api/agents/health",
+      "callCount": 1,
+      "actualFile": "/api/agents/health"
     },
     {
       "endpoint": "/api/admin/employee-audit",
@@ -242,6 +235,11 @@
       "endpoint": "/api/agents/proposals/bulk-resolve",
       "callCount": 1,
       "actualFile": "/api/agents/proposals/bulk-resolve"
+    },
+    {
+      "endpoint": "/api/system/track-api-errors",
+      "callCount": 1,
+      "actualFile": "/api/system/track-api-errors"
     },
     {
       "endpoint": "/api/intake/persons",
