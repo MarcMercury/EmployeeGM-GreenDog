@@ -535,7 +535,7 @@ const closeMobileMenu = () => {
                 </NuxtLink>
                 <NuxtLink to="/gdu/visitors" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
-                  Visitor CRM
+                  CE Attendees
                 </NuxtLink>
                 <NuxtLink to="/gdu/events" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">📅</div>

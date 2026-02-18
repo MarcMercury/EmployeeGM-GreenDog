@@ -118,7 +118,7 @@
             </v-btn>
           </div>
           <v-row>
-            <v-col v-for="resource in externalResources" :key="resource.id" cols="12" sm="6" md="3">
+            <v-col v-for="resource in externalResources" :key="resource.id" cols="6" sm="4" md="2">
               <v-card 
                 rounded="lg" 
                 class="folder-card h-100"
@@ -127,12 +127,12 @@
                 :target="resource.folder_type === 'link' ? '_blank' : undefined"
                 :rel="resource.folder_type === 'link' ? 'noopener noreferrer' : undefined"
               >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" :color="resource.color || 'grey'" class="mb-3">
-                    <v-icon size="32" color="white">{{ resource.icon || 'mdi-link' }}</v-icon>
+                <v-card-text class="text-center py-3">
+                  <v-avatar size="36" :color="resource.color || 'grey'" class="mb-2">
+                    <v-icon size="20" color="white">{{ resource.icon || 'mdi-link' }}</v-icon>
                   </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">{{ resource.name }}</h3>
-                  <p class="text-caption text-grey mb-2">{{ resource.description }}</p>
+                  <h3 class="text-body-2 font-weight-bold text-truncate">{{ resource.name }}</h3>
+                  <p class="text-caption text-grey mb-1 text-truncate">{{ resource.description }}</p>
                   <v-chip size="x-small" :color="resource.color || 'grey'" variant="tonal">
                     <v-icon start size="x-small">{{ resource.folder_type === 'link' ? 'mdi-open-in-new' : 'mdi-arrow-right' }}</v-icon>
                     {{ resource.folder_type === 'link' ? 'External Link' : 'View' }}
@@ -163,18 +163,18 @@
         <div v-if="currentPath === ''" class="mb-6">
           <h3 class="text-subtitle-2 text-grey mb-3">File Library</h3>
           <v-row>
-            <v-col v-for="category in visibleCategories" :key="category.id" cols="12" sm="6" md="4" lg="3">
+            <v-col v-for="category in visibleCategories" :key="category.id" cols="6" sm="4" md="2">
               <v-card 
                 rounded="lg" 
                 class="folder-card h-100"
                 @click="navigateToFolder(category.id)"
               >
-                <v-card-text class="text-center py-6">
-                  <v-avatar size="64" :color="category.color" class="mb-3">
-                    <v-icon size="32" color="white">{{ category.icon }}</v-icon>
+                <v-card-text class="text-center py-3">
+                  <v-avatar size="36" :color="category.color" class="mb-2">
+                    <v-icon size="20" color="white">{{ category.icon }}</v-icon>
                   </v-avatar>
-                  <h3 class="text-subtitle-1 font-weight-bold">{{ category.name }}</h3>
-                  <p class="text-caption text-grey mb-2">{{ category.description }}</p>
+                  <h3 class="text-body-2 font-weight-bold text-truncate">{{ category.name }}</h3>
+                  <p class="text-caption text-grey mb-1 text-truncate">{{ category.description }}</p>
                   <v-chip size="x-small" variant="tonal">
                     {{ getFolderItemCount(category.id) }} items
                   </v-chip>
