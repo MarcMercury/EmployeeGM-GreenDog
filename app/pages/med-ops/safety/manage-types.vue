@@ -45,19 +45,22 @@
         sm="6"
         md="4"
       >
-        <v-card
-          variant="outlined"
-          rounded="lg"
-          class="pa-3 cursor-pointer type-tile"
-          @click="navigateToType(cfg.key)"
+        <NuxtLink 
+          :to="`/med-ops/safety/manage-types/${cfg.key.replace(/_/g, '-')}`"
+          style="text-decoration: none; color: inherit; display: block;"
         >
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="d-flex align-center gap-2">
-              <v-avatar :color="cfg.color" size="36" variant="tonal">
-                <v-icon size="20">{{ cfg.icon }}</v-icon>
-              </v-avatar>
-              <div>
-                <div class="text-subtitle-2 font-weight-medium">{{ cfg.label }}</div>
+          <v-card
+            variant="outlined"
+            rounded="lg"
+            class="pa-3 cursor-pointer type-tile"
+          >
+            <div class="d-flex align-center justify-space-between mb-2">
+              <div class="d-flex align-center gap-2">
+                <v-avatar :color="cfg.color" size="36" variant="tonal">
+                  <v-icon size="20">{{ cfg.icon }}</v-icon>
+                </v-avatar>
+                <div>
+                  <div class="text-subtitle-2 font-weight-medium">{{ cfg.label }}</div>
                 <div class="text-caption text-grey">
                   {{ cfg.fields.length }} fields
                   <v-chip v-if="cfg.isCustom" size="x-small" variant="tonal" color="purple" class="ml-1">Custom</v-chip>
@@ -82,6 +85,7 @@
             </v-chip>
           </div>
         </v-card>
+        </NuxtLink>
       </v-col>
     </v-row>
 
@@ -326,7 +330,20 @@ onMounted(() => {
 
 function navigateToType(key: string) {
   const slug = key.replace(/_/g, '-')
-  router.push(`/med-ops/safety/manage-types/${slug}`)
+  const targetPath = `/med-ops/safety/manage-types/${slug}`
+  console.log('[navigateToType] Attempting navigation to:', targetPath)
+  
+  // Try navigation and catch any errors
+  router.push(targetPath)
+    .then(() => {
+      console.log('[navigateToType] Navigation succeeded')
+    })
+    .catch((err) => {
+      console.error('[navigateToType] Navigation FAILED:', err)
+      // Fallback: try direct navigation
+      console.log('[navigateToType] Trying window.location.href fallback')
+      window.location.href = targetPath
+    })
 }
 
 // ── Dialog state ───────────────────────────────────────
