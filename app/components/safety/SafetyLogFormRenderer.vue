@@ -266,7 +266,30 @@ watch(config, (cfg) => {
 
 async function handleSubmit() {
   const { valid } = await formRef.value.validate()
-  if (!valid || !formLocation.value) return
+  
+  // Debug what's happening
+  console.log('[SafetyLogFormRenderer] handleSubmit called', {
+    valid,
+    formLocation: formLocation.value,
+    formData,
+    config: config.value,
+  })
+
+  if (!valid) {
+    console.warn('[SafetyLogFormRenderer] Form validation failed')
+    return
+  }
+
+  if (!formLocation.value) {
+    console.error('[SafetyLogFormRenderer] Location not selected!')
+    return
+  }
+
+  console.log('[SafetyLogFormRenderer] Submitting with payload:', {
+    location: formLocation.value,
+    form_data: formData,
+    osha_recordable: oshaRecordable.value,
+  })
 
   emit('submit', {
     location: formLocation.value,

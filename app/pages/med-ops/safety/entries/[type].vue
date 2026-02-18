@@ -396,8 +396,15 @@ function openNewEntry() {
 
 async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
   submitting.value = true
+  console.log('[Entries Submit Handler] Processing submission:', {
+    logType: typeKey.value,
+    location: payload.location,
+    hasFormData: !!payload.form_data,
+    oshaRecordable: payload.osha_recordable,
+  })
+
   try {
-    await $fetch('/api/safety-log', {
+    const result = await $fetch('/api/safety-log', {
       method: 'POST',
       body: {
         log_type: typeKey.value,
@@ -408,10 +415,17 @@ async function handleSubmit(payload: { location: SafetyLogLocation; form_data: R
       },
     })
 
+    console.log('[Entries Submit Handler] Success response:', result)
     showNewEntryDialog.value = false
     showSuccess.value = true
     toast.success('Entry submitted')
   } catch (err: any) {
+    console.error('[Entries Submit Handler] Error response:', {
+      status: err?.statusCode || err?.status,
+      message: err?.message,
+      data: err?.data,
+      fullError: err,
+    })
     const message = err?.data?.message || err?.message || 'Failed to submit entry'
     toast.error(message)
   } finally {

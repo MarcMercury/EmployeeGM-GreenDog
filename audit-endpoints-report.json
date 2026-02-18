@@ -1,0 +1,502 @@
+{
+  "timestamp": "2026-02-18T20:10:17.460Z",
+  "summary": {
+    "totalApiCalls": 137,
+    "uniqueEndpoints": 88,
+    "existingEndpoints": 81,
+    "missingEndpoints": 7
+  },
+  "missing": [
+    {
+      "endpoint": "/api/agents/health",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/components/admin/system/IntegrationsData.vue",
+          "line": 75,
+          "method": "GET",
+          "context": "const health = await $fetch('/api/agents/health')"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/ezyvet/dashboard[param]",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/composables/useEzyVetIntegration.ts",
+          "line": 52,
+          "method": "GET",
+          "context": "dashboard.value = await $fetch<EzyVetDashboard>(`/api/ezyvet/dashboard${params}`)"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/agents/runs",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/pages/admin/agents.vue",
+          "line": 877,
+          "method": "GET",
+          "context": "const runs = await $fetch('/api/agents/runs', {"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/admin/users/[param]",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/pages/admin/users.vue",
+          "line": 1217,
+          "method": "GET",
+          "context": "const response = await $fetch(`/api/admin/users/${editingUser.value.id}`, {"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/agents",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/stores/agents.ts",
+          "line": 167,
+          "method": "GET",
+          "context": "const response = await $fetch('/api/agents', { headers }) as any"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/agents/[param]",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/stores/agents.ts",
+          "line": 190,
+          "method": "GET",
+          "context": "const response = await $fetch(`/api/agents/${agentId}`, { headers }) as any"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/agents/proposals",
+      "callCount": 1,
+      "calledFrom": [
+        {
+          "file": "/app/stores/agents.ts",
+          "line": 219,
+          "method": "GET",
+          "context": "const response = await $fetch(`/api/agents/proposals?${params.toString()}`, { headers }) as any"
+        }
+      ]
+    }
+  ],
+  "existing": [
+    {
+      "endpoint": "/api/admin/users",
+      "callCount": 2,
+      "actualFile": "/api/admin/users"
+    },
+    {
+      "endpoint": "/api/slack/health",
+      "callCount": 2,
+      "actualFile": "/api/slack/health"
+    },
+    {
+      "endpoint": "/api/admin/employee-audit",
+      "callCount": 1,
+      "actualFile": "/api/admin/employee-audit"
+    },
+    {
+      "endpoint": "/api/compliance/resolve",
+      "callCount": 1,
+      "actualFile": "/api/compliance/resolve"
+    },
+    {
+      "endpoint": "/api/recruiting/parse-resume",
+      "callCount": 1,
+      "actualFile": "/api/recruiting/parse-resume"
+    },
+    {
+      "endpoint": "/api/recruiting/create-candidate",
+      "callCount": 1,
+      "actualFile": "/api/recruiting/create-candidate"
+    },
+    {
+      "endpoint": "/api/recruiting/bulk-import",
+      "callCount": 1,
+      "actualFile": "/api/recruiting/bulk-import"
+    },
+    {
+      "endpoint": "/api/ai/schedule-suggest",
+      "callCount": 1,
+      "actualFile": "/api/ai/schedule-suggest"
+    },
+    {
+      "endpoint": "/api/slack/notifications/queue",
+      "callCount": 5,
+      "actualFile": "/api/slack/notifications/queue"
+    },
+    {
+      "endpoint": "/api/admin/access-matrix",
+      "callCount": 4,
+      "actualFile": "/api/admin/access-matrix"
+    },
+    {
+      "endpoint": "/api/safety-log/custom-types",
+      "callCount": 4,
+      "actualFile": "/api/safety-log/custom-types"
+    },
+    {
+      "endpoint": "/api/auth/emergency-logout",
+      "callCount": 1,
+      "actualFile": "/api/auth/emergency-logout"
+    },
+    {
+      "endpoint": "/api/auth/emergency-session",
+      "callCount": 1,
+      "actualFile": "/api/auth/emergency-session"
+    },
+    {
+      "endpoint": "/api/ezyvet/sync",
+      "callCount": 1,
+      "actualFile": "/api/ezyvet/sync"
+    },
+    {
+      "endpoint": "/api/ezyvet/sync-log",
+      "callCount": 1,
+      "actualFile": "/api/ezyvet/sync-log"
+    },
+    {
+      "endpoint": "/api/ezyvet/setup-webhooks",
+      "callCount": 1,
+      "actualFile": "/api/ezyvet/setup-webhooks"
+    },
+    {
+      "endpoint": "/api/intake/links",
+      "callCount": 3,
+      "actualFile": "/api/intake/links"
+    },
+    {
+      "endpoint": "/api/intake/promote",
+      "callCount": 2,
+      "actualFile": "/api/intake/promote"
+    },
+    {
+      "endpoint": "/api/slack/send",
+      "callCount": 12,
+      "actualFile": "/api/slack/send"
+    },
+    {
+      "endpoint": "/api/slack/find-user",
+      "callCount": 1,
+      "actualFile": "/api/slack/find-user"
+    },
+    {
+      "endpoint": "/api/slack/notifications/send-event",
+      "callCount": 3,
+      "actualFile": "/api/slack/notifications/send-event"
+    },
+    {
+      "endpoint": "/api/slack/sync/status",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/status"
+    },
+    {
+      "endpoint": "/api/slack/sync/run",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/run"
+    },
+    {
+      "endpoint": "/api/slack/sync/conflicts",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/conflicts"
+    },
+    {
+      "endpoint": "/api/slack/sync/resolve",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/resolve"
+    },
+    {
+      "endpoint": "/api/slack/sync/link-user",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/link-user"
+    },
+    {
+      "endpoint": "/api/slack/sync/users",
+      "callCount": 1,
+      "actualFile": "/api/slack/sync/users"
+    },
+    {
+      "endpoint": "/api/slack/notifications/triggers",
+      "callCount": 2,
+      "actualFile": "/api/slack/notifications/triggers"
+    },
+    {
+      "endpoint": "/api/slack/notifications/process",
+      "callCount": 1,
+      "actualFile": "/api/slack/notifications/process"
+    },
+    {
+      "endpoint": "/api/agents/proposals/bulk-resolve",
+      "callCount": 1,
+      "actualFile": "/api/agents/proposals/bulk-resolve"
+    },
+    {
+      "endpoint": "/api/intake/persons",
+      "callCount": 1,
+      "actualFile": "/api/intake/persons"
+    },
+    {
+      "endpoint": "/api/intake/links/resend",
+      "callCount": 1,
+      "actualFile": "/api/intake/links/resend"
+    },
+    {
+      "endpoint": "/api/slack/channels",
+      "callCount": 3,
+      "actualFile": "/api/slack/channels"
+    },
+    {
+      "endpoint": "/api/admin/sync-login-times",
+      "callCount": 1,
+      "actualFile": "/api/admin/sync-login-times"
+    },
+    {
+      "endpoint": "/api/admin/pending-audit",
+      "callCount": 1,
+      "actualFile": "/api/admin/pending-audit"
+    },
+    {
+      "endpoint": "/api/admin/users/[param]/reset-password",
+      "callCount": 1,
+      "actualFile": "/api/admin/users/[id]/reset-password"
+    },
+    {
+      "endpoint": "/api/admin/users/[param]/toggle-active",
+      "callCount": 1,
+      "actualFile": "/api/admin/users/[id]/toggle-active"
+    },
+    {
+      "endpoint": "/api/intake/form/[param]",
+      "callCount": 2,
+      "actualFile": "/api/intake/form/[token]"
+    },
+    {
+      "endpoint": "/api/ezyvet/sync-analytics",
+      "callCount": 5,
+      "actualFile": "/api/ezyvet/sync-analytics"
+    },
+    {
+      "endpoint": "/api/appointments/upload",
+      "callCount": 1,
+      "actualFile": "/api/appointments/upload"
+    },
+    {
+      "endpoint": "/api/appointments/import-clinic-reports",
+      "callCount": 1,
+      "actualFile": "/api/appointments/import-clinic-reports"
+    },
+    {
+      "endpoint": "/api/appointments/analyze",
+      "callCount": 1,
+      "actualFile": "/api/appointments/analyze"
+    },
+    {
+      "endpoint": "/api/marketing/ezyvet-analytics",
+      "callCount": 1,
+      "actualFile": "/api/marketing/ezyvet-analytics"
+    },
+    {
+      "endpoint": "/api/marketing/ezyvet-upsert",
+      "callCount": 1,
+      "actualFile": "/api/marketing/ezyvet-upsert"
+    },
+    {
+      "endpoint": "/api/invoices/dashboard",
+      "callCount": 1,
+      "actualFile": "/api/invoices/dashboard"
+    },
+    {
+      "endpoint": "/api/invoices/upload",
+      "callCount": 1,
+      "actualFile": "/api/invoices/upload"
+    },
+    {
+      "endpoint": "/api/invoices/analyze",
+      "callCount": 1,
+      "actualFile": "/api/invoices/analyze"
+    },
+    {
+      "endpoint": "/api/recalculate-partner-metrics",
+      "callCount": 1,
+      "actualFile": "/api/recalculate-partner-metrics"
+    },
+    {
+      "endpoint": "/api/parse-referrals",
+      "callCount": 1,
+      "actualFile": "/api/parse-referrals"
+    },
+    {
+      "endpoint": "/api/clear-referral-stats",
+      "callCount": 1,
+      "actualFile": "/api/clear-referral-stats"
+    },
+    {
+      "endpoint": "/api/analytics/practice-overview",
+      "callCount": 1,
+      "actualFile": "/api/analytics/practice-overview"
+    },
+    {
+      "endpoint": "/api/marketing/sauron",
+      "callCount": 1,
+      "actualFile": "/api/marketing/sauron"
+    },
+    {
+      "endpoint": "/api/marketplace/wallet",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/wallet"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs",
+      "callCount": 3,
+      "actualFile": "/api/marketplace/gigs"
+    },
+    {
+      "endpoint": "/api/marketplace/rewards",
+      "callCount": 3,
+      "actualFile": "/api/marketplace/rewards"
+    },
+    {
+      "endpoint": "/api/marketplace/transactions",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/transactions"
+    },
+    {
+      "endpoint": "/api/marketplace/redemptions",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/redemptions"
+    },
+    {
+      "endpoint": "/api/marketplace/check-expired",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/check-expired"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs/[param]/claim",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/gigs/[id]/claim"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs/[param]/submit",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/gigs/[id]/submit"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs/[param]/abandon",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/gigs/[id]/abandon"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs/[param]/approve",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/gigs/[id]/approve"
+    },
+    {
+      "endpoint": "/api/marketplace/gigs/[param]",
+      "callCount": 2,
+      "actualFile": "/api/marketplace/gigs/[id]"
+    },
+    {
+      "endpoint": "/api/marketplace/rewards/[param]",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/rewards/[id]"
+    },
+    {
+      "endpoint": "/api/marketplace/rewards/[param]/purchase",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/rewards/[id]/purchase"
+    },
+    {
+      "endpoint": "/api/marketplace/redemptions/[param]/fulfill",
+      "callCount": 1,
+      "actualFile": "/api/marketplace/redemptions/[id]/fulfill"
+    },
+    {
+      "endpoint": "/api/safety-log",
+      "callCount": 4,
+      "actualFile": "/api/safety-log"
+    },
+    {
+      "endpoint": "/api/safety-log/schedules",
+      "callCount": 4,
+      "actualFile": "/api/safety-log/schedules"
+    },
+    {
+      "endpoint": "/api/public/apply",
+      "callCount": 1,
+      "actualFile": "/api/public/apply"
+    },
+    {
+      "endpoint": "/api/public/positions",
+      "callCount": 1,
+      "actualFile": "/api/public/positions"
+    },
+    {
+      "endpoint": "/api/public/ce-event/[param]",
+      "callCount": 1,
+      "actualFile": "/api/public/ce-event/[eventId]"
+    },
+    {
+      "endpoint": "/api/public/ce-signup",
+      "callCount": 1,
+      "actualFile": "/api/public/ce-signup"
+    },
+    {
+      "endpoint": "/api/admin/disable-login",
+      "callCount": 1,
+      "actualFile": "/api/admin/disable-login"
+    },
+    {
+      "endpoint": "/api/admin/users/invite",
+      "callCount": 1,
+      "actualFile": "/api/admin/users/invite"
+    },
+    {
+      "endpoint": "/api/agents/[param]/trigger",
+      "callCount": 1,
+      "actualFile": "/api/agents/[agentId]/trigger"
+    },
+    {
+      "endpoint": "/api/agents/[param]/status",
+      "callCount": 1,
+      "actualFile": "/api/agents/[agentId]/status"
+    },
+    {
+      "endpoint": "/api/agents/proposals/[param]/review",
+      "callCount": 1,
+      "actualFile": "/api/agents/proposals/[id]/review"
+    },
+    {
+      "endpoint": "/api/agents/charts",
+      "callCount": 1,
+      "actualFile": "/api/agents/charts"
+    },
+    {
+      "endpoint": "/api/operations/check-geofence",
+      "callCount": 2,
+      "actualFile": "/api/operations/check-geofence"
+    },
+    {
+      "endpoint": "/api/safety-log/[param]",
+      "callCount": 2,
+      "actualFile": "/api/safety-log/[id]"
+    },
+    {
+      "endpoint": "/api/cron/slack-sync",
+      "callCount": 1,
+      "actualFile": "/api/cron/slack-sync"
+    }
+  ]
+}
