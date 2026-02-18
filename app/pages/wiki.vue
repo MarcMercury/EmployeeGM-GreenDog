@@ -49,23 +49,6 @@
       </v-row>
     </div>
 
-    <!-- Zone 2: Browse by Category -->
-    <div class="mb-6">
-      <h3 class="text-subtitle-1 font-weight-bold mb-3">Browse by Category</h3>
-      <v-row>
-        <v-col v-for="category in categories" :key="category.id" cols="6" sm="4" md="true">
-          <v-card
-            variant="outlined"
-            rounded="lg"
-            class="category-card text-center pa-3"
-            @click="selectCategory(category)"
-          >
-            <v-icon :color="category.color" size="28" class="mb-1">{{ category.icon }}</v-icon>
-            <div class="text-caption font-weight-medium">{{ category.name }}</div>
-          </v-card>
-        </v-col>
-      </v-row>
-    </div>
 
     <!-- Internal Document Results -->
     <template v-if="internalResults.length > 0">
@@ -572,14 +555,6 @@ const resourceButtons = [
   { id: 'event-calendar', name: 'Event Calendar', icon: 'mdi-calendar-month', color: 'amber-darken-2', route: '/marketing/calendar' }
 ]
 
-const categories = [
-  { id: 'conditions', name: 'Conditions', icon: 'mdi-hospital', color: 'red' },
-  { id: 'procedures', name: 'Procedures', icon: 'mdi-medical-bag', color: 'blue' },
-  { id: 'medications', name: 'Medications', icon: 'mdi-pill', color: 'green' },
-  { id: 'diagnostics', name: 'Diagnostics', icon: 'mdi-test-tube', color: 'purple' },
-  { id: 'nutrition', name: 'Nutrition', icon: 'mdi-food-apple', color: 'orange' },
-  { id: 'emergency', name: 'Emergency', icon: 'mdi-ambulance', color: 'error' }
-]
 
 const popularTopics = [
   {
@@ -784,51 +759,6 @@ function clearResults() {
   showMedPartners.value = false
 }
 
-function selectCategory(category: any) {
-  if (category.id === 'policies') {
-    showPolicies.value = true
-    showFacilityResources.value = false
-    showMedPartners.value = false
-    hasSearched.value = false
-    searchQuery.value = ''
-    aiResponse.value = ''
-    internalResults.value = []
-    topicResults.value = []
-    return
-  }
-
-  if (category.id === 'facility-resources') {
-    showFacilityResources.value = true
-    showPolicies.value = false
-    showMedPartners.value = false
-    hasSearched.value = false
-    searchQuery.value = ''
-    aiResponse.value = ''
-    internalResults.value = []
-    topicResults.value = []
-    loadFacilityResources()
-    return
-  }
-
-  if (category.id === 'med-partners') {
-    showMedPartners.value = true
-    showPolicies.value = false
-    showFacilityResources.value = false
-    hasSearched.value = false
-    searchQuery.value = ''
-    aiResponse.value = ''
-    internalResults.value = []
-    topicResults.value = []
-    loadMedPartners()
-    return
-  }
-  
-  showPolicies.value = false
-  showFacilityResources.value = false
-  showMedPartners.value = false
-  searchQuery.value = category.name
-  performSearch('both')
-}
 
 function openResult(result: any) {
   if (result.source === 'policy_document' && result.url) {
