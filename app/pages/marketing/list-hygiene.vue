@@ -64,12 +64,16 @@ const matchField = ref<MatchField>('email')  // Toggle between email and phone m
 // Processing State
 const isProcessing = ref(false)
 const processedData = ref<Record<string, any>[]>([])
+const removedRecords = ref<Record<string, any>[]>([])  // Tracks records removed during Find New operation
 const processingStats = ref({
   totalRows: 0,
   duplicatesRemoved: 0,
   finalCount: 0,
   multiEmailSplit: 0  // Count of extra rows created from multi-email cells
 })
+
+// Removed Records Dialog
+const showRemovedDialog = ref(false)
 
 // Import State
 const sourceTag = ref('')
@@ -685,6 +689,7 @@ async function processLists() {
   
   isProcessing.value = true
   processedData.value = []
+  removedRecords.value = []  // Clear removed records
   processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0, multiEmailSplit: 0 }
 
   try {
@@ -797,6 +802,7 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
 
   // Filter target rows, keeping most populated per match value
   const valueMap = new Map<string, Record<string, any>>()
+  const removed: Record<string, any>[] = []  // Track removed records
   let noValueCount = 0
   let suppressedCount = 0
   
@@ -808,6 +814,7 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
     }
     if (suppressionValues.has(value)) {
       suppressedCount++
+      removed.push(row)  // Store removed record
       continue
     }
 
@@ -816,6 +823,9 @@ async function processFindNew(targetRows: Record<string, any>[]): Promise<Record
       valueMap.set(value, row)
     }
   }
+
+  // Store removed records for viewing
+  removedRecords.value = removed
 
   console.log('[List Hygiene] processFindNew results:', {
     matchField: fieldName,
@@ -1371,7 +1381,13 @@ const previewHeaders = computed(() => {
               <v-icon start size="14">mdi-email-multiple</v-icon>
               {{ processingStats.multiEmailSplit }} multi-email splits
             </v-chip>
-            <v-chip color="warning" variant="tonal" size="small">
+            <v-chip 
+              color="warning" 
+              variant="tonal" 
+              size="small"
+              :class="{ 'cursor-pointer': operationType === 'find_new' && removedRecords.length > 0 }"
+              @click="operationType === 'find_new' && removedRecords.length > 0 ? showRemovedDialog = true : null"
+            >
               <v-icon start size="14">mdi-content-duplicate</v-icon>
               {{ processingStats.duplicatesRemoved }} removed
             </v-chip>
@@ -1486,6 +1502,55 @@ const previewHeaders = computed(() => {
       </v-card>
     </v-expand-transition>
 
+    <!-- Removed Records Dialog -->
+    <v-dialog v-model="showRemovedDialog" max-width="1200" scrollable>
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2" color="warning">mdi-filter-remove</v-icon>
+          Removed Records ({{ removedRecords.length }})
+        </v-card-title>
+        <v-card-subtitle>
+          Records removed because they matched the suppression list
+        </v-card-subtitle>
+        <v-divider />
+        <v-card-text class="pa-0" style="max-height: 600px;">
+          <v-table density="compact" hover fixed-header>
+            <thead>
+              <tr>
+                <th class="text-left">#</th>
+                <th class="text-left">Email</th>
+                <th class="text-left">First Name</th>
+                <th class="text-left">Last Name</th>
+                <th class="text-left">Phone</th>
+                <th class="text-left">Company</th>
+                <th class="text-left">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(record, idx) in removedRecords" :key="idx">
+                <td>{{ idx + 1 }}</td>
+                <td>{{ record.email || '-' }}</td>
+                <td>{{ record.first_name || '-' }}</td>
+                <td>{{ record.last_name || '-' }}</td>
+                <td>{{ record.phone || '-' }}</td>
+                <td>{{ record.company || '-' }}</td>
+                <td>{{ record.source || '-' }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+          <div v-if="removedRecords.length === 0" class="text-center pa-6 text-grey">
+            <v-icon size="48" color="grey-lighten-1">mdi-filter-off</v-icon>
+            <div class="text-body-2 mt-2">No records were removed</div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" @click="showRemovedDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Header Mapping Dialog -->
     <v-dialog v-model="showMappingDialog" max-width="500" persistent>
       <v-card>
@@ -1532,6 +1597,15 @@ const previewHeaders = computed(() => {
 .list-hygiene-page {
   max-width: 1400px;
   margin: 0 auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.cursor-pointer:hover {
+  opacity: 0.8;
 }
 
 .dropzone-card {
