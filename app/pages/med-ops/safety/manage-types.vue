@@ -325,7 +325,9 @@ onMounted(() => {
 })
 
 function navigateToType(key: string) {
+  console.log('[navigateToType] Clicked tile with key:', key)
   const slug = key.replace(/_/g, '-')
+  console.log('[navigateToType] Navigating to:', `/med-ops/safety/manage-types/${slug}`)
   router.push(`/med-ops/safety/manage-types/${slug}`)
 }
 
