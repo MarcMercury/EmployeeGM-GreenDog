@@ -507,8 +507,6 @@ const { can } = usePermissions()
 const runtimeConfig = useRuntimeConfig()
 const { allTypes, findType, fetchCustomTypes, updateCustomType, deleteCustomType, loaded: ctLoaded } = useCustomSafetyLogTypes()
 
-console.log('[manage-types/[type]] Script setup running, route.params:', route.params)
-
 const canManage = computed(() => can('manage:safety-logs'))
 const loading = ref(true)
 const activeSection = ref('qr')
@@ -871,9 +869,6 @@ async function doDelete() {
 
 // ── Lifecycle ──────────────────────────────────────────
 onMounted(async () => {
-  console.log('[manage-types/[type]] Component mounted, type:', typeKey.value)
-  console.log('[manage-types/[type]] typeConfig:', typeConfig.value)
-  console.log('[manage-types/[type]] ctLoaded:', ctLoaded.value)
   if (!ctLoaded.value) await fetchCustomTypes()
   loading.value = false
   fetchSchedules()
