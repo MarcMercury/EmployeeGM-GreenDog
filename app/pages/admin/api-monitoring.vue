@@ -177,9 +177,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useToast } from '#app'
 
-const toast = useToast()
 const activeTab = ref('recent')
 const summary = ref<any>({
   lastErrors: 0,
@@ -222,8 +220,7 @@ async function loadData() {
     const response = await $fetch('/api/system/track-api-errors')
     summary.value = response
   } catch (err: any) {
-    toast.error('Failed to load error data')
-    console.error(err)
+    console.error('Failed to load error data', err)
   }
 }
 
@@ -243,7 +240,6 @@ function formatDate(dateStr: string): string {
 
 function copyEndpoint(endpoint: string) {
   navigator.clipboard.writeText(endpoint)
-  toast.success('Endpoint copied!')
 }
 
 onMounted(async () => {
