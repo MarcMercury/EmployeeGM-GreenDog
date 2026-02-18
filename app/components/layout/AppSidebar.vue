@@ -42,21 +42,25 @@
         class="nav-item mb-1"
       />
 
-      <!-- ===== Resources Group - Collapsable ===== -->
-      <v-list-group v-if="hasSectionAccess('Resources') && !rail" value="resources">
-        <template #activator="{ props: activatorProps }">
-          <v-list-item
-            v-bind="activatorProps"
-            prepend-icon="mdi-bookshelf"
-            title="Resources"
-            rounded="lg"
-            class="nav-item"
-          />
-        </template>
-        <v-list-item v-if="hasPageAccess('/wiki')" to="/wiki" title="Wiki" prepend-icon="mdi-book-open-page-variant" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/marketplace')" to="/marketplace" title="Marketplace" prepend-icon="mdi-store" density="compact" rounded="lg" class="nav-item ml-4" />
-      </v-list-group>
-      <v-list-item v-else-if="hasSectionAccess('Resources')" to="/wiki" prepend-icon="mdi-bookshelf" title="Resources" rounded="lg" class="nav-item mb-1" />
+      <!-- Wiki - Always visible -->
+      <v-list-item
+        v-if="hasPageAccess('/wiki')"
+        to="/wiki"
+        prepend-icon="mdi-book-open-page-variant"
+        title="Wiki"
+        rounded="lg"
+        class="nav-item mb-1"
+      />
+
+      <!-- Marketplace - Always visible -->
+      <v-list-item
+        v-if="hasPageAccess('/marketplace')"
+        to="/marketplace"
+        prepend-icon="mdi-store"
+        title="Marketplace"
+        rounded="lg"
+        class="nav-item mb-1"
+      />
 
       <!-- ===== My Workspace Group - Database-driven Access ===== -->
       <v-list-group v-if="hasSectionAccess('My Workspace') && !rail" value="my-workspace">

@@ -15,7 +15,6 @@ const sidebarCollapsed = ref(false)
 // Collapsible section states - all collapsed by default
 // 4-TIER ROLE STRUCTURE: admin, office_admin, marketing_admin, user
 const sections = ref({
-  resources: false,      // Wiki, Marketplace
   myWorkspace: false,    // All users: My Profile (skills/goals/reviews), My Schedule, My Training
   management: false,     // admin, office_admin: Roster, Team Schedule, Recruiting, Approvals
   hr: false,             // HR Admin + Admin: Team Schedule, Time Off, Recruiting, Payroll
@@ -243,46 +242,20 @@ const closeMobileMenu = () => {
             <span v-if="!sidebarCollapsed">Activity Hub</span>
           </NuxtLink>
 
-          <!-- Resources Section (collapsible) -->
-          <div class="pt-2">
-            <button 
-              @click="toggleSection('resources')"
-              class="section-header group"
-            >
-              <span>📚 Resources</span>
-              <svg 
-                class="w-4 h-4 transition-transform duration-200" 
-                :class="{ 'rotate-180': sections.resources }"
-                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="section-content" :class="{ 'section-open': sections.resources }">
-              <NuxtLink to="/wiki" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
-                Wiki
-              </NuxtLink>
-              <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" active-class="nav-link-active">
-                <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
-                Marketplace
-              </NuxtLink>
-            </div>
-          </div>
+          <!-- Wiki -->
+          <NuxtLink to="/wiki" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }" active-class="nav-link-active">
+            <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
+            <span v-if="!sidebarCollapsed">Wiki</span>
+          </NuxtLink>
+
+          <!-- Marketplace (Super Admin only) -->
+          <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group" :class="{ 'justify-center': sidebarCollapsed }" active-class="nav-link-active">
+            <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
+            <span v-if="!sidebarCollapsed">Marketplace</span>
+          </NuxtLink>
 
           <!-- Collapsed mode: just show icons -->
           <template v-if="sidebarCollapsed">
-            <NuxtLink to="/activity" class="nav-link group justify-center" title="Activity Hub">
-              <div class="nav-icon-wrap group-hover:bg-amber-500/20 relative">
-                🔔
-                <span v-if="unreadNotificationCount > 0" class="absolute -top-1 -right-1 min-w-[14px] h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                  {{ unreadNotificationCount > 9 ? '9+' : unreadNotificationCount }}
-                </span>
-              </div>
-            </NuxtLink>
-            <NuxtLink to="/wiki" class="nav-link group justify-center" title="Resources">
-              <div class="nav-icon-wrap group-hover:bg-teal-500/20">📚</div>
-            </NuxtLink>
-            <NuxtLink v-if="isSuperAdmin" to="/marketplace" class="nav-link group justify-center" title="Marketplace">
-              <div class="nav-icon-wrap group-hover:bg-amber-500/20">🦴</div>
-            </NuxtLink>
             <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
             </NuxtLink>
