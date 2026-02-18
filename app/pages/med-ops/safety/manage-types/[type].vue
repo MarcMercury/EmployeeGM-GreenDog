@@ -482,7 +482,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+console.log('[Detail Page] <script setup> executing!')
+
+import { ref, computed, onMounted, watch, onErrorCaptured } from 'vue'
 import QrcodeVue from 'qrcode.vue'
 import {
   SAFETY_LOCATIONS,
@@ -495,16 +497,23 @@ import {
   getSafetyLogTypeConfig,
 } from '~/types/safety-log.types'
 
+console.log('[Detail Page] Imports complete')
+
 definePageMeta({
   middleware: ['auth'],
   layout: 'default',
 })
+
+console.log('[Detail Page] definePageMeta called')
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const { can } = usePermissions()
 const runtimeConfig = useRuntimeConfig()
+
+console.log('[Detail Page] Initializing, route.params.type:', route.params.type)
+
 const { allTypes, findType, fetchCustomTypes, updateCustomType, deleteCustomType, loaded: ctLoaded } = useCustomSafetyLogTypes()
 
 const canManage = computed(() => can('manage:safety-logs'))
@@ -512,14 +521,29 @@ const loading = ref(true)
 const activeSection = ref('qr')
 
 // ── Resolve type from URL ──────────────────────────────
-const typeKey = computed<SafetyLogType>(() =>
-  safetySlugToKey(route.params.type as string)
-)
+const typeKey = computed<SafetyLogType>(() => {
+  try {
+    const key = safetySlugToKey(route.params.type as string)
+    console.log('[Detail Page] typeKey computed:', key)
+    return key
+  } catch (error) {
+    console.error('[Detail Page] Error in typeKey computed:', error)
+    return 'injury_illness' as SafetyLogType
+  }
+})
 
 const typeConfig = computed<SafetyLogTypeConfig | undefined>(() => {
-  const builtIn = getSafetyLogTypeConfig(typeKey.value)
-  if (builtIn) return builtIn
-  return findType(typeKey.value)
+  try {
+    const builtIn = getSafetyLogTypeConfig(typeKey.value)
+    console.log('[Detail Page] builtIn config:', builtIn)
+    if (builtIn) return builtIn
+    const custom = findType(typeKey.value)
+    console.log('[Detail Page] custom config:', custom)
+    return custom
+  } catch (error) {
+    console.error('[Detail Page] Error in typeConfig computed:', error)
+    return undefined
+  }
 })
 
 const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employee-gm-green-dog.vercel.app')
@@ -869,9 +893,16 @@ async function doDelete() {
 
 // ── Lifecycle ──────────────────────────────────────────
 onMounted(async () => {
+  console.log('[Detail Page] onMounted called')
   if (!ctLoaded.value) await fetchCustomTypes()
   loading.value = false
   fetchSchedules()
+})
+
+onErrorCaptured((err, instance, info) => {
+  console.error('[Detail Page] Error captured:', err, 'Info:', info)
+  toast.error(`Page error: ${err.message}`)
+  return false // Don't propagate
 })
 </script>
 
