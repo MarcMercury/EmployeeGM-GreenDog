@@ -4,8 +4,8 @@
 // into the Marketing Calendar. Triggered daily at 6 AM UTC
 // =============================================================================
 
-import { eventScraperAggregator } from '~/server/utils/event-scrapers'
-import { EventInsertionService } from '~/server/utils/event-insertion.service'
+import { eventScraperAggregator } from '../../utils/event-scrapers'
+import { EventInsertionService } from '../../utils/event-insertion.service'
 
 export default defineEventHandler(async (event) => {
   // Verify this is a legitimate cron request

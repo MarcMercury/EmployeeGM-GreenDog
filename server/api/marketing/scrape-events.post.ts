@@ -4,8 +4,8 @@
 // Allows manual triggering of event scraping from external sources
 // =============================================================================
 
-import { eventScraperAggregator } from '~/server/utils/event-scrapers'
-import { EventInsertionService } from '~/server/utils/event-insertion.service'
+import { eventScraperAggregator } from '../../utils/event-scrapers'
+import { EventInsertionService } from '../../utils/event-insertion.service'
 
 export default defineEventHandler(async (event) => {
   // Check authentication
