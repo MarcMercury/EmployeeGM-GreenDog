@@ -610,7 +610,7 @@
           <div v-if="isAdmin" class="d-flex flex-column gap-2">
             <v-btn 
               color="primary" 
-              :to="`/growth/events`"
+              :to="`/growth/events/${selectedEvent.id}`"
               prepend-icon="mdi-arrow-right"
               block
             >
