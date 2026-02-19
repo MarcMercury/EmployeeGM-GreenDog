@@ -50,7 +50,7 @@ TeamOS is an **enterprise unified operating system** that consolidates 8 discret
 | State Management | Pinia | 2.3+ | Reactive stores with persistence |
 | Validation | Zod | 3.24+ | Runtime type safety at boundaries |
 | Database | PostgreSQL | 15+ | Relational data via Supabase |
-| Authentication | Supabase Auth | - | RBAC with 5 permission levels |
+| Authentication | Supabase Auth | - | RBAC with 8 roles |
 | File Storage | Supabase Storage | - | Secure document management |
 | AI Integration | OpenAI GPT-4 | - | Resume parsing, scheduling, wiki |
 | Hosting | Vercel Edge | - | Global CDN, auto-deploy |
@@ -193,13 +193,16 @@ Every table (120+) has PostgreSQL RLS policies enforcing:
 
 ## 5. RBAC Permission Model
 
-| Role | Level | Access Scope |
-|------|-------|--------------|
-| `super_admin` | 1 | Full system + super admin panel |
-| `admin` | 2 | Full system access |
-| `manager` | 3 | Team management + reports |
-| `marketing_admin` | 4 | Marketing module only |
-| `employee` | 5 | Own profile + basic features |
+| Role | Tier | Access Scope |
+|------|------|--------------|
+| `super_admin` | 200 | Full system + user management |
+| `admin` | 100 | Full system access (user list: view only) |
+| `manager` | 80 | HR + Marketing + Ops, no Admin Ops |
+| `hr_admin` | 60 | HR + Recruiting + Education + GDU |
+| `sup_admin` | 55 | Supervisor — between HR Admin and Office Admin |
+| `office_admin` | 50 | Roster, Schedules, Time Off, Med Ops |
+| `marketing_admin` | 40 | Marketing + CRM + GDU + Med Ops |
+| `user` | 10 | Personal workspace + limited view access |
 
 ---
 
@@ -246,17 +249,17 @@ TeamOS replaces the following typical SaaS subscriptions:
 
 | Metric | Count |
 |--------|-------|
-| Database Migrations | 136 |
+| Database Migrations | 203 |
 | Database Tables | 120+ |
-| Application Pages | 77 |
-| Vue Components | 100+ |
-| Composables | 19 |
-| Pinia Stores | 10+ |
+| Application Pages | 98 |
+| Vue Components | 94 |
+| Composables | 30 |
+| Pinia Stores | 25 |
 | Skills in Library | 250+ |
 | Active Scripts | ~30 |
 | TypeScript Coverage | 100% |
 | Locations Supported | 3 |
-| RBAC Roles | 5 |
+| RBAC Roles | 8 |
 
 ---
 

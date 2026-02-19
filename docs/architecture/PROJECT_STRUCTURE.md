@@ -174,9 +174,9 @@ const { data: employees, pending, refresh } = await useAsyncData(
 
 ## 📊 Scale & Metrics
 
-- **61 Components** - Modular, feature-organized
-- **77 Pages** - Comprehensive application coverage
-- **136 Migrations** - Evolutionary database schema
+- **94 Components** - Modular, feature-organized
+- **98 Pages** - Comprehensive application coverage
+- **203 Migrations** - Evolutionary database schema
 - **~30 Active Scripts** - Maintenance automation
 - **10 Stores** - Organized state management
 - **8 Middleware** - Fine-grained access control
@@ -193,6 +193,6 @@ const { data: employees, pending, refresh } = await useAsyncData(
 
 - **Supabase Auth** - Email/password authentication
 - **Row-Level Security** - Database-level access control
-- **Role-Based Access Control (RBAC)** - 5 permission levels
+- **Role-Based Access Control (RBAC)** - 8 roles
 - **Middleware Guards** - Route-level protection
 - **Secure Secrets** - Environment variables for credentials

@@ -10,7 +10,7 @@ import { z } from 'zod'
 
 // ── Shared Enums ───────────────────────────────────────
 
-export const SafetyLogTypeEnum = z.enum([
+const SafetyLogTypeEnum = z.enum([
   'training_attendance',
   'injury_illness',
   'incident_near_miss',
@@ -28,13 +28,13 @@ export const SafetyLogTypeEnum = z.enum([
   'employee_acknowledgment',
 ])
 
-export const SafetyLocationEnum = z.enum(['venice', 'sherman_oaks', 'van_nuys'])
+const SafetyLocationEnum = z.enum(['venice', 'sherman_oaks', 'van_nuys'])
 
-export const SafetyStatusEnum = z.enum(['draft', 'submitted', 'reviewed', 'flagged'])
+const SafetyStatusEnum = z.enum(['draft', 'submitted', 'reviewed', 'flagged'])
 
 // ── Per-Type form_data Schemas ─────────────────────────
 
-export const TrainingAttendanceSchema = z.object({
+const TrainingAttendanceSchema = z.object({
   employee_name: z.string().min(1, 'Employee name is required').transform(s => s.trim()),
   topic: z.string().min(1, 'Training topic is required'),
   training_date: z.string().min(1, 'Training date is required'),
@@ -42,7 +42,7 @@ export const TrainingAttendanceSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const InjuryIllnessSchema = z.object({
+const InjuryIllnessSchema = z.object({
   incident_date: z.string().min(1, 'Incident date is required'),
   incident_location: z.string().min(1, 'Incident location is required').transform(s => s.trim()),
   description: z.string().min(1, 'Description is required').transform(s => s.trim()),
@@ -50,14 +50,14 @@ export const InjuryIllnessSchema = z.object({
   root_cause_analysis: z.string().optional().default(''),
 })
 
-export const IncidentNearMissSchema = z.object({
+const IncidentNearMissSchema = z.object({
   description: z.string().min(1, 'Description is required').transform(s => s.trim()),
   potential_cause: z.string().optional().default(''),
   animal_involved: z.boolean().default(false),
   corrective_action: z.string().optional().default(''),
 })
 
-export const HazardAssessmentSchema = z.object({
+const HazardAssessmentSchema = z.object({
   assessor: z.string().min(1, 'Assessor name is required').transform(s => s.trim()),
   area: z.string().min(1, 'Area is required').transform(s => s.trim()),
   hazard_type: z.string().optional().default(''),
@@ -65,13 +65,13 @@ export const HazardAssessmentSchema = z.object({
   mitigation_plan: z.string().optional().default(''),
 })
 
-export const SafetyInspectionSchema = z.object({
+const SafetyInspectionSchema = z.object({
   inspector: z.string().min(1, 'Inspector name is required').transform(s => s.trim()),
   checklist_items: z.array(z.string()).default([]),
   findings: z.string().optional().default(''),
 })
 
-export const FireEmergencyDrillSchema = z.object({
+const FireEmergencyDrillSchema = z.object({
   drill_type: z.string().min(1, 'Drill type is required'),
   evacuation_time: z.number().optional().nullable(),
   animal_safety_protocol_followed: z.boolean().default(false),
@@ -79,14 +79,14 @@ export const FireEmergencyDrillSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const SharpsInjurySchema = z.object({
+const SharpsInjurySchema = z.object({
   device_type: z.string().min(1, 'Device type is required'),
   procedure: z.string().optional().default(''),
   safety_mechanism_used: z.boolean().default(false),
   explanation: z.string().optional().default(''),
 })
 
-export const ZoonoticBiteReportSchema = z.object({
+const ZoonoticBiteReportSchema = z.object({
   animal_id: z.string().min(1, 'Animal ID is required').transform(s => s.trim()),
   exposure_type: z.string().min(1, 'Exposure type is required'),
   body_part_affected: z.string().optional().default(''),
@@ -94,7 +94,7 @@ export const ZoonoticBiteReportSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const RadiationDosimetrySchema = z.object({
+const RadiationDosimetrySchema = z.object({
   badge_id: z.string().min(1, 'Badge ID is required').transform(s => s.trim()),
   period: z.string().min(1, 'Monitoring period is required').transform(s => s.trim()),
   reading: z.number().optional().nullable(),
@@ -102,7 +102,7 @@ export const RadiationDosimetrySchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const EquipmentMaintenanceSchema = z.object({
+const EquipmentMaintenanceSchema = z.object({
   equipment_id: z.string().min(1, 'Equipment ID is required').transform(s => s.trim()),
   maintenance_type: z.string().optional().default(''),
   next_service_due: z.string().optional().default(''),
@@ -111,13 +111,13 @@ export const EquipmentMaintenanceSchema = z.object({
   findings: z.string().optional().default(''),
 })
 
-export const SafetyMeetingSchema = z.object({
+const SafetyMeetingSchema = z.object({
   topic: z.string().min(1, 'Meeting topic is required').transform(s => s.trim()),
   attendees: z.string().optional().default(''),
   action_items: z.string().optional().default(''),
 })
 
-export const EmergencyContactsSchema = z.object({
+const EmergencyContactsSchema = z.object({
   contact_type: z.string().min(1, 'Contact type is required'),
   name: z.string().min(1, 'Contact name is required').transform(s => s.trim()),
   phone: z.string().min(1, 'Phone number is required').transform(s => s.trim()),
@@ -128,7 +128,7 @@ export const EmergencyContactsSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const HazcomChemicalSchema = z.object({
+const HazcomChemicalSchema = z.object({
   chemical_name: z.string().min(1, 'Chemical name is required').transform(s => s.trim()),
   manufacturer: z.string().optional().default(''),
   sds_available: z.boolean().default(false),
@@ -140,7 +140,7 @@ export const HazcomChemicalSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const PpeAssessmentSchema = z.object({
+const PpeAssessmentSchema = z.object({
   assessment_type: z.string().min(1, 'Assessment type is required'),
   area_assessed: z.string().min(1, 'Area is required').transform(s => s.trim()),
   ppe_items_checked: z.array(z.string()).default([]),
@@ -150,7 +150,7 @@ export const PpeAssessmentSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
-export const EmployeeAcknowledgmentSchema = z.object({
+const EmployeeAcknowledgmentSchema = z.object({
   employee_name: z.string().min(1, 'Employee name is required').transform(s => s.trim()),
   acknowledgment_type: z.string().min(1, 'Acknowledgment type is required'),
   sections_reviewed: z.array(z.string()).default([]),
@@ -160,7 +160,7 @@ export const EmployeeAcknowledgmentSchema = z.object({
 })
 
 // Map of log_type → form_data schema
-export const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
+const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   training_attendance: TrainingAttendanceSchema,
   injury_illness: InjuryIllnessSchema,
   incident_near_miss: IncidentNearMissSchema,
@@ -223,7 +223,7 @@ export function validateFormData(logType: string, formData: unknown) {
 const VALID_FIELD_TYPES = ['text', 'textarea', 'select', 'boolean', 'date', 'number', 'multiselect', 'file'] as const
 
 /** Schema for a single field definition in a custom safety log type */
-export const SafetyFormFieldSchema = z.object({
+const SafetyFormFieldSchema = z.object({
   key: z.string().min(1, 'Field key is required').regex(/^[a-z][a-z0-9_]*$/, 'Field key must be snake_case'),
   label: z.string().min(1, 'Field label is required'),
   type: z.enum(VALID_FIELD_TYPES),
@@ -235,7 +235,7 @@ export const SafetyFormFieldSchema = z.object({
 })
 
 /** Schema for custom type key — must be snake_case, no collision with built-in types */
-export const CustomTypeKeySchema = z.string()
+const CustomTypeKeySchema = z.string()
   .min(2, 'Key must be at least 2 characters')
   .max(64, 'Key must be at most 64 characters')
   .regex(/^[a-z][a-z0-9_]*$/, 'Key must be lowercase snake_case (letters, numbers, underscores)')

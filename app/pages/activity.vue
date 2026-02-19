@@ -67,7 +67,7 @@
         <v-card 
           class="stat-tile" 
           rounded="xl" 
-          :to="'/people/my-skills'"
+          :to="'/profile'"
           hover
         >
           <v-card-text class="d-flex align-center gap-3 pa-3">
@@ -492,7 +492,7 @@ import type { ActivityNotification } from '~/types/integrations.types'
 
 definePageMeta({
   layout: 'default',
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
 useHead({

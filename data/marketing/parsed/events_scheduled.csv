@@ -11,25 +11,15 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-01-01,January,Walk Your Pet Month,Awareness,,,,awareness
 2025-01-02,January,Happy Mew Year for Cats Day,Awareness,,,,awareness
 2025-01-02,January,National Pet Travel Safety Day,Awareness,,,,awareness
-2025-01-05,January,National Bird Day,Awareness,,,,awareness
 2025-01-06,January,National Cuddle Up Day,Awareness,,,,awareness
-2025-01-06,January,National Standard Poodle Day,Awareness,,,,awareness
-2025-01-07,January,National Alaskan Malamute Day,Awareness,,,,awareness
-2025-01-08,January,National Labrador Retriever Day,Awareness,,,,awareness
-2025-01-09,January,National Australian Shepherd Day,Awareness,,,,awareness
 2025-01-10,February,GDD Staff Holiday Party,Staff Event,,,,completed
-2025-01-13,January,National French Bulldog Day,Awareness,,,,awareness
 2025-01-14,January,National Dress Up Your Pet Day,Awareness,,,,awareness
-2025-01-15,January,National American Eskimo Dog Day,Awareness,,,,awareness
-2025-01-17,January,National Boxer Day,Awareness,,,,awareness
 2025-01-19,February,Martin Luther King Jr. Day,National Holiday,,,,completed
 2025-01-19,January,National Conservation Dog Day,Awareness,,,,awareness
 2025-01-20,January,Inauguration Day (DC only),Awareness,,,,awareness
 2025-01-20,January,Penguin Awareness Day,Awareness,,,,awareness
-2025-01-21,January,National Squirrel Appreciation Day,Awareness,,,,awareness
 2025-01-21,January,Squirrel Appreciation Day,Awareness,,,,awareness
 2025-01-22,January,National Answer Your Catâ€™s Question Day,Awareness,,,,awareness
-2025-01-22,January,National Yorkshire Terrier Day,Awareness,,,,awareness
 2025-01-24,January,Change a Petâ€™s Life Day,Awareness,,,,awareness
 2025-01-24,January,Peanut Butter Day,Awareness,,,,awareness
 2025-01-29,January,Seeing-Eye Guide Dog Anniversary,Awareness,,,,awareness
@@ -46,21 +36,15 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-02-01,February,Dog Training Education Month,Awareness,,,,awareness
 2025-02-01,February,Heart Month,Awareness,,,,awareness
 2025-02-01,February,National Cat Health Month,Awareness,,,,awareness
-2025-02-01,February,National Serpent Day,Awareness,,,,awareness
 2025-02-01,February,Pet Dental Health Month,Awareness,,,,awareness
 2025-02-01,February,Responsible Pet Owners Month,Awareness,,,,awareness
 2025-02-01,February,Spay/Neuter Awareness Month (AKA Beat the Heat Month),Awareness,,,,awareness
 2025-02-01,February,World Greyhound Day,Awareness,,,,awareness
-2025-02-02,February,National Brown Dog Day,Awareness,,,,awareness
-2025-02-02,February,National Hedgehog Day,Awareness,,,,awareness
 2025-02-03,February,Doggie Date Night,Awareness,,,,awareness
-2025-02-03,February,National Golden Retriever Day,Awareness,,,,awareness
 2025-02-04,February,World Cancer Day,Awareness,,,,awareness
 2025-02-14,February,Pet Theft Awareness Day,Awareness,,,,awareness
 2025-02-14,February,Valentineâ€™s Day,Awareness,,,,awareness
 2025-02-17,February,Washington's Birthday (Presidents' Day),Awareness,,,,awareness
-2025-02-19,February,National Boston Terrier Day,Awareness,,,,awareness
-2025-02-19,February,National Whippet Day,Awareness,,,,awareness
 2025-02-20,February,Love Your Pet Day,Awareness,,,,awareness
 2025-02-21,February,International Skye Terrier Day,Awareness,,,,awareness
 2025-02-22,February,National Wildlife Day,Awareness,,,,awareness
@@ -74,10 +58,7 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 ,March,Professional Pet Sitters Week (first full week in March),Awareness,,,,awareness
 2025-03-01,March,Adopt a Rescued Guinea Pig Month,Awareness,,,,awareness
 2025-03-01,March,Employee Appreciation Day (first Friday in March),Awareness,,,,awareness
-2025-03-01,March,National Horse Protection Day,Awareness,,,,awareness
 2025-03-01,March,National Peanut Butter Loverâ€™s Day,Awareness,,,,awareness
-2025-03-01,March,National Pig Day,Awareness,,,,awareness
-2025-03-01,March,National Welsh Corgi Day,Awareness,,,,awareness
 2025-03-01,March,Poison Prevention Awareness Month,Awareness,,,,awareness
 2025-03-01,March,Social Work Month,Awareness,,,,awareness
 2025-03-02,March,International Rescue Cat Day,Awareness,,,,awareness
@@ -92,17 +73,12 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-03-13,March,World Kidney Day (second Thursday in March),Awareness,,,,awareness
 2025-03-14,March,UK Dog Theft Awareness Day,Awareness,,,,awareness
 2025-03-15,March,National Catio Day,Awareness,,,,awareness
-2025-03-16,March,National Panda Day,Awareness,,,,awareness
 2025-03-16,March,Poison Prevention Week,Awareness,,,,awareness
 2025-03-17,March,Saint Gertrude of Nivelles Day (patron saint of cats),Awareness,,,,awareness
 2025-03-19,March,World Social Work Day,Awareness,,,,awareness
-2025-03-20,March,National Westie Day,Awareness,,,,awareness
 2025-03-20,March,World Sparrow Day,Awareness,,,,awareness
 2025-03-23,March,Cuddly Kitten Day,Awareness,,,,awareness
-2025-03-23,March,National Puppy Day,Awareness,,,,awareness
-2025-03-25,March,National Newfoundland Dog Day,Awareness,,,,awareness
 2025-03-26,March,Manatee Appreciation Day,Awareness,,,,awareness
-2025-03-27,March,National Terrier Day,Awareness,,,,awareness
 2025-03-28,March,Respect Your Cat Day,Awareness,,,,awareness
 2025-03-29,March,Eid al-Fitr,Awareness,,,,awareness
 2025-03-29,March,Ramadan Ends,Awareness,,,,awareness
@@ -123,13 +99,10 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-04-01,April,National Public Health Week,Awareness,,,,awareness
 2025-04-01,April,Prevention of Cruelty to Animals Month,Awareness,,,,awareness
 2025-04-01,April,Prevention of Lyme Disease in Dogs Month,Awareness,,,,awareness
-2025-04-02,April,National Ferret Day,Awareness,,,,awareness
 2025-04-04,April,World Rat Day,Awareness,,,,awareness
 2025-04-04,April,World Stray Animal Day,Awareness,,,,awareness
 2025-04-05,April,Every Day is Tag Day,Awareness,,,,awareness
 2025-04-06,April,Every Day is Tag Day (first Saturday in April),Awareness,,,,awareness
-2025-04-06,April,National Ferret Day,Awareness,,,,awareness
-2025-04-06,April,National Siamese Cat Day,Awareness,,,,awareness
 2025-04-07,April,National Pet Health Insurance Day,Awareness,,,,awareness
 2025-04-07,April,National Public Health Week,Awareness,,,,awareness
 2025-04-07,April,World Health Day,Awareness,,,,awareness
@@ -142,7 +115,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-04-12,April,World Hamster Day,Awareness,,,,awareness
 2025-04-13,April,National Animal Care and Control Appreciation Week,Awareness,,,,awareness
 2025-04-13,April,National Dog Bite Prevention WeekÂ®,Awareness,,,,awareness
-2025-04-14,April,National Dolphin Day,Awareness,,,,awareness
 2025-04-14,April,American Red Cross Pet First Aid Awareness Month,Awareness,,,,awareness
 2025-04-14,April,International Pooper Scooper Week,Awareness,,,,awareness
 2025-04-14,April,National Dog Bite Prevention Week (second full week in April),Awareness,,,,awareness
@@ -158,7 +130,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-04-20,April,4/20 Day,Awareness,,,,awareness
 2025-04-21,April,Bulldogs are Beautiful Day,Awareness,,,,awareness
 2025-04-22,April,Earth Day,Awareness,,,,awareness
-2025-04-22,April,National Beagle Day,Awareness,,,,awareness
 2025-04-22,April,Pet CPR Day,Awareness,,,,awareness
 2025-04-23,April,National Lost Dog Awareness Day,Awareness,,,,awareness
 ,April,Veterinary Receptionist Week (last full week of April),Awareness,,,,awareness
@@ -175,7 +146,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-04-30,April,Adopt a Shelter Pet Day,Awareness,,,,awareness
 2025-04-30,April,International Guide Dog Day,Awareness,,,,awareness
 2025-04-30,April,National Adopt a Shelter Pet Day,Awareness,,,,awareness
-2025-04-30,April,National Tabby Day,Awareness,,,,awareness
 2025-04-30,April,National Therapy Animal Day,Awareness,,,,awareness
 ,May,Arthritis Awareness Month,Awareness,,,,awareness
 ,May,Asthma and Allergy Awareness Month,Awareness,,,,awareness
@@ -237,7 +207,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-06-01,June,National Zoo and Aquarium Month,Awareness,,,,awareness
 2025-06-01,June,Pet Appreciation Week,Awareness,,,,awareness
 2025-06-01,June,Pride Month,Awareness,,,,awareness
-2025-06-02,June,National Greyhound Day,Awareness,,,,awareness
 2025-06-04,June,Hug Your Cat Day,Awareness,,,,awareness
 2025-06-04,June,International Corgi Day,Awareness,,,,awareness
 2025-06-07,June,World Food Safety Day,Awareness,,,,awareness
@@ -262,7 +231,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-06-20,June,Take Your Dog to Work Day,Awareness,,,,awareness
 2025-06-20,June,Take Your Dog to Work DayÂ®,Awareness,,,,awareness
 2025-06-20,June,Ugliest Dog Day,Awareness,,,,awareness
-2025-06-21,June,National Dachshund Day,Awareness,,,,awareness
 2025-06-21,June,National Dog Party Day,Awareness,,,,awareness
 2025-06-21,June,World Giraffe Day,Awareness,,,,awareness
 2025-06-22,June,National Pet Choking Prevention Day,Awareness,,,,awareness
@@ -278,8 +246,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-07-04,July,International Whippet Day,Awareness,,,,awareness
 2025-07-06,July,National Farriers Week,Awareness,,,,awareness
 2025-07-06,July,World Zoonoses Day,Awareness,,,,awareness
-2025-07-08,July,National Cow Appreciation Day,Awareness,,,,awareness
-2025-07-10,July,National Kitten Day,Awareness,,,,awareness
 2025-07-11,July,All American Pet Photo Day,Awareness,,,,awareness
 2025-07-11,July,All-American Pet Photo Day,Awareness,,,,awareness
 2025-07-14,July,Shark Awareness Day,Awareness,,,,awareness
@@ -293,7 +259,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-07-27,July,National Parents Day (fourth Sunday in July),Awareness,,,,awareness
 2025-07-29,July,International Tiger Day,Awareness,,,,awareness
 2025-07-30,July,International Friendship Day,Awareness,,,,awareness
-2025-07-31,July,National Mutt Day,Awareness,,,,awareness
 ,August,Clear the Shelters Month,Awareness,,,,awareness
 ,August,Give a Dog a Bone Week (first full week of August),Awareness,,,,awareness
 ,August,International Assistance Dog Week (first full week of August),Awareness,,,,awareness
@@ -304,7 +269,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-08-01,August,Itchy Pet Awareness Month,Awareness,,,,awareness
 2025-08-01,August,National Dog Month,Awareness,,,,awareness
 2025-08-01,August,National Immunization Awareness Month,Awareness,,,,awareness
-2025-08-01,August,National Yorkie Day,Awareness,,,,awareness
 2025-08-03,August,International Assistance Dog Week,Awareness,,,,awareness
 2025-08-04,August,Assistance Dog Day,Awareness,,,,awareness
 2025-08-06,August,Fresh Breath Day,Awareness,,,,awareness
@@ -318,7 +282,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-08-16,August,Clear the Shelters Day (third Saturday of August),Awareness,,,,awareness
 2025-08-16,August,Saint Rochâ€™s Day (patron saint of dogs),Awareness,,,,awareness
 2025-08-16,August,World Honeybee Day,Awareness,,,,awareness
-2025-08-17,August,National Black Cat Appreciation Day,Awareness,,,,awareness
 2025-08-17,August,National Non-Profit Day,Awareness,,,,awareness
 2025-08-19,August,International Orangutan Day,Awareness,,,,awareness
 2025-08-20,August,World Mosquito Day,Awareness,,,,awareness
@@ -326,7 +289,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-08-22,August,Take Your Cat to the Vet Day,Awareness,,,,awareness
 2025-08-23,August,Blind Dog Day,Awareness,,,,awareness
 2025-08-26,August,International Dog Day,Awareness,,,,awareness
-2025-08-26,August,National Dog Day,Awareness,,,,awareness
 2025-08-28,August,Rainbow Bridge Remembrance Day,Awareness,,,,awareness
 2025-08-30,August,National Holistic Pet Day,Awareness,,,,awareness
 ,September,Animal Pain Awareness Month,Awareness,,,,awareness
@@ -353,10 +315,8 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-09-01,September,Pet Sitter Education Month,Awareness,,,,awareness
 2025-09-01,September,Responsible Dog Ownership Month,Awareness,,,,awareness
 2025-09-04,September,National Wildlife Day,Awareness,,,,awareness
-2025-09-05,September,National White Cat Day,Awareness,,,,awareness
 2025-09-08,September,Iguana Awareness Day,Awareness,,,,awareness
 2025-09-08,September,National Dog Walker Appreciation Day,Awareness,,,,awareness
-2025-09-08,September,National Iguana Awareness Day,Awareness,,,,awareness
 2025-09-10,September,World Suicide Prevention Day,Awareness,,,,awareness
 2025-09-13,September,Pet Birth Defect Awareness Day,Awareness,,,,awareness
 2025-09-14,September,National Farm Health and Safety Week,Awareness,,,,awareness
@@ -389,7 +349,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-10-01,October,Adopt-a-Shelter Dog Month,Awareness,,,,awareness
 2025-10-01,October,Black Cat Awareness Month,Awareness,,,,awareness
 2025-10-01,October,National Animal Safety and Protection Month,Awareness,,,,awareness
-2025-10-01,October,National Black Dog Day,Awareness,,,,awareness
 2025-10-01,October,National Fire Pup Day,Awareness,,,,awareness
 2025-10-01,October,National Pet Obesity Awareness Month,Awareness,,,,awareness
 2025-10-01,October,National Pet Wellness Month,Awareness,,,,awareness
@@ -403,15 +362,11 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-10-12,October,National Veterinary Technician Week,Awareness,,,,awareness
 2025-10-13,October,Columbus Day,Awareness,,,,awareness
 2025-10-16,October,International Shakeout Day,Awareness,,,,awareness
-2025-10-16,October,National Feral Cat Day,Awareness,,,,awareness
 2025-10-16,October,World Food Day,Awareness,,,,awareness
 2025-10-18,October,National Fetch Day (third Saturday of October),Awareness,,,,awareness
 2025-10-21,October,National Pets for Veterans Day,Awareness,,,,awareness
 2025-10-21,October,Reptile Awareness Day,Awareness,,,,awareness
-2025-10-25,October,National Pitbull Awareness Day (last Saturday in October),Awareness,,,,awareness
-2025-10-27,October,National Black Cat Day,Awareness,,,,awareness
 2025-10-28,October,Plush Animal Lovers Day,Awareness,,,,awareness
-2025-10-29,October,National Cat Day,Awareness,,,,awareness
 2025-10-31,October,Halloween,Awareness,,,,awareness
 ,November,Adopt a Senior Pet Month,Awareness,,,,awareness
 ,November,Antibiotics Awareness Week,Awareness,,,,awareness
@@ -441,15 +396,26 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-11-18,November,Antibiotics Awareness Week,Awareness,,,,awareness
 2025-11-23,November,Thankful for My Dog Day,Awareness,,,,awareness
 2025-11-23,November,Wolfenoot,Awareness,,,,awareness
-2025-11-24,November,National Border Collie Day,Awareness,,,,awareness
 2025-11-27,November,Thanksgiving,Awareness,,,,awareness
 2025-11-27,November,Thanksgiving Day,Awareness,,,,awareness
-2025-12-02,December,National Mutt Day,Awareness,,,,awareness
 2025-12-04,December,International Cheetah Day,Awareness,,,,awareness
 2025-12-04,December,World Wildlife Conservation Day,Awareness,,,,awareness
 2025-12-09,December,International Day of Veterinary Medicine,Awareness,,,,awareness
-2025-12-13,December,National Day of the Horse,Awareness,,,,awareness
-2025-12-14,December,National Monkey Day,Awareness,,,,awareness
 2025-12-15,December,Cat Herders Day,Awareness,,,,awareness
 2025-12-25,December,Christmas Day,Awareness,,,,awareness
+2025-11-05,November,VCC Happy Hour Mixer,Networking,,Venice Chamber & Baja Cantina,"5:00PM-7:00PM at Baja Cantina 311 Washington Blvd Venice CA 90292. Enjoy a relaxed and stylish atmosphere while connecting with Venice Chamber members and prospective members. Complimentary small bites and drink specials. Contact: Mario and Karin 310-822-5425 info@venicechamber.net. Cost: $15 for members.",confirmed
+2025-11-13,November,JAKKS Pacific Health Fair,Health Fair,,JAKKS Pacific,"11:00AM-2:00PM (Shift: 9:30AM-3:00PM) at 2951 28th Street Santa Monica CA 90405. Staff: Brandon & Zu. Health Fair and Open Enrollment event for JAKKS Pacific employees only (250 employees). Table set up with spin to win wheel. Tables and chairs provided by organizer. Indoor event. Free to attend. Contact: Trish Ryan 424-268-9512 trishr@jakks.net. HSO and Naomi not required.",confirmed
+2025-11-15,November,Cat Show,Community Event,,"Poinsettia City Cat Club (CFA Southwest Region)","9:30AM-4:30PM at Glendale Civic Auditorium. Shifts: Laurence (opening) 8:00AM-4:00PM; Ervin (closing) 9:30AM-5:30PM; HSO confirmed; Naomi confirmed. Cat show featuring various breeds and household pets. Booths with cat toys supplies and apparel. Local rescue adoptions. Booth #13 Prime Spot 10x10 $70. 300-500+ spectators. Demographics: Middle age families and young creatives 20s-30s. ~10 vendors. Indoor event. Provided: chairs and 1 8ft table. Staff minimum: 3. Contact: Lisa 818-269-3756; Lee jnglecats@aol.com 805-585-0559. Payment due by 11/7.",pending decision
+2025-11-16,November,Dog PPL Pop-Up Clinics,Pop-Up Clinic,,Dog PPL,"11AM-3PM (Shift: 10AM-4PM) at Dog PPL. Staff: ? Brittany Dr. Celestine Ho. DOG PPL members-only vaccine pop-up. Onsite clinic for vaccines plus marketing spin to win wheel. Marketing materials and clinic supplies (set team knows what to bring). Contact: Milan milan@dogppl.co.",confirmed
+2025-11-18,November,VCC Virtual Coffee Connection,Networking,,Venice Chamber,"9:00AM-9:45AM. Virtual - Zoom link sent upon registration. Free casual meetup to sip share and support one another. Bring your favorite coffee or tea. Tips to share or challenges to navigate. Contact: Mario and Karin 310-822-5425 info@venicechamber.net. Cost: Free.",pending decision
+2025-11-18,November,SO Chamber Freshly Brewed Conversation,Networking,,Sherman Oaks Chamber of Commerce,"9:30AM-10:30AM at Sherman Oaks Encino Chamber Office 4933 Balboa Blvd Encino CA 91316. Stop by to enjoy conversation and connect with others to collaborate. Contact: Vickie 818-906-1951 hello@shermanoakschamber.org. Cost: Free with RSVP by 11/18.",confirmed
+2025-11-22,November,Venice Winter Fest,Festival,,The Venice Fest,"10AM-6PM at Venice Blvd & Grand View Blvd 90066. Shift 1: 8:15AM-4:45PM Mellisa & Alysia. Shift 2: 10:30AM-7PM Laurence & Brittany. Dre help 4:30-6PM. HSO confirmed. Naomi confirmed. Winter wonderland celebration with activities food and live entertainment. Booth #119 YELLOW Zone. Booth Cost: $725.50. Outdoor event - full setup required: tent chairs table marketing supplies. Load-in 7:30-8:30AM via Inglewood Blvd (3771 Inglewood Blvd LA 90066). No power/internet provided. Bring own 32-gal+ trash cans. $500 cleaning fee if trash left. Contact: Silvia silvia@thevenicefest.com. Payment confirmed 11/19/25.",confirmed
+,Recurring,Dog Days at Del Rey Lounge,Community Event,,Marina Del Rey Hotel,"Every Monday 2:30PM-6:00PM at Marina del Rey Hotel. Doggie Happy Hour - bring furry friends for fun relaxation and special treats. Discounted drinks while pups mingle in outdoor bar area. Dogs welcome all day; drink specials extend after 6PM. Contact: Rosado mrosado@marinadelreyhotel.com. Inquiring details - called 11/3 left VM and emailed.",pending decision
+2025-12-06,December,Venice Sign Christmas Lighting,Festival,,Venice Chamber of Commerce,"6PM-9PM at Windward & Pacific Ave. Shift 1: 12:30PM-8:30PM Jenn Laura. Shift 2: 2:00PM-10:00PM Laurence Brandon. HSO confirmed. 14th annual Venice Sign holiday lighting. Street closures for live music and family-friendly activities. Booth Cost: $750. 5000 people expected. 25 vendors. Space: 10x10. Provided: 1 table (6ft or 8ft) 2 chairs white tent. Bring: brand tablecloths signage extra chairs marketing supplies power charger. Contact: George gianfrancisco@hotmail.com 310-994-1151.",confirmed
+2025-12-14,December,Dog PPL Pop-Up Clinics,Pop-Up Clinic,,Dog PPL,"11AM-3PM (Shift: 10AM-4PM) at Dog PPL. Staff: Alysia Alexei Dr. Ho. DOG PPL members-only vaccine pop-up. Onsite clinic for vaccines plus marketing spin to win wheel. Marketing materials and clinic supplies (set team knows what to bring). Contact: Milan milan@dogppl.co.",confirmed
+2026-03-14,March,Bark in the Park,Festival,,Conejo Creek North / PARK,"9:00AM-12:00PM at Conejo Creek North. Setup by 8:30AM cleaned up by 2:00PM. Biggest dog festival in Ventura County. Contests (costume big/littlest dog) dog racetrack entertainers agility course cool off zone DIY dog area. Dog-specific vendors food and drinks. Outdoor event. Booth Cost: $30 for 10x10. Deadline to apply 2/20/26. Full setup required: tent chairs tables. Hundreds of local families and dog lovers expected. Free parking in designated areas only. Food vendors on-site. Physical presence required for company awareness on valley side.",confirmed
+2026-03-21,March,Venice Love Fest,Festival,,Venice Insider,"11AM-7PM at Windward Circle and the Boardwalk in Venice Beach CA. Free community event with live music food trucks 400+ locally made brands/artists beer gardens games. 100000+ visitors expected. Outdoor event. Physical presence required - also designated First-Aid Pet Tent for festival. Bring own GDD branded tent chairs merch promo supplies. Street parking; unloading at entrance then find street parking. Self-park stations available at own cost. Food vendors on-site.",pending decision
+2026-03-22,March,Dog PPL Pop-Up Clinics + First Aid Talk,Pop-Up Clinic,,Dog PPL,"11AM-3PM (Shift: 10AM-4PM) at Dog PPL. Pop-Up Clinic Staff: Dr. Hoh or Dr. V + Alexei + Alysia. First Aid Talk Staff: Doc + Dejia. DOG PPL members-only vaccine pop-up plus First Aid Talk by Doc on basic first aid for pet parents in new clubhouse starting at 12PM. Marketing spin to win wheel. Contact: Milan milan@dogppl.co.",pending decision
+2026-07-11,July,LA Pet Fair (Day 1),Expo,,LA Pet Fair,"10AM-6PM at 1101 W McKinley Ave Pomona CA 91768. Largest pet show in the world - multi-species expo combining Bird Reptile Aquarium and Succulent expos. Indoor event potentially in Reptile Expo building. Booth: $350 single (1 8ft table 1 chair 1 vendor pass) or $395 corner (2 8ft tables 1 chair 1 vendor pass). Extra chairs $5 each. Electricity $50. Additional vendor passes $30. 5000+ foot traffic. Physical presence for hospital/exotics department advertising. Parking lot at a fee (shared with public). Food vendors at Pomona Fairplex.",pending decision
+2026-07-12,July,LA Pet Fair (Day 2),Expo,,LA Pet Fair,"11AM-5PM at 1101 W McKinley Ave Pomona CA 91768. Day 2 of the largest pet show in the world - multi-species expo combining Bird Reptile Aquarium and Succulent expos. Indoor event. Same booth setup as Day 1. See Day 1 entry for full details.",pending decision
 2025-12-27,December,Visit the Zoo Day,Awareness,,,,awareness

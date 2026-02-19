@@ -1,5 +1,6 @@
 import { createVuetify } from 'vuetify'
 import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { useUIStore } from '~/stores/ui'
 
 // Tree-shaking: Components and directives are auto-imported by vite-plugin-vuetify.
 // Do NOT use `import * as components` — that imports the entire library (~200+ components).
@@ -93,4 +94,18 @@ export default defineNuxtPlugin((nuxtApp) => {
   })
 
   nuxtApp.vueApp.use(vuetify)
+
+  // Sync Vuetify theme with persisted UI store on client
+  if (import.meta.client) {
+    nuxtApp.hook('app:mounted', () => {
+      const pinia = nuxtApp.$pinia as any
+      if (!pinia) return
+      const uiStore = useUIStore(pinia)
+      const applyTheme = () => {
+        vuetify.theme.global.name.value = uiStore.isDarkMode ? 'greenDogDark' : 'greenDogTheme'
+      }
+      applyTheme()
+      uiStore.$subscribe(() => applyTheme())
+    })
+  }
 })

@@ -22,6 +22,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/supabase',
     '@pinia/nuxt',
+    '@pinia-plugin-persistedstate/nuxt',
     '@nuxtjs/tailwindcss',
     '@vee-validate/nuxt'
   ],

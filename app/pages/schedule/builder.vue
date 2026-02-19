@@ -642,6 +642,19 @@ onMounted(async () => {
 
 <template>
   <div class="builder">
+    <!-- Mobile notice: drag-and-drop requires a desktop browser -->
+    <v-alert
+      type="warning"
+      variant="tonal"
+      density="compact"
+      closable
+      class="d-md-none ma-2"
+      icon="mdi-monitor-cellphone"
+    >
+      The Schedule Builder uses drag-and-drop and is optimized for desktop screens.
+      For the best experience, please use a laptop or desktop computer.
+    </v-alert>
+
     <!-- Header -->
     <header class="header">
       <div class="header-title">

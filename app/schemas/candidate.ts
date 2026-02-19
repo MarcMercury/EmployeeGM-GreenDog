@@ -63,7 +63,7 @@ export function normalizeState(state: string | null | undefined): string | null 
 }
 
 // Candidate sources enum
-export const candidateSources = [
+const candidateSources = [
   'Indeed',
   'LinkedIn', 
   'Referral',
@@ -78,7 +78,7 @@ export const candidateSources = [
 ] as const
 
 // Candidate statuses enum (matches database CHECK constraint)
-export const candidateStatuses = [
+const candidateStatuses = [
   'new',
   'screening', 
   'interview',
@@ -93,7 +93,7 @@ export const candidateStatuses = [
  * Core Candidate Schema
  * All three input methods (manual, resume, CSV) must produce this structure
  */
-export const CandidateInsertSchema = z.object({
+const CandidateInsertSchema = z.object({
   // Required fields
   first_name: z.string().min(1, 'First name is required').transform(s => s.trim()),
   last_name: z.string().min(1, 'Last name is required').transform(s => s.trim()),
@@ -126,13 +126,13 @@ export const CandidateInsertSchema = z.object({
   status: z.enum(candidateStatuses).optional().default('new'),
 })
 
-export type CandidateInsert = z.infer<typeof CandidateInsertSchema>
+type CandidateInsert = z.infer<typeof CandidateInsertSchema>
 
 /**
  * Schema for AI-parsed resume data
  * More lenient - allows AI output to be validated and transformed
  */
-export const ResumeParseResultSchema = z.object({
+const ResumeParseResultSchema = z.object({
   first_name: z.string().nullable().optional(),
   last_name: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
@@ -148,18 +148,18 @@ export const ResumeParseResultSchema = z.object({
   suggested_position: z.string().nullable().optional(), // AI-inferred position title
 })
 
-export type ResumeParseResult = z.infer<typeof ResumeParseResultSchema>
+type ResumeParseResult = z.infer<typeof ResumeParseResultSchema>
 
 /**
  * Schema for CSV row mapping
  * Very lenient - allows various column name formats
  */
-export const CsvRowSchema = z.record(z.string(), z.any())
+const CsvRowSchema = z.record(z.string(), z.any())
 
 /**
  * Bulk import result
  */
-export interface BulkImportResult {
+interface BulkImportResult {
   success: number
   duplicates: number
   errors: { row: number; email?: string; message: string }[]

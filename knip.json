@@ -20,7 +20,7 @@
     "scripts/**",
     "supabase/**",
     "public/**",
-    "app/composables/**",
+    "app/composables/_deprecated/**",
     "app/stores/**",
     "app/middleware/**",
     "app/plugins/**",

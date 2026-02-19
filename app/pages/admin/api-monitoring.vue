@@ -250,7 +250,7 @@ onMounted(async () => {
 
 // Require admin access
 definePageMeta({
-  middleware: 'require-admin',
+  middleware: ['require-admin'],
 })
 </script>
 

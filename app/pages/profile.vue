@@ -259,8 +259,8 @@
               <div v-else-if="mySkills.length === 0" class="text-center py-8">
                 <v-icon size="48" color="grey-lighten-2">mdi-star-outline</v-icon>
                 <p class="text-body-2 text-grey mt-3">No skills added yet</p>
-                <v-btn color="primary" variant="tonal" to="/people/my-skills" class="mt-2">
-                  View Skills
+                <v-btn color="primary" variant="tonal" to="/admin/skills-management?tab=library" class="mt-2">
+                  Browse Skills
                 </v-btn>
               </div>
               <v-list v-else density="compact" class="bg-transparent">
@@ -286,7 +286,7 @@
                   </template>
                 </v-list-item>
                 <v-list-item v-if="mySkills.length > 8" class="text-center">
-                  <v-btn variant="text" color="primary" size="small" to="/people/my-skills">
+                  <v-btn variant="text" color="primary" size="small" to="/admin/skills-management?tab=library">
                     +{{ mySkills.length - 8 }} more skills
                   </v-btn>
                 </v-list-item>

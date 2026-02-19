@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { defineStore, getActivePinia } from 'pinia'
 import type { Profile, ProfileUpdate, UserRole } from '~/types'
 import { ROLE_HIERARCHY, ROLE_DISPLAY_NAMES, SECTION_ACCESS } from '~/types'
 
@@ -195,46 +195,49 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * Reset all Pinia stores to their initial state
-     * This prevents stale data from persisting between user sessions
+     * Reset all Pinia stores to their initial state.
+     * Uses getActivePinia() to iterate registered stores dynamically,
+     * avoiding circular imports from directly referencing other store modules.
      */
     resetAllStores() {
       try {
-        // Import and reset each store
-        // Using try-catch for each to prevent cascading failures
-        const stores = [
-          { name: 'employee', getter: () => useEmployeeStore() },
-          { name: 'dashboard', getter: () => useDashboardStore() },
-          { name: 'ui', getter: () => useUIStore() },
-          { name: 'schedule', getter: () => useScheduleStore() },
-          { name: 'scheduleBuilder', getter: () => useScheduleBuilderStore() },
-          { name: 'roster', getter: () => useRosterStore() },
-          { name: 'performance', getter: () => usePerformanceStore() },
-          { name: 'payroll', getter: () => usePayrollStore() },
-          { name: 'operations', getter: () => useOperationsStore() },
-          { name: 'integrations', getter: () => useIntegrationsStore() },
-          { name: 'academy-courses', getter: () => useAcademyCoursesStore() },
-          { name: 'academy-progress', getter: () => useAcademyProgressStore() },
-          { name: 'academy-quiz', getter: () => useAcademyQuizStore() },
-          { name: 'skillEngine', getter: () => useSkillEngineStore() },
-          { name: 'user', getter: () => useUserStore() },
-        ]
+        const pinia = getActivePinia()
+        if (!pinia) {
+          console.warn('[AuthStore] No active Pinia instance found, skipping store reset')
+          return
+        }
 
-        for (const { name, getter } of stores) {
+        const storeIds = Object.keys(pinia.state.value)
+
+        for (const id of storeIds) {
+          // Skip resetting auth store itself — it handles its own state
+          if (id === 'auth') continue
+
           try {
-            const store = getter()
-            // Clean up realtime subscriptions before resetting scheduleBuilder
-            // to prevent dangling Supabase channels (M31)
-            if (name === 'scheduleBuilder' && 'unsubscribeFromRealtime' in store) {
-              (store as ReturnType<typeof useScheduleBuilderStore>).unsubscribeFromRealtime()
+            // Access the store's reactive state from Pinia's internal registry
+            const storeState = pinia.state.value[id]
+            if (!storeState) continue
+
+            // For scheduleBuilder, clean up realtime subscriptions before reset (M31)
+            if (id === 'scheduleBuilder') {
+              try {
+                const sbStore = useScheduleBuilderStore()
+                if ('unsubscribeFromRealtime' in sbStore) {
+                  sbStore.unsubscribeFromRealtime()
+                }
+              } catch {
+                // scheduleBuilder not initialised yet — safe to skip
+              }
             }
-            if (store && typeof store.$reset === 'function') {
-              store.$reset()
-              console.log(`[AuthStore] Reset ${name} store`)
-            }
+
+            // Use Pinia's built-in store disposal to reset to initial state
+            // Each store in the registry exposes $dispose and can be re-created
+            // We delete the state key so the store re-initialises on next access
+            delete pinia.state.value[id]
+            console.log(`[AuthStore] Reset ${id} store`)
           } catch (err) {
             // Store might not be initialized yet, which is fine
-            console.debug(`[AuthStore] Could not reset ${name} store:`, err)
+            console.debug(`[AuthStore] Could not reset ${id} store:`, err)
           }
         }
       } catch (err) {

@@ -132,7 +132,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'default',
-  middleware: 'auth'
+  middleware: ['auth']
 })
 
 const supabase = useSupabaseClient()
