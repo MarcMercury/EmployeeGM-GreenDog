@@ -89,6 +89,29 @@ function extractInstagramHandle(val: string): string {
   return handle.replace('@', '');
 }
 
+function mapEventType(csvType: string): string {
+  // Map CSV event types to database allowed values
+  const typeMap: Record<string, string> = {
+    'Awareness': 'other',
+    'awareness': 'other',
+    'National Holiday': 'other',
+    'Staff Event': 'other',
+    'Community Event': 'community_outreach',
+    'Major Event': 'pet_expo',
+    'Planned Event': 'general',
+    'CE Event': 'ce_event',
+    'Street Fair': 'street_fair',
+    'Open House': 'open_house',
+    'Adoption Event': 'adoption_event',
+    'Health Fair': 'health_fair',
+    'School Visit': 'school_visit',
+    'Pet Expo': 'pet_expo',
+    'Fundraiser': 'fundraiser'
+  };
+  
+  return typeMap[csvType] || 'other';
+}
+
 // ============================================================
 // PHASE 1: PURGE MOCK EVENTS
 // ============================================================
@@ -152,7 +175,7 @@ const parentEvents: ParentEvent[] = [
     name: 'PetChewlla 2024',
     event_date: '2024-02-09',
     status: 'completed',
-    event_type: 'Major Event',
+    event_type: 'pet_expo',
     location: 'Los Angeles, CA',
     description: 'Annual pet festival with vendors, influencers, and rescue partners'
   },
@@ -160,7 +183,7 @@ const parentEvents: ParentEvent[] = [
     name: 'GD LAND 2025',
     event_date: '2025-12-06',
     status: 'completed',
-    event_type: 'Major Event',
+    event_type: 'pet_expo',
     location: 'Green Dog Dental',
     description: 'Green Dog Land 2025 holiday event with vendors and rescues'
   },
@@ -168,7 +191,7 @@ const parentEvents: ParentEvent[] = [
     name: 'Adoptapalooza 2025',
     event_date: '2025-02-22',
     status: 'completed',
-    event_type: 'Major Event',
+    event_type: 'adoption_event',
     location: 'Venice, CA',
     description: 'Annual adoption event partnering with local rescues'
   }
@@ -222,7 +245,7 @@ async function importCompletedEvents(): Promise<void> {
       leads_collected: parseInt(row.leads_collected) || null,
       post_event_notes: row.notes || null,
       status: 'completed',
-      event_type: 'Community Event'
+      event_type: mapEventType(row.event_type || 'Community Event')
     };
     
     const { error } = await supabase.from('marketing_events').insert(eventData);
@@ -267,11 +290,11 @@ async function importScheduledEvents(): Promise<void> {
     const eventData = {
       name: row.event_name,
       event_date: cleanDate(row.event_date) || '2026-01-01',
-      event_type: row.event_type || 'Planned Event',
+      event_type: mapEventType(row.event_type || 'Planned Event'),
       location: row.clinic || null,
       description: row.description || null,
       staffing_needs: row.organizer || null,
-      status: row.status === 'awareness' ? 'planned' : (row.status || 'scheduled')
+      status: row.status === 'awareness' ? 'planned' : (row.status || 'planned')
     };
     
     const { error } = await supabase.from('marketing_events').insert(eventData);
