@@ -189,6 +189,7 @@ const closeMobileMenu = () => {
       <!-- Mobile Navigation Component -->
       <LayoutMobileNav 
         :notification-count="unreadNotificationCount"
+        :user-role="userRole"
         @toggle-sidebar="toggleMobileMenu"
       />
       
@@ -255,24 +256,24 @@ const closeMobileMenu = () => {
             <span v-if="!sidebarCollapsed">Marketplace</span>
           </NuxtLink>
 
-          <!-- Collapsed mode: just show icons -->
+          <!-- Collapsed mode: just show icons (with role guards) -->
           <template v-if="sidebarCollapsed">
-            <NuxtLink to="/roster" class="nav-link group justify-center" title="Roster">
+            <NuxtLink v-if="hasManagementAccess" to="/roster" class="nav-link group justify-center" title="Roster">
               <div class="nav-icon-wrap group-hover:bg-blue-500/20">👥</div>
             </NuxtLink>
             <NuxtLink to="/profile" class="nav-link group justify-center" title="Profile">
               <div class="nav-icon-wrap group-hover:bg-purple-500/20">👤</div>
             </NuxtLink>
-            <NuxtLink to="/schedule" class="nav-link group justify-center" title="Schedule">
+            <NuxtLink v-if="hasScheduleManageAccess" to="/schedule" class="nav-link group justify-center" title="Schedule">
               <div class="nav-icon-wrap group-hover:bg-green-500/20">📅</div>
             </NuxtLink>
-            <NuxtLink to="/marketing/calendar" class="nav-link group justify-center" title="Calendar">
+            <NuxtLink v-if="hasMarketingViewAccess" to="/marketing/calendar" class="nav-link group justify-center" title="Calendar">
               <div class="nav-icon-wrap group-hover:bg-indigo-500/20">📆</div>
             </NuxtLink>
-            <NuxtLink to="/marketing/resources" class="nav-link group justify-center" title="Resources">
+            <NuxtLink v-if="hasMarketingViewAccess" to="/marketing/resources" class="nav-link group justify-center" title="Resources">
               <div class="nav-icon-wrap group-hover:bg-lime-500/20">📦</div>
             </NuxtLink>
-            <NuxtLink to="/marketing/partnerships" class="nav-link group justify-center" title="Referrals">
+            <NuxtLink v-if="hasMarketingEditAccess" to="/marketing/partnerships" class="nav-link group justify-center" title="Referrals">
               <div class="nav-icon-wrap group-hover:bg-cyan-500/20">🤝</div>
             </NuxtLink>
           </template>

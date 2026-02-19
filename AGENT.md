@@ -15,9 +15,9 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │  STEP 1: Read AGENT.md (this file) - Primary context & directives  │
 │  STEP 2: Read REVIEW_GUIDE.md - Code quality & architecture        │
-│  STEP 3: Read docs/SUPABASE_CREDENTIALS.md - Database tokens       │
-│  STEP 4: Read docs/SLACK_CREDENTIALS.md - Slack API tokens         │
-│  STEP 5: Read docs/OPENAI_CREDENTIALS.md - OpenAI API keys         │
+│  STEP 3: Read docs/credentials/SUPABASE_CREDENTIALS.md - DB tokens  │
+│  STEP 4: Read docs/credentials/SLACK_CREDENTIALS.md - Slack tokens  │
+│  STEP 5: Read docs/credentials/OPENAI_CREDENTIALS.md - OpenAI keys  │
 │  STEP 6: Scan docs/ folder for relevant documentation              │
 │  STEP 7: Check docs/agents/ for specialized sub-agent instructions │
 └─────────────────────────────────────────────────────────────────────┘
@@ -25,16 +25,18 @@
 
 ### Why This Is Mandatory:
 - **Context Persistence:** AI sessions lose memory. These files ARE your memory.
-- **Credentials Access:** API keys, tokens, and secrets are stored in docs/*.md
+- **Credentials Access:** API keys, tokens, and secrets are stored in docs/credentials/*.md
 - **Avoid Rework:** Previous decisions, patterns, and architecture are documented
 - **Prevent Errors:** Known issues and solutions are already recorded
 
 ### Available Credentials Summary:
 | Service | Credential File | Use For |
 |---------|-----------------|---------|
-| **Supabase** | `docs/SUPABASE_CREDENTIALS.md` | Database, Auth, Storage, Migrations |
-| **Slack** | `docs/SLACK_CREDENTIALS.md` | Notifications, User Sync |
-| **OpenAI** | `docs/OPENAI_CREDENTIALS.md` | AI features, Scheduling AI |
+| **Supabase** | `docs/credentials/SUPABASE_CREDENTIALS.md` | Database, Auth, Storage, Migrations |
+| **Slack** | `docs/credentials/SLACK_CREDENTIALS.md` | Notifications, User Sync |
+| **OpenAI** | `docs/credentials/OPENAI_CREDENTIALS.md` | AI features, Scheduling AI |
+| **ezyVet** | `docs/credentials/EZYVET_CREDENTIALS.md` | Veterinary PIMS |
+| **GoDaddy** | `docs/credentials/GODADDY_DNS.md` | DNS configuration |
 
 ### ⚠️ CREDENTIAL RULES:
 - ✅ **DO** read credentials files to use tokens programmatically
@@ -64,18 +66,18 @@
 
 ### Documentation Index (`docs/` folder)
 
-| Document | Purpose | Review When |
-|----------|---------|-------------|
-| `SUPABASE_CREDENTIALS.md` | 🔑 Database API keys & tokens | Any DB work |
-| `SUPABASE_OPERATIONS.md` | Migration procedures & API access | Running migrations |
-| `SLACK_CREDENTIALS.md` | 🔑 Slack API tokens | Slack integration |
-| `OPENAI_CREDENTIALS.md` | 🔑 OpenAI API keys | AI features |
-| `INTEGRATIONS.md` | Live integrations status | Before suggesting new integrations |
-| `UNIFIED_USER_LIFECYCLE.md` | Person lifecycle & "hats" architecture | User/employee work |
-| `PROJECT_STRUCTURE.md` | Architecture and file organization | Understanding codebase |
-| `ACCESS_MATRIX_*.md` | Role-based access control docs | Permission changes |
-| `SLACK_INTEGRATION.md` | Slack sync & notifications | Slack features |
-| `CODE_REVIEW_CHECKLIST.md` | Code quality standards | Before submitting code |
+> **See `docs/README.md` for the complete file index with directory structure.**
+
+| Subfolder | Contents | Review When |
+|-----------|----------|-------------|
+| `docs/credentials/` | 🔑 Supabase, Slack, OpenAI, ezyVet, GoDaddy keys | Any API/DB work |
+| `docs/operations/` | Migrations, error tracking, testing, deployment | Running operations |
+| `docs/integrations/` | Slack, ezyVet, master integration status | Integration work |
+| `docs/architecture/` | Person model, project structure, system capabilities | Understanding codebase |
+| `docs/access-control/` | RBAC, access matrix, role policies | Permission changes |
+| `docs/audits/` | Code audits, review checklists, findings | Before submitting code |
+| `docs/roadmaps/` | AI agents, system health plans | Planning features |
+| `docs/agents/` | AI sub-agent instructions | Specialized tasks |
 
 ### Specialized Agents (`docs/agents/`)
 
@@ -116,9 +118,10 @@ When context window resets, AI assistants lose session memory. This file is the 
 
 | File | Contains |
 |------|----------|
-| `docs/SUPABASE_CREDENTIALS.md` | Database API keys, service role keys, access tokens |
-| `docs/SLACK_CREDENTIALS.md` | Slack bot tokens and signing secrets |
-| `docs/OPENAI_CREDENTIALS.md` | OpenAI API keys |
+| `docs/credentials/SUPABASE_CREDENTIALS.md` | Database API keys, service role keys, access tokens |
+| `docs/credentials/SLACK_CREDENTIALS.md` | Slack bot tokens and signing secrets |
+| `docs/credentials/OPENAI_CREDENTIALS.md` | OpenAI API keys |
+| `docs/credentials/EZYVET_CREDENTIALS.md` | ezyVet portal login and API config |
 | `.env` | Runtime environment variables |
 
 **Rules:**
@@ -317,31 +320,22 @@ Veterinary hospital management system ("Madden for Vets") for Green Dog Dental.
 
 ## 📚 DOCUMENTATION INDEX
 
-All documentation is centralized in the `/docs` folder:
+All documentation is organized in the `/docs` folder with subdirectories:
 
-| Document | Purpose |
-| -------- | ------- |
-| [`SUPABASE_CREDENTIALS.md`](SUPABASE_CREDENTIALS.md) | **🔑 ALL SUPABASE API KEYS & TOKENS** |
-| [`docs/SUPABASE_OPERATIONS.md`](docs/SUPABASE_OPERATIONS.md) | **Migration procedures & API access** |
-| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | Live integrations (Supabase, Vercel, Slack) |
-| [`docs/UNIFIED_USER_LIFECYCLE.md`](docs/UNIFIED_USER_LIFECYCLE.md) | Person lifecycle & "hats" architecture |
-| [`docs/SLACK_INTEGRATION.md`](docs/SLACK_INTEGRATION.md) | Slack sync & notifications |
-| [`docs/AUDIT_HISTORY.md`](docs/AUDIT_HISTORY.md) | Historical audit reports (resolved issues) |
-| [`docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md`](docs/ACCESS_MATRIX_COMPREHENSIVE_REVIEW.md) | Complete access control architecture |
-| [`docs/ACCESS_MATRIX_WIKI_CONSOLIDATION.md`](docs/ACCESS_MATRIX_WIKI_CONSOLIDATION.md) | **Wiki page consolidation & access changes (Feb 2026)** |
+| Subfolder | Key Files | Purpose |
+| --------- | --------- | ------- |
+| [`docs/credentials/`](docs/credentials/) | Supabase, Slack, OpenAI, ezyVet, GoDaddy | **🔑 API keys & secrets** |
+| [`docs/operations/`](docs/operations/) | Migrations, error tracking, testing | **Deployment & procedures** |
+| [`docs/integrations/`](docs/integrations/) | Slack, ezyVet, master status | **Third-party services** |
+| [`docs/architecture/`](docs/architecture/) | Person model, structure, capabilities | **System design** |
+| [`docs/access-control/`](docs/access-control/) | Access matrix, RBAC, role policies | **Permissions** |
+| [`docs/audits/`](docs/audits/) | Code audits, review checklists | **Quality & findings** |
+| [`docs/roadmaps/`](docs/roadmaps/) | AI agents, system health | **Future plans** |
+| [`docs/agents/`](docs/agents/) | Sub-agent instructions | **Specialized AI tasks** |
 
-### Claude Agents (`.claude/agents/`)
+> **Full index with file listing:** See [`docs/README.md`](docs/README.md)
 
-Specialized sub-agents for automated tasks:
-
-| Agent | Purpose |
-| ----- | ------- |
-| `migration-reviewer.md` | Security review for migrations |
-| `git-committer.md` | Commit message formatting |
-| `page-auditor.md` | Page component auditing |
-| `vue-component-creator.md` | Component scaffolding |
-| `nuxt-pattern-checker.md` | Pattern validation |
-| `debugger.md` | Debugging assistance |
+### Specialized Agents (`docs/agents/`)
 
 ---
 

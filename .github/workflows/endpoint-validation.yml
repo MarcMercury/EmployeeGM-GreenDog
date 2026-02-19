@@ -63,28 +63,30 @@ jobs:
           script: |
             const fs = require('fs');
             const report = JSON.parse(fs.readFileSync('audit-endpoints-report.json', 'utf8'));
-            
-            const summary = `## 🔍 API Endpoint Audit Results
-            
-| Metric | Count |
-|--------|-------|
-| Total API Calls | ${report.summary.totalApiCalls} |
-| Unique Endpoints | ${report.summary.uniqueEndpoints} |
-| Working Endpoints ✅ | ${report.summary.existingEndpoints} |
-| Missing Endpoints ❌ | ${report.summary.missingEndpoints} |
-
-${report.summary.missingEndpoints > 0 ? `
-### ❌ Missing Endpoints Found:
-${report.missing.map(m => `- **${m.endpoint}** (called from ${m.callCount} location(s))`).join('\n')}
-
-⚠️ **Action Required**: Please create these API endpoints before merging.
-` : '✅ All endpoints exist!'}`;
-
+            const lines = [
+              '## 🔍 API Endpoint Audit Results',
+              '',
+              '| Metric | Count |',
+              '|--------|-------|',
+              `| Total API Calls | ${report.summary.totalApiCalls} |`,
+              `| Unique Endpoints | ${report.summary.uniqueEndpoints} |`,
+              `| Working Endpoints ✅ | ${report.summary.existingEndpoints} |`,
+              `| Missing Endpoints ❌ | ${report.summary.missingEndpoints} |`,
+            ];
+            if (report.summary.missingEndpoints > 0) {
+              lines.push('', '### ❌ Missing Endpoints Found:');
+              report.missing.forEach(m => {
+                lines.push(`- **${m.endpoint}** (called from ${m.callCount} location(s))`);
+              });
+              lines.push('', '⚠️ **Action Required**: Please create these API endpoints before merging.');
+            } else {
+              lines.push('', '✅ All endpoints exist!');
+            }
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: summary
+              body: lines.join('\n')
             });
 
   lint-api-files:

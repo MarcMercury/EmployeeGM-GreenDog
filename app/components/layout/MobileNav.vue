@@ -35,25 +35,37 @@
 </template>
 
 <script setup lang="ts">
+import { SECTION_ACCESS } from '~/types'
+import type { UserRole } from '~/types'
+
 interface Props {
   notificationCount?: number
+  userRole?: string
 }
 
-withDefaults(defineProps<Props>(), {
-  notificationCount: 0
+const props = withDefaults(defineProps<Props>(), {
+  notificationCount: 0,
+  userRole: 'user'
 })
 
 defineEmits(['toggle-sidebar'])
 
 const route = useRoute()
 
-const navItems = [
-  { path: '/', icon: '🏠', label: 'Home' },
-  { path: '/my-schedule', icon: '📅', label: 'Schedule' },
-  { path: '/profile', icon: '👤', label: 'Profile' },
-  { path: '/roster', icon: '👥', label: 'Team' },
-  { path: '/activity', icon: '🔔', label: 'Activity' }
-]
+const hasManagementAccess = computed(() =>
+  SECTION_ACCESS.management?.includes(props.userRole as UserRole) ?? false
+)
+
+const navItems = computed(() => {
+  const items = [
+    { path: '/activity', icon: '🔔', label: 'Activity', show: true },
+    { path: '/my-schedule', icon: '📅', label: 'Schedule', show: true },
+    { path: '/profile', icon: '👤', label: 'Profile', show: true },
+    { path: '/wiki', icon: '📚', label: 'Wiki', show: true },
+    { path: '/roster', icon: '👥', label: 'Team', show: hasManagementAccess.value }
+  ]
+  return items.filter(i => i.show)
+})
 
 const isActive = (path: string) => {
   if (path === '/') {

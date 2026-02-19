@@ -23,6 +23,6 @@ if (process.dev && process.client) {
 
 <template>
   <NuxtLayout>
-    <NuxtPage :key="route.fullPath" />
+    <NuxtPage :key="route.path" />
   </NuxtLayout>
 </template>

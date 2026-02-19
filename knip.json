@@ -34,17 +34,16 @@
     "autoprefixer",
     "postcss",
     "sass",
-    "vite-plugin-vuetify",
     "vue-tsc",
     "@mdi/font",
-    "vuetify",
     "vee-validate",
     "apexcharts",
     "vue3-apexcharts",
     "canvas-confetti",
     "@types/canvas-confetti",
     "csv-parse",
-    "xlsx"
+    "xlsx",
+    "@sentry/vue"
   ],
   "rules": {
     "files": "warn",
