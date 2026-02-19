@@ -185,6 +185,189 @@
             </v-col>
           </v-row>
 
+          <!-- Event Host & Cost Section -->
+          <v-divider class="my-4" />
+          <p class="text-overline text-grey mb-2">EVENT HOST & COST</p>
+          <v-row>
+            <v-col cols="12" sm="8">
+              <v-text-field
+                v-model="eventFormData.hosted_by"
+                label="Hosted By / Organizer"
+                placeholder="e.g., Main Street Association, Chamber of Commerce"
+                prepend-inner-icon="mdi-domain"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model.number="eventFormData.event_cost"
+                label="Event Cost ($)"
+                type="number"
+                prepend-inner-icon="mdi-cash"
+                hint="Booth fee, registration cost, etc."
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Payment Section -->
+          <v-divider class="my-4" />
+          <p class="text-overline text-grey mb-2">PAYMENT DETAILS</p>
+          <v-row>
+            <v-col cols="12" sm="4">
+              <v-select
+                v-model="eventFormData.payment_status"
+                :items="[
+                  { title: 'Pending', value: 'pending' },
+                  { title: 'Paid', value: 'paid' },
+                  { title: 'Refunded', value: 'refunded' },
+                  { title: 'Waived', value: 'waived' }
+                ]"
+                item-title="title"
+                item-value="value"
+                label="Payment Status"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model="eventFormData.payment_date"
+                label="Payment Date"
+                type="date"
+                variant="outlined"
+                density="compact"
+                :disabled="eventFormData.payment_status === 'pending'"
+              />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-text-field
+                v-model="eventFormData.vendor_status"
+                label="Vendor Status"
+                placeholder="e.g., Registration open, Waitlist"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Expectations & Setup Section -->
+          <v-divider class="my-4" />
+          <p class="text-overline text-grey mb-2">EXPECTATIONS & PHYSICAL SETUP</p>
+          <v-row>
+            <v-col cols="12" sm="6">
+              <v-textarea
+                v-model="eventFormData.expectations"
+                label="Expectations / Our Involvement"
+                placeholder="What's our role? (sponsor, vendor, services, judges, etc.)"
+                variant="outlined"
+                density="compact"
+                rows="3"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-textarea
+                v-model="eventFormData.physical_setup"
+                label="Physical Setup Details"
+                placeholder="What we bring vs what's provided (tent, tables, chairs, lighting, etc.)"
+                variant="outlined"
+                density="compact"
+                rows="3"
+              />
+            </v-col>
+          </v-row>
+
+          <!-- Communication Log Section -->
+          <v-divider class="my-4" />
+          <div class="d-flex align-center justify-space-between mb-2">
+            <p class="text-overline text-grey mb-0">COMMUNICATION LOG</p>
+            <v-btn 
+              variant="tonal" 
+              color="primary" 
+              size="small" 
+              prepend-icon="mdi-plus" 
+              @click="addCommunicationEntry"
+            >
+              Add Entry
+            </v-btn>
+          </div>
+          <v-row v-if="eventFormData.communication_log.length > 0">
+            <v-col cols="12">
+              <v-card 
+                v-for="(entry, idx) in eventFormData.communication_log" 
+                :key="idx" 
+                variant="outlined" 
+                class="mb-2 pa-3"
+              >
+                <v-row dense>
+                  <v-col cols="12" sm="3">
+                    <v-text-field
+                      v-model="entry.date"
+                      label="Date"
+                      type="date"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="3">
+                    <v-select
+                      v-model="entry.type"
+                      :items="['Email', 'Phone Call', 'Meeting', 'Payment', 'Other']"
+                      label="Type"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="4">
+                    <v-text-field
+                      v-model="entry.contact"
+                      label="Contact Person"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="2" class="d-flex align-center justify-end">
+                    <v-btn icon="mdi-delete" color="error" variant="text" size="small" @click="removeCommunicationEntry(idx)" />
+                  </v-col>
+                  <v-col cols="12">
+                    <v-text-field
+                      v-model="entry.summary"
+                      label="Summary"
+                      placeholder="Brief description of communication"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                    />
+                  </v-col>
+                  <v-col cols="12">
+                    <v-textarea
+                      v-model="entry.notes"
+                      label="Notes"
+                      placeholder="Additional details..."
+                      variant="outlined"
+                      density="compact"
+                      rows="2"
+                      hide-details
+                    />
+                  </v-col>
+                </v-row>
+              </v-card>
+            </v-col>
+          </v-row>
+          <v-row v-else>
+            <v-col cols="12">
+              <div class="text-center text-grey py-3">
+                <v-icon size="28" color="grey-lighten-2">mdi-message-text-outline</v-icon>
+                <div class="text-caption mt-1">No communication entries. Click "Add Entry" to log communications.</div>
+              </div>
+            </v-col>
+          </v-row>
+
           <!-- Registration Section -->
           <v-divider class="my-4" />
           <p class="text-overline text-grey mb-2">REGISTRATION</p>
@@ -457,6 +640,14 @@ const eventFormData = reactive({
   registration_required: false,
   registration_link: '',
   notes: '',
+  hosted_by: '',
+  event_cost: null as number | null,
+  expectations: '',
+  physical_setup: '',
+  communication_log: [] as { date: string; type: string; contact: string; summary: string; notes?: string }[],
+  vendor_status: '',
+  payment_date: '',
+  payment_status: 'pending',
   attachments: [] as EventAttachment[],
   external_links: [] as ExternalLink[],
   planned_inventory: [] as { inventory_item_id: string; item_name: string; quantity: number; location: string }[]
@@ -528,6 +719,21 @@ const removeExternalLink = (index: number) => {
   eventFormData.external_links.splice(index, 1)
 }
 
+// ── Communication log helpers ────────────────────────
+const addCommunicationEntry = () => {
+  eventFormData.communication_log.push({
+    date: new Date().toISOString().split('T')[0],
+    type: 'Email',
+    contact: '',
+    summary: '',
+    notes: ''
+  })
+}
+
+const removeCommunicationEntry = (index: number) => {
+  eventFormData.communication_log.splice(index, 1)
+}
+
 // ── Attachment helpers ───────────────────────────────
 const removeAttachment = (index: number) => {
   eventFormData.attachments.splice(index, 1)
@@ -555,6 +761,14 @@ const resetForm = () => {
     registration_required: false,
     registration_link: '',
     notes: '',
+    hosted_by: '',
+    event_cost: null,
+    expectations: '',
+    physical_setup: '',
+    communication_log: [],
+    vendor_status: '',
+    payment_date: '',
+    payment_status: 'pending',
     attachments: [],
     external_links: [],
     planned_inventory: []
@@ -600,6 +814,14 @@ const openEdit = async (event: MarketingEvent) => {
     registration_required: event.registration_required || false,
     registration_link: event.registration_link || '',
     notes: event.notes || '',
+    hosted_by: event.hosted_by || '',
+    event_cost: event.event_cost,
+    expectations: event.expectations || '',
+    physical_setup: event.physical_setup || '',
+    communication_log: event.communication_log || [],
+    vendor_status: event.vendor_status || '',
+    payment_date: event.payment_date || '',
+    payment_status: event.payment_status || 'pending',
     attachments: event.attachments || [],
     external_links: event.external_links || [],
     planned_inventory: []
@@ -682,6 +904,14 @@ const saveEvent = async () => {
       registration_required: eventFormData.registration_required,
       registration_link: eventFormData.registration_link || null,
       notes: eventFormData.notes || null,
+      hosted_by: eventFormData.hosted_by || null,
+      event_cost: eventFormData.event_cost,
+      expectations: eventFormData.expectations || null,
+      physical_setup: eventFormData.physical_setup || null,
+      communication_log: eventFormData.communication_log,
+      vendor_status: eventFormData.vendor_status || null,
+      payment_date: eventFormData.payment_date || null,
+      payment_status: eventFormData.payment_status,
       attachments: uploadedAttachments,
       external_links: validLinks
     }

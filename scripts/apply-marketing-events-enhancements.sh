@@ -1,0 +1,40 @@
+#!/bin/bash
+# =============================================================================
+# Apply Marketing Events Enhancement Migrations
+# =============================================================================
+
+echo "=========================================="
+echo "Marketing Events Enhancement Migrations"
+echo "=========================================="
+echo ""
+echo "This script will help you apply two migrations:"
+echo "  1. 20260219000001 - Add new event fields (hosted_by, event_cost, etc.)"
+echo "  2. 20260219000002 - Add Montana Avenue Holiday Walk event data"
+echo ""
+echo "Please apply these migrations in the Supabase SQL Editor:"
+echo "URL: https://supabase.com/dashboard/project/YOUR_PROJECT_ID/sql/new"
+echo ""
+echo "=========================================="
+echo "Migration 1: Add New Event Fields"
+echo "=========================================="
+cat supabase/migrations/20260219000001_marketing_events_detailed_fields.sql
+echo ""
+echo ""
+echo "=========================================="
+echo "Migration 2: Add Montana Avenue Event"
+echo "=========================================="
+cat supabase/migrations/20260219000002_seed_montana_avenue_holiday_walk.sql
+echo ""
+echo ""
+echo "=========================================="
+echo "After applying these migrations:"
+echo "1. The event form will have new fields for:"
+echo "   - Hosted By / Organizer"
+echo "   - Event Cost"
+echo "   - Payment Status & Date"
+echo "   - Vendor Status"
+echo "   - Expectations"
+echo "   - Physical Setup"
+echo "   - Communication Log"
+echo "2. The Montana Avenue Holiday Walk event will be added to your calendar"
+echo "=========================================="

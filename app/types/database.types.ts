@@ -2861,21 +2861,28 @@ export type Database = {
           attachments: Json | null
           budget: number | null
           campaign_id: string | null
+          communication_log: Json | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
           created_at: string
           description: string | null
           end_time: string | null
+          event_cost: number | null
           event_date: string
           event_type: string | null
+          expectations: string | null
           expected_attendance: number | null
           external_links: Json | null
+          hosted_by: string | null
           id: string
           leads_collected: number | null
           location: string | null
           name: string
           notes: string | null
+          payment_date: string | null
+          payment_status: string | null
+          physical_setup: string | null
           post_event_notes: string | null
           registration_link: string | null
           registration_required: boolean | null
@@ -2885,27 +2892,35 @@ export type Database = {
           status: string
           supplies_needed: string | null
           updated_at: string
+          vendor_status: string | null
         }
         Insert: {
           actual_attendance?: number | null
           attachments?: Json | null
           budget?: number | null
           campaign_id?: string | null
+          communication_log?: Json | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           end_time?: string | null
+          event_cost?: number | null
           event_date: string
           event_type?: string | null
+          expectations?: string | null
           expected_attendance?: number | null
           external_links?: Json | null
+          hosted_by?: string | null
           id?: string
           leads_collected?: number | null
           location?: string | null
           name: string
           notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          physical_setup?: string | null
           post_event_notes?: string | null
           registration_link?: string | null
           registration_required?: boolean | null
@@ -2915,27 +2930,35 @@ export type Database = {
           status?: string
           supplies_needed?: string | null
           updated_at?: string
+          vendor_status?: string | null
         }
         Update: {
           actual_attendance?: number | null
           attachments?: Json | null
           budget?: number | null
           campaign_id?: string | null
+          communication_log?: Json | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
           description?: string | null
           end_time?: string | null
+          event_cost?: number | null
           event_date?: string
           event_type?: string | null
+          expectations?: string | null
           expected_attendance?: number | null
           external_links?: Json | null
+          hosted_by?: string | null
           id?: string
           leads_collected?: number | null
           location?: string | null
           name?: string
           notes?: string | null
+          payment_date?: string | null
+          payment_status?: string | null
+          physical_setup?: string | null
           post_event_notes?: string | null
           registration_link?: string | null
           registration_required?: boolean | null
@@ -2945,6 +2968,7 @@ export type Database = {
           status?: string
           supplies_needed?: string | null
           updated_at?: string
+          vendor_status?: string | null
         }
         Relationships: [
           {

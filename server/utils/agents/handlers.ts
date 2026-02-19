@@ -42,6 +42,11 @@ handlerMap.set('engagement_pulse', () => import('~~/server/agents/handlers/engag
 handlerMap.set('referral_intelligence', () => import('~~/server/agents/handlers/referral-intelligence'))
 
 // =========================================================
+// Marketing & Events
+// =========================================================
+handlerMap.set('market_events_scout', () => import('~~/server/agents/handlers/market-events-scout'))
+
+// =========================================================
 // Phase 4: Orchestration
 // =========================================================
 handlerMap.set('supervisor_agent', () => import('~~/server/agents/handlers/supervisor-agent'))

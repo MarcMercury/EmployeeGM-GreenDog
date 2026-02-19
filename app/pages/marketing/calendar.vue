@@ -42,7 +42,7 @@
               Today
             </v-btn>
           </div>
-          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="viewMode === 'month' ? previousMonth() : nextWeek()" />
+          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="viewMode === 'month' ? nextMonth() : nextWeek()" />
         </div>
       </v-card-text>
     </v-card>

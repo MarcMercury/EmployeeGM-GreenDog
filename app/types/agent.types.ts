@@ -60,6 +60,8 @@ export type ProposalType =
   | 'review_summary_draft'
   | 'engagement_alert'
   | 'engagement_report'
+  // Marketing & Events
+  | 'event_discovery'
   // Referral Intelligence
   | 'referral_insight'
   // Orchestration (Phase 4)
@@ -257,4 +259,28 @@ export interface MentorMatchDetail {
   mentor_level: number
   match_score: number
   reasoning: string
+}
+
+export interface EventDiscoveryDetail {
+  event_name: string
+  event_type: string
+  event_date: string
+  start_time: string | null
+  end_time: string | null
+  location: string
+  hosted_by: string | null
+  contact_name: string | null
+  contact_email: string | null
+  contact_phone: string | null
+  description: string
+  expected_attendance: number | null
+  staffing_needs: string | null
+  event_cost: number | null
+  expectations: string | null
+  physical_setup: string | null
+  source_url: string | null
+  source_name: string
+  confidence_score: number
+  matching_keywords: string[]
+  notes: string | null
 }

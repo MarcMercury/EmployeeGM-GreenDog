@@ -302,6 +302,37 @@ applierMap.set('engagement_report', async (_proposal, _supabase) => {
   // Informational — weekly summary lives in the proposal
 })
 
+// ─── Marketing & Events ───────────────────────────────────────────
+
+applierMap.set('event_discovery', async (proposal, supabase) => {
+  const d = proposal.detail as any
+  const { error } = await supabase
+    .from('marketing_events')
+    .insert({
+      name: d.event_name,
+      description: d.description,
+      event_type: d.event_type || 'street_fair',
+      event_date: d.event_date,
+      start_time: d.start_time,
+      end_time: d.end_time,
+      location: d.location,
+      hosted_by: d.hosted_by,
+      contact_name: d.contact_name,
+      contact_email: d.contact_email,
+      contact_phone: d.contact_phone,
+      expected_attendance: d.expected_attendance,
+      staffing_needs: d.staffing_needs,
+      event_cost: d.event_cost,
+      expectations: d.expectations,
+      physical_setup: d.physical_setup,
+      status: 'proposed',
+      staffing_status: 'planned',
+      notes: d.notes || `Discovered event from web search. Source: ${d.source_name}. Confidence: ${(d.confidence_score * 100).toFixed(0)}%`,
+    })
+
+  if (error) throw new Error(`Failed to insert marketing event: ${error.message}`)
+})
+
 // ─── Referral Intelligence ────────────────────────────────────────
 
 applierMap.set('referral_insight', async (_proposal, _supabase) => {

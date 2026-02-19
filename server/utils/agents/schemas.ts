@@ -246,6 +246,32 @@ export const AccessReviewSchema = z.object({
   role_distribution: z.record(z.number()).optional(),
 })
 
+// ─── Marketing & Events ───────────────────────────────────────────
+
+export const EventDiscoverySchema = z.object({
+  event_name: z.string().min(1),
+  event_type: z.string(),
+  event_date: z.string(),
+  start_time: z.string().optional().nullable(),
+  end_time: z.string().optional().nullable(),
+  location: z.string(),
+  hosted_by: z.string().optional().nullable(),
+  contact_name: z.string().optional().nullable(),
+  contact_email: z.string().email().optional().nullable(),
+  contact_phone: z.string().optional().nullable(),
+  description: z.string(),
+  expected_attendance: z.number().int().optional().nullable(),
+  staffing_needs: z.string().optional().nullable(),
+  event_cost: z.number().optional().nullable(),
+  expectations: z.string().optional().nullable(),
+  physical_setup: z.string().optional().nullable(),
+  source_url: z.string().url().optional().nullable(),
+  source_name: z.string(),
+  confidence_score: z.number().min(0).max(1),
+  matching_keywords: z.array(z.string()),
+  notes: z.string().optional().nullable(),
+})
+
 // ─── Schema Registry ──────────────────────────────────────────────
 
 export const proposalSchemas: Record<string, z.ZodType<any>> = {
@@ -264,6 +290,7 @@ export const proposalSchemas: Record<string, z.ZodType<any>> = {
   review_summary_draft: ReviewSummaryDraftSchema,
   engagement_alert: EngagementAlertSchema,
   engagement_report: EngagementReportSchema,
+  event_discovery: EventDiscoverySchema,
   referral_insight: ReferralInsightSchema,
   health_report: HealthReportSchema,
   access_review: AccessReviewSchema,

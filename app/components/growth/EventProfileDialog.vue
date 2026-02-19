@@ -86,6 +86,49 @@
 
                 <v-divider class="my-3" />
 
+                <p class="text-overline text-grey mb-2">EVENT HOST & COST</p>
+                <v-list density="compact" class="bg-transparent">
+                  <v-list-item v-if="selectedEvent.hosted_by">
+                    <template #prepend><v-icon color="primary">mdi-domain</v-icon></template>
+                    <v-list-item-title>{{ selectedEvent.hosted_by }}</v-list-item-title>
+                    <v-list-item-subtitle>Hosted By</v-list-item-subtitle>
+                  </v-list-item>
+                  <v-list-item v-if="selectedEvent.event_cost">
+                    <template #prepend><v-icon color="primary">mdi-cash</v-icon></template>
+                    <v-list-item-title>${{ selectedEvent.event_cost.toLocaleString() }}</v-list-item-title>
+                    <v-list-item-subtitle>Event Cost (Booth Fee/Registration)</v-list-item-subtitle>
+                  </v-list-item>
+                  <v-list-item v-if="!selectedEvent.hosted_by && !selectedEvent.event_cost">
+                    <v-list-item-title class="text-grey">No host/cost info added</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+
+                <v-divider class="my-3" />
+
+                <p class="text-overline text-grey mb-2">PAYMENT STATUS</p>
+                <v-list density="compact" class="bg-transparent">
+                  <v-list-item>
+                    <template #prepend><v-icon color="primary">mdi-credit-card</v-icon></template>
+                    <v-list-item-title>
+                      <v-chip :color="getPaymentStatusColor(selectedEvent.payment_status || 'pending')" size="small">
+                        {{ formatPaymentStatus(selectedEvent.payment_status || 'pending') }}
+                      </v-chip>
+                    </v-list-item-title>
+                  </v-list-item>
+                  <v-list-item v-if="selectedEvent.payment_date">
+                    <template #prepend><v-icon color="primary">mdi-calendar-check</v-icon></template>
+                    <v-list-item-title>{{ formatDate(selectedEvent.payment_date) }}</v-list-item-title>
+                    <v-list-item-subtitle>Payment Date</v-list-item-subtitle>
+                  </v-list-item>
+                  <v-list-item v-if="selectedEvent.vendor_status">
+                    <template #prepend><v-icon color="primary">mdi-information</v-icon></template>
+                    <v-list-item-title>{{ selectedEvent.vendor_status }}</v-list-item-title>
+                    <v-list-item-subtitle>Vendor Status</v-list-item-subtitle>
+                  </v-list-item>
+                </v-list>
+
+                <v-divider class="my-3" />
+
                 <p class="text-overline text-grey mb-2">CONTACT INFORMATION</p>
                 <v-list density="compact" class="bg-transparent">
                   <v-list-item v-if="selectedEvent.contact_name">
@@ -149,6 +192,47 @@
                     <p class="text-body-2 mb-0">{{ selectedEvent.description }}</p>
                   </v-card-text>
                 </v-card>
+
+                <v-card variant="outlined" v-if="selectedEvent.expectations" class="mb-3">
+                  <v-card-text>
+                    <div class="text-subtitle-2 mb-1">Expectations / Our Involvement</div>
+                    <p class="text-body-2 mb-0">{{ selectedEvent.expectations }}</p>
+                  </v-card-text>
+                </v-card>
+
+                <v-card variant="outlined" v-if="selectedEvent.physical_setup" class="mb-3">
+                  <v-card-text>
+                    <div class="text-subtitle-2 mb-1">Physical Setup Details</div>
+                    <p class="text-body-2 mb-0">{{ selectedEvent.physical_setup }}</p>
+                  </v-card-text>
+                </v-card>
+
+                <!-- Communication Log -->
+                <div v-if="selectedEvent.communication_log && selectedEvent.communication_log.length > 0" class="mt-4">
+                  <p class="text-overline text-grey mb-2">COMMUNICATION LOG</p>
+                  <v-timeline density="compact" side="end" class="px-0">
+                    <v-timeline-item
+                      v-for="(entry, idx) in selectedEvent.communication_log"
+                      :key="idx"
+                      :dot-color="getCommunicationTypeColor(entry.type)"
+                      size="small"
+                    >
+                      <template #opposite>
+                        <div class="text-caption text-grey">{{ formatDate(entry.date) }}</div>
+                      </template>
+                      <v-card variant="outlined">
+                        <v-card-text class="py-2">
+                          <div class="d-flex align-center mb-1">
+                            <v-chip size="x-small" :color="getCommunicationTypeColor(entry.type)" class="mr-2">{{ entry.type }}</v-chip>
+                            <span class="text-caption">{{ entry.contact }}</span>
+                          </div>
+                          <div class="text-body-2 font-weight-medium">{{ entry.summary }}</div>
+                          <div v-if="entry.notes" class="text-caption text-grey mt-1">{{ entry.notes }}</div>
+                        </v-card-text>
+                      </v-card>
+                    </v-timeline-item>
+                  </v-timeline>
+                </div>
 
                 <!-- External Links -->
                 <div class="mt-4">
@@ -934,6 +1018,37 @@ const getPartnerTypeColor = (type: string | undefined) => {
     other: 'grey'
   }
   return colors[type || 'other'] || 'grey'
+}
+
+const formatPaymentStatus = (status: string) => {
+  const labels: Record<string, string> = {
+    pending: 'Pending',
+    paid: 'Paid',
+    refunded: 'Refunded',
+    waived: 'Waived'
+  }
+  return labels[status] || status
+}
+
+const getPaymentStatusColor = (status: string) => {
+  const colors: Record<string, string> = {
+    pending: 'warning',
+    paid: 'success',
+    refunded: 'error',
+    waived: 'grey'
+  }
+  return colors[status] || 'grey'
+}
+
+const getCommunicationTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    Email: 'blue',
+    'Phone Call': 'green',
+    Meeting: 'purple',
+    Payment: 'success',
+    Other: 'grey'
+  }
+  return colors[type] || 'grey'
 }
 
 const getPartnerTypeIcon = (type: string | undefined) => {

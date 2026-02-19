@@ -27,40 +27,6 @@
       </template>
     </UiPageHeader>
 
-    <!-- Stats Row -->
-    <div class="stats-scroll-container mb-6">
-      <div class="stats-scroll-inner">
-        <v-card rounded="lg" class="stat-card">
-          <v-card-text class="text-center pa-3">
-            <v-icon size="24" color="primary" class="mb-1">mdi-file-document-multiple</v-icon>
-            <div class="text-h5 font-weight-bold">{{ store.stats.total }}</div>
-            <div class="text-caption text-grey">Total Logs</div>
-          </v-card-text>
-        </v-card>
-        <v-card rounded="lg" class="stat-card">
-          <v-card-text class="text-center pa-3">
-            <v-icon size="24" color="blue" class="mb-1">mdi-clock-outline</v-icon>
-            <div class="text-h5 font-weight-bold">{{ store.stats.pendingReview }}</div>
-            <div class="text-caption text-grey">Pending Review</div>
-          </v-card-text>
-        </v-card>
-        <v-card v-if="canManage" rounded="lg" class="stat-card">
-          <v-card-text class="text-center pa-3">
-            <v-icon size="24" color="error" class="mb-1">mdi-alert-circle</v-icon>
-            <div class="text-h5 font-weight-bold">{{ store.stats.oshaCount }}</div>
-            <div class="text-caption text-grey">OSHA Recordable</div>
-          </v-card-text>
-        </v-card>
-        <v-card rounded="lg" class="stat-card">
-          <v-card-text class="text-center pa-3">
-            <v-icon size="24" color="warning" class="mb-1">mdi-flag</v-icon>
-            <div class="text-h5 font-weight-bold">{{ store.stats.flaggedCount }}</div>
-            <div class="text-caption text-grey">Flagged</div>
-          </v-card-text>
-        </v-card>
-      </div>
-    </div>
-
     <!-- Log Type Grid (quick-launch tiles) -->
     <div class="d-flex align-center justify-space-between mb-3">
       <h2 class="text-h6 font-weight-bold">Log Types</h2>
@@ -86,9 +52,12 @@
         <v-card
           variant="outlined"
           rounded="lg"
-          class="text-center pa-3 cursor-pointer hover-elevate"
+          class="text-center pa-3 cursor-pointer hover-elevate log-type-tile"
           @click="navigateToEntries(cfg.key)"
         >
+          <!-- Red dot indicator for overdue logs -->
+          <div v-if="overdueLogTypes.has(cfg.key)" class="overdue-indicator"></div>
+          
           <v-avatar :color="cfg.color" size="44" variant="tonal" class="mb-2">
             <v-icon size="24">{{ cfg.icon }}</v-icon>
           </v-avatar>
@@ -299,6 +268,57 @@ const showNewLogSheet = ref(false)
 // Submittable types (everything with at least 1 field — built-in + custom)
 const submittableTypes = computed(() => mergedSubmittable.value)
 
+// ── Overdue Schedules ──
+interface SafetySchedule {
+  id: string
+  log_type: string
+  location: string
+  cadence: 'monthly' | 'quarterly' | 'biannual' | 'annual' | 'none'
+  last_completed_at: string | null
+  last_notified_at: string | null
+}
+
+const schedules = ref<SafetySchedule[]>([])
+
+const CADENCE_DAYS: Record<string, number> = {
+  monthly: 30,
+  quarterly: 90,
+  biannual: 182,
+  annual: 365,
+}
+
+// Compute overdue log types (across all locations)
+const overdueLogTypes = computed(() => {
+  const now = new Date()
+  const overdueSet = new Set<string>()
+
+  for (const sched of schedules.value) {
+    if (sched.cadence === 'none') continue
+
+    const periodDays = CADENCE_DAYS[sched.cadence]
+    if (!periodDays) continue
+
+    const cutoff = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000)
+
+    // Check if last_completed_at is within the period
+    // If it's null or older than the cutoff, it's overdue
+    if (!sched.last_completed_at || new Date(sched.last_completed_at) < cutoff) {
+      overdueSet.add(sched.log_type)
+    }
+  }
+
+  return overdueSet
+})
+
+async function fetchSchedules() {
+  try {
+    const data = await $fetch<SafetySchedule[]>('/api/safety-log/schedules')
+    schedules.value = data || []
+  } catch (error) {
+    console.error('Failed to fetch schedules:', error)
+  }
+}
+
 const logTypeOptions = computed(() =>
   allTypes.value.map(c => ({ key: c.key, label: c.label }))
 )
@@ -364,23 +384,40 @@ async function exportLogs() {
 onMounted(() => {
   store.fetchLogs()
   fetchCustomTypes()
+  fetchSchedules()
 })
 </script>
 
 <style scoped>
-.stat-card {
-  min-width: 130px;
-  flex-shrink: 0;
+.log-type-tile {
+  position: relative;
 }
-.stats-scroll-container {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+
+.overdue-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  background-color: #f44336;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  animation: pulse 2s ease-in-out infinite;
 }
-.stats-scroll-inner {
-  display: flex;
-  gap: 12px;
-  padding-bottom: 4px;
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
 }
+
 .hover-elevate {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
