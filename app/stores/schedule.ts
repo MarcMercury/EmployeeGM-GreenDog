@@ -282,7 +282,7 @@ export const useScheduleStore = defineStore('schedule', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         const { data, error } = await supabase
           .from('time_off_requests')

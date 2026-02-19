@@ -129,7 +129,7 @@ async function handleCallback() {
         .from('employees')
         .select('id')
         .eq('profile_id', profileId)
-        .single()
+        .maybeSingle()
       
       if (employee) {
         await supabase

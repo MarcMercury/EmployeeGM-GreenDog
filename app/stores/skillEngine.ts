@@ -100,7 +100,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         if (!employee) {
           this.error = 'Employee profile not found'
@@ -218,7 +218,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         if (!employee) return
 
@@ -285,7 +285,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         // Find other employees with skill level >= 4
         const { data, error } = await supabase
@@ -345,7 +345,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
         .from('employees')
         .select('id')
         .eq('profile_id', authStore.profile?.id)
-        .single()
+        .maybeSingle()
 
       if (!currentEmployee) throw new Error('Employee not found')
 
@@ -379,7 +379,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         if (!currentEmployee) return
 
@@ -512,7 +512,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         if (!employee) return
 
@@ -583,7 +583,7 @@ export const useSkillEngineStore = defineStore('skillEngine', {
         .from('employees')
         .select('id')
         .eq('profile_id', authStore.profile?.id)
-        .single()
+        .maybeSingle()
 
       if (!employee) throw new Error('Employee not found')
 

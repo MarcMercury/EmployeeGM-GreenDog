@@ -568,7 +568,7 @@ async function fetchPersonalData() {
         .from('employees')
         .select('id')
         .eq('profile_id', userId)
-        .single()
+        .maybeSingle()
       
       if (empData?.id) {
         const { data: shifts } = await supabase
@@ -610,7 +610,7 @@ async function fetchPersonalData() {
         .from('employees')
         .select('id')
         .eq('profile_id', userId)
-        .single()
+        .maybeSingle()
       
       if (empData?.id) {
         const { data: enrollments } = await supabase

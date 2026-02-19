@@ -199,7 +199,7 @@ async function loadData() {
         .from('employees')
         .select('id')
         .eq('profile_id', authStore.profile.id)
-        .single()
+        .maybeSingle()
       currentEmployee.value = data
     }
 

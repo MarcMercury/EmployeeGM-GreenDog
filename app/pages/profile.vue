@@ -47,10 +47,35 @@ onMounted(async () => {
     await userStore.fetchUserData()
   }
 
-  if (userStore.employee?.id) {
+  let employeeId = userStore.employee?.id
+
+  // Fallback: if UserStore couldn't resolve (406 / no link), try useAppData's cached employees
+  if (!employeeId) {
+    try {
+      const { employees, fetchGlobalData } = useAppData()
+      if (!employees.value?.length) {
+        await fetchGlobalData()
+      }
+      const email = userStore.profile?.email
+      const firstName = userStore.profile?.first_name
+      const lastName = userStore.profile?.last_name
+      
+      const match = employees.value?.find((e: any) =>
+        (email && e.email_work === email) ||
+        (firstName && lastName && 
+         e.first_name?.toLowerCase() === firstName.toLowerCase() && 
+         e.last_name?.toLowerCase() === lastName.toLowerCase())
+      )
+      if (match) employeeId = match.id
+    } catch (e) {
+      console.warn('[ProfilePage] AppData fallback failed:', e)
+    }
+  }
+
+  if (employeeId) {
     // Preserve any ?tab= query param for deep-linking
     const query = route.query.tab ? `?tab=${route.query.tab}` : ''
-    await navigateTo(`/roster/${userStore.employee.id}${query}`, { replace: true })
+    await navigateTo(`/roster/${employeeId}${query}`, { replace: true })
     return
   }
 

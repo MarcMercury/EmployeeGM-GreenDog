@@ -510,7 +510,7 @@ export const useIntegrationsStore = defineStore('integrations', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         // 2. Insert feedback record
         const { data: feedback, error: feedbackError } = await supabase
@@ -634,7 +634,7 @@ export const useIntegrationsStore = defineStore('integrations', {
           .from('employees')
           .select('id')
           .eq('profile_id', authStore.profile?.id)
-          .single()
+          .maybeSingle()
 
         if (!manager) {
           this.actionItems = []

@@ -43,7 +43,7 @@ export function useEmployeeSync() {
       .from('employees')
       .select('id')
       .eq('profile_id', profileId)
-      .single()
+      .maybeSingle()
     return data?.id || null
   }
 

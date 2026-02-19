@@ -175,7 +175,7 @@ async function fetchEnrollments() {
       .from('employees')
       .select('id')
       .eq('profile_id', currentUserProfile.value.id)
-      .single()
+      .maybeSingle()
     
     if (!employee) {
       loading.value = false
