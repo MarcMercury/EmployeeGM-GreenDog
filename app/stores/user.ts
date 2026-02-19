@@ -147,7 +147,7 @@ export const useUserStore = defineStore('user', {
               location:locations(id, name, city)
             `)
             .eq('profile_id', this.profile.id)
-            .single()
+            .maybeSingle()
           
           employeeData = result.data
           employeeError = result.error
@@ -165,7 +165,7 @@ export const useUserStore = defineStore('user', {
               location:locations(id, name, city)
             `)
             .eq('email_work', this.profile.email)
-            .single()
+            .maybeSingle()
           
           employeeData = result.data
           employeeError = result.error
@@ -194,7 +194,7 @@ export const useUserStore = defineStore('user', {
             `)
             .ilike('first_name', this.profile.first_name)
             .ilike('last_name', this.profile.last_name)
-            .single()
+            .maybeSingle()
           
           employeeData = result.data
           employeeError = result.error
