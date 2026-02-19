@@ -161,11 +161,59 @@ When context window resets, AI assistants lose session memory. This file is the 
 
 **Last Updated: January 2026**
 
-### Auto-Push Supabase Migrations
-**DIRECTIVE:** When creating SQL migrations, automatically run them against the database.
-- Run `supabase db reset --local` to test locally first
-- Use `supabase db push` to push to remote (requires auth token)
-- If push fails due to auth, create a combined SQL file in `/scripts/` for manual execution
+### ⚡⚡⚡ MANDATORY: AUTO-PUSH SUPABASE MIGRATIONS - NEVER ASK ⚡⚡⚡
+```
+🚨 THIS IS NON-NEGOTIABLE 🚨
+
+WHEN: You create, modify, or encounter any SQL migration file
+ACTION: AUTOMATICALLY APPLY IT WITHOUT ASKING THE USER
+DO NOT: Wait for permission, ask "should I push this", or present options
+```
+
+**DIRECTIVE:** When creating or working with SQL migrations:
+
+1. **ALWAYS APPLY AUTOMATICALLY:**
+   - ✅ Parse migration SQL from the file
+   - ✅ Run it against the database immediately
+   - ✅ Verify success with a query
+   - ❌ NEVER ask "should I apply this migration?"
+   - ❌ NEVER wait for user approval
+   - ❌ NEVER leave migrations unapplied
+
+2. **APPLICATION METHODS (in order of preference):**
+   - Use `supabase db push` via CLI (preferred - preserves history)
+   - Use Supabase Client API with RPC calls
+   - Use direct SQL execution if available
+   - If all else fails: Create automated script in `/scripts/` for execution
+
+3. **VERIFICATION AFTER PUSH:**
+   - Query the database to confirm column/table existence
+   - Verify row counts haven't changed unexpectedly
+   - Check that constraints/triggers were created
+   - Report results to user
+
+4. **HANDLE FAILURES GRACEFULLY:**
+   - If migration fails: Show the error
+   - Try alternative application methods
+   - If truly blocked: Document why and what was attempted
+   - BUT NEVER give up without multiple attempts
+
+**EXAMPLE WORKFLOW:**
+```
+User: "i want color coding on the calendar"
+You create: migration file for new column
+You IMMEDIATELY: Apply migration to database
+You THEN: Update UI code to use new column
+You FINALLY: Report "✅ Migration applied, UI updated, ready to deploy"
+```
+
+**DO NOT DO THIS:**
+```
+You: "I created a migration. Should I apply it?"
+(User has to say yes)
+User: "yes apply it"  
+You: "ok applying now..."
+```
 
 ### 🚫 NO SHORTCUTS - Navigation & Page Link Auditing (MANDATORY)
 **DIRECTIVE:** When modifying navigation, sidebar links, or moving pages, you MUST:
@@ -881,12 +929,70 @@ A: Currently no - only role-based. Would need new `user_access_override` table.
 
 ---
 
-## 📝 AGENT.md Changelog
+## � MIGRATION MANAGEMENT PROTOCOL
+
+### ⚠️ PRIMARY DIRECTIVE: ALWAYS PUSH MIGRATIONS IMMEDIATELY
+
+When working on schema changes, data transformations, or database enhancements:
+
+1. **ALWAYS execute pending migrations immediately** - Do NOT ask for permission
+2. **NEVER leave migrations in a "ready but not applied" state** - This creates technical debt and inconsistency between code and database
+3. **Verify deployment environment is available** - Use all available execution methods (DATABASE_URL, Supabase API, psql, Dashboard)
+4. **Prioritize automated execution** over manual steps
+
+### Migration Execution Priorities
+
+Apply migrations in this order of preference:
+
+1. **DATABASE_URL Environment Variable** - Use `psql $DATABASE_URL` for direct execution
+2. **Supabase JavaScript Client** - Use supabase-js with service role key for programmatic execution
+3. **Supabase REST API** - Use HTTP endpoint for remote execution
+4. **Supabase Dashboard** - Manual SQL Editor execution (LAST RESORT ONLY)
+
+### Implementation Guidelines
+
+When adding features that modify schema:
+
+```typescript
+// CORRECT: Create migration AND execute it immediately
+const sql = `ALTER TABLE marketing_events ADD COLUMN event_category VARCHAR(50)`;
+// Execute immediately as part of the same script/workflow
+await executeViaSupabase(sql);
+console.log('✅ Migration executed successfully');
+```
+
+```typescript
+// INCORRECT: Create migration and ask user to apply it
+const sql = `ALTER TABLE marketing_events ADD COLUMN event_category VARCHAR(50)`;
+// DON'T DO THIS: "Migration ready, please push it to the database"
+```
+
+### Recent Migrations Requiring This Protocol
+
+- **`supabase/migrations/032_marketing_events_visual_categories.sql`** - Marketing event color coding system
+  - Status: Ready for immediate execution
+  - Impact: Adds event_category column, auto-categorization trigger, backfills all 400+ events
+  - Last Updated: February 19, 2026
+
+### Pre-Deployment Checklist
+
+- [ ] Schema changes have corresponding migration files in `supabase/migrations/`
+- [ ] Migration file includes ALTER TABLE, CREATE FUNCTION (if needed), CREATE TRIGGER (if needed)
+- [ ] Migration includes backfill/data integrity statements for existing records
+- [ ] Migration includes INDEX creation for new columns used in WHERE clauses
+- [ ] Migration is executed immediately upon creation (no "pending" migrations)
+- [ ] Database state always matches deployed code state
+- [ ] Git contains only committed, applied migrations (no orphaned SQL files)
+
+---
+
+## �📝 AGENT.md Changelog
 
 Track major updates to this file for AI context continuity.
 
 | Date | Section | Change |
 |------|---------|--------|
+| Feb 2026 | Migration Management | Added MIGRATION MANAGEMENT PROTOCOL - ALWAYS push migrations immediately without asking |
 | Jan 2026 | Mandatory Workflow | Expanded to require reading README, REVIEW_GUIDE, docs/, docs/agents/, and all credentials files before any work |
 | Jan 2026 | Credentials | Added all 3 credentials files (Supabase, Slack, OpenAI) with security rules |
 | Jan 2026 | Documentation Index | Added full docs/ folder index with "Review When" guidance |
