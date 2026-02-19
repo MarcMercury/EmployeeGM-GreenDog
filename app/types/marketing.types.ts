@@ -35,11 +35,20 @@ export interface ExternalLink {
   description?: string
 }
 
+export interface CommunicationLogEntry {
+  date: string
+  type: string
+  contact: string
+  summary: string
+  notes?: string
+}
+
 export interface MarketingEvent {
   id: string
   name: string
   description: string | null
   event_type: string
+  event_category?: string | null
   event_date: string
   start_time: string | null
   end_time: string | null
@@ -64,6 +73,14 @@ export interface MarketingEvent {
   visitors_count: number
   revenue_generated: number
   inventory_used: InventoryUsedItem[]
+  hosted_by: string | null
+  event_cost: number | null
+  expectations: string | null
+  physical_setup: string | null
+  communication_log: CommunicationLogEntry[]
+  vendor_status: string | null
+  payment_date: string | null
+  payment_status: string
 }
 
 export interface EventPartner {

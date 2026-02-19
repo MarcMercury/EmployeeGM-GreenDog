@@ -42,7 +42,24 @@
               Today
             </v-btn>
           </div>
-          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="viewMode === 'month' ? nextMonth() : nextWeek()" />
+          <v-btn icon="mdi-chevron-right" variant="text" aria-label="Next" @click="viewMode === 'month' ? previousMonth() : nextWeek()" />
+        </div>
+      </v-card-text>
+    </v-card>
+
+    <!-- Color Legend -->
+    <v-card rounded="lg" class="mb-4">
+      <v-card-text class="pa-3">
+        <div class="d-flex align-center flex-wrap gap-3">
+          <span class="text-caption font-weight-medium text-grey-darken-1 mr-2">Event Types:</span>
+          <v-chip size="x-small" color="green" variant="flat">Clinic Event</v-chip>
+          <v-chip size="x-small" color="orange" variant="flat">Offsite w/ Tent</v-chip>
+          <v-chip size="x-small" color="red" variant="flat">Street Team</v-chip>
+          <v-chip size="x-small" color="pink" variant="flat">Donation/Flyers</v-chip>
+          <v-chip size="x-small" color="amber" variant="flat">Considering</v-chip>
+          <v-chip size="x-small" color="grey-lighten-1" variant="flat">Awareness Day</v-chip>
+          <v-chip size="x-small" color="yellow-darken-3" variant="flat">Major Holiday</v-chip>
+          <v-chip size="x-small" color="brown-darken-2" variant="flat" class="text-white">Completed</v-chip>
         </div>
       </v-card-text>
     </v-card>
@@ -468,6 +485,22 @@
               </template>
               <v-list-item-title>{{ formatEventType(selectedEvent.event_type) }}</v-list-item-title>
               <v-list-item-subtitle>Event Type</v-list-item-subtitle>
+            </v-list-item>
+
+            <v-list-item v-if="selectedEvent.event_category">
+              <template #prepend>
+                <v-icon :color="getCategoryColor(selectedEvent.event_category, selectedEvent.status)">mdi-palette</v-icon>
+              </template>
+              <v-list-item-title>
+                <v-chip 
+                  :color="getCategoryColor(selectedEvent.event_category, selectedEvent.status)" 
+                  size="small"
+                  :class="['grey-lighten-1', 'yellow-darken-3'].includes(getCategoryColor(selectedEvent.event_category, selectedEvent.status)) ? 'text-grey-darken-4' : ''"
+                >
+                  {{ getCategoryLabel(selectedEvent.event_category) }}
+                </v-chip>
+              </v-list-item-title>
+              <v-list-item-subtitle>Visual Category</v-list-item-subtitle>
             </v-list-item>
           </v-list>
 
@@ -943,14 +976,46 @@ const getEventsForDate = (date: Date): MarketingEvent[] => {
   return events.value.filter(event => event.event_date === dateStr)
 }
 
-const getEventClass = (event: MarketingEvent): string => {
-  const classes: Record<string, string> = {
-    planned: 'bg-info text-white',
-    confirmed: 'bg-success text-white',
-    completed: 'bg-grey text-white',
-    cancelled: 'bg-error text-white'
+const getCategoryColor = (category: string | null | undefined, status: string): string => {
+  // Completed events always get maroon
+  if (status === 'completed') {
+    return 'brown-darken-2'
   }
-  return classes[event.status] || 'bg-grey text-white'
+  
+  // Color by category
+  const categoryColors: Record<string, string> = {
+    clinic_hosted: 'green',
+    offsite_tent: 'orange',
+    offsite_street_team: 'red',
+    donation_flyers: 'pink',
+    considering: 'amber',
+    awareness_day: 'grey-lighten-1',
+    major_holiday: 'yellow-darken-3',
+    general: 'blue-grey'
+  }
+  
+  return categoryColors[category || 'general'] || 'blue-grey'
+}
+
+const getEventClass = (event: MarketingEvent): string => {
+  const color = getCategoryColor(event.event_category, event.status)
+  const textColor = ['grey-lighten-1', 'yellow-darken-3'].includes(color) ? 'text-grey-darken-4' : 'text-white'
+  return `bg-${color} ${textColor}`
+}
+
+const getCategoryLabel = (category: string | null | undefined): string => {
+  const labels: Record<string, string> = {
+    clinic_hosted: 'Clinic Event',
+    offsite_tent: 'Offsite w/ Tent',
+    offsite_street_team: 'Street Team',
+    donation_flyers: 'Donation/Flyers',
+    considering: 'Considering',
+    awareness_day: 'Awareness Day',
+    major_holiday: 'Major Holiday',
+    general: 'General Event'
+  }
+  
+  return labels[category || 'general'] || 'General Event'
 }
 
 const getStatusColor = (status: string): string => {
