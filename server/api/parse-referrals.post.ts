@@ -222,54 +222,95 @@ function aggregateRevenueByClinic(entries: ParsedRevenueEntry[]): Array<{ clinic
 }
 
 /**
- * Normalize name for comparison
+ * Normalize name for comparison — only strip punctuation and lowercase,
+ * preserving distinguishing words like location names
  */
 function normalizeNameForComparison(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .replace(/veterinary|vet|clinic|hospital|animal|pet|center|medical/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
 /**
- * Find best matching partner for a clinic name
+ * Extract significant keywords from a name (excluding generic vet terms)
+ */
+function extractKeywords(name: string): string[] {
+  const genericWords = new Set([
+    'the', 'and', 'for', 'of', 'at', 'in',
+    'vet', 'vets', 'pet', 'pets', 'animal', 'animals',
+    'clinic', 'clinics', 'hospital', 'hospitals',
+    'center', 'centre', 'medical', 'veterinary',
+    'care', 'health', 'wellness', 'group', 'practice',
+    'dr', 'dvm', 'inc', 'llc', 'corp'
+  ])
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !genericWords.has(w))
+}
+
+/**
+ * Find best matching partner for a clinic name.
+ * Uses tiered matching: exact → normalized exact → contains → keyword overlap.
+ * Requires at least 2 keyword matches (or 1 if only 1 keyword exists) to avoid false positives.
  */
 function findBestMatch(clinicName: string, partners: any[]): any | null {
   const normalizedInput = normalizeNameForComparison(clinicName)
   
-  // Try exact match first (case-insensitive)
+  // 1. Try exact match (case-insensitive)
   let match = partners.find(p => 
-    p.name.toLowerCase() === clinicName.toLowerCase()
+    p.name.toLowerCase().trim() === clinicName.toLowerCase().trim()
   )
   if (match) return match
   
-  // Try contains match
+  // 2. Try normalized exact match
+  match = partners.find(p => 
+    normalizeNameForComparison(p.name) === normalizedInput
+  )
+  if (match) return match
+  
+  // 3. Try contains match (one fully contains the other after normalization)
   match = partners.find(p => {
     const normalizedPartner = normalizeNameForComparison(p.name)
+    // Only match if the shorter string is substantial (>= 6 chars) to avoid trivial matches
+    const shorter = normalizedInput.length < normalizedPartner.length ? normalizedInput : normalizedPartner
+    if (shorter.length < 6) return false
     return normalizedInput.includes(normalizedPartner) || 
            normalizedPartner.includes(normalizedInput)
   })
   if (match) return match
   
-  // Try key word match (first 2 significant words)
-  const inputWords = clinicName.toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter(w => w.length > 2 && !['the', 'and', 'for', 'vet', 'pet', 'animal', 'clinic', 'hospital', 'center', 'veterinary', 'medical'].includes(w))
-    .slice(0, 2)
+  // 4. Try keyword overlap (require at least 2 matching keywords, or exact-match the only keyword)
+  const inputKeywords = extractKeywords(clinicName)
+  if (inputKeywords.length === 0) return null
   
-  if (inputWords.length > 0) {
-    match = partners.find(p => {
-      const partnerWords = p.name.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .split(/\s+/)
-        .filter((w: string) => w.length > 2)
-      return inputWords.some(iw => partnerWords.some((pw: string) => pw.includes(iw) || iw.includes(pw)))
-    })
+  const minRequiredMatches = inputKeywords.length >= 2 ? 2 : 1
+  
+  let bestMatch: any = null
+  let bestScore = 0
+  
+  for (const p of partners) {
+    const partnerKeywords = extractKeywords(p.name)
+    if (partnerKeywords.length === 0) continue
+    
+    // Count exact keyword matches (whole word only)
+    let matchCount = 0
+    for (const iw of inputKeywords) {
+      if (partnerKeywords.some((pw: string) => pw === iw)) {
+        matchCount++
+      }
+    }
+    
+    if (matchCount >= minRequiredMatches && matchCount > bestScore) {
+      bestScore = matchCount
+      bestMatch = p
+    }
   }
   
-  return match || null
+  return bestMatch
 }
 
 export default defineEventHandler(async (event) => {

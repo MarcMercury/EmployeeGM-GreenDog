@@ -181,6 +181,10 @@ export interface PrizeItem {
 // Partner / Clinic Types
 // -----------------------------------------------------------------------------
 
+/**
+ * Marketing Partner (groomers, retail, daycares, etc.)
+ * Used by: app/pages/marketing/partners.vue
+ */
 export interface Partner {
   id: string
   name: string
@@ -223,6 +227,95 @@ export interface Partner {
   payment_amount?: number | null
   payment_date?: string | null
   _isInfluencer?: boolean
+}
+
+/**
+ * Referral Partner (veterinary clinics, referral hospitals)
+ * Used by: app/pages/marketing/partnerships.vue, PartnershipDetailDialog, PartnershipQuickVisitDialog
+ * Based on: referral_partners table (migrations 054, 084, 191, 195)
+ */
+export interface ReferralPartner {
+  id: string
+  name: string
+  hospital_name?: string | null
+  status: string
+  contact_name?: string | null
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  notes?: string | null
+  description?: string | null
+  website?: string | null
+
+  // Classification (054)
+  category?: string | null
+  icon?: string | null
+  color?: string | null
+  products?: string[]
+  clinic_type?: string | null
+  size?: string | null
+  organization_type?: string | null
+  employee_count?: number | null
+
+  // CRM fields (054)
+  tier: string
+  priority?: string | null
+  zone?: string | null
+  visit_frequency?: string | null
+  preferred_visit_day?: string | null
+  preferred_visit_time?: string | null
+  best_contact_person?: string | null
+  needs_followup?: boolean
+  followup_reason?: string | null
+  tags?: string[]
+
+  // Agreements (054)
+  referral_agreement_type?: string | null
+  ce_event_host?: boolean
+  lunch_and_learn_eligible?: boolean
+  drop_off_materials?: boolean
+
+  // Goals (054)
+  monthly_referral_goal?: number
+  quarterly_revenue_goal?: number
+  current_month_referrals?: number
+  current_quarter_revenue?: number
+
+  // Revenue tracking (054 + 084)
+  revenue_ytd?: number
+  revenue_last_year?: number
+  average_monthly_revenue?: number
+  total_referrals_all_time?: number
+  total_referrals_ytd?: number
+  total_revenue_all_time?: number
+  last_sync_date?: string | null
+
+  // Dates (054 + 195)
+  last_visit_date?: string | null
+  last_contact_date?: string | null
+  last_referral_date?: string | null
+  next_followup_date?: string | null
+  created_at: string
+  updated_at?: string
+
+  // Derived metrics (191 - recalculate_partner_metrics)
+  visit_tier?: string | null
+  expected_visit_frequency_days?: number | null
+  days_since_last_visit?: number | null
+  visit_overdue?: boolean | null
+  relationship_health?: number | null
+  relationship_score?: number | null
+  relationship_status?: string | null
+
+  // Social (optional additions)
+  instagram_handle?: string | null
+  facebook_url?: string | null
+  linkedin_url?: string | null
+
+  // Payment (optional)
+  payment_status?: string | null
+  payment_amount?: number | null
+  payment_date?: string | null
 }
 
 export interface MarketingPartner {

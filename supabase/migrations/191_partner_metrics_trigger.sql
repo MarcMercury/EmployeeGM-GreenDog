@@ -131,16 +131,6 @@ BEGIN
       ELSE needs_followup  -- Keep existing value if not auto-flagging
     END;
 
-  -- Update relationship_status based on the newly calculated health
-  UPDATE referral_partners
-  SET relationship_status = CASE
-    WHEN relationship_health >= 80 THEN 'Excellent'
-    WHEN relationship_health >= 60 THEN 'Good'
-    WHEN relationship_health >= 40 THEN 'Fair'
-    WHEN relationship_health >= 20 THEN 'Needs Attention'
-    ELSE 'At Risk'
-  END;
-
   RETURN QUERY SELECT * FROM referral_partners ORDER BY name;
 END;
 $$;

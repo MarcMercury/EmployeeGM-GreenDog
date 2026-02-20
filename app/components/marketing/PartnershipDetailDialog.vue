@@ -18,7 +18,6 @@
           <v-tab value="contacts">Contacts</v-tab>
           <v-tab value="notes">Notes</v-tab>
           <v-tab value="visits">Visit Log</v-tab>
-          <v-tab value="goals">Goals</v-tab>
         </v-tabs>
 
         <v-card-text style="max-height: 500px; overflow-y: auto;">
@@ -336,40 +335,7 @@
                   </v-card>
                 </v-col>
 
-                <v-col cols="12" md="6">
-                  <v-card variant="outlined" class="pa-4">
-                    <h4 class="text-subtitle-1 mb-3 d-flex align-center">
-                      <v-icon class="mr-2" color="warning">mdi-target</v-icon>
-                      Goals & Targets
-                    </h4>
-                    <div class="text-body-2">
-                      <div class="mb-2">
-                        <div class="d-flex justify-space-between mb-1">
-                          <span>Monthly Referral Goal</span>
-                          <span>{{ partner.current_month_referrals || 0 }} / {{ partner.monthly_referral_goal || 0 }}</span>
-                        </div>
-                        <v-progress-linear
-                          :model-value="partner.monthly_referral_goal ? ((partner.current_month_referrals || 0) / partner.monthly_referral_goal) * 100 : 0"
-                          color="primary"
-                          height="8"
-                          rounded
-                        />
-                      </div>
-                      <div>
-                        <div class="d-flex justify-space-between mb-1">
-                          <span>Quarterly Revenue Goal</span>
-                          <span>${{ Number(partner.current_quarter_revenue || 0).toLocaleString() }} / ${{ Number(partner.quarterly_revenue_goal || 0).toLocaleString() }}</span>
-                        </div>
-                        <v-progress-linear
-                          :model-value="partner.quarterly_revenue_goal ? ((partner.current_quarter_revenue || 0) / partner.quarterly_revenue_goal) * 100 : 0"
-                          color="success"
-                          height="8"
-                          rounded
-                        />
-                      </div>
-                    </div>
-                  </v-card>
-                </v-col>
+
 
                 <v-col cols="12" md="6" v-if="partner.payment_status || partner.payment_amount">
                   <v-card variant="outlined" class="pa-4">
@@ -408,6 +374,7 @@
                     <th class="text-left">Email</th>
                     <th class="text-left">Phone</th>
                     <th class="text-center">Primary</th>
+                    <th class="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -428,6 +395,14 @@
                     </td>
                     <td class="text-center">
                       <v-chip v-if="contact.is_primary" size="x-small" color="success">Primary</v-chip>
+                    </td>
+                    <td class="text-center">
+                      <v-btn icon size="x-small" variant="text" color="primary" @click="openEditContact(contact)" aria-label="Edit contact">
+                        <v-icon size="16">mdi-pencil</v-icon>
+                      </v-btn>
+                      <v-btn icon size="x-small" variant="text" color="error" @click="deleteContact(contact)" aria-label="Delete contact">
+                        <v-icon size="16">mdi-delete</v-icon>
+                      </v-btn>
                     </td>
                   </tr>
                 </tbody>
@@ -459,9 +434,30 @@
                           {{ note.author_initials }}
                         </v-chip>
                       </div>
-                      <span class="text-caption text-grey">{{ formatPartnerDateTime(note.created_at) }}</span>
+                      <div class="d-flex align-center gap-1">
+                        <span class="text-caption text-grey mr-1">{{ formatPartnerDateTime(note.created_at) }}</span>
+                        <v-btn icon size="x-small" variant="text" color="primary" @click="openEditNote(note)" aria-label="Edit note">
+                          <v-icon size="14">mdi-pencil</v-icon>
+                        </v-btn>
+                        <v-btn icon size="x-small" variant="text" color="error" @click="deleteNote(note)" aria-label="Delete note">
+                          <v-icon size="14">mdi-delete</v-icon>
+                        </v-btn>
+                      </div>
                     </div>
-                    <div class="text-body-2 my-2">{{ note.content }}</div>
+                    <div v-if="editingNoteId === note.id" class="my-2">
+                      <v-textarea
+                        v-model="editNoteContent"
+                        variant="outlined"
+                        density="compact"
+                        rows="2"
+                        hide-details
+                      />
+                      <div class="d-flex justify-end gap-2 mt-1">
+                        <v-btn size="x-small" variant="text" @click="editingNoteId = null">Cancel</v-btn>
+                        <v-btn size="x-small" color="primary" @click="saveEditedNote(note)">Save</v-btn>
+                      </div>
+                    </div>
+                    <div v-else class="text-body-2 my-2">{{ note.content }}</div>
                     <div class="text-caption text-grey d-flex justify-space-between">
                       <span v-if="note.created_by_name">— {{ note.created_by_name }}</span>
                       <span v-if="note.edited_at" class="text-italic">
@@ -515,35 +511,7 @@
               </v-timeline>
             </v-window-item>
 
-            <!-- Goals -->
-            <v-window-item value="goals">
-              <div class="d-flex justify-end mb-2">
-                <v-btn size="small" color="primary" variant="tonal" @click="openAddGoal">
-                  <v-icon start>mdi-plus</v-icon> Add Goal
-                </v-btn>
-              </div>
-              <v-list density="compact">
-                <v-list-item v-for="goal in partnerGoals" :key="goal.id">
-                  <template #prepend>
-                    <v-icon :color="goal.status === 'completed' ? 'success' : 'warning'">
-                      {{ goal.status === 'completed' ? 'mdi-check-circle' : 'mdi-target' }}
-                    </v-icon>
-                  </template>
-                  <v-list-item-title>{{ goal.title }}</v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ goal.goal_type }} • Target: {{ goal.target_date ? formatPartnerDate(goal.target_date) : 'No date' }}
-                  </v-list-item-subtitle>
-                  <template #append>
-                    <v-chip size="x-small" :color="goal.status === 'completed' ? 'success' : 'warning'">
-                      {{ goal.status }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="!partnerGoals.length">
-                  <v-list-item-title class="text-grey">No goals set</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-window-item>
+
           </v-window>
         </v-card-text>
 
@@ -558,10 +526,10 @@
       </v-card>
     </v-dialog>
 
-    <!-- Add Contact Sub-Dialog -->
+    <!-- Add/Edit Contact Sub-Dialog -->
     <v-dialog v-model="showContactDialog" max-width="500">
       <v-card>
-        <v-card-title>Add Contact</v-card-title>
+        <v-card-title>{{ editingContactId ? 'Edit' : 'Add' }} Contact</v-card-title>
         <v-card-text>
           <v-row dense>
             <v-col cols="12">
@@ -589,33 +557,7 @@
       </v-card>
     </v-dialog>
 
-    <!-- Add Goal Sub-Dialog -->
-    <v-dialog v-model="showGoalDialog" max-width="500">
-      <v-card>
-        <v-card-title>Add Goal</v-card-title>
-        <v-card-text>
-          <v-row dense>
-            <v-col cols="12">
-              <v-text-field v-model="goalForm.title" label="Goal Title *" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-select v-model="goalForm.goal_type" :items="goalTypeOptions" label="Type" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field v-model="goalForm.target_date" label="Target Date" type="date" variant="outlined" density="compact" />
-            </v-col>
-            <v-col cols="12">
-              <v-textarea v-model="goalForm.description" label="Description" variant="outlined" density="compact" rows="2" />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions class="pa-4">
-          <v-spacer />
-          <v-btn variant="text" @click="showGoalDialog = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveGoal">Save</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+
 
     <!-- Add Event Sub-Dialog -->
     <v-dialog v-model="showEventDialog" max-width="550">
@@ -729,15 +671,16 @@ const partner = ref<any>(null)
 const partnerContacts = ref<any[]>([])
 const partnerNotes = ref<any[]>([])
 const partnerVisits = ref<any[]>([])
-const partnerGoals = ref<any[]>([])
 const partnerEvents = ref<any[]>([])
 const marketingEvents = ref<any[]>([])
 const newNote = ref('')
+const editNoteContent = ref('')
 
 // Sub-dialog state
 const showContactDialog = ref(false)
-const showGoalDialog = ref(false)
 const showEventDialog = ref(false)
+const editingContactId = ref<string | null>(null)
+const editingNoteId = ref<string | null>(null)
 
 // Forms
 const contactForm = reactive({
@@ -747,14 +690,6 @@ const contactForm = reactive({
   email: '',
   phone: '',
   is_primary: false
-})
-
-const goalForm = reactive({
-  partner_id: '',
-  goal_type: 'relationship',
-  title: '',
-  description: '',
-  target_date: ''
 })
 
 const eventForm = reactive({
@@ -777,8 +712,6 @@ const participationRoles = [
   { title: 'Exhibitor', value: 'exhibitor' }
 ]
 
-const goalTypeOptions = ['referral', 'revenue', 'relationship', 'event', 'custom']
-
 // --- Public method ---
 function open(p: any) {
   partner.value = p
@@ -790,17 +723,15 @@ function open(p: any) {
 // --- Data loading ---
 async function loadPartnerDetails(partnerId: string) {
   try {
-    const [contacts, notes, visits, goals, events] = await Promise.all([
+    const [contacts, notes, visits, events] = await Promise.all([
       supabase.from('partner_contacts').select('*').eq('partner_id', partnerId).order('is_primary', { ascending: false }),
       supabase.from('partner_notes').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
       supabase.from('clinic_visits').select('*').eq('partner_id', partnerId).order('visit_date', { ascending: false }),
-      supabase.from('partner_goals').select('*').eq('partner_id', partnerId).order('created_at', { ascending: false }),
       supabase.from('partner_events').select('*, marketing_events(name, event_date)').eq('partner_id', partnerId).order('event_date', { ascending: false })
     ])
     partnerContacts.value = contacts.data || []
     partnerNotes.value = notes.data || []
     partnerVisits.value = visits.data || []
-    partnerGoals.value = goals.data || []
     partnerEvents.value = events.data || []
   } catch (e) {
     console.error('Error loading partner details:', e)
@@ -823,6 +754,7 @@ async function loadMarketingEvents() {
 // --- Sub-dialog openers ---
 function openAddContact() {
   if (!partner.value) return
+  editingContactId.value = null
   contactForm.partner_id = partner.value.id
   contactForm.name = ''
   contactForm.title = ''
@@ -832,14 +764,28 @@ function openAddContact() {
   showContactDialog.value = true
 }
 
-function openAddGoal() {
-  if (!partner.value) return
-  goalForm.partner_id = partner.value.id
-  goalForm.goal_type = 'relationship'
-  goalForm.title = ''
-  goalForm.description = ''
-  goalForm.target_date = ''
-  showGoalDialog.value = true
+function openEditContact(contact: any) {
+  editingContactId.value = contact.id
+  contactForm.partner_id = contact.partner_id
+  contactForm.name = contact.name || ''
+  contactForm.title = contact.title || ''
+  contactForm.email = contact.email || ''
+  contactForm.phone = contact.phone || ''
+  contactForm.is_primary = contact.is_primary || false
+  showContactDialog.value = true
+}
+
+async function deleteContact(contact: any) {
+  if (!confirm(`Delete contact "${contact.name}"?`)) return
+  try {
+    const { error } = await supabase.from('partner_contacts').delete().eq('id', contact.id)
+    if (error) throw error
+    emit('notify', { message: 'Contact deleted', color: 'success' })
+    if (partner.value) await loadPartnerDetails(partner.value.id)
+  } catch (e: any) {
+    console.error('Error deleting contact:', e)
+    emit('notify', { message: e.message || 'Error deleting contact', color: 'error' })
+  }
 }
 
 function openAddEvent() {
@@ -862,48 +808,29 @@ async function saveContact() {
   }
   saving.value = true
   try {
-    const { error } = await supabase.from('partner_contacts').insert({
+    const payload = {
       partner_id: contactForm.partner_id,
       name: contactForm.name,
       title: contactForm.title || null,
       email: contactForm.email || null,
       phone: contactForm.phone || null,
       is_primary: contactForm.is_primary
-    })
-    if (error) throw error
-    emit('notify', { message: 'Contact added', color: 'success' })
+    }
+    if (editingContactId.value) {
+      const { error } = await supabase.from('partner_contacts').update(payload).eq('id', editingContactId.value)
+      if (error) throw error
+      emit('notify', { message: 'Contact updated', color: 'success' })
+    } else {
+      const { error } = await supabase.from('partner_contacts').insert(payload)
+      if (error) throw error
+      emit('notify', { message: 'Contact added', color: 'success' })
+    }
     showContactDialog.value = false
+    editingContactId.value = null
     if (partner.value) await loadPartnerDetails(partner.value.id)
   } catch (e: any) {
     console.error('Error saving contact:', e)
     emit('notify', { message: e.message || 'Error saving contact', color: 'error' })
-  } finally {
-    saving.value = false
-  }
-}
-
-async function saveGoal() {
-  if (!goalForm.title) {
-    emit('notify', { message: 'Goal title is required', color: 'warning' })
-    return
-  }
-  saving.value = true
-  try {
-    const { error } = await supabase.from('partner_goals').insert({
-      partner_id: goalForm.partner_id,
-      goal_type: goalForm.goal_type,
-      title: goalForm.title,
-      description: goalForm.description || null,
-      target_date: goalForm.target_date || null,
-      created_by: user.value?.id
-    })
-    if (error) throw error
-    emit('notify', { message: 'Goal added', color: 'success' })
-    showGoalDialog.value = false
-    if (partner.value) await loadPartnerDetails(partner.value.id)
-  } catch (e: any) {
-    console.error('Error saving goal:', e)
-    emit('notify', { message: e.message || 'Error saving goal', color: 'error' })
   } finally {
     saving.value = false
   }
@@ -982,6 +909,53 @@ async function addNote() {
     emit('notify', { message: e.message || 'Error adding note', color: 'error' })
   } finally {
     saving.value = false
+  }
+}
+
+function openEditNote(note: any) {
+  editingNoteId.value = note.id
+  editNoteContent.value = note.content || ''
+}
+
+async function saveEditedNote(note: any) {
+  if (!editNoteContent.value.trim()) return
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('auth_user_id', user.value?.id)
+      .single()
+
+    const initials = profile
+      ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')
+      : 'SY'
+
+    const { error } = await supabase.from('partner_notes').update({
+      content: editNoteContent.value.trim(),
+      edited_at: new Date().toISOString(),
+      edited_by: user.value?.id,
+      edited_by_initials: initials.toUpperCase()
+    }).eq('id', note.id)
+    if (error) throw error
+    editingNoteId.value = null
+    if (partner.value) await loadPartnerDetails(partner.value.id)
+    emit('notify', { message: 'Note updated', color: 'success' })
+  } catch (e: any) {
+    console.error('Error updating note:', e)
+    emit('notify', { message: e.message || 'Error updating note', color: 'error' })
+  }
+}
+
+async function deleteNote(note: any) {
+  if (!confirm('Delete this note?')) return
+  try {
+    const { error } = await supabase.from('partner_notes').delete().eq('id', note.id)
+    if (error) throw error
+    if (partner.value) await loadPartnerDetails(partner.value.id)
+    emit('notify', { message: 'Note deleted', color: 'success' })
+  } catch (e: any) {
+    console.error('Error deleting note:', e)
+    emit('notify', { message: e.message || 'Error deleting note', color: 'error' })
   }
 }
 

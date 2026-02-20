@@ -50,7 +50,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 2. Get recent clinic visits (last 90 days)
   const { data: recentVisits } = await supabase
     .from('clinic_visits')
-    .select('id, referral_partner_id, visit_date, visit_type, notes, visited_by')
+    .select('id, partner_id, visit_date, visit_notes, spoke_to, clinic_name')
     .gte('visit_date', ninetyDaysAgo)
     .order('visit_date', { ascending: false })
 
@@ -64,14 +64,14 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   // 4. Get partner notes (last 90 days)
   const { data: partnerNotes } = await supabase
     .from('partner_notes')
-    .select('id, partner_id, note_text, created_at')
+    .select('id, partner_id, content, created_at')
     .gte('created_at', ninetyDaysAgo)
     .order('created_at', { ascending: false })
     .limit(100)
 
   // 5. Analyze partners
   const partnerAnalysis = partners.map((p: any) => {
-    const visits = (recentVisits ?? []).filter((v: any) => v.referral_partner_id === p.id)
+    const visits = (recentVisits ?? []).filter((v: any) => v.partner_id === p.id)
     const notes = (partnerNotes ?? []).filter((n: any) => n.partner_id === p.id)
     const lastReferral = p.last_contact_date ? new Date(p.last_contact_date) : null
     const daysSinceLastReferral = lastReferral

@@ -232,95 +232,219 @@
 
       <!-- TARGETING TAB -->
       <v-window-item value="targeting">
-        <v-row>
-          <!-- This Week's Visits -->
-          <v-col cols="12" md="6">
-            <v-card variant="outlined">
-              <v-card-title class="d-flex align-center">
-                <v-icon color="primary" class="mr-2">mdi-calendar-week</v-icon>
-                This Week's Targets
-              </v-card-title>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="partner in weeklyTargets"
-                  :key="partner.id"
-                  @click="openPartnerDetail(partner)"
-                >
-                  <template #prepend>
-                    <v-avatar :color="getTierColor(partner.tier)" size="32">
-                      <span class="text-white text-caption">{{ getTierLabel(partner.tier) }}</span>
-                    </v-avatar>
-                  </template>
-                  <v-list-item-title>{{ partner.name }}</v-list-item-title>
-                  <v-list-item-subtitle>
-                    {{ getZoneDisplay(partner.zone) }} • {{ partner.preferred_visit_day || 'Any day' }}
-                  </v-list-item-subtitle>
-                  <template #append>
-                    <v-chip size="x-small" :color="getPriorityColor(partner.priority)">
-                      {{ partner.priority }}
-                    </v-chip>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="!weeklyTargets.length">
-                  <v-list-item-title class="text-grey text-center">No targets this week</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-card>
-          </v-col>
+        <!-- Summary Stats Row -->
+        <UiStatsRow
+          :stats="[
+            { value: partners.filter(p => p.status === 'active').length, label: 'Active Partners', color: 'primary' },
+            { value: weeklyTargets.length, label: 'This Week\'s Targets', color: 'info' },
+            { value: overduePartners.length, label: 'Overdue Visits', color: 'error' },
+            { value: partners.filter(p => p.needs_followup).length, label: 'Follow-ups', color: 'warning' }
+          ]"
+          layout="4-col"
+          class="mb-4"
+        />
 
-          <!-- Overdue Partners -->
-          <v-col cols="12" md="6">
-            <v-card variant="outlined">
-              <v-card-title class="d-flex align-center text-error">
-                <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
-                Overdue Visits
-              </v-card-title>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="partner in overduePartners"
-                  :key="partner.id"
-                  @click="openPartnerDetail(partner)"
-                >
-                  <template #prepend>
-                    <v-avatar color="error" size="32">
-                      <v-icon size="18">mdi-clock-alert</v-icon>
-                    </v-avatar>
-                  </template>
-                  <v-list-item-title>{{ partner.name }}</v-list-item-title>
-                  <v-list-item-subtitle>
-                    Last visit: {{ partner.last_visit_date ? formatPartnerDate(partner.last_visit_date) : 'Never' }}
-                  </v-list-item-subtitle>
-                  <template #append>
-                    <v-btn size="x-small" color="success" variant="tonal" @click.stop="openLogVisit(partner)">
-                      Log Visit
+        <!-- Region/Area Collapsible List -->
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center">
+              <v-icon color="primary" class="mr-2">mdi-map-marker-radius</v-icon>
+              Target Clinics by Region
+            </div>
+            <div class="d-flex align-center gap-2">
+              <v-btn size="small" variant="text" @click="expandAllZones">Expand All</v-btn>
+              <v-btn size="small" variant="text" @click="collapseAllZones">Collapse All</v-btn>
+            </div>
+          </v-card-title>
+
+          <v-card-text class="pt-0">
+            <v-expansion-panels v-model="expandedZones" multiple variant="accordion">
+              <v-expansion-panel
+                v-for="zoneDef in zoneDefinitions"
+                :key="zoneDef.value"
+                :value="zoneDef.value"
+              >
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center justify-space-between w-100 pr-2">
+                    <div class="d-flex align-center">
+                      <span class="text-subtitle-1 font-weight-medium">{{ zoneDef.title }}</span>
+                      <v-chip size="x-small" color="primary" variant="tonal" class="ml-2">{{ getZoneCount(zoneDef.value) }}</v-chip>
+                    </div>
+                    <div class="d-flex align-center gap-2">
+                      <v-chip v-if="getZoneOverdueCount(zoneDef.value)" size="x-small" color="error" variant="flat">
+                        {{ getZoneOverdueCount(zoneDef.value) }} overdue
+                      </v-chip>
+                      <v-chip v-if="getZoneFollowupCount(zoneDef.value)" size="x-small" color="warning" variant="flat">
+                        {{ getZoneFollowupCount(zoneDef.value) }} follow-up
+                      </v-chip>
+                      <span class="text-caption text-grey">{{ zoneDef.description }}</span>
+                    </div>
+                  </div>
+                </v-expansion-panel-title>
+
+                <v-expansion-panel-text>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="partner in getPartnersByZone(zoneDef.value)"
+                      :key="partner.id"
+                      :class="{ 'bg-red-lighten-5': partner.visit_overdue }"
+                      @click="openPartnerDetail(partner)"
+                    >
+                      <template #prepend>
+                        <v-avatar :color="getTierColor(partner.tier)" size="32">
+                          <span class="text-white text-caption">{{ getTierLabel(partner.tier) }}</span>
+                        </v-avatar>
+                      </template>
+                      <v-list-item-title class="d-flex align-center">
+                        {{ partner.name }}
+                        <v-icon v-if="partner.visit_overdue" color="error" size="16" class="ml-1">mdi-clock-alert</v-icon>
+                        <v-icon v-if="partner.needs_followup" color="warning" size="16" class="ml-1">mdi-flag</v-icon>
+                      </v-list-item-title>
+                      <v-list-item-subtitle>
+                        {{ partner.clinic_type || 'General' }} •
+                        Last visit: {{ partner.last_visit_date ? formatPartnerDate(partner.last_visit_date) : 'Never' }} •
+                        {{ partner.preferred_visit_day || 'Any day' }}
+                      </v-list-item-subtitle>
+                      <template #append>
+                        <div class="d-flex align-center gap-1">
+                          <v-chip size="x-small" :color="getPriorityColor(partner.priority)" variant="flat">
+                            {{ partner.priority }}
+                          </v-chip>
+                          <v-btn size="x-small" color="success" variant="tonal" icon="mdi-map-marker-plus" @click.stop="openLogVisit(partner)" title="Log Visit" />
+                        </div>
+                      </template>
+                    </v-list-item>
+                    <v-list-item v-if="!getPartnersByZone(zoneDef.value).length">
+                      <v-list-item-title class="text-grey text-center text-caption">No partners in this region</v-list-item-title>
+                    </v-list-item>
+                  </v-list>
+
+                  <!-- Zone quick actions -->
+                  <div class="d-flex justify-end mt-2 mb-1">
+                    <v-btn size="x-small" variant="text" color="primary" @click="filterZone = zoneDef.value; mainTab = 'list'">
+                      View all in Partners tab
+                      <v-icon end size="14">mdi-arrow-right</v-icon>
                     </v-btn>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="!overduePartners.length">
-                  <v-list-item-title class="text-grey text-center">All caught up!</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-card>
-          </v-col>
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
 
-          <!-- By Zone -->
-          <v-col cols="12">
-            <v-card variant="outlined">
-              <v-card-title>Partners by Zone</v-card-title>
-              <v-card-text>
-                <v-row>
-                  <v-col v-for="zoneDef in zoneDefinitions" :key="zoneDef.value" cols="6" md="4">
-                    <v-card variant="tonal" class="pa-3 text-center" @click="filterZone = zoneDef.value; mainTab = 'list'">
-                      <div class="text-h5 font-weight-bold">{{ getZoneCount(zoneDef.value) }}</div>
-                      <div class="text-body-2 font-weight-medium">{{ zoneDef.title }}</div>
-                      <div class="text-caption text-grey mt-1" style="font-size: 0.7rem;">{{ zoneDef.description }}</div>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
+              <!-- Unassigned Zone -->
+              <v-expansion-panel v-if="getZoneCount('Unassigned')" value="Unassigned">
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center justify-space-between w-100 pr-2">
+                    <div class="d-flex align-center">
+                      <span class="text-subtitle-1 font-weight-medium text-grey">Unassigned Region</span>
+                      <v-chip size="x-small" color="grey" variant="tonal" class="ml-2">{{ getZoneCount('Unassigned') }}</v-chip>
+                    </div>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="partner in getPartnersByZone(null)"
+                      :key="partner.id"
+                      @click="openPartnerDetail(partner)"
+                    >
+                      <template #prepend>
+                        <v-avatar :color="getTierColor(partner.tier)" size="32">
+                          <span class="text-white text-caption">{{ getTierLabel(partner.tier) }}</span>
+                        </v-avatar>
+                      </template>
+                      <v-list-item-title>{{ partner.name }}</v-list-item-title>
+                      <v-list-item-subtitle>
+                        {{ partner.clinic_type || 'General' }} •
+                        Last visit: {{ partner.last_visit_date ? formatPartnerDate(partner.last_visit_date) : 'Never' }}
+                      </v-list-item-subtitle>
+                      <template #append>
+                        <v-chip size="x-small" :color="getPriorityColor(partner.priority)" variant="flat">
+                          {{ partner.priority }}
+                        </v-chip>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </v-card-text>
+        </v-card>
+
+        <!-- Overdue Visits by Region (Collapsible) -->
+        <v-card variant="outlined" class="mt-4" v-if="overduePartners.length">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div class="d-flex align-center">
+              <v-icon color="error" class="mr-2">mdi-alert-circle</v-icon>
+              Overdue Visits
+              <v-chip size="small" color="error" variant="flat" class="ml-2">{{ overduePartners.length }}</v-chip>
+            </div>
+            <div class="d-flex align-center gap-2">
+              <v-btn size="small" variant="text" @click="expandAllOverdueZones">Expand All</v-btn>
+              <v-btn size="small" variant="text" @click="expandedOverdueZones = []">Collapse All</v-btn>
+            </div>
+          </v-card-title>
+
+          <v-card-text class="pt-0">
+            <v-expansion-panels v-model="expandedOverdueZones" multiple variant="accordion">
+              <template v-for="zoneDef in overdueZoneDefinitions" :key="zoneDef.value">
+                <v-expansion-panel
+                  v-if="getOverduePartnersByZone(zoneDef.value).length"
+                  :value="zoneDef.value"
+                >
+                  <v-expansion-panel-title>
+                    <div class="d-flex align-center justify-space-between w-100 pr-2">
+                      <div class="d-flex align-center">
+                        <span class="text-subtitle-1 font-weight-medium">{{ zoneDef.title }}</span>
+                        <v-chip size="x-small" color="error" variant="tonal" class="ml-2">{{ getOverduePartnersByZone(zoneDef.value).length }}</v-chip>
+                      </div>
+                      <span class="text-caption text-grey">{{ zoneDef.description }}</span>
+                    </div>
+                  </v-expansion-panel-title>
+
+                  <v-expansion-panel-text>
+                    <v-list density="compact" class="py-0">
+                      <v-list-item
+                        v-for="partner in getOverduePartnersByZone(zoneDef.value)"
+                        :key="partner.id"
+                        class="bg-red-lighten-5"
+                        @click="openPartnerDetail(partner)"
+                      >
+                        <template #prepend>
+                          <v-avatar color="error" size="32">
+                            <v-icon size="18">mdi-clock-alert</v-icon>
+                          </v-avatar>
+                        </template>
+                        <v-list-item-title>{{ partner.name }}</v-list-item-title>
+                        <v-list-item-subtitle>
+                          Last visit: {{ partner.last_visit_date ? formatPartnerDate(partner.last_visit_date) : 'Never' }} •
+                          {{ partner.preferred_visit_day || 'Any day' }}
+                        </v-list-item-subtitle>
+                        <template #append>
+                          <div class="d-flex align-center gap-1">
+                            <v-chip size="x-small" :color="getPriorityColor(partner.priority)" variant="flat">
+                              {{ partner.priority }}
+                            </v-chip>
+                            <v-btn size="x-small" color="success" variant="tonal" @click.stop="openLogVisit(partner)">
+                              Log Visit
+                            </v-btn>
+                          </div>
+                        </template>
+                      </v-list-item>
+                    </v-list>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </template>
+            </v-expansion-panels>
+          </v-card-text>
+        </v-card>
+
+        <!-- All caught up message -->
+        <v-card variant="outlined" class="mt-4" v-else>
+          <v-card-text class="text-center py-6">
+            <v-icon color="success" size="48" class="mb-2">mdi-check-circle-outline</v-icon>
+            <div class="text-h6 text-success">All caught up!</div>
+            <div class="text-body-2 text-grey">No overdue visits right now.</div>
+          </v-card-text>
+        </v-card>
       </v-window-item>
 
       <!-- ACTIVITY TAB -->
@@ -1081,6 +1205,69 @@ const weeklyTargets = computed(() => {
 function getZoneCount(zone: string): number {
   if (zone === 'Unassigned') return partners.value.filter(p => !p.zone).length
   return partners.value.filter(p => p.zone === zone).length
+}
+
+// Get partners filtered by zone, sorted by priority then name
+function getPartnersByZone(zone: string | null): any[] {
+  const priorityOrder: Record<string, number> = { 'Very High': 0, 'High': 1, 'Medium': 2, 'Low': 3 }
+  return partners.value
+    .filter(p => zone === null ? !p.zone : p.zone === zone)
+    .sort((a, b) => {
+      // Overdue first
+      if (a.visit_overdue && !b.visit_overdue) return -1
+      if (!a.visit_overdue && b.visit_overdue) return 1
+      // Then follow-ups
+      if (a.needs_followup && !b.needs_followup) return -1
+      if (!a.needs_followup && b.needs_followup) return 1
+      // Then by priority
+      const pA = priorityOrder[a.priority] ?? 99
+      const pB = priorityOrder[b.priority] ?? 99
+      if (pA !== pB) return pA - pB
+      // Then by name
+      return (a.name || '').localeCompare(b.name || '')
+    })
+}
+
+function getZoneOverdueCount(zone: string): number {
+  return partners.value.filter(p => p.zone === zone && p.visit_overdue).length
+}
+
+function getZoneFollowupCount(zone: string): number {
+  return partners.value.filter(p => p.zone === zone && p.needs_followup).length
+}
+
+// Expansion panel state for targeting tab
+const expandedZones = ref<string[]>([])
+const expandedOverdueZones = ref<string[]>([])
+
+// Zone definitions including Unassigned for overdue grouping
+const overdueZoneDefinitions = computed(() => {
+  const defs = [...zoneDefinitions]
+  if (overduePartners.value.some(p => !p.zone)) {
+    defs.push({ value: 'Unassigned', title: 'Unassigned Region', description: 'Partners without an assigned region' })
+  }
+  return defs
+})
+
+function getOverduePartnersByZone(zone: string): any[] {
+  return overduePartners.value.filter(p => zone === 'Unassigned' ? !p.zone : p.zone === zone)
+}
+
+function expandAllZones() {
+  expandedZones.value = zoneDefinitions.map(z => z.value)
+  if (partners.value.some(p => !p.zone)) {
+    expandedZones.value.push('Unassigned')
+  }
+}
+
+function collapseAllZones() {
+  expandedZones.value = []
+}
+
+function expandAllOverdueZones() {
+  expandedOverdueZones.value = overdueZoneDefinitions.value
+    .filter(z => getOverduePartnersByZone(z.value).length > 0)
+    .map(z => z.value)
 }
 
 // Recalculate partner metrics (Tier, Priority, Relationship Health, Overdue)
