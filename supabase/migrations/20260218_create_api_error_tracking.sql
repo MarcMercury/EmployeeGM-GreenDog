@@ -18,11 +18,11 @@ CREATE TABLE IF NOT EXISTS api_error_logs (
 );
 
 -- Index for fast queries
-CREATE INDEX idx_api_errors_endpoint ON api_error_logs(endpoint);
-CREATE INDEX idx_api_errors_status ON api_error_logs(status_code);
-CREATE INDEX idx_api_errors_timestamp ON api_error_logs(timestamp DESC);
-CREATE INDEX idx_api_errors_user ON api_error_logs(user_id);
-CREATE INDEX idx_api_errors_method_endpoint ON api_error_logs(method, endpoint);
+CREATE INDEX IF NOT EXISTS idx_api_errors_endpoint ON api_error_logs(endpoint);
+CREATE INDEX IF NOT EXISTS idx_api_errors_status ON api_error_logs(status_code);
+CREATE INDEX IF NOT EXISTS idx_api_errors_timestamp ON api_error_logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_api_errors_user ON api_error_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_api_errors_method_endpoint ON api_error_logs(method, endpoint);
 
 -- Create rollup table for daily error trends
 CREATE TABLE IF NOT EXISTS api_error_trends (
@@ -38,8 +38,8 @@ CREATE TABLE IF NOT EXISTS api_error_trends (
   UNIQUE(date, endpoint, method, status_code)
 );
 
-CREATE INDEX idx_error_trends_date ON api_error_trends(date DESC);
-CREATE INDEX idx_error_trends_endpoint ON api_error_trends(endpoint);
+CREATE INDEX IF NOT EXISTS idx_error_trends_date ON api_error_trends(date DESC);
+CREATE INDEX IF NOT EXISTS idx_error_trends_endpoint ON api_error_trends(endpoint);
 
 -- Create table for missing endpoints (auto-detected)
 CREATE TABLE IF NOT EXISTS missing_endpoints (
@@ -53,12 +53,13 @@ CREATE TABLE IF NOT EXISTS missing_endpoints (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE INDEX idx_missing_endpoints_reported ON missing_endpoints(reported);
+CREATE INDEX IF NOT EXISTS idx_missing_endpoints_reported ON missing_endpoints(reported);
 
 -- RLS Policies for api_error_logs
 ALTER TABLE api_error_logs ENABLE ROW LEVEL SECURITY;
 
 -- Admins can read all error logs
+DROP POLICY IF EXISTS "admin_read_all_errors" ON api_error_logs;
 CREATE POLICY "admin_read_all_errors" ON api_error_logs
   FOR SELECT
   USING (
@@ -70,11 +71,13 @@ CREATE POLICY "admin_read_all_errors" ON api_error_logs
   );
 
 -- Users can read their own errors
+DROP POLICY IF EXISTS "user_read_own_errors" ON api_error_logs;
 CREATE POLICY "user_read_own_errors" ON api_error_logs
   FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Only service role can insert
+DROP POLICY IF EXISTS "service_insert_errors" ON api_error_logs;
 CREATE POLICY "service_insert_errors" ON api_error_logs
   FOR INSERT
   WITH CHECK (true);
@@ -82,6 +85,7 @@ CREATE POLICY "service_insert_errors" ON api_error_logs
 -- RLS for trends (read-only for admins)
 ALTER TABLE api_error_trends ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_read_trends" ON api_error_trends;
 CREATE POLICY "admin_read_trends" ON api_error_trends
   FOR SELECT
   USING (
@@ -95,6 +99,7 @@ CREATE POLICY "admin_read_trends" ON api_error_trends
 -- RLS for missing endpoints
 ALTER TABLE missing_endpoints ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "admin_read_missing" ON missing_endpoints;
 CREATE POLICY "admin_read_missing" ON missing_endpoints
   FOR SELECT
   USING (

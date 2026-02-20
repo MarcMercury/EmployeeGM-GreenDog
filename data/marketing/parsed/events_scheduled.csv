@@ -11,8 +11,8 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-01-06,January,National Cuddle Up Day,Awareness,,,,awareness
 2025-01-10,February,GDD Staff Holiday Party,Staff Event,,,,completed
 2025-01-14,January,National Dress Up Your Pet Day,Awareness,,,,awareness
-2025-01-19,February,Martin Luther King Jr. Day,National Holiday,,,,completed
 2025-01-19,January,National Conservation Dog Day,Awareness,,,,awareness
+2025-01-20,January,Martin Luther King Jr. Day,National Holiday,,,,completed
 2025-01-20,January,Inauguration Day (DC only),Awareness,,,,awareness
 2025-01-20,January,Penguin Awareness Day,Awareness,,,,awareness
 2025-01-21,January,Squirrel Appreciation Day,Awareness,,,,awareness
@@ -156,7 +156,6 @@ event_date,month,event_name,event_type,clinic,organizer,description,status
 2025-05-17,May,Endangered Species Day,Awareness,,,,awareness
 2025-05-20,May,National Rescue Dog Day,Awareness,,,,awareness
 2025-05-26,May,Memorial Day,Awareness,,,,awareness
-2025-05-27,May,Memorial Day,Awareness,,,,awareness
 ,June,Adopt a Shelter Cat Month,Awareness,,,,awareness
 ,June,Adopt-a-Cat MonthÂ®,Awareness,,,,awareness
 ,June,Animal Rights Awareness Week (third week in June),Awareness,,,,awareness
