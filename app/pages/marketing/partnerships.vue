@@ -222,10 +222,12 @@
             </template>
 
             <template #item.actions="{ item }">
-              <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" aria-label="View partner profile" @click.stop="openPartnerDetail(item)" />
-              <v-btn icon="mdi-map-marker-plus" size="x-small" variant="text" color="success" title="Log Visit" aria-label="Log visit" @click.stop="openLogVisit(item)" />
-              <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" aria-label="Edit partner" @click.stop="openEditPartner(item)" />
-              <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" title="Delete" aria-label="Delete partner" @click.stop="confirmDeletePartner(item)" />
+              <div class="d-flex align-center" style="white-space: nowrap;">
+                <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" aria-label="View partner profile" @click.stop="openPartnerDetail(item)" />
+                <v-btn icon="mdi-map-marker-plus" size="x-small" variant="text" color="success" title="Log Visit" aria-label="Log visit" @click.stop="openLogVisit(item)" />
+                <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" aria-label="Edit partner" @click.stop="openEditPartner(item)" />
+                <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" title="Delete" aria-label="Delete partner" @click.stop="confirmDeletePartner(item)" />
+              </div>
             </template>
           </v-data-table-virtual>
         </v-card>
@@ -1169,7 +1171,7 @@ const tableHeaders = [
   { title: 'Revenue', key: 'total_revenue_all_time', sortable: true },
   { title: 'Last Referral', key: 'last_referral_date', sortable: true },
   { title: 'Last Visit', key: 'last_visit_date', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false }
+  { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
 ]
 
 // Computed
