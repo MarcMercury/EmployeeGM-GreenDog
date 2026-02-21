@@ -83,9 +83,10 @@ BEGIN
       WHEN last_visit_date IS NULL THEN TRUE
       WHEN EXTRACT(DAY FROM (NOW() - last_visit_date::timestamp)) > COALESCE(expected_visit_frequency_days, 120) THEN TRUE
       ELSE FALSE
-    END;
+    END
+  WHERE TRUE;
 
-  -- Step 5: Calculate Relationship Health (0-100 scale)
+  -- Step 5a: Calculate Relationship Health (0-100 scale)
   -- Formula: Tier (40 pts) + Priority (30 pts) + Visit Recency (30 pts)
   UPDATE referral_partners
   SET 
@@ -117,7 +118,12 @@ BEGIN
         WHEN days_since_last_visit <= COALESCE(expected_visit_frequency_days, 120) * 1.5 THEN 10
         ELSE 0
       END
-    ),
+    )
+  WHERE TRUE;
+
+  -- Step 5b: Derive relationship_status and needs_followup from the NEWLY computed relationship_health
+  UPDATE referral_partners
+  SET
     relationship_status = CASE
       WHEN relationship_health >= 80 THEN 'Excellent'
       WHEN relationship_health >= 60 THEN 'Good'
@@ -129,7 +135,8 @@ BEGIN
       WHEN visit_overdue = TRUE THEN TRUE
       WHEN relationship_health < 40 THEN TRUE
       ELSE needs_followup  -- Keep existing value if not auto-flagging
-    END;
+    END
+  WHERE TRUE;
 
   RETURN QUERY SELECT * FROM referral_partners ORDER BY name;
 END;
