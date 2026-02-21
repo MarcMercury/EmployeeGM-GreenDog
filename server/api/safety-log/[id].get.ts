@@ -4,7 +4,6 @@
  * Managers+ can view any log; regular users can only view their own.
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-import { getUserId } from '~/server/utils/getUserId'
 
 const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 

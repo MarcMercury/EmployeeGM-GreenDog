@@ -5,7 +5,6 @@
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { SafetyLogInsertSchema, validateFormData } from '~/schemas/safety-log'
-import { getUserId } from '~/server/utils/getUserId'
 
 export default defineEventHandler(async (event) => {
   let step = 'init'

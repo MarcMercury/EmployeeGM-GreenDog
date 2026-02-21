@@ -6,7 +6,6 @@
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { CustomSafetyLogTypeCreateSchema } from '~/schemas/safety-log'
 import { SAFETY_LOG_TYPE_CONFIGS } from '~/types/safety-log.types'
-import { getUserId } from '~/server/utils/getUserId'
 
 const ALLOWED_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 

@@ -3,7 +3,6 @@
  * Export safety logs as CSV. Managers+ only.
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-import { getUserId } from '~/server/utils/getUserId'
 
 const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 const MAX_EXPORT_ROWS = 10_000

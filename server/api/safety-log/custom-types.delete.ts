@@ -5,7 +5,6 @@
  * Body: { id }
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-import { getUserId } from '~/server/utils/getUserId'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)

@@ -4,7 +4,6 @@
  * Body: { updates: [{ log_type, location, cadence }] }
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-import { getUserId } from '~/server/utils/getUserId'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)

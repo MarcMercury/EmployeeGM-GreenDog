@@ -5,7 +5,6 @@
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { SafetyLogUpdateSchema } from '~/schemas/safety-log'
-import { getUserId } from '~/server/utils/getUserId'
 
 const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 

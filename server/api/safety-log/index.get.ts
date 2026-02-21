@@ -4,7 +4,6 @@
  * Regular users see only their own logs; managers+ see all.
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
-import { getUserId } from '~/server/utils/getUserId'
 
 const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 const VALID_STATUSES = ['draft', 'submitted', 'reviewed', 'flagged']
