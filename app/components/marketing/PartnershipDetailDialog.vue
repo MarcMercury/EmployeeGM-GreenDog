@@ -493,7 +493,7 @@
                     </div>
                     <div v-if="log.spoke_to" class="text-body-2">Spoke with: {{ log.spoke_to }}</div>
                     <div v-if="log.items_discussed?.length" class="text-body-2">
-                      Discussed: {{ log.items_discussed.join(', ') }}
+                      Discussed / Dropped Off: {{ formatItemsDiscussed(log.items_discussed) }}
                     </div>
                     <div v-if="log.visit_notes" class="text-body-2">{{ log.visit_notes }}</div>
                     <div v-if="log.summary" class="text-body-2">{{ log.summary }}</div>
@@ -660,6 +660,22 @@ const emit = defineEmits<{
 
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
+
+// Map raw items_discussed values to human-readable labels
+const DISCUSSION_ITEM_LABELS: Record<string, string> = {
+  surgery: 'Surgery',
+  dental_surgery: 'Dental Surgery',
+  im: 'IM',
+  exotics: 'Exotics',
+  urgent_care: 'Urgent Care',
+  ce: 'CE',
+  gdd_event: 'GDD Event',
+  other: 'Other'
+}
+
+function formatItemsDiscussed(items: string[]): string {
+  return items.map(v => DISCUSSION_ITEM_LABELS[v] || v).join(', ')
+}
 
 // Dialog state
 const visible = ref(false)

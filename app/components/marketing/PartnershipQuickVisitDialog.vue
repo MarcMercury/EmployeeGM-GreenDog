@@ -88,7 +88,7 @@
         <div class="mb-4">
           <div class="text-body-2 text-grey-darken-1 mb-2">
             <v-icon size="small" class="mr-1">mdi-chat-processing</v-icon>
-            Items Discussed
+            Items Discussed / Dropped Off
           </div>
           <div class="d-flex flex-wrap gap-2">
             <v-chip
@@ -191,6 +191,8 @@ const discussionItems = [
   { value: 'im', label: 'IM', icon: 'mdi-stethoscope' },
   { value: 'exotics', label: 'Exotics', icon: 'mdi-bird' },
   { value: 'urgent_care', label: 'Urgent Care', icon: 'mdi-ambulance' },
+  { value: 'ce', label: 'CE', icon: 'mdi-school' },
+  { value: 'gdd_event', label: 'GDD Event', icon: 'mdi-calendar-star' },
   { value: 'other', label: 'Other', icon: 'mdi-dots-horizontal' }
 ]
 

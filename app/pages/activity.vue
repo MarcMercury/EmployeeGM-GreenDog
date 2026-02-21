@@ -730,6 +730,13 @@ const loadNotifications = async () => {
         query = query.eq('profile_id', profileId)
       }
     }
+
+    // Filter by open/closed status at the DB level so pagination works correctly
+    if (showClosed.value) {
+      query = query.not('closed_at', 'is', null)
+    } else {
+      query = query.is('closed_at', null)
+    }
     
     const { data, error } = await query
     
@@ -764,6 +771,13 @@ const loadMore = async () => {
       if (profileId) {
         query = query.eq('profile_id', profileId)
       }
+    }
+
+    // Match the same open/closed filter used in loadNotifications
+    if (showClosed.value) {
+      query = query.not('closed_at', 'is', null)
+    } else {
+      query = query.is('closed_at', null)
     }
     
     const { data, error } = await query
@@ -1002,6 +1016,11 @@ onMounted(async () => {
 
 // Reload notifications when view mode changes (personal vs company)
 watch(viewMode, () => {
+  loadNotifications()
+})
+
+// Reload notifications when toggling between open/closed view
+watch(showClosed, () => {
   loadNotifications()
 })
 </script>

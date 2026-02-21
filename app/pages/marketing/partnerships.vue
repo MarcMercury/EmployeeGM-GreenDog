@@ -225,6 +225,7 @@
               <v-btn icon="mdi-eye" size="x-small" variant="text" title="View Profile" aria-label="View partner profile" @click.stop="openPartnerDetail(item)" />
               <v-btn icon="mdi-map-marker-plus" size="x-small" variant="text" color="success" title="Log Visit" aria-label="Log visit" @click.stop="openLogVisit(item)" />
               <v-btn icon="mdi-pencil" size="x-small" variant="text" title="Edit" aria-label="Edit partner" @click.stop="openEditPartner(item)" />
+              <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" title="Delete" aria-label="Delete partner" @click.stop="confirmDeletePartner(item)" />
             </template>
           </v-data-table-virtual>
         </v-card>
@@ -460,16 +461,19 @@
             <v-timeline-item
               v-for="log in recentActivity"
               :key="log.id"
-              :dot-color="getVisitTypeColor(log.visit_type)"
+              dot-color="success"
               size="small"
             >
               <div class="d-flex justify-space-between align-start">
                 <div>
-                  <div class="font-weight-medium">{{ log.partner_name }}</div>
-                  <div class="text-body-2">{{ log.visit_type }}: {{ log.summary }}</div>
-                  <div v-if="log.outcome" class="text-caption text-grey">Outcome: {{ log.outcome }}</div>
+                  <div class="font-weight-medium">{{ log.clinic_name }}</div>
+                  <div v-if="log.spoke_to" class="text-body-2">Spoke with: {{ log.spoke_to }}</div>
+                  <div v-if="log.items_discussed?.length" class="text-body-2">
+                    Discussed / Dropped Off: {{ formatItemsDiscussed(log.items_discussed) }}
+                  </div>
+                  <div v-if="log.visit_notes" class="text-body-2 text-grey-darken-1">{{ log.visit_notes }}</div>
                 </div>
-                <div class="text-caption text-grey">{{ formatPartnerDate(log.visit_date) }}</div>
+                <div class="text-caption text-grey text-no-wrap ml-2">{{ formatPartnerDate(log.visit_date) }}</div>
               </div>
             </v-timeline-item>
             <v-timeline-item v-if="!recentActivity.length" dot-color="grey">
@@ -574,9 +578,28 @@
       :get-zone-display="getZoneDisplay"
       @edit="openEditPartner"
       @log-visit="openLogVisit"
-      @partner-updated="loadPartners"
+      @partner-updated="onPartnerUpdated"
       @notify="(p: { message: string; color: string }) => { snackbar.message = p.message; snackbar.color = p.color; snackbar.show = true }"
     />
+
+    <!-- DELETE CONFIRMATION DIALOG -->
+    <v-dialog v-model="showDeleteDialog" max-width="460">
+      <v-card>
+        <v-card-title class="d-flex align-center text-error">
+          <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
+          Delete Partner
+        </v-card-title>
+        <v-card-text>
+          <p>Are you sure you want to permanently delete <strong>{{ partnerToDelete?.name }}</strong>?</p>
+          <p class="text-caption text-grey mt-2">This will also remove all associated visit logs and activity records. This action cannot be undone.</p>
+        </v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="showDeleteDialog = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" :loading="deleting" @click="deletePartner">Delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- ADD/EDIT PARTNER DIALOG -->
     <v-dialog v-model="showPartnerDialog" max-width="750">
@@ -937,7 +960,7 @@
     <MarketingPartnershipQuickVisitDialog
       ref="quickVisitRef"
       :partners="partners"
-      @saved="loadPartners"
+      @saved="onVisitSaved"
       @notify="(p: { message: string; color: string }) => { snackbar.message = p.message; snackbar.color = p.color; snackbar.show = true }"
     />
 
@@ -1050,6 +1073,9 @@ const recentActivity = ref<any[]>([])
 // Dialog state
 const showPartnerDialog = ref(false)
 const editMode = ref(false)
+const showDeleteDialog = ref(false)
+const partnerToDelete = ref<any>(null)
+const deleting = ref(false)
 
 const snackbar = reactive({ show: false, message: '', color: 'success' })
 
@@ -1314,15 +1340,34 @@ async function loadPartners() {
   }
 }
 
+// Map items_discussed values to display labels
+const DISCUSSION_ITEM_LABELS: Record<string, string> = {
+  surgery: 'Surgery',
+  dental_surgery: 'Dental Surgery',
+  im: 'IM',
+  exotics: 'Exotics',
+  urgent_care: 'Urgent Care',
+  ce: 'CE',
+  gdd_event: 'GDD Event',
+  other: 'Other'
+}
+
+function formatItemsDiscussed(items: string[]): string {
+  return items.map(v => DISCUSSION_ITEM_LABELS[v] || v).join(', ')
+}
+
 async function loadRecentActivity() {
   try {
     const { data, error } = await supabase
-      .from('partner_visit_logs')
-      .select('*, referral_partners(name)')
+      .from('clinic_visits')
+      .select('*, referral_partners:partner_id(name)')
       .order('visit_date', { ascending: false })
       .limit(20)
     if (error) throw error
-    recentActivity.value = (data || []).map(d => ({ ...d, partner_name: d.referral_partners?.name }))
+    recentActivity.value = (data || []).map(d => ({
+      ...d,
+      clinic_name: d.clinic_name || (d as any).referral_partners?.name || 'Unknown'
+    }))
   } catch (e) {
     console.error('Error loading activity:', e)
   }
@@ -1508,6 +1553,7 @@ async function savePartner() {
     snackbar.show = true
     showPartnerDialog.value = false
     await loadPartners()
+    await loadRecentActivity()
   } catch (e: any) {
     console.error('Error saving partner:', e)
     snackbar.message = e.message || 'Error saving partner'
@@ -1519,6 +1565,53 @@ async function savePartner() {
 }
 
 
+
+// Delete partner
+function confirmDeletePartner(partner: any) {
+  partnerToDelete.value = partner
+  showDeleteDialog.value = true
+}
+
+async function deletePartner() {
+  if (!partnerToDelete.value?.id) return
+  deleting.value = true
+  try {
+    // Delete related visit logs first
+    // Delete related visit logs from both tables
+    await supabase.from('clinic_visits').delete().eq('partner_id', partnerToDelete.value.id)
+    await supabase.from('partner_visit_logs').delete().eq('partner_id', partnerToDelete.value.id)
+    
+    // Delete the partner record
+    const { error } = await supabase.from('referral_partners').delete().eq('id', partnerToDelete.value.id)
+    if (error) throw error
+    
+    snackbar.message = `"${partnerToDelete.value.name}" deleted`
+    snackbar.color = 'success'
+    snackbar.show = true
+    showDeleteDialog.value = false
+    partnerToDelete.value = null
+    await loadPartners()
+    await loadRecentActivity()
+  } catch (e: any) {
+    console.error('Error deleting partner:', e)
+    snackbar.message = e.message || 'Error deleting partner'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    deleting.value = false
+  }
+}
+
+// Handlers for child component events — reload both partners and activity
+function onVisitSaved() {
+  loadPartners()
+  loadRecentActivity()
+}
+
+function onPartnerUpdated() {
+  loadPartners()
+  loadRecentActivity()
+}
 
 function exportPartners() {
   const csv = [
