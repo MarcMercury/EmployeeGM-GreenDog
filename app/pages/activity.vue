@@ -183,7 +183,19 @@
       </v-col>
       <v-col cols="6" sm="4" md="2">
         <v-card class="stat-card d-flex align-center justify-center" rounded="xl">
-          <v-card-text class="text-center py-3">
+          <v-card-text class="text-center py-2 d-flex flex-column gap-1">
+            <v-btn 
+              v-if="totalCount > 0 && !showClosed"
+              variant="tonal" 
+              size="small"
+              color="error"
+              @click.stop="closeAllNotifications"
+              :loading="closingAll"
+              block
+            >
+              <v-icon start size="14">mdi-archive-arrow-down</v-icon>
+              Close All ({{ totalCount }})
+            </v-btn>
             <v-btn 
               v-if="unreadCount > 0 && !showClosed"
               variant="tonal" 
@@ -197,7 +209,7 @@
               Mark Read
             </v-btn>
             <v-btn 
-              v-else
+              v-if="totalCount === 0 || showClosed"
               variant="text" 
               icon="mdi-refresh"
               :loading="loadingNotifications"
@@ -388,6 +400,9 @@
 
     <!-- Load More -->
     <div v-if="hasMore && filteredNotifications.length > 0" class="text-center mt-6">
+      <p class="text-caption text-grey mb-2">
+        Showing {{ filteredNotifications.length }} of {{ showClosed ? closedCount : totalCount }} notifications
+      </p>
       <v-btn
         variant="outlined"
         color="primary"
@@ -657,6 +672,7 @@ const categories = [
 const loadingNotifications = ref(true)
 const loadingMore = ref(false)
 const markingAllRead = ref(false)
+const closingAll = ref(false)
 const notifications = ref<ActivityNotification[]>([])
 const selectedCategories = ref<string[]>([])
 const showPriorityOnly = ref(false)
@@ -667,12 +683,18 @@ const page = ref(1)
 const pageSize = 30
 const hasMore = ref(true)
 
+// Real DB-level counts (not limited by pageSize)
+const dbTotalOpen = ref(0)
+const dbTotalClosed = ref(0)
+const dbTotalUnread = ref(0)
+
 // Computed
 const openNotifications = computed(() => notifications.value.filter(n => !n.closed_at))
 const closedNotifications = computed(() => notifications.value.filter(n => n.closed_at))
-const totalCount = computed(() => openNotifications.value.length)
-const closedCount = computed(() => closedNotifications.value.length)
-const unreadCount = computed(() => openNotifications.value.filter(n => !n.is_read).length)
+// Use real DB counts so badge and stats are accurate even when paginated
+const totalCount = computed(() => dbTotalOpen.value)
+const closedCount = computed(() => dbTotalClosed.value)
+const unreadCount = computed(() => dbTotalUnread.value)
 const priorityCount = computed(() => openNotifications.value.filter(n => n.requires_action).length)
 const todayCount = computed(() => {
   const today = new Date().toDateString()
@@ -705,6 +727,46 @@ const filteredNotifications = computed(() => {
 })
 
 // Methods
+// Fetch real counts from DB (not limited by page size)
+const fetchDbCounts = async () => {
+  const profileId = currentUserProfile.value?.id
+  if (!profileId || (currentUserProfile.value as any)?.is_emergency || profileId.startsWith('emergency-')) return
+
+  try {
+    const isPersonal = viewMode.value === 'personal' || !isAdmin.value
+
+    // Count open notifications
+    let openQuery = supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .is('closed_at', null)
+    if (isPersonal) openQuery = openQuery.eq('profile_id', profileId)
+    const { count: openCount } = await openQuery
+    dbTotalOpen.value = openCount || 0
+
+    // Count closed notifications
+    let closedQuery = supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .not('closed_at', 'is', null)
+    if (isPersonal) closedQuery = closedQuery.eq('profile_id', profileId)
+    const { count: closedCountVal } = await closedQuery
+    dbTotalClosed.value = closedCountVal || 0
+
+    // Count unread + unclosed
+    let unreadQuery = supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .is('closed_at', null)
+      .eq('is_read', false)
+    if (isPersonal) unreadQuery = unreadQuery.eq('profile_id', profileId)
+    const { count: unreadCountVal } = await unreadQuery
+    dbTotalUnread.value = unreadCountVal || 0
+  } catch (err) {
+    console.error('[ActivityHub] Error fetching DB counts:', err)
+  }
+}
+
 const loadNotifications = async () => {
   loadingNotifications.value = true
   page.value = 1
@@ -718,6 +780,9 @@ const loadNotifications = async () => {
   }
 
   try {
+    // Fetch real counts in parallel with data
+    const countPromise = fetchDbCounts()
+
     let query = supabase
       .from('notifications')
       .select('*')
@@ -738,7 +803,7 @@ const loadNotifications = async () => {
       query = query.is('closed_at', null)
     }
     
-    const { data, error } = await query
+    const [{ data, error }] = await Promise.all([query, countPromise])
     
     if (error) throw error
     
@@ -868,9 +933,10 @@ const markAsRead = async (notification: ActivityNotification) => {
       .eq('id', notification.id)
     
     const item = notifications.value.find(n => n.id === notification.id)
-    if (item) {
+    if (item && !item.is_read) {
       item.is_read = true
       item.read_at = new Date().toISOString()
+      dbTotalUnread.value = Math.max(0, dbTotalUnread.value - 1)
     }
   } catch (err) {
     console.error('Error marking notification as read:', err)
@@ -879,22 +945,32 @@ const markAsRead = async (notification: ActivityNotification) => {
 
 const markAllAsRead = async () => {
   markingAllRead.value = true
+  const profileId = currentUserProfile.value?.id
   
   try {
-    const unreadIds = notifications.value.filter(n => !n.is_read).map(n => n.id)
-    
-    if (unreadIds.length > 0) {
-      await supabase
+    // Mark ALL unread notifications as read in DB (not just the loaded page)
+    if (profileId) {
+      let updateQuery = supabase
         .from('notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
-        .in('id', unreadIds)
+        .eq('is_read', false)
+        .is('closed_at', null)
       
+      if (viewMode.value === 'personal' || !isAdmin.value) {
+        updateQuery = updateQuery.eq('profile_id', profileId)
+      }
+      
+      const { error } = await updateQuery
+      if (error) throw error
+      
+      // Update local state
       notifications.value.forEach(n => {
         if (!n.is_read) {
           n.is_read = true
           n.read_at = new Date().toISOString()
         }
       })
+      dbTotalUnread.value = 0
     }
   } catch (err) {
     console.error('Error marking all as read:', err)
@@ -918,11 +994,63 @@ const closeNotification = async (notification: ActivityNotification) => {
       if (!item.read_at) item.read_at = closedAt
     }
     
+    // Update DB counts
+    dbTotalOpen.value = Math.max(0, dbTotalOpen.value - 1)
+    dbTotalClosed.value += 1
+    if (!notification.is_read) {
+      dbTotalUnread.value = Math.max(0, dbTotalUnread.value - 1)
+    }
+    
     if (selectedNotification.value?.id === notification.id) {
       detailDialog.value = false
     }
   } catch (err) {
     console.error('Error closing notification:', err)
+  }
+}
+
+const closeAllNotifications = async () => {
+  closingAll.value = true
+  const profileId = currentUserProfile.value?.id
+  
+  try {
+    const closedAt = new Date().toISOString()
+    
+    // Close ALL open notifications in the DB (not just the loaded page)
+    let updateQuery = supabase
+      .from('notifications')
+      .update({ closed_at: closedAt, is_read: true, read_at: closedAt })
+      .is('closed_at', null)
+    
+    if (viewMode.value === 'personal' || !isAdmin.value) {
+      if (profileId) {
+        updateQuery = updateQuery.eq('profile_id', profileId)
+      }
+    }
+    
+    const { error } = await updateQuery
+    if (error) throw error
+    
+    // Update local state
+    notifications.value.forEach(n => {
+      if (!n.closed_at) {
+        n.closed_at = closedAt
+        n.is_read = true
+        if (!n.read_at) n.read_at = closedAt
+      }
+    })
+    
+    // Reset counts
+    dbTotalClosed.value += dbTotalOpen.value
+    dbTotalOpen.value = 0
+    dbTotalUnread.value = 0
+    
+    // Reload to show empty state
+    await loadNotifications()
+  } catch (err) {
+    console.error('Error closing all notifications:', err)
+  } finally {
+    closingAll.value = false
   }
 }
 
@@ -936,6 +1064,13 @@ const reopenNotification = async (notification: ActivityNotification) => {
     const item = notifications.value.find(n => n.id === notification.id)
     if (item) {
       item.closed_at = null
+    }
+    
+    // Update DB counts
+    dbTotalOpen.value += 1
+    dbTotalClosed.value = Math.max(0, dbTotalClosed.value - 1)
+    if (!notification.is_read) {
+      dbTotalUnread.value += 1
     }
   } catch (err) {
     console.error('Error reopening notification:', err)
