@@ -15,13 +15,18 @@ CREATE TABLE IF NOT EXISTS public.safety_logs (
   photo_urls text[] DEFAULT '{}',  -- Array of S3 URLs for photos
   
   -- Submission metadata
-  submitted_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  submitted_by uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   submitted_at timestamptz NOT NULL DEFAULT now(),
   status text NOT NULL DEFAULT 'submitted',  -- 'draft', 'submitted', 'reviewed', 'flagged'
   
   -- Compliance tracking
   osha_recordable boolean DEFAULT false,
   flagged_reason text,  -- Why was this flagged?
+
+  -- Review tracking
+  reviewed_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  reviewed_at timestamptz,
+  review_notes text,
   
   -- Timestamps
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -48,7 +53,7 @@ ALTER TABLE public.safety_logs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view own safety logs" ON public.safety_logs;
 CREATE POLICY "Users can view own safety logs" ON public.safety_logs
   FOR SELECT
-  USING (submitted_by = auth.uid());
+  USING (submitted_by IN (SELECT id FROM profiles WHERE auth_user_id = auth.uid()));
 
 -- 2. Managers/admins can see all entries
 DROP POLICY IF EXISTS "Managers can view all safety logs" ON public.safety_logs;
@@ -58,7 +63,7 @@ CREATE POLICY "Managers can view all safety logs" ON public.safety_logs
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE profiles.auth_user_id = auth.uid()
-      AND profiles.role IN ('super_admin', 'admin', 'manager', 'hr_admin')
+      AND profiles.role IN ('super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin')
     )
   );
 
@@ -66,7 +71,7 @@ CREATE POLICY "Managers can view all safety logs" ON public.safety_logs
 DROP POLICY IF EXISTS "Users can submit safety logs" ON public.safety_logs;
 CREATE POLICY "Users can submit safety logs" ON public.safety_logs
   FOR INSERT
-  WITH CHECK (submitted_by = auth.uid());
+  WITH CHECK (submitted_by IN (SELECT id FROM profiles WHERE auth_user_id = auth.uid()));
 
 -- 4. Admins can update entries (review, flag)
 DROP POLICY IF EXISTS "Admins can update safety logs" ON public.safety_logs;
@@ -76,7 +81,7 @@ CREATE POLICY "Admins can update safety logs" ON public.safety_logs
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE profiles.auth_user_id = auth.uid()
-      AND profiles.role IN ('super_admin', 'admin', 'manager', 'hr_admin')
+      AND profiles.role IN ('super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin')
     )
   );
 

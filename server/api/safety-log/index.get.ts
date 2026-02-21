@@ -34,9 +34,11 @@ export default defineEventHandler(async (event) => {
 
   const isManager = MANAGER_ROLES.includes(profile.role)
 
+  // Use a flat select (no FK joins) to avoid breakage when submitted_by
+  // references auth.users instead of profiles, or reviewed_by column is missing.
   let dbQuery = supabase
     .from('safety_logs')
-    .select('*, submitter:submitted_by(id, first_name, last_name), reviewer:reviewed_by(id, first_name, last_name)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('submitted_at', { ascending: false })
 
   // Row-level scoping: non-managers only see their own logs
@@ -68,6 +70,34 @@ export default defineEventHandler(async (event) => {
 
   if (error) {
     throw createError({ statusCode: 500, message: error.message })
+  }
+
+  // Hydrate submitter / reviewer names from profiles table
+  if (data && data.length > 0) {
+    const profileIds = new Set<string>()
+    for (const row of data) {
+      if (row.submitted_by) profileIds.add(row.submitted_by)
+      if (row.reviewed_by) profileIds.add(row.reviewed_by)
+    }
+
+    if (profileIds.size > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name')
+        .in('id', Array.from(profileIds))
+
+      const profileMap = new Map<string, { id: string; first_name: string; last_name: string }>()
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap.set(p.id, p)
+        }
+      }
+
+      for (const row of data) {
+        ;(row as any).submitter = profileMap.get(row.submitted_by) || null
+        ;(row as any).reviewer = row.reviewed_by ? profileMap.get(row.reviewed_by) || null : null
+      }
+    }
   }
 
   return { data, total: count, page, pageSize }
