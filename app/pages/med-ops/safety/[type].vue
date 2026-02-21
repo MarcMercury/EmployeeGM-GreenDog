@@ -167,23 +167,7 @@ onMounted(async () => {
 async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
   store.submitting = true
   submitError.value = null
-  console.log('[SafetyForm] handleSubmit called:', { logType: logTypeKey.value, location: payload.location })
   try {
-    // First run a diagnostic check
-    try {
-      const debugResult = await $fetch('/api/safety-log/debug', {
-        method: 'POST',
-        body: {
-          log_type: logTypeKey.value,
-          location: payload.location,
-          form_data: payload.form_data,
-        },
-      })
-      console.log('[SafetyForm] Debug result:', debugResult)
-    } catch (debugErr: any) {
-      console.error('[SafetyForm] Debug check failed:', debugErr?.data || debugErr?.message)
-    }
-
     const result = await $fetch('/api/safety-log', {
       method: 'POST',
       body: {
@@ -194,15 +178,9 @@ async function handleSubmit(payload: { location: SafetyLogLocation; form_data: R
         status: 'submitted',
       },
     })
-    console.log('[SafetyForm] Submit success:', result)
     showSuccess.value = true
     toast.success('Safety log submitted successfully')
   } catch (err: any) {
-    console.error('[SafetyForm] Submit error:', {
-      status: err?.statusCode,
-      data: err?.data,
-      message: err?.message,
-    })
     const message = err?.data?.message || err?.message || 'Failed to submit safety log'
     submitError.value = `Error ${err?.statusCode || '?'}: ${message}`
     toast.error(message)

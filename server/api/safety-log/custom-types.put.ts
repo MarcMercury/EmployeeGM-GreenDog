@@ -5,6 +5,7 @@
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { CustomSafetyLogTypeUpdateSchema } from '~/schemas/safety-log'
+import { getUserId } from '~/server/utils/getUserId'
 
 const ALLOWED_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 
@@ -15,10 +16,11 @@ export default defineEventHandler(async (event) => {
   const client = await serverSupabaseServiceRole(event)
 
   // Verify non-base role
+  const authUserId = getUserId(user)
   const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, role')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .single()
 
   if (profileError) {

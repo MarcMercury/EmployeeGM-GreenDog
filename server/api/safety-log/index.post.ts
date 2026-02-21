@@ -5,6 +5,7 @@
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { SafetyLogInsertSchema, validateFormData } from '~/schemas/safety-log'
+import { getUserId } from '~/server/utils/getUserId'
 
 export default defineEventHandler(async (event) => {
   let step = 'init'
@@ -15,6 +16,8 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 401, message: 'Unauthorized' })
     }
 
+    const authUserId = getUserId(user)
+
     step = 'supabase-client'
     const supabase = await serverSupabaseServiceRole(event)
 
@@ -23,7 +26,7 @@ export default defineEventHandler(async (event) => {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', authUserId)
       .single()
 
     if (profileError) {
@@ -93,7 +96,7 @@ export default defineEventHandler(async (event) => {
       console.warn('[safety-log POST] FK violation on profile.id, retrying with auth user.id')
       const { data: retryData, error: retryError } = await supabase
         .from('safety_logs')
-        .insert({ ...basePayload, submitted_by: user.id })
+        .insert({ ...basePayload, submitted_by: authUserId })
         .select()
         .single()
       data = retryData

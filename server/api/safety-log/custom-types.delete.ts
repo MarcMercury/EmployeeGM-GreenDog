@@ -5,18 +5,20 @@
  * Body: { id }
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { getUserId } from '~/server/utils/getUserId'
 
 export default defineEventHandler(async (event) => {
   const user = await serverSupabaseUser(event)
   if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
 
+  const authUserId = getUserId(user)
   const client = await serverSupabaseServiceRole(event)
 
   // Verify admin role
   const { data: profile, error: profileError } = await client
     .from('profiles')
     .select('id, role')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .single()
 
   if (profileError) {

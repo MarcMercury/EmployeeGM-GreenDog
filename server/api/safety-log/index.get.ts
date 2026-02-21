@@ -4,6 +4,7 @@
  * Regular users see only their own logs; managers+ see all.
  */
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { getUserId } from '~/server/utils/getUserId'
 
 const MANAGER_ROLES = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin', 'marketing_admin']
 const VALID_STATUSES = ['draft', 'submitted', 'reviewed', 'flagged']
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
+  const authUserId = getUserId(user)
   const query = getQuery(event)
   const supabase = await serverSupabaseServiceRole(event)
 
@@ -21,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id, role')
-    .eq('auth_user_id', user.id)
+    .eq('auth_user_id', authUserId)
     .single()
 
   if (profileError) {
