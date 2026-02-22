@@ -170,6 +170,25 @@ const stats = computed(() => ({
   }
 }))
 
+// Stat tile click handlers - filter the table
+function clearFilters() {
+  selectedProgramType.value = null
+  selectedStatus.value = null
+  selectedTimeStatus.value = null
+  selectedLocation.value = null
+  searchQuery.value = ''
+}
+
+function filterByTimeStatus(status: string) {
+  clearFilters()
+  selectedTimeStatus.value = status
+}
+
+function filterByProgram(program: string) {
+  clearFilters()
+  selectedProgramType.value = program
+}
+
 // Invite wizard dialog
 const showInviteWizard = ref(false)
 const inviteStep = ref(1)
@@ -338,11 +357,17 @@ const savingNotes = ref(false)
 // Edit student dialog
 const showEditDialog = ref(false)
 const editForm = ref({
+  // Contact info (goes to unified_persons)
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone_mobile: '',
+  school_of_origin: '',
+  school_program: '',
+  // Program info (goes to person_program_data)
   program_type: '',
   program_name: '',
   enrollment_status: '',
-  school_of_origin: '',
-  school_program: '',
   start_date: '',
   end_date: '',
   expected_graduation_date: '',
@@ -509,11 +534,17 @@ function openEditDialog() {
   
   const s = selectedStudent.value
   editForm.value = {
+    // Contact info
+    first_name: s.first_name,
+    last_name: s.last_name,
+    email: s.email || '',
+    phone_mobile: s.phone_mobile || '',
+    school_of_origin: s.school_of_origin || '',
+    school_program: s.school_program || '',
+    // Program info
     program_type: s.program_type,
     program_name: s.program_name || '',
     enrollment_status: s.enrollment_status,
-    school_of_origin: s.school_of_origin || '',
-    school_program: s.school_program || '',
     start_date: s.start_date || '',
     end_date: s.end_date || '',
     expected_graduation_date: s.expected_graduation_date || '',
@@ -538,7 +569,21 @@ async function saveStudentEdit() {
   
   savingEdit.value = true
   try {
-    const { error } = await supabase
+    // 1. Update contact info on unified_persons
+    const { error: personError } = await supabase
+      .from('unified_persons')
+      .update({
+        first_name: editForm.value.first_name.trim(),
+        last_name: editForm.value.last_name.trim(),
+        email: editForm.value.email.trim(),
+        phone_mobile: editForm.value.phone_mobile?.trim() || null,
+      })
+      .eq('id', selectedStudent.value.person_id)
+    
+    if (personError) throw personError
+    
+    // 2. Update program data on person_program_data
+    const { error: programError } = await supabase
       .from('person_program_data')
       .update({
         program_type: editForm.value.program_type,
@@ -565,9 +610,9 @@ async function saveStudentEdit() {
       })
       .eq('id', selectedStudent.value.enrollment_id)
     
-    if (error) throw error
+    if (programError) throw programError
     
-    showSuccess('Student enrollment updated')
+    showSuccess('Student record updated')
     showEditDialog.value = false
     await fetchStudents()
     
@@ -576,7 +621,7 @@ async function saveStudentEdit() {
     if (updated) selectedStudent.value = updated
   } catch (error: any) {
     console.error('Error saving student edit:', error)
-    showError('Failed to save changes')
+    showError(error.message || 'Failed to save changes')
   } finally {
     savingEdit.value = false
   }
@@ -724,13 +769,13 @@ function formatStatus(status: string): string {
     <!-- Stats Row -->
     <UiStatsRow
       :stats="[
-        { value: stats.total, label: 'Total Students', color: 'primary', icon: 'mdi-account-group' },
-        { value: stats.current, label: 'Currently Active', color: 'success', icon: 'mdi-account-check' },
-        { value: stats.upcoming, label: 'Upcoming', color: 'info', icon: 'mdi-calendar-clock' },
-        { value: stats.byProgram.internship, label: 'Interns', color: 'indigo', icon: 'mdi-briefcase-account' }
+        { value: stats.total, label: 'Total Students', color: 'primary', icon: 'mdi-account-group', onClick: () => clearFilters() },
+        { value: stats.current, label: 'Currently Active', color: 'success', icon: 'mdi-account-check', onClick: () => filterByTimeStatus('current') },
+        { value: stats.upcoming, label: 'Upcoming', color: 'info', icon: 'mdi-calendar-clock', onClick: () => filterByTimeStatus('upcoming') },
+        { value: stats.byProgram.internship, label: 'Interns', color: 'indigo', icon: 'mdi-briefcase-account', onClick: () => filterByProgram('internship') }
       ]"
       layout="4-col"
-      tile-size="tall"
+      tile-size="compact"
     />
 
     <!-- Filters -->
@@ -1282,27 +1327,69 @@ function formatStatus(status: string): string {
           <!-- Bio Tab -->
           <v-window-item value="bio">
             <v-card-text>
+              <div class="d-flex align-center mb-3">
+                <h4 class="text-subtitle-2">Contact Information</h4>
+                <v-spacer />
+                <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-pencil" @click="openEditDialog">
+                  Edit
+                </v-btn>
+              </div>
               <v-row dense>
                 <v-col cols="12" sm="6">
-                  <v-text-field v-model="selectedStudent.email" label="Email" prepend-inner-icon="mdi-email" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-email</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Email</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">
+                      <a v-if="selectedStudent.email" :href="`mailto:${selectedStudent.email}`" class="text-primary">{{ selectedStudent.email }}</a>
+                      <span v-else class="text-medium-emphasis">Not set</span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.phone_mobile || ''" label="Phone" prepend-inner-icon="mdi-phone" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-phone</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Phone</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">
+                      <a v-if="selectedStudent.phone_mobile" :href="`tel:${selectedStudent.phone_mobile}`" class="text-primary">{{ selectedStudent.phone_mobile }}</a>
+                      <span v-else class="text-medium-emphasis">Not set</span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.school_of_origin || ''" label="School / University" prepend-inner-icon="mdi-school" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-school</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">School / University</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.school_of_origin || 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.school_program || ''" label="Academic Program" prepend-inner-icon="mdi-book-education" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-book-education</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Academic Program</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.school_program || 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="formatDate(selectedStudent.expected_graduation_date)" label="Expected Graduation" prepend-inner-icon="mdi-school-outline" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-school-outline</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Expected Graduation</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ formatDate(selectedStudent.expected_graduation_date) }}</v-list-item-subtitle>
+                  </v-list-item>
+                </v-col>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.location_name || 'Unassigned'" label="Assigned Location" prepend-inner-icon="mdi-map-marker" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-map-marker</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Assigned Location</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.location_name || 'Unassigned' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.mentor_name || 'Unassigned'" label="Mentor" prepend-inner-icon="mdi-account-tie" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-account-tie</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Mentor</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.mentor_name || 'Unassigned' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
               </v-row>
 
@@ -1341,38 +1428,74 @@ function formatStatus(status: string): string {
           <!-- Program Tab -->
           <v-window-item value="program">
             <v-card-text>
+              <div class="d-flex align-center mb-3">
+                <h4 class="text-subtitle-2">Program Details</h4>
+                <v-spacer />
+                <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-pencil" @click="openEditDialog">
+                  Edit
+                </v-btn>
+              </div>
               <v-row dense>
                 <v-col cols="12" sm="6">
-                  <v-select
-                    :model-value="selectedStudent.program_type"
-                    :items="programTypeOptions.filter(p => p.value)"
-                    label="Program Type"
-                    prepend-inner-icon="mdi-school"
-                    variant="outlined"
-                    density="compact"
-                    readonly
-                  />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-school</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Program Type</v-list-item-title>
+                    <v-list-item-subtitle>
+                      <v-chip :color="getProgramTypeColor(selectedStudent.program_type)" size="small" variant="tonal">
+                        <v-icon start size="small">{{ getProgramTypeIcon(selectedStudent.program_type) }}</v-icon>
+                        {{ formatProgramType(selectedStudent.program_type) }}
+                      </v-chip>
+                    </v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.program_name || ''" label="Program Name" prepend-inner-icon="mdi-tag" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-tag</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Program Name</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.program_name || 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="formatDate(selectedStudent.start_date)" label="Start Date" prepend-inner-icon="mdi-calendar-start" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-calendar-start</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Start Date</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ formatDate(selectedStudent.start_date) }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="formatDate(selectedStudent.end_date)" label="End Date" prepend-inner-icon="mdi-calendar-end" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-calendar-end</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">End Date</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ formatDate(selectedStudent.end_date) }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.cohort_identifier || ''" label="Cohort" prepend-inner-icon="mdi-account-group" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-account-group</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Cohort</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.cohort_identifier || 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.schedule_type ? formatStatus(selectedStudent.schedule_type) : ''" label="Schedule Type" prepend-inner-icon="mdi-clock" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-clock</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Schedule Type</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.schedule_type ? formatStatus(selectedStudent.schedule_type) : 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-text-field :model-value="selectedStudent.is_paid ? 'Yes' : 'No'" label="Paid Program" prepend-inner-icon="mdi-currency-usd" variant="outlined" density="compact" readonly />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-currency-usd</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Paid Program</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.is_paid ? 'Yes' : 'No' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
-                <v-col cols="12" sm="6">
-                  <v-text-field v-if="selectedStudent.is_paid" :model-value="selectedStudent.stipend_amount ? `$${selectedStudent.stipend_amount}` : ''" label="Stipend" prepend-inner-icon="mdi-cash" variant="outlined" density="compact" readonly />
+                <v-col cols="12" sm="6" v-if="selectedStudent.is_paid">
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-cash</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Stipend</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.stipend_amount ? `$${selectedStudent.stipend_amount}` : 'Not set' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -1381,9 +1504,15 @@ function formatStatus(status: string): string {
           <!-- Progress Tab -->
           <v-window-item value="progress">
             <v-card-text>
+              <div class="d-flex align-center mb-3">
+                <h4 class="text-subtitle-2">Hours Tracking</h4>
+                <v-spacer />
+                <v-btn color="primary" variant="tonal" size="small" prepend-icon="mdi-pencil" @click="openEditDialog">
+                  Edit
+                </v-btn>
+              </div>
               <v-row dense>
                 <v-col cols="12">
-                  <h4 class="text-subtitle-2 mb-3">Hours Tracking</h4>
                   <div v-if="selectedStudent.hours_required" class="mb-4">
                     <div class="d-flex justify-space-between mb-1">
                       <span class="text-body-2">{{ selectedStudent.hours_completed || 0 }} / {{ selectedStudent.hours_required }} hours</span>
@@ -1392,50 +1521,33 @@ function formatStatus(status: string): string {
                     <v-progress-linear :model-value="selectedStudent.completion_percentage || 0" color="primary" height="12" rounded />
                   </div>
                   <v-alert v-else type="info" variant="tonal" density="compact" class="mb-4">
-                    No hours requirement set for this program.
+                    No hours requirement set for this program. Click "Edit" to add hours tracking.
                   </v-alert>
                 </v-col>
 
                 <v-col cols="12" sm="6">
-                  <v-select
-                    :model-value="selectedStudent.overall_performance_rating || null"
-                    :items="[
-                      { title: 'Exceptional', value: 'exceptional' },
-                      { title: 'Exceeds Expectations', value: 'exceeds_expectations' },
-                      { title: 'Meets Expectations', value: 'meets_expectations' },
-                      { title: 'Needs Improvement', value: 'needs_improvement' },
-                      { title: 'Unsatisfactory', value: 'unsatisfactory' }
-                    ]"
-                    label="Performance Rating"
-                    prepend-inner-icon="mdi-star"
-                    variant="outlined"
-                    density="compact"
-                    readonly
-                  />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="amber" size="small">mdi-star</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Performance Rating</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.overall_performance_rating ? formatStatus(selectedStudent.overall_performance_rating) : 'Not rated' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12" sm="6">
-                  <v-select
-                    :model-value="selectedStudent.employment_interest_level || null"
-                    :items="[
-                      { title: 'Very Interested', value: 'very_interested' },
-                      { title: 'Interested', value: 'interested' },
-                      { title: 'Undecided', value: 'undecided' },
-                      { title: 'Not Interested', value: 'not_interested' }
-                    ]"
-                    label="Employment Interest"
-                    prepend-inner-icon="mdi-briefcase-account"
-                    variant="outlined"
-                    density="compact"
-                    readonly
-                  />
+                  <v-list-item class="px-0">
+                    <template #prepend><v-icon color="primary" size="small">mdi-briefcase-account</v-icon></template>
+                    <v-list-item-title class="text-caption text-medium-emphasis">Employment Interest</v-list-item-title>
+                    <v-list-item-subtitle class="text-body-2">{{ selectedStudent.employment_interest_level ? formatStatus(selectedStudent.employment_interest_level) : 'Unknown' }}</v-list-item-subtitle>
+                  </v-list-item>
                 </v-col>
                 <v-col cols="12">
-                  <v-checkbox
-                    :model-value="selectedStudent.eligible_for_employment"
-                    label="Eligible for Employment"
-                    readonly
-                    hide-details
-                  />
+                  <v-list-item class="px-0">
+                    <template #prepend>
+                      <v-icon :color="selectedStudent.eligible_for_employment ? 'success' : 'grey'" size="small">
+                        {{ selectedStudent.eligible_for_employment ? 'mdi-check-circle' : 'mdi-close-circle' }}
+                      </v-icon>
+                    </template>
+                    <v-list-item-title class="text-body-2">{{ selectedStudent.eligible_for_employment ? 'Eligible for Employment' : 'Not Yet Eligible for Employment' }}</v-list-item-title>
+                  </v-list-item>
                 </v-col>
               </v-row>
 
@@ -1451,25 +1563,25 @@ function formatStatus(status: string): string {
           <!-- Notes Tab -->
           <v-window-item value="notes">
             <v-card-text>
-              <!-- Legacy Program Notes (from person_program_data) -->
-              <v-expansion-panels v-if="studentNotes" class="mb-4">
+              <!-- Program Notes (from person_program_data) -->
+              <v-expansion-panels class="mb-4">
                 <v-expansion-panel>
                   <v-expansion-panel-title>
-                    <v-icon start size="small" color="grey">mdi-history</v-icon>
-                    Legacy Program Notes
+                    <v-icon start size="small" color="primary">mdi-note-edit</v-icon>
+                    Program Notes
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-textarea
                       v-model="studentNotes"
-                      label="Program Notes (Legacy)"
+                      label="Program Notes"
                       variant="outlined"
                       rows="4"
-                      readonly
                       class="mb-2"
+                      placeholder="Add notes about this student's program experience..."
                     />
                     <v-btn color="primary" size="small" @click="saveStudentNotes" :loading="savingNotes">
                       <v-icon start>mdi-content-save</v-icon>
-                      Save Legacy Notes
+                      Save Notes
                     </v-btn>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
@@ -1551,8 +1663,25 @@ function formatStatus(status: string): string {
         </v-card-title>
         <v-card-text class="pt-4">
           <v-row dense>
-            <!-- Program Information -->
+            <!-- Contact Information -->
             <v-col cols="12">
+              <h4 class="text-subtitle-2 mb-2">Contact Information</h4>
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.first_name" label="First Name" prepend-inner-icon="mdi-account" variant="outlined" density="compact" :rules="[v => !!v || 'Required']" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.last_name" label="Last Name" prepend-inner-icon="mdi-account" variant="outlined" density="compact" :rules="[v => !!v || 'Required']" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.email" label="Email" prepend-inner-icon="mdi-email" variant="outlined" density="compact" type="email" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-model="editForm.phone_mobile" label="Phone" prepend-inner-icon="mdi-phone" variant="outlined" density="compact" />
+            </v-col>
+            
+            <!-- Program Information -->
+            <v-col cols="12" class="mt-2">
               <h4 class="text-subtitle-2 mb-2">Program Information</h4>
             </v-col>
             <v-col cols="12" sm="6">
@@ -1632,7 +1761,7 @@ function formatStatus(status: string): string {
               <v-select
                 v-model="editForm.assigned_mentor_id"
                 :items="employees"
-                :item-title="(m: Employee) => `${m.first_name} ${m.last_name}`"
+                :item-title="(m: GDUEmployee) => `${m.first_name} ${m.last_name}`"
                 item-value="id"
                 label="Mentor"
                 prepend-inner-icon="mdi-account-tie"
