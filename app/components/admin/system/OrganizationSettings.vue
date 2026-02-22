@@ -308,12 +308,16 @@ async function savePosition() {
 
 async function deletePosition(pos: any) {
   if (pos.employee_count > 0) { toast.error(`Cannot delete: ${pos.employee_count} employees assigned`); return }
+  if (!confirm(`Delete position "${pos.title}"? This cannot be undone.`)) return
   try {
     const { error } = await supabase.from('job_positions').delete().eq('id', pos.id)
     if (error) throw error
     positions.value = positions.value.filter(p => p.id !== pos.id)
     toast.success('Position deleted')
-  } catch { toast.error('Failed to delete position') }
+  } catch (err: any) {
+    console.error('Error deleting position:', err)
+    toast.error(err?.message || 'Failed to delete position')
+  }
 }
 
 // Position Skills Management

@@ -21,13 +21,15 @@ import { logger } from '../../utils/logger'
 // Proposal types that can be auto-approved at low risk
 const AUTO_APPROVE_TYPES = new Set([
   'nudge', 'engagement_alert', 'engagement_report',
-  'review_reminder', 'skill_recommendation', 'training_suggestion',
-  'course_proposal', 'mentor_match',
+  'review_reminder', 'new_skill', 'skill_gap_report',
+  'course_draft', 'mentor_match', 'hr_audit_report',
+  'attendance_report', 'compliance_report',
+  'system_health_report',
 ])
 
 // Proposal types that always require human review
 const ALWAYS_HUMAN_REVIEW_TYPES = new Set([
-  'schedule_draft', 'review_summary_draft', 'disciplinary_action',
+  'schedule_draft', 'review_summary_draft', 'disciplinary_recommendation',
 ])
 
 const STUCK_RUN_MINUTES = 30

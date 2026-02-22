@@ -66,6 +66,9 @@ export type ProposalType =
   | 'referral_insight'
   // Orchestration (Phase 4)
   | 'health_report'
+  // System Health
+  | 'system_health_alert'
+  | 'system_health_report'
   // Access & Security
   | 'access_review'
 

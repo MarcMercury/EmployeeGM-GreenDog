@@ -1376,7 +1376,6 @@ function formatStatus(status: string): string {
                     <v-list-item-subtitle class="text-body-2">{{ formatDate(selectedStudent.expected_graduation_date) }}</v-list-item-subtitle>
                   </v-list-item>
                 </v-col>
-                </v-col>
                 <v-col cols="12" sm="6">
                   <v-list-item class="px-0">
                     <template #prepend><v-icon color="primary" size="small">mdi-map-marker</v-icon></template>

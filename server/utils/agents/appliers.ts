@@ -345,6 +345,14 @@ applierMap.set('health_report', async (_proposal, _supabase) => {
   // Informational — displayed in agent dashboard
 })
 
+applierMap.set('system_health_alert', async (_proposal, _supabase) => {
+  // System monitor alert — informational, displayed in admin dashboard
+})
+
+applierMap.set('system_health_report', async (_proposal, _supabase) => {
+  // System monitor report — informational summary, displayed in admin dashboard
+})
+
 // ─── Access & Security ────────────────────────────────────────────
 
 applierMap.set('access_review', async (_proposal, _supabase) => {

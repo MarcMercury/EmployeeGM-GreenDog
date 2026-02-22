@@ -248,6 +248,66 @@ export const AccessReviewSchema = z.object({
 
 // ─── Marketing & Events ───────────────────────────────────────────
 
+// ─── HR Audit Reports ─────────────────────────────────────────────
+
+export const HRAuditReportSchema = z.object({
+  total_audited: z.number().int().min(0),
+  incomplete_count: z.number().int().min(0),
+  complete_count: z.number().int().min(0).optional(),
+  avg_completeness: z.number().min(0).max(100).optional(),
+  top_missing_fields: z.array(z.object({
+    field: z.string(),
+    count: z.number().int(),
+  })).optional(),
+  worst_profiles: z.array(z.object({
+    name: z.string(),
+    score: z.number(),
+    missing: z.array(z.string()),
+  })).optional(),
+})
+
+// ─── Attendance Report ────────────────────────────────────────────
+
+export const AttendanceReportSchema = z.object({
+  total_employees: z.number().int().min(0).optional(),
+  flagged_count: z.number().int().min(0),
+  flagged_employees: z.array(z.object({
+    employee_id: z.string().uuid(),
+    name: z.string(),
+    score: z.number(),
+    late_count: z.number().int().optional(),
+    no_show_count: z.number().int().optional(),
+    total_shifts: z.number().int().optional(),
+  })).optional(),
+  window_days: z.number().int().optional(),
+})
+
+// ─── System Health ────────────────────────────────────────────────
+
+export const SystemHealthAlertSchema = z.object({
+  category: z.string(),
+  severity: z.enum(['low', 'medium', 'high']),
+  scanned_at: z.string().optional(),
+})
+
+export const SystemHealthReportSchema = z.object({
+  total_issues: z.number().int().min(0),
+  high_count: z.number().int().min(0),
+  medium_count: z.number().int().min(0),
+  low_count: z.number().int().min(0),
+  categories_scanned: z.array(z.string()).optional(),
+  issues: z.array(z.object({
+    category: z.string(),
+    severity: z.string(),
+    title: z.string(),
+  })).optional(),
+  employee_count: z.number().int().optional(),
+  position_count: z.number().int().optional(),
+  department_count: z.number().int().optional(),
+  location_count: z.number().int().optional(),
+  role_count: z.number().int().optional(),
+})
+
 export const EventDiscoverySchema = z.object({
   event_name: z.string().min(1),
   event_type: z.string(),
@@ -294,6 +354,10 @@ export const proposalSchemas: Record<string, z.ZodType<any>> = {
   referral_insight: ReferralInsightSchema,
   health_report: HealthReportSchema,
   access_review: AccessReviewSchema,
+  hr_audit_report: HRAuditReportSchema,
+  attendance_report: AttendanceReportSchema,
+  system_health_alert: SystemHealthAlertSchema,
+  system_health_report: SystemHealthReportSchema,
 }
 
 /**
