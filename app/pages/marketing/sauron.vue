@@ -178,7 +178,7 @@
           </div>
 
           <div class="text-right mt-3">
-            <v-btn variant="text" size="small" color="green" to="/marketing/invoice-analysis" append-icon="mdi-arrow-right">Full Invoice Analysis</v-btn>
+            <v-btn variant="text" size="small" color="green" to="/marketing/performance-analysis" append-icon="mdi-arrow-right">Full Performance Analysis</v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -337,7 +337,7 @@
           </v-row>
 
           <div class="text-right mt-3">
-            <v-btn variant="text" size="small" color="indigo" to="/marketing/appointment-analysis" append-icon="mdi-arrow-right">Full Appointment Analysis</v-btn>
+            <v-btn variant="text" size="small" color="indigo" to="/marketing/performance-analysis?tab=appointments" append-icon="mdi-arrow-right">Full Appointment Analysis</v-btn>
           </div>
         </v-card-text>
       </v-card>

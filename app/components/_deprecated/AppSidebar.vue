@@ -169,8 +169,7 @@
         </template>
         <v-list-item v-if="hasPageAccess('/marketing/sauron')" to="/marketing/sauron" title="Sauron" prepend-icon="mdi-eye" density="compact" rounded="lg" class="nav-item ml-4" />
         <v-list-item v-if="hasPageAccess('/marketing/ezyvet-analytics')" to="/marketing/ezyvet-analytics" title="EzyVet Analytics" prepend-icon="mdi-chart-areaspline" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/marketing/appointment-analysis')" to="/marketing/appointment-analysis" title="Appointment Analysis" prepend-icon="mdi-calendar-search" density="compact" rounded="lg" class="nav-item ml-4" />
-        <v-list-item v-if="hasPageAccess('/marketing/invoice-analysis')" to="/marketing/invoice-analysis" title="Invoice Analysis" prepend-icon="mdi-receipt-text-check" density="compact" rounded="lg" class="nav-item ml-4" />
+        <v-list-item v-if="hasPageAccess('/marketing/performance-analysis')" to="/marketing/performance-analysis" title="Performance Analysis" prepend-icon="mdi-chart-bar-stacked" density="compact" rounded="lg" class="nav-item ml-4" />
       </v-list-group>
 
       <!-- ===== GDU (Education) Group - Database-driven Access ===== -->
@@ -330,9 +329,8 @@ const PAGE_ACCESS: Record<string, readonly string[]> = {
   // CRM & Analytics
   '/marketing/sauron': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   '/marketing/ezyvet-analytics': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
-  '/marketing/appointment-analysis': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
+  '/marketing/performance-analysis': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   '/marketing/list-hygiene': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
-  '/marketing/invoice-analysis': ['super_admin', 'admin', 'manager', 'marketing_admin', 'sup_admin'],
   
   // GDU
   '/gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'marketing_admin', 'office_admin', 'sup_admin'],
@@ -409,7 +407,7 @@ function hasSectionAccess(sectionName: string): boolean {
     'Med Ops': ['/med-ops/calculators', '/med-ops/boards'],
     'HR': ['/schedule', '/schedule/wizard', '/schedule/services', '/time-off', '/recruiting', '/export-payroll', '/admin/intake', '/admin/payroll/review'],
     'Marketing': ['/marketing/calendar', '/marketing/resources', '/marketing/inventory', '/marketing/partners', '/marketing/influencers', '/marketing/partnerships', '/growth/events', '/growth/leads'],
-    'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/appointment-analysis', '/marketing/invoice-analysis'],
+    'CRM & Analytics': ['/marketing/sauron', '/marketing/ezyvet-analytics', '/marketing/performance-analysis'],
     'GDU': ['/gdu', '/gdu/students', '/gdu/visitors', '/gdu/events'],
     'Admin Ops': ['/admin/users', '/admin/agents', '/admin/email-templates', '/admin/services', '/admin/scheduling-rules', '/admin/skills-management', '/admin/slack', '/admin/system-health', '/settings'],
   }

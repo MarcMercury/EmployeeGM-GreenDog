@@ -360,18 +360,10 @@
       <!-- Quick Links -->
       <v-row class="mb-6">
         <v-col cols="12" sm="6" md="3">
-          <NuxtLink to="/marketing/invoice-analysis" class="text-decoration-none">
+          <NuxtLink to="/marketing/performance-analysis" class="text-decoration-none">
             <v-card class="pa-4 text-center" elevation="1" hover>
-              <v-icon size="32" color="green">mdi-receipt-text</v-icon>
-              <div class="text-body-2 mt-2">Invoice Deep-Dive</div>
-            </v-card>
-          </NuxtLink>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <NuxtLink to="/marketing/appointment-analysis" class="text-decoration-none">
-            <v-card class="pa-4 text-center" elevation="1" hover>
-              <v-icon size="32" color="blue">mdi-calendar-clock</v-icon>
-              <div class="text-body-2 mt-2">Appointment Deep-Dive</div>
+              <v-icon size="32" color="deep-purple">mdi-chart-bar-stacked</v-icon>
+              <div class="text-body-2 mt-2">Performance Analysis</div>
             </v-card>
           </NuxtLink>
         </v-col>

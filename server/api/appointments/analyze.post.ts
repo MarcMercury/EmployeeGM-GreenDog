@@ -59,7 +59,7 @@ export default defineEventHandler(async (event) => {
     // 2. Fetch appointment data
     let query = supabase
       .from('appointment_data')
-      .select('appointment_date, appointment_type, service_category, species, status, duration_minutes, revenue, provider_name, location_name')
+      .select('appointment_date, appointment_type, service_category, species, status, revenue, provider_name, location_name')
       .gte('appointment_date', new Date(Date.now() - weeksBack * 7 * 86400000).toISOString().split('T')[0])
       .order('appointment_date')
 
@@ -182,7 +182,7 @@ export default defineEventHandler(async (event) => {
 interface AggregatedData {
   totalAppointments: number
   dateRange: { start: string; end: string }
-  byType: Record<string, { count: number; completed: number; cancelled: number; noShows: number; avgDuration: number; totalRevenue: number }>
+  byType: Record<string, { count: number; completed: number; cancelled: number; noShows: number; totalRevenue: number }>
   byDayOfWeek: Record<number, { count: number; types: Record<string, number> }>
   byServiceCategory: Record<string, { count: number; byDay: Record<number, number> }>
   bySpecies: Record<string, number>
@@ -204,13 +204,16 @@ function aggregateAppointmentData(appointments: any[]): AggregatedData {
     const category = appt.service_category || 'UNMAPPED'
     const species = appt.species || 'Unknown'
 
+    // Skip Sunday data — all locations are closed on Sundays
+    if (dow === 0) continue
+
     // By type
-    if (!byType[type]) byType[type] = { count: 0, completed: 0, cancelled: 0, noShows: 0, totalDuration: 0, durationCount: 0, totalRevenue: 0 }
+    // Note: duration_minutes is intentionally excluded — CSV report values are not accurate
+    if (!byType[type]) byType[type] = { count: 0, completed: 0, cancelled: 0, noShows: 0, totalRevenue: 0 }
     byType[type].count++
     if (appt.status === 'completed') byType[type].completed++
     if (appt.status === 'cancelled') byType[type].cancelled++
     if (appt.status === 'no_show') byType[type].noShows++
-    if (appt.duration_minutes) { byType[type].totalDuration += appt.duration_minutes; byType[type].durationCount++ }
     if (appt.revenue) byType[type].totalRevenue += parseFloat(appt.revenue)
 
     // By day of week
@@ -228,15 +231,6 @@ function aggregateAppointmentData(appointments: any[]): AggregatedData {
 
     // Weekly trend
     weeklyTrend[weekKey] = (weeklyTrend[weekKey] || 0) + 1
-  }
-
-  // Finalize averages
-  for (const type of Object.keys(byType)) {
-    byType[type].avgDuration = byType[type].durationCount > 0 
-      ? Math.round(byType[type].totalDuration / byType[type].durationCount)
-      : 0
-    delete byType[type].totalDuration
-    delete byType[type].durationCount
   }
 
   return {
@@ -282,6 +276,11 @@ This is a multi-location veterinary hospital with 3 locations:
 - Van Nuys (VN) 
 - Venice (VE) / DOG PPL
 
+## CRITICAL: All locations are CLOSED on Sundays
+Do NOT include Sunday in any recommendations, weekly plans, peak day lists, or staffing suggestions.
+The operating days are Monday through Saturday only (day numbers 1-6).
+Any Sunday data has already been excluded from the dataset below.
+
 ## Service Departments & Appointment Types
 The hospital organizes services into these departments, each with specific appointment types:
 ${deptSummary.map(d => `
@@ -309,10 +308,12 @@ Key terminology:
 ## Appointments by Type
 ${JSON.stringify(data.byType, null, 2)}
 
-## Appointments by Day of Week (0=Sun, 6=Sat)
-${Object.entries(data.byDayOfWeek).map(([dow, d]: [string, any]) => 
-  `${dayNames[parseInt(dow)]}: ${d.count} appointments`
-).join('\n')}
+## Appointments by Day of Week (1=Mon through 6=Sat; closed Sundays)
+${Object.entries(data.byDayOfWeek)
+  .filter(([dow]) => parseInt(dow) !== 0)
+  .map(([dow, d]: [string, any]) => 
+    `${dayNames[parseInt(dow)]}: ${d.count} appointments`
+  ).join('\n')}
 
 ## Appointments by Service Category
 ${JSON.stringify(data.byServiceCategory, null, 2)}
@@ -348,7 +349,6 @@ Use the actual GreenDog service codes (DENTAL, AP, WELLNESS, ADDON, IMAGING, SUR
       "trend": "increasing" | "stable" | "decreasing",
       "peakDays": ["Mon", "Wed"],
       "peakLocations": ["SO", "VN"],
-      "avgDuration": number,
       "completionRate": number,
       "notes": "string with GDD-specific insight"
     }
@@ -376,7 +376,8 @@ Use the actual GreenDog service codes (DENTAL, AP, WELLNESS, ADDON, IMAGING, SUR
   ],
   "weeklyPlan": {
     "Mon": { "services": [{ "code": "DENTAL", "slots": 15, "byLocation": { "SO": 8, "VN": 5, "VE": 2 } }], "totalStaff": 12 },
-    "Tue": { "services": [...], "totalStaff": 10 }
+    "Tue": { "services": [...], "totalStaff": 10 },
+    // ... Wed through Sat only. Do NOT include Sun.
   },
   "insights": [
     { "type": "trend", "message": "Dental (NAD/NEAT) is the highest-volume department at ~80 appointments/week", "severity": "info" },

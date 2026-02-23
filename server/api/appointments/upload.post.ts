@@ -118,7 +118,8 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event)
-  const { appointments, locationId, locationName } = body
+  const { appointments, locationId, locationName, duplicateAction } = body
+  // duplicateAction: 'check' = detect only, 'skip' = omit duplicate days, 'replace' = delete & re-insert, undefined = legacy insert-all
 
   if (!appointments || !Array.isArray(appointments) || appointments.length === 0) {
     throw createError({ statusCode: 400, message: 'No appointment data provided' })
@@ -155,19 +156,85 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No valid appointment records found. Each row must have a date field.' })
   }
 
+  // ── Duplicate day detection ──────────────────────────────────────────────
+  // Extract unique dates from the incoming records
+  const incomingDates = [...new Set(records.map((r: any) => r.appointment_date as string))].filter(Boolean).sort()
+  const minDate = incomingDates[0]
+  const maxDate = incomingDates[incomingDates.length - 1]
+
+  // Query existing appointment_data rows for these dates (csv_upload source)
+  const { data: existingRows } = await supabase
+    .from('appointment_data')
+    .select('appointment_date')
+    .eq('source', 'csv_upload')
+    .gte('appointment_date', minDate)
+    .lte('appointment_date', maxDate)
+
+  // Build a set of dates that already have data
+  const existingDateSet = new Set<string>()
+  if (existingRows) {
+    for (const row of existingRows) {
+      existingDateSet.add(row.appointment_date)
+    }
+  }
+
+  // Find which incoming dates overlap with existing data
+  const duplicateDates = incomingDates.filter(d => existingDateSet.has(d))
+  const duplicateRecordCount = duplicateDates.length > 0
+    ? records.filter((r: any) => existingDateSet.has(r.appointment_date)).length
+    : 0
+
+  // If duplicateAction === 'check', return duplicate info without inserting
+  if (duplicateAction === 'check') {
+    return {
+      success: true,
+      mode: 'check',
+      totalRows: appointments.length,
+      validRecords: records.length,
+      duplicateDates,
+      duplicateRecordCount,
+      newDates: incomingDates.filter(d => !existingDateSet.has(d)),
+      newRecordCount: records.length - duplicateRecordCount,
+    }
+  }
+
+  // Determine which records to insert based on duplicateAction
+  let recordsToInsert = records
+  let skippedDuplicates = 0
+  let replacedDates: string[] = []
+
+  if (duplicateDates.length > 0) {
+    if (duplicateAction === 'skip') {
+      // Filter out records for dates that already exist
+      recordsToInsert = records.filter((r: any) => !existingDateSet.has(r.appointment_date))
+      skippedDuplicates = records.length - recordsToInsert.length
+    } else if (duplicateAction === 'replace') {
+      // Delete existing csv_upload rows for the overlapping dates, then insert all
+      for (const date of duplicateDates) {
+        await supabase
+          .from('appointment_data')
+          .delete()
+          .eq('source', 'csv_upload')
+          .eq('appointment_date', date)
+      }
+      replacedDates = [...duplicateDates]
+    }
+    // If duplicateAction is not set (legacy), all records are inserted (original behavior)
+  }
+
   // Insert in chunks
   const CHUNK_SIZE = 500
   let inserted = 0
   let errors = 0
 
-  for (let i = 0; i < records.length; i += CHUNK_SIZE) {
-    const chunk = records.slice(i, i + CHUNK_SIZE)
+  for (let i = 0; i < recordsToInsert.length; i += CHUNK_SIZE) {
+    const chunk = recordsToInsert.slice(i, i + CHUNK_SIZE)
     const { error } = await supabase
       .from('appointment_data')
       .insert(chunk)
     
     if (error) {
-      logger.error(`Chunk ${i / CHUNK_SIZE + 1} failed`, error, 'appointment-upload')
+      console.error(`Chunk ${Math.floor(i / CHUNK_SIZE) + 1} failed:`, error.message)
       errors += chunk.length
     } else {
       inserted += chunk.length
@@ -175,8 +242,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Count unique appointment types for mapping stats
-  const uniqueTypes = new Set(records.map((r: any) => r.appointment_type))
-  const mappedTypes = records.filter((r: any) => r.service_category).length
+  const uniqueTypes = new Set(recordsToInsert.map((r: any) => r.appointment_type))
+  const mappedTypes = recordsToInsert.filter((r: any) => r.service_category).length
   const unmappedTypes = [...uniqueTypes].filter(t => !mapToServiceCategory(t))
 
   return {
@@ -184,7 +251,10 @@ export default defineEventHandler(async (event) => {
     batchId,
     totalRows: appointments.length,
     inserted,
-    skipped: appointments.length - records.length,
+    skipped: (appointments.length - records.length) + skippedDuplicates,
+    skippedDuplicates,
+    replacedDates,
+    duplicateDates,
     errors,
     mappingStats: {
       uniqueTypes: uniqueTypes.size,
