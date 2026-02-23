@@ -9,7 +9,6 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import * as XLSX from 'xlsx'
 
 function parseDate(val: string | undefined): string | null {
   if (!val) return null
@@ -103,8 +102,9 @@ export default defineEventHandler(async (event) => {
   // Accept either pre-parsed JSON rows OR raw base64 file data (CSV/XLS/XLSX)
   let invoiceLines = rawInvoiceLines
   if ((!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) && fileData) {
+    const XLSX = await import('xlsx')
     const buffer = Buffer.from(fileData, 'base64')
-    let workbook: XLSX.WorkBook
+    let workbook: any
     try {
       workbook = XLSX.read(buffer, { type: 'buffer' })
     } catch {

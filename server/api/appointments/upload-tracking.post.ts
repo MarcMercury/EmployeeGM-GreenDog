@@ -10,7 +10,6 @@
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 import { parseWeeklyTrackingCSV } from '../../utils/appointments/clinic-report-parser'
-import * as XLSX from 'xlsx'
 
 export default defineEventHandler(async (event) => {
   // Auth
@@ -38,6 +37,7 @@ export default defineEventHandler(async (event) => {
     const buffer = Buffer.from(fileData, 'base64')
     try {
       // Try parsing as XLS/XLSX binary
+      const XLSX = await import('xlsx')
       const workbook = XLSX.read(buffer, { type: 'buffer' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       csvText = XLSX.utils.sheet_to_csv(sheet)

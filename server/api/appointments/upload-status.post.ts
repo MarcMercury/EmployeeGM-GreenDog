@@ -12,7 +12,6 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import * as XLSX from 'xlsx'
 
 interface StatusRow {
   division: string
@@ -52,7 +51,7 @@ function secondsToMinutes(s: number): number {
   return Math.round((s || 0) / 60)
 }
 
-function excelDateToISO(val: any): { date: string; time: string } | null {
+function excelDateToISO(val: any, xlsxModule?: any): { date: string; time: string } | null {
   if (!val) return null
 
   // If it's a string like "2026-01-30 09:00:00"
@@ -66,8 +65,8 @@ function excelDateToISO(val: any): { date: string; time: string } | null {
   }
 
   // If it's an Excel serial number
-  if (typeof val === 'number') {
-    const d = XLSX.SSF.parse_date_code(val)
+  if (typeof val === 'number' && xlsxModule?.SSF?.parse_date_code) {
+    const d = xlsxModule.SSF.parse_date_code(val)
     if (d) {
       const date = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`
       const time = `${String(d.H).padStart(2, '0')}:${String(d.M).padStart(2, '0')}:${String(d.S).padStart(2, '0')}`
@@ -106,8 +105,9 @@ export default defineEventHandler(async (event) => {
   }
 
   // Decode base64 → buffer → parse with xlsx (supports XLS, XLSX, and CSV)
+  const XLSX = await import('xlsx')
   const buffer = Buffer.from(fileData, 'base64')
-  let workbook: XLSX.WorkBook
+  let workbook: any
   try {
     workbook = XLSX.read(buffer, { type: 'buffer' })
   } catch {
@@ -198,7 +198,7 @@ export default defineEventHandler(async (event) => {
     if (!owner || owner === 'AVERAGE' || owner === 'TOTAL' || !animal) continue
 
     const dtVal = row[dateTimeCol]
-    const dt = excelDateToISO(dtVal)
+    const dt = excelDateToISO(dtVal, XLSX)
     if (!dt) continue
 
     const { first, last } = parseOwnerName(owner)
