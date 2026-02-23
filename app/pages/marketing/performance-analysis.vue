@@ -695,7 +695,8 @@
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
             <strong>Add-To Upload:</strong> New invoice lines are added to existing data.
-            Duplicate records (same Invoice # + Line Reference) are automatically skipped.
+            Duplicate records (same Invoice # + Line Reference) are automatically skipped.<br/>
+            <strong>Recommended:</strong> Use XLS/XLSX format for best results — CSV exports may be missing date range headers.
           </v-alert>
           <v-file-input
             v-model="invUploadForm.file"
@@ -740,8 +741,9 @@
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>EzyVet Appointment Status Report</strong> — CSV or XLS export with per-appointment timing data.
-            Links to Invoice Lines via owner name and animal name for cross-analysis.
+            <strong>EzyVet Appointment Status Report</strong> — XLS/XLSX export with per-appointment timing data.
+            Links to Invoice Lines via owner name and animal name for cross-analysis.<br/>
+            <strong>Recommended:</strong> Use XLS/XLSX format — CSV exports may be missing date/division headers needed for correct date attribution.
           </v-alert>
           <v-file-input
             v-model="statusUploadForm.file"
@@ -799,14 +801,15 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-table-large</v-icon>
-          Upload Appointment Tracking CSV
+          Upload Appointment Tracking
           <v-spacer />
           <v-btn icon variant="text" @click="showTrackingUpload = false"><v-icon>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>Weekly Tracking Spreadsheet</strong> — matrix-format CSV or XLS with appointment types per day per location (SO/VN/VE).
+            <strong>Weekly Tracking Spreadsheet</strong> — matrix-format XLS/CSV with appointment types per day per location (SO/VN/VE).<br/>
+            <strong>Recommended:</strong> Use XLS/XLSX format — CSV exports may be missing week date range headers needed for correct date attribution.
           </v-alert>
           <v-file-input
             v-model="trackingUploadForm.file"
@@ -1199,40 +1202,13 @@ async function uploadInvoiceData() {
   if (!invUploadForm.file) return
   uploadingInvoice.value = true
   try {
-    // XLS/XLSX: send raw file as base64, let server parse
-    if (isExcelFile(invUploadForm.file)) {
-      const fileData = await fileToBase64(invUploadForm.file)
-      invUploadProgress.value = 'Processing spreadsheet...'
-      const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { fileData, fileName: invUploadForm.file!.name } }) as any
-      invUploadProgress.value = ''
-      showNotification(`Upload complete: ${result.inserted || 0} new lines, ${result.duplicatesSkipped || 0} duplicates skipped.`)
-      showInvoiceUpload.value = false; invUploadForm.file = null; invCsvPreview.columns = []; invCsvPreview.rows = []
-      await loadInvoiceData()
-      return
-    }
-
-    // CSV/TSV: parse client-side and send as JSON rows
-    const text = await invUploadForm.file.text()
-    const lines = text.split('\n').filter(l => l.trim())
-    if (lines.length < 2) throw new Error('File must have a header and data rows')
-    const headerIdx = findHeaderRow(lines, [/^Invoice$/i, /^Invoice Line Reference$/i, /^Invoice Line Date/i])
-    const headers = parseCSVLine(lines[headerIdx])
-    const rows: Record<string, any>[] = []
-    for (let i = headerIdx + 1; i < lines.length; i++) {
-      const values = parseCSVLine(lines[i]); if (values.length < 3) continue
-      const row: Record<string, any> = {}; headers.forEach((h, idx) => { row[h.trim()] = (values[idx] || '').trim() }); rows.push(row)
-    }
-    if (rows.length === 0) throw new Error('No data rows found')
-
-    const CHUNK = 500; let totalInserted = 0; let totalDupes = 0; const totalChunks = Math.ceil(rows.length / CHUNK)
-    for (let ci = 0; ci < totalChunks; ci++) {
-      const chunk = rows.slice(ci * CHUNK, (ci + 1) * CHUNK)
-      invUploadProgress.value = totalChunks > 1 ? `Uploading chunk ${ci + 1} of ${totalChunks}...` : ''
-      const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { invoiceLines: chunk, fileName: invUploadForm.file!.name } }) as any
-      totalInserted += result.inserted || 0; totalDupes += result.duplicatesSkipped || 0
-    }
+    // Always send file as base64 — server handles CSV/XLS/XLSX uniformly via xlsx library
+    // This preserves header metadata (date ranges, divisions) that CSV exports may strip
+    const fileData = await fileToBase64(invUploadForm.file)
+    invUploadProgress.value = 'Processing file...'
+    const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { fileData, fileName: invUploadForm.file!.name } }) as any
     invUploadProgress.value = ''
-    showNotification(`Upload complete: ${totalInserted} new lines, ${totalDupes} duplicates skipped.`)
+    showNotification(`Upload complete: ${result.inserted || 0} new lines, ${result.duplicatesSkipped || 0} duplicates skipped.`)
     showInvoiceUpload.value = false; invUploadForm.file = null; invCsvPreview.columns = []; invCsvPreview.rows = []
     await loadInvoiceData()
   } catch (err: any) {
@@ -1307,12 +1283,9 @@ async function checkTrackingDuplicates() {
   if (!trackingUploadForm.file) return
   trackingDupCheck.loading = true
   try {
-    let body: Record<string, any> = { fileName: trackingUploadForm.file!.name, duplicateAction: 'check' }
-    if (isExcelFile(trackingUploadForm.file)) {
-      body.fileData = await fileToBase64(trackingUploadForm.file)
-    } else {
-      body.csvText = await trackingUploadForm.file.text()
-    }
+    // Always send as base64 — server handles CSV/XLS/XLSX uniformly via xlsx library
+    const fileData = await fileToBase64(trackingUploadForm.file)
+    const body: Record<string, any> = { fileData, fileName: trackingUploadForm.file!.name, duplicateAction: 'check' }
     const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
     trackingDupCheck.duplicateDates = result.duplicateDates || []
     trackingDupCheck.duplicateRecordCount = result.duplicateRecordCount || 0
@@ -1329,12 +1302,9 @@ async function uploadTrackingData() {
   if (!trackingUploadForm.file) return
   uploadingTracking.value = true
   try {
-    let body: Record<string, any> = { fileName: trackingUploadForm.file!.name, duplicateAction: trackingDupCheck.chosenAction || undefined }
-    if (isExcelFile(trackingUploadForm.file)) {
-      body.fileData = await fileToBase64(trackingUploadForm.file)
-    } else {
-      body.csvText = await trackingUploadForm.file.text()
-    }
+    // Always send as base64 — server handles CSV/XLS/XLSX uniformly via xlsx library
+    const fileData = await fileToBase64(trackingUploadForm.file)
+    const body: Record<string, any> = { fileData, fileName: trackingUploadForm.file!.name, duplicateAction: trackingDupCheck.chosenAction || undefined }
     const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
     let msg = `Uploaded ${result?.inserted || 0} appointment tracking records.`
     if (result?.weekTitle) msg += ` (${result.weekTitle})`

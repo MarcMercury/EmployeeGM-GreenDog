@@ -134,14 +134,14 @@ export default defineNuxtConfig({
     },
     routeRules: {
       '/api/invoices/upload': {
-        // Allow larger payloads for invoice CSV uploads (10 MB)
-        maxBodySize: 10 * 1024 * 1024,
+        // Allow larger payloads for file uploads (25 MB — XLS files can be large)
+        maxBodySize: 25 * 1024 * 1024,
       },
       '/api/appointments/upload-status': {
-        maxBodySize: 10 * 1024 * 1024,
+        maxBodySize: 25 * 1024 * 1024,
       },
       '/api/appointments/upload-tracking': {
-        maxBodySize: 10 * 1024 * 1024,
+        maxBodySize: 25 * 1024 * 1024,
       },
     },
   },

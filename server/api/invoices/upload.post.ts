@@ -148,7 +148,49 @@ export default defineEventHandler(async (event) => {
     }
     const sheet = workbook.Sheets[workbook.SheetNames[0]]
     if (!sheet) throw createError({ statusCode: 400, message: 'No sheets found in file' })
-    invoiceLines = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+
+    // XLS/XLSX files often have metadata rows above the actual data header.
+    // Use sheet_to_json with header:1 to get raw arrays, then detect the header row.
+    const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+
+    // Find header row — look for "Invoice" or "Invoice #" or "Invoice Line Reference" in any cell
+    let headerIdx = 0
+    const headerKeywords = ['invoice #', 'invoice', 'invoice line reference', 'invoice number', 'product name']
+    for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+      const row = rawRows[i].map((c: any) => String(c).trim().toLowerCase())
+      const matchCount = headerKeywords.filter(kw => row.some(cell => cell === kw || cell.includes(kw))).length
+      if (matchCount >= 2) { headerIdx = i; break }
+    }
+
+    // Extract metadata from rows above the header (e.g., date range, division)
+    const reportMetadata: Record<string, string> = {}
+    for (let i = 0; i < headerIdx; i++) {
+      const rowText = rawRows[i].map((c: any) => String(c).trim()).filter(Boolean).join(' ')
+      // Look for date range patterns
+      const dateRangeMatch = rowText.match(/(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})\s*(?:to|-)\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})/)
+      if (dateRangeMatch) {
+        reportMetadata.dateRangeStart = dateRangeMatch[1]
+        reportMetadata.dateRangeEnd = dateRangeMatch[2]
+      }
+      // Look for division/location
+      const divMatch = rowText.match(/(?:division|location)[:\s]*(.+)/i)
+      if (divMatch) reportMetadata.division = divMatch[1].trim()
+    }
+
+    // Build keyed objects from header row + data rows
+    const headers = rawRows[headerIdx].map((c: any) => String(c).trim())
+    invoiceLines = []
+    for (let i = headerIdx + 1; i < rawRows.length; i++) {
+      const row = rawRows[i]
+      if (!row || row.every((c: any) => !String(c).trim())) continue // skip empty rows
+      const obj: Record<string, any> = {}
+      headers.forEach((h: string, idx: number) => { if (h) obj[h] = row[idx] ?? '' })
+      // Inject report metadata if not present in row
+      if (reportMetadata.division && !obj['Active Division'] && !obj['Division']) {
+        obj['Division'] = reportMetadata.division
+      }
+      invoiceLines.push(obj)
+    }
   }
 
   if (!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) {
