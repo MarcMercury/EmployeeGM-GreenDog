@@ -9,7 +9,8 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import { parseWeeklyTrackingCSV } from '../../utils/appointments/clinic-report-parser'import { createRequire } from 'module'
+import { parseWeeklyTrackingCSV } from '../../utils/appointments/clinic-report-parser'
+import { createRequire } from 'module'
 export default defineEventHandler(async (event) => {
   // Auth
   const supabaseUser = await serverSupabaseClient(event)
