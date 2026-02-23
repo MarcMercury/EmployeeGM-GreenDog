@@ -33,6 +33,17 @@ function parseNumber(val: string | undefined): number | null {
   return isNaN(n) ? null : n
 }
 
+// Deterministic hash for generating dedup keys when invoice_line_reference is missing
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0 // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36)
+}
+
 // Map CSV column names to our DB columns (handles various EzyVet export formats)
 function mapRow(row: Record<string, any>): Record<string, any> {
   return {
@@ -101,6 +112,22 @@ export default defineEventHandler(async (event) => {
   // Map rows
   const records = invoiceLines.map((row: any) => {
     const mapped = mapRow(row)
+
+    // Ensure invoice_line_reference is never NULL — PostgreSQL UNIQUE constraints
+    // treat NULLs as distinct, so (INV-123, NULL) and (INV-123, NULL) would both insert.
+    // Generate a deterministic reference from key fields when missing.
+    if (!mapped.invoice_line_reference) {
+      const parts = [
+        mapped.invoice_number || '',
+        mapped.invoice_date || '',
+        mapped.product_name || '',
+        mapped.client_code || '',
+        mapped.total_earned ?? '',
+        mapped.staff_member || '',
+      ]
+      mapped.invoice_line_reference = `AUTO-${simpleHash(parts.join('|'))}`
+    }
+
     return {
       ...mapped,
       source: 'csv_upload',
