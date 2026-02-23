@@ -8,7 +8,8 @@
  * Purges records older than 24 months on each upload.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'\nimport * as XLSX from 'xlsx'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+import * as XLSX from 'xlsx'
 
 function parseDate(val: string | undefined): string | null {
   if (!val) return null
