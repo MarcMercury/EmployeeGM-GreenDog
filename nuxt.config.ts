@@ -137,6 +137,12 @@ export default defineNuxtConfig({
         // Allow larger payloads for invoice CSV uploads (10 MB)
         maxBodySize: 10 * 1024 * 1024,
       },
+      '/api/appointments/upload-status': {
+        maxBodySize: 10 * 1024 * 1024,
+      },
+      '/api/appointments/upload-tracking': {
+        maxBodySize: 10 * 1024 * 1024,
+      },
     },
   },
 

@@ -1046,6 +1046,11 @@ const filteredAppointments = computed(() => {
   return list
 })
 
+// Get the effective count for an appointment row (tracking rows store count in raw_data)
+function apptCount(a: any): number {
+  return a.raw_data?.count || 1
+}
+
 function getWeekKey(dateStr: string) {
   const d = new Date(dateStr)
   const day = d.getDay()
@@ -1055,7 +1060,7 @@ function getWeekKey(dateStr: string) {
 
 const weeklyTrendSeries = computed(() => {
   const wm: Record<string, number> = {}
-  for (const a of filteredAppointments.value) { const k = getWeekKey(a.appointment_date); wm[k] = (wm[k] || 0) + 1 }
+  for (const a of filteredAppointments.value) { const k = getWeekKey(a.appointment_date); wm[k] = (wm[k] || 0) + apptCount(a) }
   const sorted = Object.entries(wm).sort((a, b) => a[0].localeCompare(b[0]))
   return [{ name: 'Appointments', data: sorted.map(([, v]) => v) }]
 })
@@ -1068,12 +1073,12 @@ const weeklyTrendOptions = computed(() => ({
 
 const typeBreakdownSeries = computed(() => {
   const tm: Record<string, number> = {}
-  for (const a of filteredAppointments.value) { const t = a.appointment_type || 'Unknown'; tm[t] = (tm[t] || 0) + 1 }
+  for (const a of filteredAppointments.value) { const t = a.appointment_type || 'Unknown'; tm[t] = (tm[t] || 0) + apptCount(a) }
   return Object.entries(tm).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([, v]) => v)
 })
 const typeBreakdownOptions = computed(() => {
   const tm: Record<string, number> = {}
-  for (const a of filteredAppointments.value) { const t = a.appointment_type || 'Unknown'; tm[t] = (tm[t] || 0) + 1 }
+  for (const a of filteredAppointments.value) { const t = a.appointment_type || 'Unknown'; tm[t] = (tm[t] || 0) + apptCount(a) }
   const labels = Object.entries(tm).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k)
   return {
     chart: { type: 'donut', fontFamily: 'inherit' }, labels,
@@ -1084,25 +1089,30 @@ const typeBreakdownOptions = computed(() => {
 })
 
 const dayOfWeekSeries = computed(() => {
-  const days = [0, 0, 0, 0, 0, 0, 0]
-  for (const a of filteredAppointments.value) days[new Date(a.appointment_date).getDay()]++
+  // Index 0=Mon .. 5=Sat — exclude Sunday (locations closed)
+  const days = [0, 0, 0, 0, 0, 0]
+  for (const a of filteredAppointments.value) {
+    const dow = new Date(a.appointment_date + 'T00:00:00').getDay()
+    if (dow === 0) continue // Skip Sunday
+    days[dow - 1] += apptCount(a)
+  }
   return [{ name: 'Appointments', data: days }]
 })
 const dayOfWeekOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' }, colors: ['#3B82F6'],
-  xaxis: { categories: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] }, yaxis: { title: { text: 'Appointments' } },
+  xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] }, yaxis: { title: { text: 'Appointments' } },
   plotOptions: { bar: { borderRadius: 4 } }, dataLabels: { enabled: true, style: { fontSize: '10px' } }, tooltip: { theme: 'dark' },
 }))
 
 const serviceCategorySeries = computed(() => {
   const cm: Record<string, number> = {}
-  for (const a of filteredAppointments.value) { const c = a.service_category || 'UNMAPPED'; cm[c] = (cm[c] || 0) + 1 }
+  for (const a of filteredAppointments.value) { const c = a.service_category || 'UNMAPPED'; cm[c] = (cm[c] || 0) + apptCount(a) }
   const sorted = Object.entries(cm).sort((a, b) => b[1] - a[1]).slice(0, 12)
   return [{ name: 'Appointments', data: sorted.map(([, v]) => v) }]
 })
 const serviceCategoryChartOptions = computed(() => {
   const cm: Record<string, number> = {}
-  for (const a of filteredAppointments.value) { const c = a.service_category || 'UNMAPPED'; cm[c] = (cm[c] || 0) + 1 }
+  for (const a of filteredAppointments.value) { const c = a.service_category || 'UNMAPPED'; cm[c] = (cm[c] || 0) + apptCount(a) }
   const sorted = Object.entries(cm).sort((a, b) => b[1] - a[1]).slice(0, 12)
   return {
     chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' }, colors: ['#10B981'],
@@ -1407,7 +1417,7 @@ async function loadApptData() {
       else hasMore = false
     }
     appointments.value = allAppt
-    apptStats.totalAppointments = allAppt.length
+    apptStats.totalAppointments = allAppt.reduce((sum: number, a: any) => sum + (a.raw_data?.count || 1), 0)
     apptStats.uniqueTypes = new Set(allAppt.map(a => a.appointment_type)).size
     apptStats.uniqueLocations = new Set(allAppt.map(a => a.location_id || a.location_name).filter(Boolean)).size
 

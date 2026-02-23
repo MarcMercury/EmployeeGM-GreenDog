@@ -58,7 +58,20 @@ function excelDateToISO(val: any, xlsxModule?: any): { date: string; time: strin
   if (typeof val === 'string') {
     const match = val.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})$/)
     if (match) return { date: match[1], time: match[2] }
-    // Try parsing as date
+    // DD/MM/YYYY HH:MM or DD/MM/YYYY HH:MM:SS
+    const slashMatch = val.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\s+(\d{2}:\d{2}(?::\d{2})?)$/)
+    if (slashMatch) {
+      let [, a, b, y, time] = slashMatch
+      let day = parseInt(a), month = parseInt(b)
+      if (day > 12 && month <= 12) { /* DD/MM */ }
+      else if (month > 12 && day <= 12) { [day, month] = [month, day] }
+      // else assume DD/MM (Australian convention)
+      const date = `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      if (!time.includes(':')) time += ':00'
+      if (time.length === 5) time += ':00'
+      return { date, time }
+    }
+    // Try parsing as date (ISO format)
     const d = new Date(val)
     if (!isNaN(d.getTime())) return { date: d.toISOString().split('T')[0], time: d.toTimeString().slice(0, 8) }
     return null
@@ -91,7 +104,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !['admin', 'super_admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'].includes(profile.role)) {
+  if (!profile || !['admin', 'super_admin', 'manager', 'sup_admin', 'marketing_admin'].includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
@@ -250,7 +263,7 @@ export default defineEventHandler(async (event) => {
     location_name: row.division || reportLocation || null,
     appointment_date: row.appointmentDate,
     appointment_time: row.appointmentTime,
-    appointment_type: 'Appointment Status', // Generic — we don't know specific type from this report
+    appointment_type: row.division || 'General Appointment', // Use division as type (e.g. "Dental", "Surgery")
     service_category: null, // Not available in status report
     species: null,
     status: deriveStatus(row),

@@ -12,10 +12,39 @@ import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/serve
 
 function parseDate(val: string | undefined): string | null {
   if (!val) return null
-  // Handle formats: MM/DD/YYYY, YYYY-MM-DD, DD-MMM-YYYY, etc.
-  const d = new Date(val)
-  if (isNaN(d.getTime())) return null
-  return d.toISOString().split('T')[0]
+  const v = val.trim()
+
+  // ISO: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+    const d = new Date(v)
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY (day > 12 disambiguates, else assume DD/MM — EzyVet convention)
+  const slashMatch = v.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/)
+  if (slashMatch) {
+    let [, a, b, y] = slashMatch
+    let day = parseInt(a), month = parseInt(b)
+    // If first number > 12, it must be day; otherwise assume DD/MM (AU/UK format)
+    if (day > 12 && month <= 12) { /* already DD/MM */ }
+    else if (month > 12 && day <= 12) { [day, month] = [month, day] } // swap to DD/MM
+    // else both ≤ 12 — assume DD/MM (EzyVet is Australian)
+    const d = new Date(parseInt(y), month - 1, day)
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  }
+
+  // DD-MMM-YYYY (e.g., 15-Jan-2026)
+  const monthNames = /^(\d{1,2})-([A-Za-z]{3})-(\d{4})/
+  const mMatch = v.match(monthNames)
+  if (mMatch) {
+    const d = new Date(`${mMatch[2]} ${mMatch[1]}, ${mMatch[3]}`)
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  }
+
+  // Fallback
+  const d = new Date(v)
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  return null
 }
 
 function parseTime(val: string | undefined): string | null {
@@ -28,7 +57,7 @@ function parseTime(val: string | undefined): string | null {
 
 function parseNumber(val: string | undefined): number | null {
   if (!val) return null
-  const cleaned = val.replace(/[$,\s]/g, '').replace(/\((.+)\)/, '-$1')
+  const cleaned = val.replace(/[$,\s]/g, '').replace(/^\(([^)]+)\)$/, '-$1')
   const n = parseFloat(cleaned)
   return isNaN(n) ? null : n
 }
@@ -92,7 +121,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !['admin', 'super_admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'].includes(profile.role)) {
+  if (!profile || !['admin', 'super_admin', 'manager', 'sup_admin', 'marketing_admin'].includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
