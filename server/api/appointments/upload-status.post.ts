@@ -92,6 +92,7 @@ function excelDateToISO(val: any, xlsxModule?: any): { date: string; time: strin
 }
 
 export default defineEventHandler(async (event) => {
+ try {
   // Auth
   const supabaseUser = await serverSupabaseClient(event)
   const { data: { user } } = await supabaseUser.auth.getUser()
@@ -118,7 +119,8 @@ export default defineEventHandler(async (event) => {
   }
 
   // Decode base64 → buffer → parse with xlsx (supports XLS, XLSX, and CSV)
-  const XLSX = await import('xlsx')
+  const xlsxModule = await import('xlsx')
+  const XLSX = xlsxModule.default || xlsxModule
   const buffer = Buffer.from(fileData, 'base64')
   let workbook: any
   try {
@@ -382,4 +384,10 @@ export default defineEventHandler(async (event) => {
       locations: [...new Set(parsed.map(p => p.division))],
     },
   }
+ } catch (err: any) {
+   // Re-throw H3 errors (createError) as-is
+   if (err.statusCode) throw err
+   console.error('upload-status unhandled error:', err)
+   throw createError({ statusCode: 500, message: 'Upload failed: ' + (err.message || 'Unknown server error') })
+ }
 })

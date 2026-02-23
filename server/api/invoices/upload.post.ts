@@ -131,7 +131,8 @@ export default defineEventHandler(async (event) => {
   // Accept either pre-parsed JSON rows OR raw base64 file data (CSV/XLS/XLSX)
   let invoiceLines = rawInvoiceLines
   if ((!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) && fileData) {
-    const XLSX = await import('xlsx')
+    const xlsxModule = await import('xlsx')
+    const XLSX = xlsxModule.default || xlsxModule
     const buffer = Buffer.from(fileData, 'base64')
     let workbook: any
     try {

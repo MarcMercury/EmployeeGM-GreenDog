@@ -37,7 +37,8 @@ export default defineEventHandler(async (event) => {
     const buffer = Buffer.from(fileData, 'base64')
     try {
       // Try parsing as XLS/XLSX binary
-      const XLSX = await import('xlsx')
+      const xlsxModule = await import('xlsx')
+      const XLSX = xlsxModule.default || xlsxModule
       const workbook = XLSX.read(buffer, { type: 'buffer' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       csvText = XLSX.utils.sheet_to_csv(sheet)

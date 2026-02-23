@@ -130,7 +130,7 @@ export default defineNuxtConfig({
     externals: {
       // Don't bundle heavy libraries into the Nitro server — keep as external node_modules
       inline: [],
-      external: ['unpdf']
+      external: ['unpdf', 'xlsx']
     },
     routeRules: {
       '/api/invoices/upload': {
