@@ -1339,8 +1339,16 @@ async function uploadInvoiceData() {
 
     if (rows.length === 0) throw new Error('No data rows found after header')
 
+    // Trim whitespace from all row values to reduce payload size
+    for (const row of rows) {
+      for (const key of Object.keys(row)) {
+        if (typeof row[key] === 'string') row[key] = row[key].trim()
+      }
+    }
+
     // Chunk large uploads to avoid 413 payload-too-large errors
-    const UPLOAD_CHUNK_SIZE = 3000
+    // Vercel serverless functions have a 4.5 MB body size limit — keep chunks small
+    const UPLOAD_CHUNK_SIZE = 500
     let totalInserted = 0
     let totalDuplicatesSkipped = 0
     let totalErrors = 0
