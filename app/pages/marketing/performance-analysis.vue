@@ -740,13 +740,13 @@
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>EzyVet Appointment Status Report</strong> — XLS export with per-appointment timing data.
+            <strong>EzyVet Appointment Status Report</strong> — CSV or XLS export with per-appointment timing data.
             Links to Invoice Lines via owner name and animal name for cross-analysis.
           </v-alert>
           <v-file-input
             v-model="statusUploadForm.file"
-            label="Select Appointment Status XLS"
-            accept=".xls,.xlsx"
+            label="Select Appointment Status File"
+            accept=".csv,.xls,.xlsx,.tsv"
             variant="outlined"
             density="compact"
             prepend-icon="mdi-file-table-outline"
@@ -806,12 +806,12 @@
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>Weekly Tracking Spreadsheet</strong> — matrix-format CSV with appointment types per day per location (SO/VN/VE).
+            <strong>Weekly Tracking Spreadsheet</strong> — matrix-format CSV or XLS with appointment types per day per location (SO/VN/VE).
           </v-alert>
           <v-file-input
             v-model="trackingUploadForm.file"
-            label="Select Tracking CSV"
-            accept=".csv"
+            label="Select Tracking File"
+            accept=".csv,.xls,.xlsx,.tsv"
             variant="outlined"
             density="compact"
             prepend-icon="mdi-file-delimited"
@@ -1155,10 +1155,21 @@ function findHeaderRow(lines: string[], markers: RegExp[]): number {
 
 // ── Invoice Previewing + Upload ──────────────────────────────────────────
 
+function isExcelFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return name.endsWith('.xls') || name.endsWith('.xlsx')
+}
+
 function previewInvoiceFile(file: File | File[] | null) {
   invCsvPreview.columns = []; invCsvPreview.rows = []; invCsvPreview.totalRows = 0
   const f = Array.isArray(file) ? file[0] : file
   if (!f) return
+  // Skip client-side preview for XLS — server will parse it
+  if (isExcelFile(f)) {
+    invCsvPreview.columns = ['(XLS file selected — preview on upload)']
+    invCsvPreview.totalRows = 0
+    return
+  }
   const reader = new FileReader()
   reader.onload = (e) => {
     const text = e.target?.result as string; if (!text) return
@@ -1178,6 +1189,19 @@ async function uploadInvoiceData() {
   if (!invUploadForm.file) return
   uploadingInvoice.value = true
   try {
+    // XLS/XLSX: send raw file as base64, let server parse
+    if (isExcelFile(invUploadForm.file)) {
+      const fileData = await fileToBase64(invUploadForm.file)
+      invUploadProgress.value = 'Processing spreadsheet...'
+      const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { fileData, fileName: invUploadForm.file!.name } }) as any
+      invUploadProgress.value = ''
+      showNotification(`Upload complete: ${result.inserted || 0} new lines, ${result.duplicatesSkipped || 0} duplicates skipped.`)
+      showInvoiceUpload.value = false; invUploadForm.file = null; invCsvPreview.columns = []; invCsvPreview.rows = []
+      await loadInvoiceData()
+      return
+    }
+
+    // CSV/TSV: parse client-side and send as JSON rows
     const text = await invUploadForm.file.text()
     const lines = text.split('\n').filter(l => l.trim())
     if (lines.length < 2) throw new Error('File must have a header and data rows')
@@ -1273,8 +1297,13 @@ async function checkTrackingDuplicates() {
   if (!trackingUploadForm.file) return
   trackingDupCheck.loading = true
   try {
-    const csvText = await trackingUploadForm.file.text()
-    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body: { csvText, fileName: trackingUploadForm.file!.name, duplicateAction: 'check' } }) as any
+    let body: Record<string, any> = { fileName: trackingUploadForm.file!.name, duplicateAction: 'check' }
+    if (isExcelFile(trackingUploadForm.file)) {
+      body.fileData = await fileToBase64(trackingUploadForm.file)
+    } else {
+      body.csvText = await trackingUploadForm.file.text()
+    }
+    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
     trackingDupCheck.duplicateDates = result.duplicateDates || []
     trackingDupCheck.duplicateRecordCount = result.duplicateRecordCount || 0
     trackingDupCheck.newRecordCount = result.newRecordCount || 0
@@ -1290,8 +1319,13 @@ async function uploadTrackingData() {
   if (!trackingUploadForm.file) return
   uploadingTracking.value = true
   try {
-    const csvText = await trackingUploadForm.file.text()
-    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body: { csvText, fileName: trackingUploadForm.file!.name, duplicateAction: trackingDupCheck.chosenAction || undefined } }) as any
+    let body: Record<string, any> = { fileName: trackingUploadForm.file!.name, duplicateAction: trackingDupCheck.chosenAction || undefined }
+    if (isExcelFile(trackingUploadForm.file)) {
+      body.fileData = await fileToBase64(trackingUploadForm.file)
+    } else {
+      body.csvText = await trackingUploadForm.file.text()
+    }
+    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
     let msg = `Uploaded ${result?.inserted || 0} appointment tracking records.`
     if (result?.weekTitle) msg += ` (${result.weekTitle})`
     if (result?.skippedDuplicates > 0) msg += ` ${result.skippedDuplicates} skipped.`

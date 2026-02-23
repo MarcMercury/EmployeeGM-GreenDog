@@ -105,13 +105,19 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No file data provided. Send base64-encoded XLS content.' })
   }
 
-  // Decode base64 → buffer → parse with xlsx
+  // Decode base64 → buffer → parse with xlsx (supports XLS, XLSX, and CSV)
   const buffer = Buffer.from(fileData, 'base64')
   let workbook: XLSX.WorkBook
   try {
     workbook = XLSX.read(buffer, { type: 'buffer' })
-  } catch (err: any) {
-    throw createError({ statusCode: 400, message: 'Failed to parse XLS file: ' + (err.message || 'Invalid format') })
+  } catch {
+    // Binary parse failed — try treating as CSV/TSV text
+    try {
+      const csvText = buffer.toString('utf-8')
+      workbook = XLSX.read(csvText, { type: 'string' })
+    } catch (err2: any) {
+      throw createError({ statusCode: 400, message: 'Failed to parse file: ' + (err2.message || 'Unsupported format. Upload CSV, XLS, or XLSX.') })
+    }
   }
 
   const sheetName = workbook.SheetNames[0]

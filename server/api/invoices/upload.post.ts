@@ -8,7 +8,7 @@
  * Purges records older than 24 months on each upload.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'\nimport * as XLSX from 'xlsx'
 
 function parseDate(val: string | undefined): string | null {
   if (!val) return null
@@ -97,7 +97,28 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event)
-  const { invoiceLines, fileName } = body
+  const { invoiceLines: rawInvoiceLines, fileData, fileName } = body
+
+  // Accept either pre-parsed JSON rows OR raw base64 file data (CSV/XLS/XLSX)
+  let invoiceLines = rawInvoiceLines
+  if ((!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) && fileData) {
+    const buffer = Buffer.from(fileData, 'base64')
+    let workbook: XLSX.WorkBook
+    try {
+      workbook = XLSX.read(buffer, { type: 'buffer' })
+    } catch {
+      // Binary parse failed — try as CSV text
+      try {
+        const csvText = buffer.toString('utf-8')
+        workbook = XLSX.read(csvText, { type: 'string' })
+      } catch (err2: any) {
+        throw createError({ statusCode: 400, message: 'Failed to parse file: ' + (err2.message || 'Unsupported format') })
+      }
+    }
+    const sheet = workbook.Sheets[workbook.SheetNames[0]]
+    if (!sheet) throw createError({ statusCode: 400, message: 'No sheets found in file' })
+    invoiceLines = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  }
 
   if (!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) {
     throw createError({ statusCode: 400, message: 'No invoice line data provided' })

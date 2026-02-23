@@ -10,6 +10,7 @@
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 import { parseWeeklyTrackingCSV } from '../../utils/appointments/clinic-report-parser'
+import * as XLSX from 'xlsx'
 
 export default defineEventHandler(async (event) => {
   // Auth
@@ -29,10 +30,25 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event)
-  const { csvText, fileName, duplicateAction } = body
+  const { csvText: rawCsvText, fileData, fileName, duplicateAction } = body
+
+  // Accept either CSV text directly or base64-encoded file (CSV or XLS/XLSX)
+  let csvText = rawCsvText
+  if (!csvText && fileData) {
+    const buffer = Buffer.from(fileData, 'base64')
+    try {
+      // Try parsing as XLS/XLSX binary
+      const workbook = XLSX.read(buffer, { type: 'buffer' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      csvText = XLSX.utils.sheet_to_csv(sheet)
+    } catch {
+      // Not a valid spreadsheet — treat as CSV text
+      csvText = buffer.toString('utf-8')
+    }
+  }
 
   if (!csvText || typeof csvText !== 'string') {
-    throw createError({ statusCode: 400, message: 'No CSV text provided' })
+    throw createError({ statusCode: 400, message: 'No file data provided. Send CSV text or base64-encoded CSV/XLS/XLSX.' })
   }
 
   // Parse the matrix-format CSV
