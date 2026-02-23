@@ -59,7 +59,21 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!parsed.appointments || parsed.appointments.length === 0) {
-    throw createError({ statusCode: 400, message: 'No appointment data found in the CSV. Make sure it follows the weekly tracking matrix format.' })
+    // Build diagnostic info to help debug what the parser received
+    const csvLines = csvText.split('\n')
+    const diagnostics = {
+      totalLines: csvLines.length,
+      sectionsFound: parsed.sections?.length || 0,
+      sectionNames: parsed.sections?.map((s: any) => s.category) || [],
+      daysFound: parsed.days?.length || 0,
+      weekTitle: parsed.weekTitle || '(none)',
+      weekStart: parsed.weekStart || '(none)',
+      firstLines: csvLines.slice(0, 5).map(l => l.substring(0, 120)),
+    }
+    throw createError({
+      statusCode: 400,
+      message: `No appointment data found in the CSV. Diagnostics: ${JSON.stringify(diagnostics)}`,
+    })
   }
 
   // Filter out availability rows — only keep booked appointments

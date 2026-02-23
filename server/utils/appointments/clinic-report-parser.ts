@@ -68,17 +68,64 @@ export interface FlattenedAppointment {
   source: 'weekly_tracking'
 }
 
-// Map section headers to service codes
+// Map section headers to service codes (all lowercase keys)
 const SECTION_TO_SERVICE: Record<string, { code: string; department: string }> = {
   'dentistry': { code: 'DENTAL', department: 'Dentistry' },
+  'dental': { code: 'DENTAL', department: 'Dentistry' },
+  'neat': { code: 'DENTAL', department: 'Dentistry' },
   'advanced procedures': { code: 'AP', department: 'Advanced Procedures' },
+  'advanced procedure': { code: 'AP', department: 'Advanced Procedures' },
+  'ap': { code: 'AP', department: 'Advanced Procedures' },
   'wellness': { code: 'WELLNESS', department: 'Wellness' },
+  'veterinary exams': { code: 'WELLNESS', department: 'Wellness' },
+  'vet exams': { code: 'WELLNESS', department: 'Wellness' },
   'add-on services': { code: 'ADDON', department: 'Add-on Services' },
+  'add on services': { code: 'ADDON', department: 'Add-on Services' },
+  'addon services': { code: 'ADDON', department: 'Add-on Services' },
+  'add-ons': { code: 'ADDON', department: 'Add-on Services' },
   'imaging': { code: 'IMAGING', department: 'Imaging' },
+  'radiology': { code: 'IMAGING', department: 'Imaging' },
   'surgery': { code: 'SURG', department: 'Surgery' },
   'exotics': { code: 'EXOTIC', department: 'Exotics' },
+  'exotic': { code: 'EXOTIC', department: 'Exotics' },
   'internal medicine': { code: 'IM', department: 'Internal Medicine' },
+  'im': { code: 'IM', department: 'Internal Medicine' },
   'cardiology': { code: 'CARDIO', department: 'Cardiology' },
+  'cardio': { code: 'CARDIO', department: 'Cardiology' },
+  'dog ppl': { code: 'OTHER', department: 'DOG PPL' },
+  'dogppl': { code: 'OTHER', department: 'DOG PPL' },
+}
+
+/**
+ * Fuzzy match a string against SECTION_TO_SERVICE keys.
+ * Handles extra whitespace, punctuation variations, and partial matches.
+ */
+function matchSectionName(raw: string): { code: string; department: string } | null {
+  const cleaned = raw.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim()
+  if (!cleaned) return null
+
+  // Exact match
+  if (SECTION_TO_SERVICE[cleaned]) return SECTION_TO_SERVICE[cleaned]
+
+  // Try without hyphens
+  const noHyphens = cleaned.replace(/-/g, ' ')
+  if (SECTION_TO_SERVICE[noHyphens]) return SECTION_TO_SERVICE[noHyphens]
+
+  // Try with hyphens instead of spaces
+  const withHyphens = cleaned.replace(/\s+/g, '-')
+  if (SECTION_TO_SERVICE[withHyphens]) return SECTION_TO_SERVICE[withHyphens]
+
+  // Partial/startsWith match
+  for (const [key, val] of Object.entries(SECTION_TO_SERVICE)) {
+    if (cleaned.startsWith(key) || key.startsWith(cleaned)) return val
+  }
+
+  // Contains match (e.g., "dentistry / dental" contains "dentistry")
+  for (const [key, val] of Object.entries(SECTION_TO_SERVICE)) {
+    if (key.length >= 3 && (cleaned.includes(key) || key.includes(cleaned))) return val
+  }
+
+  return null
 }
 
 const LOCATION_NAMES: Record<string, string> = {
@@ -91,7 +138,9 @@ const LOCATION_NAMES: Record<string, string> = {
  * Parse a weekly appointment tracking CSV from the clinic
  */
 export function parseWeeklyTrackingCSV(csvText: string): ParsedWeeklyReport {
-  const lines = csvText.split('\n').map(l => l.replace(/\r$/, ''))
+  // Strip BOM characters and normalize line endings
+  const cleanText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = cleanText.split('\n').map(l => l.trimEnd())
 
   // Row 0: Title — extract week range
   const titleLine = lines[0] || ''
@@ -125,6 +174,33 @@ export function parseWeeklyTrackingCSV(csvText: string): ParsedWeeklyReport {
     })
   }
 
+  // Also try scanning other lines for day headers if none found in line 1
+  if (days.length === 0) {
+    for (let h = 0; h < Math.min(5, lines.length); h++) {
+      const altLine = lines[h]
+      const altPattern = /(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d+\/\d+)/gi
+      let altMatch
+      while ((altMatch = altPattern.exec(altLine)) !== null) {
+        const dayName = altMatch[1]
+        const dateStr = parseShortDate(altMatch[2])
+        days.push({ dayName, date: dateStr, dayOfWeek: getDayOfWeekFromName(dayName) })
+      }
+      if (days.length > 0) break
+    }
+  }
+
+  // If still no days, generate from week range
+  if (days.length === 0 && weekStart && weekEnd) {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const start = new Date(weekStart + 'T00:00:00')
+    const end = new Date(weekEnd + 'T00:00:00')
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const iso = d.toISOString().slice(0, 10)
+      const dow = d.getDay()
+      days.push({ dayName: dayNames[dow], date: iso, dayOfWeek: dow })
+    }
+  }
+
   // Parse data rows into sections
   const sections: ReportSection[] = []
   let currentSection: ReportSection | null = null
@@ -137,12 +213,29 @@ export function parseWeeklyTrackingCSV(csvText: string): ParsedWeeklyReport {
     const secondCell = (cells[1] || '').trim()
 
     // Check if this is a section header (category row)
-    // Section headers have the category name in the second column and empty first column
-    const possibleCategory = secondCell.toLowerCase()
-    if (!firstCell && possibleCategory && SECTION_TO_SERVICE[possibleCategory]) {
-      const svcInfo = SECTION_TO_SERVICE[possibleCategory]
+    // Typical format: column 0 empty, section name in column 1 (e.g. ",Dentistry,,,")
+    // Also handle: section name in column 0 (e.g. "Dentistry,,,")
+    let svcInfo: { code: string; department: string } | null = null
+    let sectionLabel = ''
+
+    // Primary: section name in column 1 with empty column 0
+    if (!firstCell && secondCell) {
+      svcInfo = matchSectionName(secondCell)
+      if (svcInfo) sectionLabel = secondCell
+    }
+
+    // Fallback: section name in column 0 (no data in other columns or all empty)
+    if (!svcInfo && firstCell) {
+      const otherCells = cells.slice(1).filter(c => c.trim())
+      if (otherCells.length === 0) {
+        svcInfo = matchSectionName(firstCell)
+        if (svcInfo) sectionLabel = firstCell
+      }
+    }
+
+    if (svcInfo) {
       currentSection = {
-        category: secondCell,
+        category: sectionLabel,
         serviceCode: svcInfo.code,
         rows: [],
         totalBooked: {},
@@ -261,7 +354,7 @@ function flattenToAppointments(sections: ReportSection[], weekStart: string): Fl
   const appointments: FlattenedAppointment[] = []
 
   for (const section of sections) {
-    const svcInfo = SECTION_TO_SERVICE[section.category.toLowerCase()] || { code: 'OTHER', department: section.category }
+    const svcInfo = matchSectionName(section.category) || { code: 'OTHER', department: section.category }
 
     for (const row of section.rows) {
       for (const daily of row.dailyCounts) {
