@@ -39,8 +39,8 @@
             <v-divider class="my-1" />
             <v-list-subheader class="text-caption">Clinic Tracking</v-list-subheader>
             <v-list-item prepend-icon="mdi-table-large" @click="showTrackingUpload = true">
-              <v-list-item-title>Appointment Tracking CSV</v-list-item-title>
-              <v-list-item-subtitle class="text-caption">Weekly matrix tracking spreadsheet</v-list-item-subtitle>
+              <v-list-item-title>Appointment Tracking</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">Batch upload weekly tracking files (XLS/CSV)</v-list-item-subtitle>
             </v-list-item>
             <v-list-item prepend-icon="mdi-folder-open" :disabled="importingClinic" @click="importClinicReports">
               <v-list-item-title>Import Saved Clinic Reports</v-list-item-title>
@@ -584,9 +584,9 @@
         <v-card v-else-if="apptStats.totalAppointments === 0" class="mb-6 pa-8 text-center" elevation="2">
           <v-icon size="72" color="grey-lighten-1" class="mb-4">mdi-calendar-blank</v-icon>
           <h3 class="text-h6 mb-2">No Appointment Data Yet</h3>
-          <p class="text-body-2 text-grey mb-4">Upload appointment tracking CSVs or import clinic reports.</p>
+          <p class="text-body-2 text-grey mb-4">Upload appointment tracking files or import clinic reports.</p>
           <div class="d-flex gap-2 justify-center">
-            <v-btn color="primary" prepend-icon="mdi-table-large" @click="showTrackingUpload = true">Upload Tracking CSV</v-btn>
+            <v-btn color="primary" prepend-icon="mdi-upload-multiple" @click="showTrackingUpload = true">Upload Tracking Files</v-btn>
             <v-btn color="deep-purple" variant="outlined" prepend-icon="mdi-clock-check-outline" @click="showStatusUpload = true">Upload Status Report</v-btn>
             <v-btn color="teal" variant="outlined" prepend-icon="mdi-folder-open" :loading="importingClinic" @click="importClinicReports">Import Clinic Reports</v-btn>
           </div>
@@ -796,61 +796,107 @@
       </v-card>
     </v-dialog>
 
-    <!-- Appointment Tracking Upload Dialog -->
-    <v-dialog v-model="showTrackingUpload" max-width="640" persistent>
+    <!-- Appointment Tracking Batch Upload Dialog -->
+    <v-dialog v-model="showTrackingUpload" max-width="720" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start>mdi-table-large</v-icon>
           Upload Appointment Tracking
           <v-spacer />
-          <v-btn icon variant="text" @click="showTrackingUpload = false"><v-icon>mdi-close</v-icon></v-btn>
+          <v-btn icon variant="text" @click="closeTrackingUpload"><v-icon>mdi-close</v-icon></v-btn>
         </v-card-title>
         <v-divider />
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>Weekly Tracking Spreadsheet</strong> — matrix-format XLS/CSV with appointment types per day per location (SO/VN/VE).<br/>
+            <strong>Batch Upload</strong> — Select multiple weekly tracking files at once. Each file is processed sequentially.<br/>
             <strong>Recommended:</strong> Use XLS/XLSX format — CSV exports may be missing week date range headers needed for correct date attribution.
           </v-alert>
           <v-file-input
-            v-model="trackingUploadForm.file"
-            label="Select Tracking File"
+            v-model="trackingUploadForm.files"
+            label="Select Tracking Files (one or many)"
             accept=".csv,.xls,.xlsx,.tsv"
             variant="outlined"
             density="compact"
-            prepend-icon="mdi-file-delimited"
-            :rules="[v => !!v || 'File is required']"
-            @update:model-value="resetTrackingDupCheck"
+            prepend-icon="mdi-file-multiple"
+            multiple
+            :rules="[v => (v && v.length > 0) || 'At least one file is required']"
+            @update:model-value="onTrackingFilesSelected"
+            :disabled="trackingBatch.processing"
           />
-          <template v-if="trackingUploadInfo.weekTitle">
-            <v-chip size="small" color="deep-purple" variant="tonal" class="mb-2 mr-2"><v-icon start size="14">mdi-calendar-week</v-icon>{{ trackingUploadInfo.weekTitle }}</v-chip>
-            <v-chip v-for="sec in trackingUploadInfo.sections" :key="sec" size="x-small" variant="outlined" class="mb-2 mr-1">{{ sec }}</v-chip>
-          </template>
 
-          <!-- Duplicate Detection -->
-          <v-alert
-            v-if="trackingDupCheck.checked && trackingDupCheck.duplicateDates.length > 0 && !trackingDupCheck.chosenAction"
-            type="warning" variant="tonal" density="compact" class="mb-4" prominent icon="mdi-calendar-alert"
-          >
-            <div class="font-weight-bold mb-1">{{ trackingDupCheck.duplicateDates.length }} day(s) already have tracking data</div>
-            <div class="d-flex gap-2">
-              <v-btn size="small" color="warning" variant="flat" prepend-icon="mdi-skip-next" @click="trackingDupCheck.chosenAction = 'skip'">Skip ({{ trackingDupCheck.newRecordCount }} new)</v-btn>
-              <v-btn size="small" color="orange-darken-2" variant="flat" prepend-icon="mdi-swap-horizontal" @click="trackingDupCheck.chosenAction = 'replace'">Replace</v-btn>
+          <!-- Duplicate handling setting -->
+          <div v-if="trackingBatch.files.length > 0 && !trackingBatch.processing && !trackingBatch.completed" class="mb-4">
+            <div class="text-subtitle-2 mb-1">Duplicate handling for all files:</div>
+            <v-btn-toggle v-model="trackingBatch.duplicateAction" mandatory density="compact" color="primary">
+              <v-btn value="skip" size="small" prepend-icon="mdi-skip-next">Skip existing dates</v-btn>
+              <v-btn value="replace" size="small" prepend-icon="mdi-swap-horizontal">Replace existing dates</v-btn>
+            </v-btn-toggle>
+          </div>
+
+          <!-- File list with status -->
+          <div v-if="trackingBatch.files.length > 0" style="max-height: 340px; overflow-y: auto;">
+            <v-list density="compact" class="pa-0">
+              <v-list-item
+                v-for="(f, idx) in trackingBatch.files"
+                :key="idx"
+                :class="{ 'bg-blue-lighten-5': f.status === 'uploading' }"
+                class="px-2"
+              >
+                <template #prepend>
+                  <v-icon v-if="f.status === 'pending'" size="20" color="grey">mdi-clock-outline</v-icon>
+                  <v-progress-circular v-else-if="f.status === 'uploading'" size="20" width="2" indeterminate color="primary" />
+                  <v-icon v-else-if="f.status === 'done'" size="20" color="success">mdi-check-circle</v-icon>
+                  <v-icon v-else size="20" color="error">mdi-alert-circle</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ f.file.name }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  <template v-if="f.status === 'pending'">Waiting...</template>
+                  <template v-else-if="f.status === 'uploading'">Processing...</template>
+                  <template v-else-if="f.status === 'done'">
+                    <span v-if="f.weekTitle" class="font-weight-medium">{{ f.weekTitle }} — </span>
+                    {{ f.inserted }} inserted<span v-if="f.skipped">, {{ f.skipped }} skipped</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-error">{{ f.error }}</span>
+                  </template>
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </div>
+
+          <!-- Batch progress -->
+          <div v-if="trackingBatch.processing" class="mt-4">
+            <v-progress-linear
+              :model-value="((trackingBatch.currentIndex + 1) / trackingBatch.files.length) * 100"
+              color="primary"
+              height="8"
+              rounded
+            />
+            <div class="text-caption text-center mt-1">
+              Processing file {{ trackingBatch.currentIndex + 1 }} of {{ trackingBatch.files.length }}...
             </div>
-          </v-alert>
-          <v-alert v-if="trackingDupCheck.chosenAction" type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>{{ trackingDupCheck.chosenAction === 'skip' ? 'Skip' : 'Replace' }} mode</strong>
-            <v-btn size="x-small" variant="text" class="ml-2" @click="trackingDupCheck.chosenAction = null">Change</v-btn>
-          </v-alert>
-          <v-alert v-if="trackingDupCheck.checked && trackingDupCheck.duplicateDates.length === 0" type="success" variant="tonal" density="compact" class="mb-4" icon="mdi-check-circle">
-            No duplicates — all records are new.
+          </div>
+
+          <!-- Batch summary -->
+          <v-alert v-if="trackingBatch.completed" type="success" variant="tonal" density="compact" class="mt-4" icon="mdi-check-circle-outline">
+            <strong>Batch complete:</strong> {{ trackingBatch.totalInserted }} records inserted across {{ trackingBatch.files.filter(f => f.status === 'done').length }} file(s).
+            <span v-if="trackingBatch.totalSkipped"> {{ trackingBatch.totalSkipped }} skipped.</span>
+            <span v-if="trackingBatch.totalErrors"> {{ trackingBatch.files.filter(f => f.status === 'error').length }} file(s) had errors.</span>
           </v-alert>
         </v-card-text>
         <v-divider />
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showTrackingUpload = false">Cancel</v-btn>
-          <v-btn v-if="!trackingDupCheck.checked" color="primary" :loading="trackingDupCheck.loading" :disabled="!trackingUploadForm.file" @click="checkTrackingDuplicates">Check & Upload</v-btn>
-          <v-btn v-else color="primary" :loading="uploadingTracking" :disabled="!trackingUploadForm.file || (trackingDupCheck.duplicateDates.length > 0 && !trackingDupCheck.chosenAction)" @click="uploadTrackingData">Upload & Process</v-btn>
+          <v-btn variant="text" @click="closeTrackingUpload">{{ trackingBatch.completed ? 'Done' : 'Cancel' }}</v-btn>
+          <v-btn
+            v-if="!trackingBatch.processing && !trackingBatch.completed"
+            color="primary"
+            :disabled="trackingBatch.files.length === 0"
+            prepend-icon="mdi-upload-multiple"
+            @click="uploadTrackingBatch"
+          >
+            Upload {{ trackingBatch.files.length }} File{{ trackingBatch.files.length !== 1 ? 's' : '' }}
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -881,7 +927,6 @@ const analyzingAppt = ref(false)
 const analyzingCombined = ref(false)
 const uploadingInvoice = ref(false)
 const uploadingStatus = ref(false)
-const uploadingTracking = ref(false)
 const importingClinic = ref(false)
 const syncing = ref(false)
 const invUploadProgress = ref('')
@@ -901,19 +946,32 @@ const apptFilters = reactive({ locationId: null as string | null, startDate: def
 // Upload forms
 const invUploadForm = reactive({ file: null as File | null })
 const statusUploadForm = reactive({ file: null as File | null })
-const trackingUploadForm = reactive({ file: null as File | null })
+const trackingUploadForm = reactive({ files: [] as File[] })
 
 const invCsvPreview = reactive({ columns: [] as string[], rows: [] as Record<string, string>[], totalRows: 0 })
 
 const statusUploadInfo = reactive({ reportLocation: '', dateRange: '' })
-const trackingUploadInfo = reactive({ weekTitle: '', sections: [] as string[] })
+
+interface TrackingFileStatus {
+  file: File
+  status: 'pending' | 'uploading' | 'done' | 'error'
+  weekTitle: string
+  inserted: number
+  skipped: number
+  error: string
+}
+const trackingBatch = reactive({
+  files: [] as TrackingFileStatus[],
+  duplicateAction: 'skip' as 'skip' | 'replace',
+  processing: false,
+  currentIndex: -1,
+  totalInserted: 0,
+  totalSkipped: 0,
+  totalErrors: 0,
+  completed: false,
+})
 
 const statusDupCheck = reactive({
-  checked: false, loading: false,
-  duplicateDates: [] as string[], duplicateRecordCount: 0, newRecordCount: 0,
-  chosenAction: null as 'skip' | 'replace' | null,
-})
-const trackingDupCheck = reactive({
   checked: false, loading: false,
   duplicateDates: [] as string[], duplicateRecordCount: 0, newRecordCount: 0,
   chosenAction: null as 'skip' | 'replace' | null,
@@ -1270,50 +1328,85 @@ async function uploadStatusData() {
   finally { uploadingStatus.value = false }
 }
 
-// ── Appointment Tracking Upload ──────────────────────────────────────────
+// ── Appointment Tracking Batch Upload ─────────────────────────────────────
 
-function resetTrackingDupCheck() {
-  trackingDupCheck.checked = false; trackingDupCheck.loading = false
-  trackingDupCheck.duplicateDates = []; trackingDupCheck.duplicateRecordCount = 0
-  trackingDupCheck.newRecordCount = 0; trackingDupCheck.chosenAction = null
-  trackingUploadInfo.weekTitle = ''; trackingUploadInfo.sections = []
+function onTrackingFilesSelected(files: File | File[] | null) {
+  const fileList = Array.isArray(files) ? files : files ? [files] : []
+  trackingBatch.files = fileList.map(f => ({
+    file: f,
+    status: 'pending' as const,
+    weekTitle: '',
+    inserted: 0,
+    skipped: 0,
+    error: '',
+  }))
+  trackingBatch.processing = false
+  trackingBatch.completed = false
+  trackingBatch.currentIndex = -1
+  trackingBatch.totalInserted = 0
+  trackingBatch.totalSkipped = 0
+  trackingBatch.totalErrors = 0
 }
 
-async function checkTrackingDuplicates() {
-  if (!trackingUploadForm.file) return
-  trackingDupCheck.loading = true
-  try {
-    // Always send as base64 — server handles CSV/XLS/XLSX uniformly via xlsx library
-    const fileData = await fileToBase64(trackingUploadForm.file)
-    const body: Record<string, any> = { fileData, fileName: trackingUploadForm.file!.name, duplicateAction: 'check' }
-    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
-    trackingDupCheck.duplicateDates = result.duplicateDates || []
-    trackingDupCheck.duplicateRecordCount = result.duplicateRecordCount || 0
-    trackingDupCheck.newRecordCount = result.newRecordCount || 0
-    trackingDupCheck.checked = true
-    trackingUploadInfo.weekTitle = result.weekTitle || ''
-    trackingUploadInfo.sections = result.sections || []
-    if (trackingDupCheck.duplicateDates.length === 0) trackingDupCheck.chosenAction = 'skip'
-  } catch (err: any) { showNotification('Tracking check failed: ' + (err.data?.message || err.message || 'Unknown'), 'error') }
-  finally { trackingDupCheck.loading = false }
+function closeTrackingUpload() {
+  showTrackingUpload.value = false
+  trackingUploadForm.files = []
+  trackingBatch.files = []
+  trackingBatch.processing = false
+  trackingBatch.completed = false
+  trackingBatch.currentIndex = -1
+  trackingBatch.totalInserted = 0
+  trackingBatch.totalSkipped = 0
+  trackingBatch.totalErrors = 0
+  if (trackingBatch.totalInserted > 0) loadApptData()
 }
 
-async function uploadTrackingData() {
-  if (!trackingUploadForm.file) return
-  uploadingTracking.value = true
-  try {
-    // Always send as base64 — server handles CSV/XLS/XLSX uniformly via xlsx library
-    const fileData = await fileToBase64(trackingUploadForm.file)
-    const body: Record<string, any> = { fileData, fileName: trackingUploadForm.file!.name, duplicateAction: trackingDupCheck.chosenAction || undefined }
-    const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
-    let msg = `Uploaded ${result?.inserted || 0} appointment tracking records.`
-    if (result?.weekTitle) msg += ` (${result.weekTitle})`
-    if (result?.skippedDuplicates > 0) msg += ` ${result.skippedDuplicates} skipped.`
-    showNotification(msg)
-    showTrackingUpload.value = false; trackingUploadForm.file = null
-    resetTrackingDupCheck(); await loadApptData()
-  } catch (err: any) { showNotification('Upload failed: ' + (err.data?.message || err.message || 'Unknown'), 'error') }
-  finally { uploadingTracking.value = false }
+async function uploadTrackingBatch() {
+  if (trackingBatch.files.length === 0) return
+  trackingBatch.processing = true
+  trackingBatch.completed = false
+  trackingBatch.totalInserted = 0
+  trackingBatch.totalSkipped = 0
+  trackingBatch.totalErrors = 0
+
+  for (let i = 0; i < trackingBatch.files.length; i++) {
+    trackingBatch.currentIndex = i
+    const entry = trackingBatch.files[i]
+    entry.status = 'uploading'
+
+    try {
+      const fileData = await fileToBase64(entry.file)
+      const body: Record<string, any> = {
+        fileData,
+        fileName: entry.file.name,
+        duplicateAction: trackingBatch.duplicateAction,
+      }
+      const result = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
+
+      entry.status = 'done'
+      entry.weekTitle = result.weekTitle || ''
+      entry.inserted = result.inserted || 0
+      entry.skipped = result.skippedDuplicates || 0
+      trackingBatch.totalInserted += entry.inserted
+      trackingBatch.totalSkipped += entry.skipped
+    } catch (err: any) {
+      entry.status = 'error'
+      entry.error = err.data?.message || err.message || 'Upload failed'
+      trackingBatch.totalErrors++
+    }
+  }
+
+  trackingBatch.processing = false
+  trackingBatch.completed = true
+
+  const doneCount = trackingBatch.files.filter(f => f.status === 'done').length
+  showNotification(
+    `Batch complete: ${trackingBatch.totalInserted} records from ${doneCount} file(s).` +
+    (trackingBatch.totalSkipped ? ` ${trackingBatch.totalSkipped} skipped.` : '') +
+    (trackingBatch.totalErrors ? ` ${trackingBatch.totalErrors} error(s).` : ''),
+    trackingBatch.totalErrors ? 'warning' : 'success'
+  )
+  await loadApptData()
 }
 
 // ── ezyVet Sync ──────────────────────────────────────────────────────────
