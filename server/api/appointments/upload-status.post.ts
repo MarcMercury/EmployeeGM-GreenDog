@@ -12,7 +12,6 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
-import { createRequire } from 'module'
 
 interface StatusRow {
   division: string
@@ -120,9 +119,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Decode base64 → buffer → parse with xlsx (supports XLS, XLSX, and CSV)
-  // Use createRequire for CJS require — preserves xlsx's internal cpexcel.js resolution
-  const _require = createRequire(import.meta.url)
-  const XLSX = _require('xlsx')
+  const XLSX = await import('xlsx').then(m => m.default || m)
   const buffer = Buffer.from(fileData, 'base64')
   let workbook: any
   try {

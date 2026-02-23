@@ -131,10 +131,8 @@ export default defineEventHandler(async (event) => {
   // Accept either pre-parsed JSON rows OR raw base64 file data (CSV/XLS/XLSX)
   let invoiceLines = rawInvoiceLines
   if ((!invoiceLines || !Array.isArray(invoiceLines) || invoiceLines.length === 0) && fileData) {
-    // Use createRequire for CJS require — preserves xlsx's internal cpexcel.js resolution
-    const { createRequire } = await import('module')
-    const _require = createRequire(import.meta.url)
-    const XLSX = _require('xlsx')
+    // Dynamic import — xlsx is inlined by Nitro so all deps are bundled
+    const XLSX = await import('xlsx').then(m => m.default || m)
     const buffer = Buffer.from(fileData, 'base64')
     let workbook: any
     try {

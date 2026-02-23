@@ -129,7 +129,7 @@ export default defineNuxtConfig({
   nitro: {
     externals: {
       // Don't bundle heavy libraries into the Nitro server — keep as external node_modules
-      inline: [],
+      inline: ['xlsx'],
       external: ['unpdf']
     },
     routeRules: {

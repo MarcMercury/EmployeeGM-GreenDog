@@ -10,7 +10,6 @@
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 import { parseWeeklyTrackingCSV } from '../../utils/appointments/clinic-report-parser'
-import { createRequire } from 'module'
 export default defineEventHandler(async (event) => {
   // Auth
   const supabaseUser = await serverSupabaseClient(event)
@@ -37,9 +36,7 @@ export default defineEventHandler(async (event) => {
     const buffer = Buffer.from(fileData, 'base64')
     try {
       // Try parsing as XLS/XLSX binary
-      // Use createRequire for CJS require — preserves xlsx's internal cpexcel.js resolution
-      const _require = createRequire(import.meta.url)
-      const XLSX = _require('xlsx')
+      const XLSX = await import('xlsx').then(m => m.default || m)
       const workbook = XLSX.read(buffer, { type: 'buffer' })
       const sheet = workbook.Sheets[workbook.SheetNames[0]]
       csvText = XLSX.utils.sheet_to_csv(sheet)
