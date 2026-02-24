@@ -886,7 +886,7 @@ async function addNote() {
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('first_name, last_name')
+      .select('id, first_name, last_name')
       .eq('auth_user_id', user.value?.id)
       .single()
 
@@ -901,7 +901,7 @@ async function addNote() {
       partner_id: partner.value.id,
       content: newNote.value.trim(),
       note_type: 'general',
-      created_by: user.value?.id,
+      created_by: profile?.id || null,
       author_initials: initials.toUpperCase(),
       created_by_name: fullName
     })
@@ -938,7 +938,7 @@ async function saveEditedNote(note: any) {
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('first_name, last_name')
+      .select('id, first_name, last_name')
       .eq('auth_user_id', user.value?.id)
       .single()
 
@@ -949,7 +949,7 @@ async function saveEditedNote(note: any) {
     const { error } = await supabase.from('partner_notes').update({
       content: editNoteContent.value.trim(),
       edited_at: new Date().toISOString(),
-      edited_by: user.value?.id,
+      edited_by: profile?.id || null,
       edited_by_initials: initials.toUpperCase()
     }).eq('id', note.id)
     if (error) throw error

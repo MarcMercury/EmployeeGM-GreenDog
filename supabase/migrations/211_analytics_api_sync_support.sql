@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.ezyvet_crm_sync_log (
 
 ALTER TABLE public.ezyvet_crm_sync_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage ezyvet_crm_sync_log" ON public.ezyvet_crm_sync_log;
 CREATE POLICY "Admins can manage ezyvet_crm_sync_log"
   ON public.ezyvet_crm_sync_log
   FOR ALL
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.analytics_sync_status (
 
 ALTER TABLE public.analytics_sync_status ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage analytics_sync_status" ON public.analytics_sync_status;
 CREATE POLICY "Admins can manage analytics_sync_status"
   ON public.analytics_sync_status
   FOR ALL

@@ -296,6 +296,10 @@ async function getExistingCount(supabase: SupabaseClient): Promise<number> {
  * the `referral_partners` table and updates their referral counts,
  * revenue totals, and last referral date.
  *
+ * Only updates partners whose `last_data_source` is NOT 'csv_upload'
+ * (or is null). Partners with fresh CSV-uploaded stats are protected
+ * from being overwritten by the less-precise contact-based aggregation.
+ *
  * This replaces the manual "Upload EzyVet Report" button in the
  * Partnerships/Referral CRM page.
  */
@@ -303,28 +307,29 @@ export async function updateReferralStatsFromContacts(
   supabase: SupabaseClient
 ): Promise<{
   partnersUpdated: number
+  partnersSkipped: number
   totalReferrals: number
   totalRevenue: number
 }> {
   logger.info('Updating referral partner stats from contact data', 'ezyvet-sync-analytics')
 
   try {
-    // 1. Get all referral partners
+    // 1. Get all referral partners (include last_data_source for overwrite protection)
     const { data: partners, error: partnerError } = await supabase
       .from('referral_partners')
-      .select('id, hospital_name')
+      .select('id, hospital_name, last_data_source, last_sync_date')
 
     if (partnerError) throw partnerError
     if (!partners || partners.length === 0) {
       logger.info('No referral partners found, skipping referral stats update', 'ezyvet-sync-analytics')
-      return { partnersUpdated: 0, totalReferrals: 0, totalRevenue: 0 }
+      return { partnersUpdated: 0, partnersSkipped: 0, totalReferrals: 0, totalRevenue: 0 }
     }
 
     // 2. Build a map of partner names for matching
-    const partnerMap = new Map<string, { id: string; name: string }>()
+    const partnerMap = new Map<string, { id: string; name: string; lastDataSource: string | null; lastSyncDate: string | null }>()
     for (const p of partners) {
       const normName = (p.hospital_name || '').toLowerCase().trim()
-      if (normName) partnerMap.set(normName, { id: p.id, name: p.hospital_name })
+      if (normName) partnerMap.set(normName, { id: p.id, name: p.hospital_name, lastDataSource: p.last_data_source, lastSyncDate: p.last_sync_date })
     }
 
     // 3. Query contacts with referral sources
@@ -359,18 +364,34 @@ export async function updateReferralStatsFromContacts(
       stats.set(match.id, existing)
     }
 
-    // 5. Update partner records
+    // 5. Update partner records — SKIP partners whose stats came from a recent CSV upload
     let partnersUpdated = 0
+    let partnersSkipped = 0
     let totalReferrals = 0
     let totalRevenue = 0
 
     for (const [partnerId, stat] of Array.from(stats)) {
+      // Find the partner metadata
+      const partnerMeta = Array.from(partnerMap.values()).find(p => p.id === partnerId)
+
+      // Protect CSV-sourced data from being overwritten by ezyvet sync.
+      // If the partner's stats were set by a CSV upload within the last 30 days, skip it.
+      if (partnerMeta?.lastDataSource === 'csv_upload' && partnerMeta.lastSyncDate) {
+        const daysSinceSync = (Date.now() - new Date(partnerMeta.lastSyncDate).getTime()) / (1000 * 60 * 60 * 24)
+        if (daysSinceSync < 30) {
+          partnersSkipped++
+          logger.debug(`Skipping partner ${partnerId} — CSV data is recent (${Math.round(daysSinceSync)}d ago)`, 'ezyvet-sync-analytics')
+          continue
+        }
+      }
+
       const { error: updateError } = await supabase
         .from('referral_partners')
         .update({
           total_referrals_all_time: stat.referrals,
           total_revenue_all_time: stat.revenue,
           last_contact_date: stat.lastVisit,
+          last_data_source: 'ezyvet_sync',
           updated_at: new Date().toISOString(),
         })
         .eq('id', partnerId)
@@ -384,11 +405,12 @@ export async function updateReferralStatsFromContacts(
 
     logger.info('Referral partner stats updated', 'ezyvet-sync-analytics', {
       partnersUpdated,
+      partnersSkipped,
       totalReferrals,
       totalRevenue,
     })
 
-    return { partnersUpdated, totalReferrals, totalRevenue }
+    return { partnersUpdated, partnersSkipped, totalReferrals, totalRevenue }
   } catch (err) {
     logger.error('Referral stats update failed', err instanceof Error ? err : null, 'ezyvet-sync-analytics')
     throw err

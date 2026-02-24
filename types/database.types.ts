@@ -10921,6 +10921,7 @@ export type Database = {
           key_decision_maker_phone: string | null
           key_decision_maker_title: string | null
           last_contact_date: string | null
+          last_data_source: string | null
           last_referral_date: string | null
           last_sync_date: string | null
           last_visit_date: string | null
@@ -11004,6 +11005,7 @@ export type Database = {
           key_decision_maker_phone?: string | null
           key_decision_maker_title?: string | null
           last_contact_date?: string | null
+          last_data_source?: string | null
           last_referral_date?: string | null
           last_sync_date?: string | null
           last_visit_date?: string | null
@@ -11087,6 +11089,7 @@ export type Database = {
           key_decision_maker_phone?: string | null
           key_decision_maker_title?: string | null
           last_contact_date?: string | null
+          last_data_source?: string | null
           last_referral_date?: string | null
           last_sync_date?: string | null
           last_visit_date?: string | null
@@ -11137,11 +11140,14 @@ export type Database = {
       }
       referral_sync_history: {
         Row: {
+          content_hash: string | null
           created_at: string
+          data_source: string | null
           date_range_end: string | null
           date_range_start: string | null
           filename: string
           id: string
+          report_type: string | null
           sync_details: Json | null
           total_revenue_added: number | null
           total_rows_matched: number | null
@@ -11151,11 +11157,14 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          content_hash?: string | null
           created_at?: string
+          data_source?: string | null
           date_range_end?: string | null
           date_range_start?: string | null
           filename: string
           id?: string
+          report_type?: string | null
           sync_details?: Json | null
           total_revenue_added?: number | null
           total_rows_matched?: number | null
@@ -11165,11 +11174,14 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          content_hash?: string | null
           created_at?: string
+          data_source?: string | null
           date_range_end?: string | null
           date_range_start?: string | null
           filename?: string
           id?: string
+          report_type?: string | null
           sync_details?: Json | null
           total_revenue_added?: number | null
           total_rows_matched?: number | null

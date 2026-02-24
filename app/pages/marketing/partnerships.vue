@@ -848,24 +848,42 @@
               <li><strong>Referral Statistics</strong> - Updates visit counts &amp; last referral date</li>
               <li><strong>Referrer Revenue</strong> - Updates revenue totals only</li>
             </ul>
-            <div class="text-caption mt-1">The report type is auto-detected from the CSV header.</div>
+            <div class="text-caption mt-1">The report type is auto-detected from the CSV header. Duplicate files are automatically rejected.</div>
           </v-alert>
           
-          <!-- Clear Stats Button -->
-          <v-btn
-            color="warning"
-            variant="outlined"
-            size="small"
-            class="mb-4"
-            :loading="clearingStats"
-            @click="clearReferralStats"
-          >
-            <v-icon start>mdi-delete-sweep</v-icon>
-            Clear All Stats First
-          </v-btn>
-          <p class="text-caption text-grey mb-4">
-            Use this to reset all visit/revenue totals before re-importing data.
-          </p>
+          <!-- Clear Stats Section — requires file to be selected first -->
+          <v-expansion-panels variant="accordion" class="mb-4">
+            <v-expansion-panel>
+              <v-expansion-panel-title class="text-caption">
+                <v-icon start size="small" color="warning">mdi-delete-sweep</v-icon>
+                Advanced: Clear All Stats Before Re-import
+              </v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <v-alert type="warning" variant="tonal" density="compact" class="mb-2">
+                  This will reset <strong>all</strong> visit counts and revenue totals to 0 and delete upload history. 
+                  Only use this when you intend to re-import a fresh snapshot immediately after.
+                </v-alert>
+                <v-checkbox
+                  v-model="confirmClearStats"
+                  label="I understand this will delete all existing referral stats"
+                  density="compact"
+                  hide-details
+                  class="mb-2"
+                />
+                <v-btn
+                  color="warning"
+                  variant="outlined"
+                  size="small"
+                  :loading="clearingStats"
+                  :disabled="!confirmClearStats"
+                  @click="clearReferralStats"
+                >
+                  <v-icon start>mdi-delete-sweep</v-icon>
+                  Clear All Stats
+                </v-btn>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
           
           <v-file-input
             v-model="uploadFile"
@@ -892,12 +910,24 @@
               </v-chip>
             </v-alert-title>
             <div v-if="uploadResult.success">
+              <!-- Date range info -->
+              <div v-if="uploadResult.dateRange?.start" class="text-caption mb-1">
+                <v-icon size="x-small" class="mr-1">mdi-calendar-range</v-icon>
+                Data range: {{ uploadResult.dateRange.start }} to {{ uploadResult.dateRange.end }}
+              </div>
               <div class="text-caption mb-2" v-if="uploadResult.reportType === 'statistics'">
                 Updated visit counts and last referral dates (revenue unchanged)
               </div>
               <div class="text-caption mb-2" v-else>
                 Updated revenue totals (visit counts unchanged)
               </div>
+
+              <!-- Overlap warning -->
+              <v-alert v-if="uploadResult.overlapWarning" type="warning" variant="tonal" density="compact" class="mb-3">
+                <v-icon start size="small">mdi-alert</v-icon>
+                {{ uploadResult.overlapWarning }}
+              </v-alert>
+
               <div class="d-flex flex-wrap gap-4 my-2">
                 <div>
                   <div class="text-h6 font-weight-bold">{{ uploadResult.updated }}</div>
@@ -931,7 +961,7 @@
                         <v-list-item-title>{{ detail.clinicName }}</v-list-item-title>
                         <v-list-item-subtitle>
                           {{ detail.visits }} visits, ${{ detail.revenue.toLocaleString() }}
-                          <span v-if="detail.matchedTo" class="text-success"> → {{ detail.matchedTo }}</span>
+                          <span v-if="detail.matchedTo" class="text-success"> &rarr; {{ detail.matchedTo }}</span>
                           <span v-else class="text-warning"> (No match found)</span>
                         </v-list-item-subtitle>
                       </v-list-item>
@@ -940,7 +970,10 @@
                 </v-expansion-panel>
               </v-expansion-panels>
             </div>
-            <div v-else>{{ uploadResult.message }}</div>
+            <div v-else>
+              <v-icon v-if="uploadResult.isDuplicate" start color="warning" size="small">mdi-content-duplicate</v-icon>
+              {{ uploadResult.message }}
+            </div>
           </v-alert>
         </v-card-text>
         <v-card-actions class="pa-4">
@@ -1033,6 +1066,7 @@ const filterFollowup = ref('all')
 // Upload EzyVet Report state
 const showUploadDialog = ref(false)
 const clearingStats = ref(false)
+const confirmClearStats = ref(false)
 const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
@@ -1679,12 +1713,15 @@ async function processUpload() {
     }
   } catch (error: any) {
     console.error('Upload error:', error)
+    const errorMsg = error.data?.message || error.message || 'Failed to process CSV'
+    const isDuplicate = error.statusCode === 409 || error.data?.statusCode === 409
     uploadResult.value = {
       success: false,
-      message: error.data?.message || error.message || 'Failed to process CSV'
+      message: errorMsg,
+      isDuplicate
     }
-    snackbar.message = 'Failed to process CSV'
-    snackbar.color = 'error'
+    snackbar.message = isDuplicate ? 'Duplicate file — already uploaded' : 'Failed to process CSV'
+    snackbar.color = isDuplicate ? 'warning' : 'error'
     snackbar.show = true
   } finally {
     uploadProcessing.value = false
@@ -1693,9 +1730,7 @@ async function processUpload() {
 
 // Clear all referral stats before re-importing
 async function clearReferralStats() {
-  if (!confirm('This will reset ALL visit counts and revenue totals to 0. Continue?')) {
-    return
-  }
+  // Checkbox confirmation replaces the old confirm() dialog
   
   clearingStats.value = true
   
@@ -1732,6 +1767,7 @@ function closeUploadDialog() {
   showUploadDialog.value = false
   uploadFile.value = null
   uploadResult.value = null
+  confirmClearStats.value = false
 }
 
 // ezyVet API Sync for Referral Stats

@@ -767,13 +767,20 @@ async function loadPartnerContacts(partnerId: string) {
 async function addNote() {
   if (!selectedPartner.value || !newNoteContent.value.trim()) return
   
+  // Look up profile.id (FK target) from auth user id
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('auth_user_id', user.value?.id)
+    .single()
+
   const { error } = await supabase
     .from('marketing_partner_notes')
     .insert({
       partner_id: selectedPartner.value.id,
       note_type: newNoteType.value,
       content: newNoteContent.value.trim(),
-      created_by: user.value?.id
+      created_by: profile?.id || null
     })
   
   if (error) {

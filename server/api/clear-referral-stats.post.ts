@@ -73,7 +73,8 @@ export default defineEventHandler(async (event) => {
       .update({
         total_referrals_all_time: 0,
         total_revenue_all_time: 0,
-        last_sync_date: null
+        last_sync_date: null,
+        last_data_source: null
       })
       .neq('id', '00000000-0000-0000-0000-000000000000') // Update all rows (dummy condition)
     

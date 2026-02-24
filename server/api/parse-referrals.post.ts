@@ -12,6 +12,7 @@
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { createHash } from 'crypto'
 
 // Report type detection
 type ReportType = 'revenue' | 'statistics'
@@ -35,6 +36,9 @@ interface SyncResult {
   notMatched: number
   revenueAdded: number
   visitorsAdded: number
+  duplicateWarning?: string
+  dateRange?: { start: string | null; end: string | null }
+  overlapWarning?: string
   details: Array<{
     clinicName: string
     matched: boolean
@@ -43,6 +47,51 @@ interface SyncResult {
     revenue: number
     lastVisitDate?: string
   }>
+}
+
+/**
+ * Compute a SHA-256 content hash for duplicate detection.
+ * Strips whitespace variations so minor formatting changes don't produce a new hash.
+ */
+function computeContentHash(csvText: string): string {
+  const normalized = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  return createHash('sha256').update(normalized).digest('hex')
+}
+
+/**
+ * Extract the min/max date from revenue CSV entries.
+ * Revenue CSV dates come from the Date/Time column (first field).
+ */
+function extractRevenueDateRange(entries: ParsedRevenueEntry[]): { start: string | null; end: string | null } {
+  if (entries.length === 0) return { start: null, end: null }
+
+  const dates = entries
+    .map(e => {
+      // Try parsing common date formats
+      const d = new Date(e.date)
+      return isNaN(d.getTime()) ? null : d
+    })
+    .filter((d): d is Date => d !== null)
+    .sort((a, b) => a.getTime() - b.getTime())
+
+  if (dates.length === 0) return { start: null, end: null }
+  return {
+    start: dates[0].toISOString().split('T')[0],
+    end: dates[dates.length - 1].toISOString().split('T')[0]
+  }
+}
+
+/**
+ * Extract date range from statistics CSV (last referral dates).
+ */
+function extractStatisticsDateRange(entries: ParsedStatisticsEntry[]): { start: string | null; end: string | null } {
+  const dates = entries
+    .map(e => e.lastReferralDate)
+    .filter((d): d is string => d !== null)
+    .sort()
+
+  if (dates.length === 0) return { start: null, end: null }
+  return { start: dates[0], end: dates[dates.length - 1] }
 }
 
 /**
@@ -381,12 +430,42 @@ export default defineEventHandler(async (event) => {
     // Detect report type from header
     const reportType = detectReportType(csvText)
     logger.info('Detected report type', 'parse-referrals', { reportType })
-    
+
+    // ── Duplicate upload detection via content hash ──
+    const contentHash = computeContentHash(csvText)
+    logger.debug('Content hash computed', 'parse-referrals', { contentHash: contentHash.slice(0, 12) })
+
+    const { data: existingUpload } = await supabase
+      .from('referral_sync_history')
+      .select('id, filename, created_at')
+      .eq('content_hash', contentHash)
+      .eq('report_type', reportType)
+      .limit(1)
+      .maybeSingle()
+
+    if (existingUpload) {
+      const uploadedAt = new Date(existingUpload.created_at).toLocaleDateString()
+      throw createError({
+        statusCode: 409,
+        message: `Duplicate upload detected. This exact file was already uploaded on ${uploadedAt} ("${existingUpload.filename}"). Clear stats first if you intend to re-import.`
+      })
+    }
+
+    // ── Check for date-range overlaps with previous uploads of same type ──
+    const { data: previousUploads } = await supabase
+      .from('referral_sync_history')
+      .select('id, filename, date_range_start, date_range_end, created_at')
+      .eq('report_type', reportType)
+      .not('date_range_start', 'is', null)
+      .not('date_range_end', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
     // Fetch all partners for matching
     // The table uses 'name' column (aliased from hospital_name in views/queries)
     const { data: partners } = await supabase
       .from('referral_partners')
-      .select('id, name, total_referrals_all_time, total_revenue_all_time, last_contact_date')
+      .select('id, name, total_referrals_all_time, total_revenue_all_time, last_contact_date, last_data_source')
     
     if (!partners) {
       throw createError({ statusCode: 500, message: 'Failed to fetch partners' })
@@ -404,6 +483,10 @@ export default defineEventHandler(async (event) => {
       visitorsAdded: 0,
       details: []
     }
+
+    // Will be populated below based on report type
+    let dateRange: { start: string | null; end: string | null } = { start: null, end: null }
+    let overlapWarning: string | undefined
     
     if (reportType === 'revenue') {
       // ========================================
@@ -422,13 +505,32 @@ export default defineEventHandler(async (event) => {
       // Aggregate by clinic
       const aggregated = aggregateRevenueByClinic(entries)
       logger.info('Aggregated to unique clinics', 'parse-referrals', { count: aggregated.length })
+
+      // ── Extract date range from revenue entries ──
+      dateRange = extractRevenueDateRange(entries)
+      logger.info('Revenue date range', 'parse-referrals', dateRange)
+
+      // ── Check for overlapping date ranges with past uploads ──
+      if (dateRange.start && dateRange.end && previousUploads && previousUploads.length > 0) {
+        const overlaps = previousUploads.filter(prev => {
+          if (!prev.date_range_start || !prev.date_range_end) return false
+          return prev.date_range_start <= dateRange.end! && prev.date_range_end >= dateRange.start!
+        })
+        if (overlaps.length > 0) {
+          const overlapFiles = overlaps.map(o => `"${o.filename}" (${new Date(o.created_at).toLocaleDateString()})`).join(', ')
+          overlapWarning = `Date range ${dateRange.start} to ${dateRange.end} overlaps with ${overlaps.length} previous upload(s): ${overlapFiles}. Revenue values have been REPLACED (not accumulated) to avoid double-counting.`
+          logger.warn('Date range overlap detected', 'parse-referrals', { overlapWith: overlaps.map(o => o.id) })
+        }
+      }
       
       const csvTotalVisits = aggregated.reduce((sum, a) => sum + a.totalVisits, 0)
       const csvTotalRevenue = aggregated.reduce((sum, a) => sum + a.totalRevenue, 0)
       logger.info('Revenue CSV Totals', 'parse-referrals', { visits: csvTotalVisits, revenue: csvTotalRevenue.toFixed(2) })
       
       // Match and batch-update (ONLY revenue, not visit counts)
-      const revenueUpdates: { id: string; total_revenue_all_time: number; last_sync_date: string }[] = []
+      // Uses REPLACEMENT semantics — the uploaded report is treated as the
+      // canonical snapshot so that re-uploads of the same period don't double-count.
+      const revenueUpdates: { id: string; total_revenue_all_time: number; last_sync_date: string; last_data_source: string }[] = []
       const syncDate = new Date().toISOString()
 
       for (const agg of aggregated) {
@@ -438,7 +540,8 @@ export default defineEventHandler(async (event) => {
           revenueUpdates.push({
             id: match.id,
             total_revenue_all_time: agg.totalRevenue,
-            last_sync_date: syncDate
+            last_sync_date: syncDate,
+            last_data_source: 'csv_upload'
           })
           result.updated++
           result.revenueAdded += agg.totalRevenue
@@ -485,10 +588,28 @@ export default defineEventHandler(async (event) => {
         })
       }
       
+      // ── Extract date range from statistics entries ──
+      dateRange = extractStatisticsDateRange(entries)
+      logger.info('Statistics date range', 'parse-referrals', dateRange)
+
+      // ── Check for overlapping date ranges ──
+      if (dateRange.start && dateRange.end && previousUploads && previousUploads.length > 0) {
+        const overlaps = previousUploads.filter(prev => {
+          if (!prev.date_range_start || !prev.date_range_end) return false
+          return prev.date_range_start <= dateRange.end! && prev.date_range_end >= dateRange.start!
+        })
+        if (overlaps.length > 0) {
+          const overlapFiles = overlaps.map(o => `"${o.filename}" (${new Date(o.created_at).toLocaleDateString()})`).join(', ')
+          overlapWarning = `Date range ${dateRange.start} to ${dateRange.end} overlaps with ${overlaps.length} previous upload(s): ${overlapFiles}. Visit counts have been REPLACED (not accumulated) to avoid double-counting.`
+          logger.warn('Date range overlap detected', 'parse-referrals', { overlapWith: overlaps.map(o => o.id) })
+        }
+      }
+
       const csvTotalVisits = entries.reduce((sum, e) => sum + e.totalReferrals12Months, 0)
       logger.info('Statistics CSV Total', 'parse-referrals', { visits: csvTotalVisits })
       
       // Match and batch-update (ONLY visit counts and last date, NOT revenue)
+      // Uses REPLACEMENT semantics to avoid double-counting.
       const statsUpdates: Record<string, any>[] = []
       const syncDate = new Date().toISOString()
 
@@ -500,7 +621,8 @@ export default defineEventHandler(async (event) => {
           const updateData: any = {
             id: match.id,
             total_referrals_all_time: entry.totalReferrals12Months,
-            last_sync_date: syncDate
+            last_sync_date: syncDate,
+            last_data_source: 'csv_upload'
           }
           
           if (entry.lastReferralDate) {
@@ -543,11 +665,14 @@ export default defineEventHandler(async (event) => {
       }
     }
     
-    // Log sync history
+    // Log sync history with content hash, date range, and data source
     await supabase.from('referral_sync_history').insert({
       filename: file.filename || 'referral-report.csv',
-      date_range_start: null,
-      date_range_end: null,
+      content_hash: contentHash,
+      report_type: reportType,
+      data_source: 'csv_upload',
+      date_range_start: dateRange.start,
+      date_range_end: dateRange.end,
       total_rows_parsed: result.details.length,
       total_rows_matched: result.updated,
       total_rows_skipped: result.skipped,
@@ -557,6 +682,7 @@ export default defineEventHandler(async (event) => {
         reportType,
         notMatched: result.notMatched,
         visitorsAdded: result.visitorsAdded,
+        overlapWarning: overlapWarning || null,
         clinicDetails: result.details
       }
     })
@@ -583,6 +709,8 @@ export default defineEventHandler(async (event) => {
       notMatched: result.notMatched,
       revenueAdded: Math.round(result.revenueAdded * 100) / 100,
       visitorsAdded: result.visitorsAdded,
+      dateRange,
+      overlapWarning: overlapWarning || null,
       details: result.details
     }
     
