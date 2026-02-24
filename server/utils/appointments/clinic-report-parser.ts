@@ -382,6 +382,244 @@ function flattenToAppointments(sections: ReportSection[], weekStart: string): Fl
   return appointments
 }
 
+// ── Appointment Type Report Parser ───────────────────────────────────────
+
+/**
+ * Result from parsing an EzyVet "Appointment Type" report
+ */
+export interface ParsedAppointmentTypeReport {
+  reportTitle: string
+  createdAt: string
+  activeDivision: string
+  locationName: string
+  reportStartDate: string // ISO date
+  reportEndDate: string   // ISO date
+  rows: AppointmentTypeRow[]
+  appointments: FlattenedAppointment[]
+}
+
+export interface AppointmentTypeRow {
+  type: string
+  count: number
+  averageTimeMins: number
+  totalTimeMins: number
+}
+
+/**
+ * LOCATION_DIVISION_MAP — maps EzyVet "Active Division" values to location names.
+ */
+const LOCATION_DIVISION_MAP: Record<string, { name: string; code: string }> = {
+  'green dog - sherman oaks': { name: 'Sherman Oaks', code: 'SO' },
+  'sherman oaks': { name: 'Sherman Oaks', code: 'SO' },
+  'green dog - van nuys': { name: 'Van Nuys', code: 'VN' },
+  'van nuys': { name: 'Van Nuys', code: 'VN' },
+  'green dog - venice': { name: 'Venice', code: 'VE' },
+  'venice': { name: 'Venice', code: 'VE' },
+  'green dog - venice (bu)': { name: 'Venice', code: 'VE' },
+  'dog ppl': { name: 'DOG PPL', code: 'VE' },
+}
+
+function parseDivisionToLocation(division: string): { name: string; code: string } {
+  if (!division) return { name: 'Unknown', code: 'UNK' }
+  const lower = division.toLowerCase().trim()
+  if (LOCATION_DIVISION_MAP[lower]) return LOCATION_DIVISION_MAP[lower]
+  // Fuzzy match
+  for (const [key, val] of Object.entries(LOCATION_DIVISION_MAP)) {
+    if (lower.includes(key) || key.includes(lower)) return val
+  }
+  return { name: division, code: 'UNK' }
+}
+
+/**
+ * Parse a date string from EzyVet reports.
+ * Handles: "01-23-2026 12:00am", "02-23-2026 11:59pm", "1/23/2026", "2026-01-23"
+ */
+function parseReportDate(val: string): string {
+  if (!val) return ''
+  const trimmed = val.trim()
+
+  // MM-DD-YYYY HH:MMam/pm or MM-DD-YYYY HH:MM:SS
+  const mdyTime = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s/)
+  if (mdyTime) {
+    return `${mdyTime[3]}-${mdyTime[1].padStart(2, '0')}-${mdyTime[2].padStart(2, '0')}`
+  }
+
+  // MM-DD-YYYY
+  const mdy = trimmed.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/)
+  if (mdy) {
+    return `${mdy[3]}-${mdy[1].padStart(2, '0')}-${mdy[2].padStart(2, '0')}`
+  }
+
+  // MM/DD/YYYY
+  const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/)
+  if (slash) {
+    const year = slash[3].length === 2 ? '20' + slash[3] : slash[3]
+    return `${year}-${slash[1].padStart(2, '0')}-${slash[2].padStart(2, '0')}`
+  }
+
+  // ISO YYYY-MM-DD
+  const iso = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
+
+  return ''
+}
+
+/**
+ * Detect report format from CSV/sheet content.
+ * Returns 'appointment_type' for EzyVet Appointment Type reports,
+ * 'weekly_tracking' for the matrix-format tracking sheets,
+ * or 'unknown'.
+ */
+export function detectReportFormat(csvText: string): 'appointment_type' | 'weekly_tracking' | 'unknown' {
+  const lines = csvText.split('\n').slice(0, 15).map(l => l.toLowerCase())
+  const joined = lines.join(' ')
+
+  // Appointment Type Report: contains "appointment type report" in first few lines
+  // and has "Type" + "Count" headers
+  if (joined.includes('appointment type report') ||
+      (joined.includes('report start date') && joined.includes('report end date'))) {
+    return 'appointment_type'
+  }
+
+  // Weekly tracking: has day names with dates (e.g. "Monday 1/26") in header area
+  if (/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+\d+\/\d+/i.test(joined)) {
+    return 'weekly_tracking'
+  }
+
+  // Fallback: look for "Type,Count" header row pattern
+  for (const line of lines) {
+    if (line.includes('type') && line.includes('count') && line.includes('time')) {
+      return 'appointment_type'
+    }
+  }
+
+  return 'unknown'
+}
+
+/**
+ * Parse an EzyVet "Appointment Type" report from CSV text.
+ *
+ * Format:
+ * - Row 1: "APPOINTMENT TYPE REPORT"
+ * - Rows 2-8: Metadata (Created At, Active Division, Report Start/End Date, etc.)
+ * - Row 10: Headers — Type, Count, Average Time(Mins), Total Time(Mins)
+ * - Rows 11+: Data rows
+ * - Last row(s): TOTALS
+ */
+export function parseAppointmentTypeReport(csvText: string): ParsedAppointmentTypeReport {
+  const cleanText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = cleanText.split('\n').map(l => l.trimEnd())
+
+  // Extract metadata from the top rows
+  let createdAt = ''
+  let activeDivision = ''
+  let reportStartDate = ''
+  let reportEndDate = ''
+  let reportTitle = ''
+
+  // Scan first ~15 rows for metadata labels
+  for (let i = 0; i < Math.min(lines.length, 15); i++) {
+    const cells = parseCSVCells(lines[i])
+    const cellTexts = cells.map(c => c.trim())
+
+    // Row 0/1: Title
+    if (i === 0) {
+      const titleText = cellTexts.filter(Boolean).join(' ')
+      if (titleText) reportTitle = titleText
+    }
+
+    // Look for label-value pairs across ALL cells in the row
+    for (let c = 0; c < cellTexts.length; c++) {
+      const label = cellTexts[c].toLowerCase()
+      const value = cellTexts[c + 1] || ''
+
+      if (label === 'created at' && value) createdAt = value
+      if (label === 'active division' && value) activeDivision = value
+      if (label === 'report start date' && value) reportStartDate = parseReportDate(value)
+      if (label === 'report end date' && value) reportEndDate = parseReportDate(value)
+    }
+  }
+
+  // Find the header row with "Type" and "Count"
+  let headerIdx = -1
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const cells = parseCSVCells(lines[i])
+    const lcCells = cells.map(c => c.trim().toLowerCase())
+    if (lcCells.includes('type') && lcCells.includes('count')) {
+      headerIdx = i
+      break
+    }
+  }
+
+  if (headerIdx === -1) {
+    return {
+      reportTitle, createdAt, activeDivision,
+      locationName: parseDivisionToLocation(activeDivision).name,
+      reportStartDate, reportEndDate,
+      rows: [], appointments: [],
+    }
+  }
+
+  const headers = parseCSVCells(lines[headerIdx]).map(c => c.trim().toLowerCase())
+  const typeCol = headers.indexOf('type')
+  const countCol = headers.indexOf('count')
+  const avgTimeCol = headers.findIndex(h => h.includes('average time'))
+  const totalTimeCol = headers.findIndex(h => h.includes('total time'))
+
+  // Parse data rows
+  const rows: AppointmentTypeRow[] = []
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const cells = parseCSVCells(lines[i])
+    const typeName = (cells[typeCol] || '').trim()
+
+    if (!typeName) continue
+    if (typeName.toLowerCase() === 'totals') continue // Skip totals row
+
+    const count = safeParseInt(cells[countCol])
+    if (count === 0) continue // Skip zero-count rows
+
+    rows.push({
+      type: typeName,
+      count,
+      averageTimeMins: avgTimeCol >= 0 ? safeParseInt(cells[avgTimeCol]) : 0,
+      totalTimeMins: totalTimeCol >= 0 ? safeParseInt(cells[totalTimeCol]) : 0,
+    })
+  }
+
+  // Resolve location from Active Division
+  const location = parseDivisionToLocation(activeDivision)
+
+  // Flatten into appointment records — one record per type
+  // Since this is a summary report (no daily breakdown), we use reportStartDate
+  // as the representative date and store the date range in raw metadata
+  const appointments: FlattenedAppointment[] = rows.map(row => {
+    const typeInfo = lookupAppointmentType(row.type)
+    return {
+      appointment_date: reportStartDate || reportEndDate,
+      appointment_type: row.type,
+      service_category: typeInfo?.serviceCode || 'OTHER',
+      department: typeInfo?.department || 'General',
+      location_name: location.name,
+      location_code: location.code,
+      count: row.count,
+      is_availability: row.type.toLowerCase().includes('avail') || row.type.toLowerCase().includes('available slot'),
+      week_start: reportStartDate,
+      source: 'weekly_tracking' as const,
+    }
+  })
+
+  return {
+    reportTitle,
+    createdAt,
+    activeDivision,
+    locationName: location.name,
+    reportStartDate,
+    reportEndDate,
+    rows,
+    appointments,
+  }
+}
+
 /**
  * Parse a short date like "1/5/26" or "1/5" (assume 2026)
  */
