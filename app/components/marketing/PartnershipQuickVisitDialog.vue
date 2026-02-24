@@ -180,6 +180,14 @@ const authStore = useAuthStore()
 const visible = ref(false)
 const saving = ref(false)
 
+/** Return YYYY-MM-DD in the user's local timezone (avoids UTC date shift). */
+function localDateString(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Speech recognition
 const isListening = ref(false)
 const speechSupported = ref(false)
@@ -199,7 +207,7 @@ const discussionItems = [
 const form = reactive({
   partner_id: null as string | null,
   clinic_name: '',
-  visit_date: new Date().toISOString().split('T')[0],
+  visit_date: localDateString(),
   spoke_to: '',
   items_discussed: [] as string[],
   next_visit_date: null as string | null,
@@ -217,7 +225,7 @@ const partnerOptions = computed(() => {
 function open() {
   form.partner_id = null
   form.clinic_name = ''
-  form.visit_date = new Date().toISOString().split('T')[0]
+  form.visit_date = localDateString()
   form.spoke_to = ''
   form.items_discussed = []
   form.next_visit_date = null
@@ -229,7 +237,7 @@ function open() {
 function openWithPartner(partner: { id: string; name: string; best_contact_person?: string; contact_name?: string }) {
   form.partner_id = partner.id
   form.clinic_name = partner.name
-  form.visit_date = new Date().toISOString().split('T')[0]
+  form.visit_date = localDateString()
   form.spoke_to = partner.best_contact_person || partner.contact_name || ''
   form.items_discussed = []
   form.next_visit_date = null
@@ -395,6 +403,40 @@ async function save() {
         .from('referral_partners')
         .update(partnerUpdate)
         .eq('id', form.partner_id)
+    }
+
+    // Also insert into partner_notes so the visit notes appear on the Notes tab
+    if (form.partner_id && form.visit_notes?.trim()) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .eq('auth_user_id', userId)
+          .single()
+
+        const initials = profile
+          ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')
+          : 'SY'
+        const fullName = profile
+          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+          : 'System'
+
+        const spokeLabel = form.spoke_to ? ` (spoke with ${form.spoke_to})` : ''
+        const itemsLabel = form.items_discussed.length
+          ? `\nDiscussed: ${form.items_discussed.join(', ')}` : ''
+        const noteContent = `[Visit ${form.visit_date}]${spokeLabel}${itemsLabel}\n${form.visit_notes.trim()}`
+
+        await supabase.from('partner_notes').insert({
+          partner_id: form.partner_id,
+          content: noteContent,
+          note_type: 'visit',
+          created_by: profile?.id || null,
+          author_initials: initials.toUpperCase(),
+          created_by_name: fullName
+        })
+      } catch (noteErr) {
+        console.warn('[QuickVisit] Could not save visit note to partner_notes:', noteErr)
+      }
     }
 
     emit('notify', { message: 'Visit Logged ✓', color: 'success' })

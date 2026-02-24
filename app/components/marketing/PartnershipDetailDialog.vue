@@ -683,6 +683,14 @@ const detailTab = ref('overview')
 const saving = ref(false)
 const partner = ref<any>(null)
 
+/** Return YYYY-MM-DD in the user's local timezone (avoids UTC date shift). */
+function localDateString(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // Detail data
 const partnerContacts = ref<any[]>([])
 const partnerNotes = ref<any[]>([])
@@ -910,7 +918,7 @@ async function addNote() {
     const { error: updateError } = await supabase
       .from('referral_partners')
       .update({
-        last_contact_date: new Date().toISOString().split('T')[0],
+        last_contact_date: localDateString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', partner.value.id)
