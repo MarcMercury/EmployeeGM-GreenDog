@@ -405,40 +405,6 @@ async function save() {
         .eq('id', form.partner_id)
     }
 
-    // Also insert into partner_notes so the visit notes appear on the Notes tab
-    if (form.partner_id && form.visit_notes?.trim()) {
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name')
-          .eq('auth_user_id', userId)
-          .single()
-
-        const initials = profile
-          ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')
-          : 'SY'
-        const fullName = profile
-          ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-          : 'System'
-
-        const spokeLabel = form.spoke_to ? ` (spoke with ${form.spoke_to})` : ''
-        const itemsLabel = form.items_discussed.length
-          ? `\nDiscussed: ${form.items_discussed.join(', ')}` : ''
-        const noteContent = `[Visit ${form.visit_date}]${spokeLabel}${itemsLabel}\n${form.visit_notes.trim()}`
-
-        await supabase.from('partner_notes').insert({
-          partner_id: form.partner_id,
-          content: noteContent,
-          note_type: 'visit',
-          created_by: profile?.id || null,
-          author_initials: initials.toUpperCase(),
-          created_by_name: fullName
-        })
-      } catch (noteErr) {
-        console.warn('[QuickVisit] Could not save visit note to partner_notes:', noteErr)
-      }
-    }
-
     emit('notify', { message: 'Visit Logged ✓', color: 'success' })
     close()
     emit('saved')
