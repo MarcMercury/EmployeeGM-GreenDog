@@ -1029,7 +1029,7 @@ const authStore = useAuthStore()
 
 // Template refs
 const quickVisitRef = ref<{ open: () => void; openWithPartner: (partner: any) => void } | null>(null)
-const detailDialogRef = ref<{ open: (partner: any) => void } | null>(null)
+const detailDialogRef = ref<{ open: (partner: any) => void; refresh: () => void } | null>(null)
 
 // Export dialog
 const showExportDialog = ref(false)
@@ -1642,6 +1642,8 @@ async function deletePartner() {
 function onVisitSaved() {
   loadPartners()
   loadRecentActivity()
+  // Refresh the detail dialog so the new visit notes appear immediately
+  detailDialogRef.value?.refresh()
 }
 
 function onPartnerUpdated() {

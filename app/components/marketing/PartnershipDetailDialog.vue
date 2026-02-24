@@ -975,5 +975,12 @@ async function deleteNote(note: any) {
   }
 }
 
-defineExpose({ open })
+/** Reload visits / notes / contacts for the currently-open partner */
+function refresh() {
+  if (partner.value?.id) {
+    loadPartnerDetails(partner.value.id)
+  }
+}
+
+defineExpose({ open, refresh })
 </script>
