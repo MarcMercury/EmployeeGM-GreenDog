@@ -34,7 +34,6 @@ export default defineEventHandler(async (event) => {
   let csvText = rawCsvText
   if (!csvText && fileData) {
     const buffer = Buffer.from(fileData, 'base64')
-    let parsedFromXLS = false
     try {
       // Try parsing as XLS/XLSX binary
       const XLSX = await import('xlsx').then(m => m.default || m)
@@ -43,7 +42,6 @@ export default defineEventHandler(async (event) => {
       // Use sheet_to_csv to preserve the matrix layout (title row, day headers, section rows)
       // blankrows: true ensures empty separator rows between sections are preserved
       csvText = XLSX.utils.sheet_to_csv(sheet, { blankrows: true })
-      parsedFromXLS = true
     } catch {
       // Not a valid spreadsheet — treat as CSV text
       csvText = buffer.toString('utf-8')

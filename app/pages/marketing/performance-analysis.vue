@@ -265,8 +265,8 @@
                     <apexchart
                       type="area"
                       height="280"
-                      :options="overviewRevenueOptions"
-                      :series="overviewRevenueSeries"
+                      :options="monthlyRevenueOptions"
+                      :series="monthlyRevenueSeries"
                     />
                   </ClientOnly>
                 </template>
@@ -286,8 +286,8 @@
                     <apexchart
                       type="area"
                       height="280"
-                      :options="overviewApptTrendOptions"
-                      :series="overviewApptTrendSeries"
+                      :options="weeklyTrendOptions"
+                      :series="weeklyTrendSeries"
                     />
                   </ClientOnly>
                 </template>
@@ -1183,12 +1183,6 @@ const serviceCategoryChartOptions = computed(() => {
   }
 })
 
-// Overview charts
-const overviewRevenueSeries = computed(() => monthlyRevenueSeries.value)
-const overviewRevenueOptions = computed(() => monthlyRevenueOptions.value)
-const overviewApptTrendSeries = computed(() => weeklyTrendSeries.value)
-const overviewApptTrendOptions = computed(() => weeklyTrendOptions.value)
-
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function formatNumber(n: number): string { return n?.toLocaleString() ?? '0' }
@@ -1198,7 +1192,6 @@ function formatCurrency(n: number | string | null): string {
   return isNaN(num) ? '0.00' : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 function formatDate(d: string | null): string { return d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' }
-function formatDateTime(d: string | null): string { return d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '' }
 function insightColor(type: string): string { return { trend: 'blue', opportunity: 'amber', concern: 'red', achievement: 'green', staffing: 'deep-purple', risk: 'red' }[type] || 'grey' }
 function recCategoryColor(cat: string): string { return { revenue: 'green', efficiency: 'blue', growth: 'purple', cost: 'orange' }[cat] || 'grey' }
 function showNotification(message: string, color = 'success') { snackbar.message = message; snackbar.color = color; snackbar.show = true }
