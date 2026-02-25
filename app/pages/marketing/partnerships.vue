@@ -490,7 +490,7 @@
           <v-card-title class="d-flex align-center justify-space-between">
             <div>
               <span>Unmatched Upload Entries</span>
-              <div class="text-caption text-grey">Clinics from PDF uploads that didn't match existing partners</div>
+              <div class="text-caption text-grey">Clinics from CSV uploads that didn't match existing partners</div>
             </div>
             <v-btn size="small" variant="text" :loading="loadingUploadLog" @click="loadUploadLog">
               <v-icon>mdi-refresh</v-icon>
@@ -536,16 +536,28 @@
             </template>
             
             <template #item.actions="{ item }">
-              <v-btn
-                size="small"
-                variant="tonal"
-                color="success"
-                prepend-icon="mdi-check"
-                :loading="item.logging"
-                @click="markAsLogged(item)"
-              >
-                Logged
-              </v-btn>
+              <div class="d-flex gap-1">
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-plus-circle"
+                  :loading="item.creating"
+                  @click="createPartnerFromUnmatched(item)"
+                >
+                  Create
+                </v-btn>
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  color="success"
+                  prepend-icon="mdi-check"
+                  :loading="item.logging"
+                  @click="markAsLogged(item)"
+                >
+                  Logged
+                </v-btn>
+              </div>
             </template>
           </v-data-table>
         </v-card>
@@ -1090,7 +1102,7 @@ const uploadLogHeaders = [
   { title: 'Revenue', key: 'revenue', sortable: true, align: 'end' },
   { title: 'Upload Date', key: 'uploadDate', sortable: true },
   { title: 'Date Range', key: 'dateRange', sortable: false },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
+  { title: 'Actions', key: 'actions', sortable: false, align: 'center', width: '220px' }
 ]
 
 const uploadHistoryHeaders = [
@@ -1841,11 +1853,14 @@ async function loadUploadLog() {
             clinicName: detail.clinicName,
             visits: detail.visits || 0,
             revenue: detail.revenue || 0,
+            lastDate: detail.lastDate || detail.lastVisitDate || null,
+            reportType: sync.report_type || (sync.sync_details?.reportType) || null,
             uploadDate: sync.created_at,
             dateRange: sync.date_range_start && sync.date_range_end 
               ? `${sync.date_range_start} - ${sync.date_range_end}` 
               : null,
-            logging: false
+            logging: false,
+            creating: false
           })
         }
       }
@@ -1860,6 +1875,82 @@ async function loadUploadLog() {
     snackbar.show = true
   } finally {
     loadingUploadLog.value = false
+  }
+}
+
+async function createPartnerFromUnmatched(entry: any) {
+  entry.creating = true
+
+  try {
+    // Build new partner record with data from the unmatched entry
+    const now = new Date().toISOString()
+    const payload: any = {
+      name: entry.clinicName,
+      status: 'active',
+      clinic_type: 'general',
+      tier: 'Coal',
+      priority: 'Low',
+      visit_frequency: 'monthly',
+      referral_agreement_type: 'none',
+      lunch_and_learn_eligible: true,
+      drop_off_materials: true,
+      total_referrals_all_time: entry.visits || 0,
+      total_revenue_all_time: entry.revenue || 0,
+      last_data_source: 'csv_upload',
+      last_sync_date: now,
+    }
+    if (entry.lastDate) {
+      payload.last_referral_date = entry.lastDate
+      payload.last_contact_date = entry.lastDate
+    }
+
+    const { data: newPartner, error: insertError } = await supabase
+      .from('referral_partners')
+      .insert(payload)
+      .select('id, name')
+      .single()
+
+    if (insertError) throw insertError
+
+    // Mark the entry as matched in sync_details so it doesn't show again
+    const { data: sync, error: fetchError } = await supabase
+      .from('referral_sync_history')
+      .select('sync_details')
+      .eq('id', entry.syncId)
+      .single()
+
+    if (!fetchError && sync) {
+      const details = sync.sync_details || {}
+      const clinicDetails = details.clinicDetails || []
+      const updatedDetails = clinicDetails.map((d: any) => {
+        if (d.clinicName === entry.clinicName && !d.matched) {
+          return { ...d, matched: true, matchedTo: newPartner.name, createdAt: now }
+        }
+        return d
+      })
+      await supabase
+        .from('referral_sync_history')
+        .update({ sync_details: { ...details, clinicDetails: updatedDetails } })
+        .eq('id', entry.syncId)
+    }
+
+    // Remove from local list
+    unmatchedEntries.value = unmatchedEntries.value.filter(e => e.id !== entry.id)
+
+    // Refresh partner list & recalculate metrics
+    await loadPartners()
+
+    snackbar.message = `Created partner "${entry.clinicName}" with ${entry.visits} referrals` + (entry.revenue > 0 ? ` and $${entry.revenue.toLocaleString()} revenue` : '')
+    snackbar.color = 'success'
+    snackbar.show = true
+
+  } catch (err: any) {
+    console.error('[UploadLog] Error creating partner:', err)
+    snackbar.message = err.message || 'Failed to create partner'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    entry.creating = false
   }
 }
 
