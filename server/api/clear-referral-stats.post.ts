@@ -73,6 +73,7 @@ export default defineEventHandler(async (event) => {
       .update({
         total_referrals_all_time: 0,
         total_revenue_all_time: 0,
+        last_referral_date: null,
         last_sync_date: null,
         last_data_source: null
       })
@@ -84,6 +85,18 @@ export default defineEventHandler(async (event) => {
     
     logger.info('Cleared stats for all partners', 'clear-referral-stats')
     
+    // Clear revenue line items (row-level dedup table)
+    const { error: lineItemsError } = await supabase
+      .from('referral_revenue_line_items')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
+
+    if (lineItemsError) {
+      logger.warn('Could not clear revenue line items', 'clear-referral-stats', { message: lineItemsError.message })
+    } else {
+      logger.info('Cleared revenue line items', 'clear-referral-stats')
+    }
+
     // Also clear the sync history so we can re-upload
     const { error: historyError } = await supabase
       .from('referral_sync_history')

@@ -852,12 +852,12 @@
         </v-card-title>
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>Supports two report types:</strong>
+            <strong>Supports two EzyVet report types:</strong>
             <ul class="mt-1 mb-0" style="padding-left: 20px;">
-              <li><strong>Referral Statistics</strong> - Updates visit counts &amp; last referral date</li>
-              <li><strong>Referrer Revenue</strong> - Updates revenue totals only</li>
+              <li><strong>Referrer Revenue</strong> (primary) — Extracts referral count, revenue &amp; last referral date per clinic</li>
+              <li><strong>Referral Statistics</strong> (secondary) — Quick snapshot of referral counts &amp; last referral date</li>
             </ul>
-            <div class="text-caption mt-1">The report type is auto-detected from the CSV header. Duplicate files are automatically rejected.</div>
+            <div class="text-caption mt-1">Report type is auto-detected. Revenue uses row-level dedup — re-uploads only add new rows. Both reports auto-update Tier, Priority &amp; Health.</div>
           </v-alert>
           
           <!-- Clear Stats Section — requires file to be selected first -->
@@ -925,10 +925,10 @@
                 Data range: {{ uploadResult.dateRange.start }} to {{ uploadResult.dateRange.end }}
               </div>
               <div class="text-caption mb-2" v-if="uploadResult.reportType === 'statistics'">
-                Updated visit counts and last referral dates (revenue unchanged)
+                Updated referral counts and last referral dates from statistics snapshot.
               </div>
               <div class="text-caption mb-2" v-else>
-                Updated revenue totals (visit counts unchanged)
+                Extracted referral count, revenue &amp; last referral date. Tier, Priority &amp; Health recalculated.
               </div>
 
               <!-- Overlap warning -->
@@ -942,13 +942,21 @@
                   <div class="text-h6 font-weight-bold">{{ uploadResult.updated }}</div>
                   <div class="text-caption">Partners Updated</div>
                 </div>
-                <div v-if="uploadResult.reportType === 'statistics'">
+                <div v-if="uploadResult.visitorsAdded > 0">
                   <div class="text-h6 font-weight-bold">{{ uploadResult.visitorsAdded?.toLocaleString() }}</div>
-                  <div class="text-caption">Total Visits</div>
+                  <div class="text-caption">Referrals</div>
                 </div>
-                <div v-if="uploadResult.reportType === 'revenue'">
+                <div v-if="uploadResult.revenueAdded > 0">
                   <div class="text-h6 font-weight-bold">${{ uploadResult.revenueAdded?.toLocaleString() }}</div>
                   <div class="text-caption">Revenue Added</div>
+                </div>
+                <div v-if="uploadResult.newRows > 0">
+                  <div class="text-h6 font-weight-bold text-success">{{ uploadResult.newRows?.toLocaleString() }}</div>
+                  <div class="text-caption">New Rows</div>
+                </div>
+                <div v-if="uploadResult.skipped > 0">
+                  <div class="text-h6 font-weight-bold text-grey">{{ uploadResult.skipped?.toLocaleString() }}</div>
+                  <div class="text-caption">Duplicate Rows Skipped</div>
                 </div>
                 <div>
                   <div class="text-h6 font-weight-bold text-info">{{ uploadResult.notMatched }}</div>
@@ -1718,7 +1726,7 @@ async function processUpload() {
     if (response.success) {
       // Refresh partners list to show updated stats
       await loadPartners()
-      snackbar.message = `Updated ${response.updated} partners with $${response.revenueAdded?.toLocaleString()} revenue`
+      snackbar.message = response.message || `Updated ${response.updated} partners`
       snackbar.color = 'success'
       snackbar.show = true
     }
