@@ -468,7 +468,16 @@
             >
               <div class="d-flex justify-space-between align-start">
                 <div>
-                  <div class="font-weight-medium">{{ log.clinic_name }}</div>
+                  <div class="font-weight-medium">
+                    <a
+                      v-if="log.partner_id"
+                      href="#"
+                      class="text-success text-decoration-none"
+                      style="cursor: pointer;"
+                      @click.prevent="openPartnerDetail(partners.find(p => p.id === log.partner_id) || { id: log.partner_id, name: log.clinic_name })"
+                    >{{ log.clinic_name }}</a>
+                    <span v-else>{{ log.clinic_name }}</span>
+                  </div>
                   <div v-if="log.spoke_to" class="text-body-2">Spoke with: {{ log.spoke_to }}</div>
                   <div v-if="log.items_discussed?.length" class="text-body-2">
                     Discussed / Dropped Off: {{ formatItemsDiscussed(log.items_discussed) }}
