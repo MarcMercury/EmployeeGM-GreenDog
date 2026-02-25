@@ -27,19 +27,9 @@
         <v-btn variant="outlined" prepend-icon="mdi-file-export-outline" size="small" @click="showExportDialog = true">
           Export
         </v-btn>
-        <v-menu>
-          <template #activator="{ props }">
-            <v-btn v-bind="props" variant="text" size="small" icon="mdi-dots-vertical" />
-          </template>
-          <v-list density="compact">
-            <v-list-item prepend-icon="mdi-file-upload" @click="showUploadDialog = true">
-              <v-list-item-title>Upload EzyVet Report (Manual)</v-list-item-title>
-            </v-list-item>
-            <v-list-item prepend-icon="mdi-file-import-outline" @click="showImportWizard = true">
-              <v-list-item-title>Import CSV</v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-menu>
+        <v-btn variant="outlined" prepend-icon="mdi-file-upload" size="small" @click="showUploadDialog = true">
+          Upload EzyVet Report
+        </v-btn>
         <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openAddPartner">
           Add Partner
         </v-btn>
