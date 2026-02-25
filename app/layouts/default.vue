@@ -372,7 +372,7 @@ const closeMobileMenu = () => {
                 </NuxtLink>
                 <NuxtLink to="/recruiting" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">🎯</div>
-                  Recruiting Pipeline
+                  Recruiting
                 </NuxtLink>
                 <NuxtLink v-if="isAdmin" to="/export-payroll" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-green-500/20">💰</div>

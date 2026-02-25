@@ -1,14 +1,14 @@
 <template>
   <div>
     <!-- Header -->
-    <div class="d-flex align-center justify-space-between mb-6">
+    <div class="d-flex align-center justify-space-between mb-4">
       <div>
-        <h1 class="text-h4 font-weight-bold mb-1">Recruiting Pipeline</h1>
+        <h1 class="text-h4 font-weight-bold mb-1">Recruiting</h1>
         <p class="text-body-1 text-grey-darken-1">
           Traffic control for your hiring process
         </p>
       </div>
-      <div class="d-flex gap-2">
+      <div v-if="activeTab === 'pipeline'" class="d-flex gap-2">
         <v-btn
           variant="outlined"
           prepend-icon="mdi-download"
@@ -26,219 +26,239 @@
       </div>
     </div>
 
-    <!-- Add Candidate Wizard -->
-    <RecruitingAddCandidateWizard
-      v-model="showAddDialog"
-      @saved="fetchCandidates"
-    />
+    <!-- Tabs -->
+    <v-tabs v-model="activeTab" color="primary" class="mb-6">
+      <v-tab value="calendar" prepend-icon="mdi-calendar-month">
+        Recruiting Calendar
+      </v-tab>
+      <v-tab value="pipeline" prepend-icon="mdi-filter-variant">
+        Recruiting Pipeline
+      </v-tab>
+    </v-tabs>
 
-    <!-- Skeleton Loading State -->
-    <template v-if="loading">
-      <v-row class="mb-6">
-        <v-col v-for="i in 6" :key="i" cols="12" sm="6" md="4" lg="2">
-          <v-card rounded="lg" class="skeleton-card">
-            <v-card-text>
-              <div class="skeleton-pulse mb-2" style="width: 60%; height: 12px; border-radius: 4px;"></div>
-              <div class="skeleton-pulse" style="width: 50px; height: 32px; border-radius: 4px;"></div>
+    <v-tabs-window v-model="activeTab">
+      <!-- ==================== CALENDAR TAB ==================== -->
+      <v-tabs-window-item value="calendar">
+        <RecruitingCalendar />
+      </v-tabs-window-item>
+
+      <!-- ==================== PIPELINE TAB ==================== -->
+      <v-tabs-window-item value="pipeline">
+        <!-- Add Candidate Wizard -->
+        <RecruitingAddCandidateWizard
+          v-model="showAddDialog"
+          @saved="fetchCandidates"
+        />
+
+        <!-- Skeleton Loading State -->
+        <template v-if="loading">
+          <v-row class="mb-6">
+            <v-col v-for="i in 6" :key="i" cols="12" sm="6" md="4" lg="2">
+              <v-card rounded="lg" class="skeleton-card">
+                <v-card-text>
+                  <div class="skeleton-pulse mb-2" style="width: 60%; height: 12px; border-radius: 4px;"></div>
+                  <div class="skeleton-pulse" style="width: 50px; height: 32px; border-radius: 4px;"></div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </template>
+
+        <!-- Loaded Content -->
+        <template v-else>
+          <!-- TOP: Pipeline Funnel Metrics -->
+          <UiStatsRow
+            :stats="pipelineStatsFormatted"
+            layout="6-col"
+          />
+
+          <!-- Filters -->
+          <v-card class="mb-4" variant="outlined">
+            <v-card-text class="py-3">
+              <v-row dense align="center">
+                <v-col cols="12" md="3">
+                  <v-text-field
+                    v-model="searchQuery"
+                    label="Search candidates..."
+                    prepend-inner-icon="mdi-magnify"
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="6" md="2">
+                  <v-select
+                    v-model="selectedPosition"
+                    :items="positionOptions"
+                    label="Position"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="6" md="2">
+                  <v-select
+                    v-model="activeStatusFilter"
+                    :items="[
+                      { title: 'All Statuses', value: null },
+                      { title: 'New', value: 'new' },
+                      { title: 'Screening', value: 'screening' },
+                      { title: 'Interview', value: 'interview' },
+                      { title: 'Offer', value: 'offer' },
+                      { title: 'Hired', value: 'hired' },
+                      { title: 'Rejected', value: 'rejected' }
+                    ]"
+                    label="Status"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="6" md="2">
+                  <v-select
+                    v-model="selectedLocation"
+                    :items="locationOptions"
+                    label="Location"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                  />
+                </v-col>
+                <v-col cols="12" md="3" class="d-flex justify-end align-center gap-2">
+                  <v-btn-toggle
+                    v-model="quickFilter"
+                    density="compact"
+                    variant="outlined"
+                  >
+                    <v-btn value="all" size="small">All</v-btn>
+                    <v-btn value="active" size="small" color="success">Active</v-btn>
+                    <v-btn value="new" size="small" color="info">New</v-btn>
+                  </v-btn-toggle>
+                  <v-chip color="primary" variant="tonal" size="small">
+                    {{ filteredCandidates.length }}
+                  </v-chip>
+                </v-col>
+              </v-row>
+              <v-row v-if="hasActiveFilters" dense class="mt-2">
+                <v-col cols="12" class="d-flex justify-end">
+                  <v-btn
+                    variant="text"
+                    size="small"
+                    color="primary"
+                    prepend-icon="mdi-filter-remove"
+                    @click="clearAllFilters"
+                  >
+                    Clear Filters
+                  </v-btn>
+                </v-col>
+              </v-row>
             </v-card-text>
           </v-card>
-        </v-col>
-      </v-row>
-    </template>
 
-    <!-- Loaded Content -->
-    <template v-else>
-      <!-- TOP: Pipeline Funnel Metrics -->
-      <UiStatsRow
-        :stats="pipelineStatsFormatted"
-        layout="6-col"
-      />
+          <!-- BOTTOM: All Applications Data Grid -->
+          <v-card rounded="lg">
+            <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
+              <span class="d-flex align-center gap-2">
+                All Applications
+                <v-chip 
+                  v-if="activeStatusFilter" 
+                  closable 
+                  :color="getStatusColor(activeStatusFilter)"
+                  size="small"
+                  @click:close="activeStatusFilter = null"
+                >
+                  {{ formatStatus(activeStatusFilter) }}
+                </v-chip>
+              </span>
+            </v-card-title>
 
-      <!-- Filters -->
-      <v-card class="mb-4" variant="outlined">
-        <v-card-text class="py-3">
-          <v-row dense align="center">
-            <v-col cols="12" md="3">
-              <v-text-field
-                v-model="searchQuery"
-                label="Search candidates..."
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </v-col>
-            <v-col cols="6" md="2">
-              <v-select
-                v-model="selectedPosition"
-                :items="positionOptions"
-                label="Position"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="6" md="2">
-              <v-select
-                v-model="activeStatusFilter"
-                :items="[
-                  { title: 'All Statuses', value: null },
-                  { title: 'New', value: 'new' },
-                  { title: 'Screening', value: 'screening' },
-                  { title: 'Interview', value: 'interview' },
-                  { title: 'Offer', value: 'offer' },
-                  { title: 'Hired', value: 'hired' },
-                  { title: 'Rejected', value: 'rejected' }
-                ]"
-                label="Status"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="6" md="2">
-              <v-select
-                v-model="selectedLocation"
-                :items="locationOptions"
-                label="Location"
-                variant="outlined"
-                density="compact"
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" md="3" class="d-flex justify-end align-center gap-2">
-              <v-btn-toggle
-                v-model="quickFilter"
-                density="compact"
-                variant="outlined"
-              >
-                <v-btn value="all" size="small">All</v-btn>
-                <v-btn value="active" size="small" color="success">Active</v-btn>
-                <v-btn value="new" size="small" color="info">New</v-btn>
-              </v-btn-toggle>
-              <v-chip color="primary" variant="tonal" size="small">
-                {{ filteredCandidates.length }}
-              </v-chip>
-            </v-col>
-          </v-row>
-          <v-row v-if="hasActiveFilters" dense class="mt-2">
-            <v-col cols="12" class="d-flex justify-end">
-              <v-btn
-                variant="text"
-                size="small"
-                color="primary"
-                prepend-icon="mdi-filter-remove"
-                @click="clearAllFilters"
-              >
-                Clear Filters
-              </v-btn>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-
-      <!-- BOTTOM: All Applications Data Grid -->
-      <v-card rounded="lg">
-        <v-card-title class="d-flex align-center justify-space-between flex-wrap gap-2">
-          <span class="d-flex align-center gap-2">
-            All Applications
-            <v-chip 
-              v-if="activeStatusFilter" 
-              closable 
-              :color="getStatusColor(activeStatusFilter)"
-              size="small"
-              @click:close="activeStatusFilter = null"
+            <v-data-table
+              :headers="tableHeaders"
+              :items="filteredCandidates"
+              :search="searchQuery"
+              hover
+              :items-per-page="15"
+              class="applications-table"
+              @click:row="(_, { item }) => openCandidate(item)"
             >
-              {{ formatStatus(activeStatusFilter) }}
-            </v-chip>
-          </span>
-        </v-card-title>
+              <!-- Name Column with Avatar -->
+              <template #item.name="{ item }">
+                <div class="d-flex align-center py-2">
+                  <v-avatar :color="getStatusColor(item.status)" size="36" class="mr-3">
+                    <span class="text-white font-weight-bold text-caption">
+                      {{ item.first_name?.[0] }}{{ item.last_name?.[0] }}
+                    </span>
+                  </v-avatar>
+                  <div>
+                    <span class="font-weight-medium">{{ item.first_name }} {{ item.last_name }}</span>
+                    <div class="text-caption text-grey">{{ item.email }}</div>
+                  </div>
+                </div>
+              </template>
 
-        <v-data-table
-          :headers="tableHeaders"
-          :items="filteredCandidates"
-          :search="searchQuery"
-          hover
-          :items-per-page="15"
-          class="applications-table"
-          @click:row="(_, { item }) => openCandidate(item)"
-        >
-          <!-- Name Column with Avatar -->
-          <template #item.name="{ item }">
-            <div class="d-flex align-center py-2">
-              <v-avatar :color="getStatusColor(item.status)" size="36" class="mr-3">
-                <span class="text-white font-weight-bold text-caption">
-                  {{ item.first_name?.[0] }}{{ item.last_name?.[0] }}
-                </span>
-              </v-avatar>
-              <div>
-                <span class="font-weight-medium">{{ item.first_name }} {{ item.last_name }}</span>
-                <div class="text-caption text-grey">{{ item.email }}</div>
-              </div>
-            </div>
-          </template>
+              <!-- Applied Date -->
+              <template #item.applied_at="{ item }">
+                <div>
+                  <span>{{ formatDate(item.applied_at) }}</span>
+                  <div class="text-caption text-grey">{{ getDaysAgo(item.applied_at) }}d ago</div>
+                </div>
+              </template>
 
-          <!-- Applied Date -->
-          <template #item.applied_at="{ item }">
-            <div>
-              <span>{{ formatDate(item.applied_at) }}</span>
-              <div class="text-caption text-grey">{{ getDaysAgo(item.applied_at) }}d ago</div>
-            </div>
-          </template>
+              <!-- Target Role -->
+              <template #item.position="{ item }">
+                <v-chip size="small" variant="outlined">
+                  {{ item.job_positions?.title || 'Not specified' }}
+                </v-chip>
+              </template>
 
-          <!-- Target Role -->
-          <template #item.position="{ item }">
-            <v-chip size="small" variant="outlined">
-              {{ item.job_positions?.title || 'Not specified' }}
-            </v-chip>
-          </template>
+              <!-- Status -->
+              <template #item.status="{ item }">
+                <v-chip :color="getStatusColor(item.status)" size="small" label>
+                  {{ formatStatus(item.status) }}
+                </v-chip>
+              </template>
 
-          <!-- Status -->
-          <template #item.status="{ item }">
-            <v-chip :color="getStatusColor(item.status)" size="small" label>
-              {{ formatStatus(item.status) }}
-            </v-chip>
-          </template>
+              <!-- Skill Match % -->
+              <template #item.skill_match="{ item }">
+                <div class="d-flex align-center gap-2">
+                  <v-progress-linear
+                    :model-value="getSkillMatch(item)"
+                    :color="getSkillMatchColor(getSkillMatch(item))"
+                    height="8"
+                    rounded
+                    style="width: 60px;"
+                  />
+                  <span class="text-caption font-weight-medium">{{ getSkillMatch(item) }}%</span>
+                </div>
+              </template>
 
-          <!-- Skill Match % -->
-          <template #item.skill_match="{ item }">
-            <div class="d-flex align-center gap-2">
-              <v-progress-linear
-                :model-value="getSkillMatch(item)"
-                :color="getSkillMatchColor(getSkillMatch(item))"
-                height="8"
-                rounded
-                style="width: 60px;"
-              />
-              <span class="text-caption font-weight-medium">{{ getSkillMatch(item) }}%</span>
-            </div>
-          </template>
+              <!-- Actions -->
+              <template #item.actions="{ item }">
+                <v-btn 
+                  icon="mdi-chevron-right" 
+                  variant="text" 
+                  size="small"
+                  @click.stop="openCandidate(item)"
+                />
+              </template>
 
-          <!-- Actions -->
-          <template #item.actions="{ item }">
-            <v-btn 
-              icon="mdi-chevron-right" 
-              variant="text" 
-              size="small"
-              @click.stop="openCandidate(item)"
-            />
-          </template>
-
-          <!-- Empty State -->
-          <template #no-data>
-            <div class="text-center py-12">
-              <v-icon size="64" color="grey-lighten-1">mdi-account-search</v-icon>
-              <h3 class="text-h6 mt-4">No candidates found</h3>
-              <p class="text-grey mb-4">{{ searchQuery ? 'Try a different search term' : 'Start building your talent pipeline' }}</p>
-              <v-btn v-if="!searchQuery" color="primary" @click="navigateTo('/recruiting/candidates')">
-                Add First Candidate
-              </v-btn>
-            </div>
-          </template>
-        </v-data-table>
-      </v-card>
-    </template>
+              <!-- Empty State -->
+              <template #no-data>
+                <div class="text-center py-12">
+                  <v-icon size="64" color="grey-lighten-1">mdi-account-search</v-icon>
+                  <h3 class="text-h6 mt-4">No candidates found</h3>
+                  <p class="text-grey mb-4">{{ searchQuery ? 'Try a different search term' : 'Start building your talent pipeline' }}</p>
+                  <v-btn v-if="!searchQuery" color="primary" @click="navigateTo('/recruiting/candidates')">
+                    Add First Candidate
+                  </v-btn>
+                </div>
+              </template>
+            </v-data-table>
+          </v-card>
+        </template>
+      </v-tabs-window-item>
+    </v-tabs-window>
   </div>
 </template>
 
@@ -252,6 +272,9 @@ definePageMeta({
 
 const client = useSupabaseClient()
 const toast = useToast()
+
+// Tab state - calendar is default
+const activeTab = ref('calendar')
 
 // State
 const candidates = ref<Candidate[]>([])

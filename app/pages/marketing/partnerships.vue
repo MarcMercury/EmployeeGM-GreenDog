@@ -1886,6 +1886,8 @@ async function createPartnerFromUnmatched(entry: any) {
     const now = new Date().toISOString()
     const payload: any = {
       name: entry.clinicName,
+      hospital_name: entry.clinicName,
+      is_active: true,
       status: 'active',
       clinic_type: 'general',
       tier: 'Coal',
@@ -1894,6 +1896,7 @@ async function createPartnerFromUnmatched(entry: any) {
       referral_agreement_type: 'none',
       lunch_and_learn_eligible: true,
       drop_off_materials: true,
+      total_referrals: entry.visits || 0,
       total_referrals_all_time: entry.visits || 0,
       total_revenue_all_time: entry.revenue || 0,
       last_data_source: 'csv_upload',
