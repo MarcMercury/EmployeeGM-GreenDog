@@ -487,21 +487,21 @@ const candidateForm = ref({
 const errors = ref<Record<string, string>>({})
 
 // Resume parsing
-const resumeFile = ref<File[] | null>(null)
+const resumeFile = ref<File | File[] | null>(null)
 const parsing = ref(false)
 const parseError = ref<string | null>(null)
 const parsedResume = ref<any>(null)
 const suggestedPosition = ref<string | null>(null)
 
 // CSV import
-const csvFile = ref<File[] | null>(null)
+const csvFile = ref<File | File[] | null>(null)
 const csvData = ref<{ headers: string[]; rows: Record<string, any>[] } | null>(null)
 const csvMappings = ref<Record<string, string>>({})
 const bulkResult = ref<any>(null)
 
 // Watch for CSV file changes to ensure parsing happens
 watch(csvFile, (newFiles) => {
-  if (newFiles && newFiles.length > 0) {
+  if (newFiles) {
     parseCSV(newFiles)
   }
 })
@@ -581,6 +581,8 @@ onMounted(async () => {
 // Methods
 function selectMethod(method: 'manual' | 'resume' | 'bulk') {
   selectedMethod.value = method
+  // Auto-advance to step 2 for better UX
+  step.value = 2
 }
 
 function goBack() {
@@ -622,10 +624,12 @@ function resetForm() {
 }
 
 // Resume parsing
-async function parseResume(files: File[] | null) {
-  if (!files || files.length === 0) return
+async function parseResume(files: File | File[] | null) {
+  if (!files) return
   
-  const file = files[0]
+  // Vuetify 3.11+ v-file-input without `multiple` emits a single File, not File[]
+  const file = Array.isArray(files) ? files[0] : files
+  if (!file) return
   parsing.value = true
   parseError.value = null
   
@@ -688,10 +692,12 @@ function resetResumeUpload() {
 }
 
 // CSV parsing
-async function parseCSV(files: File[] | null) {
-  if (!files || files.length === 0) return
+async function parseCSV(files: File | File[] | null) {
+  if (!files) return
   
-  const file = files[0]
+  // Vuetify 3.11+ v-file-input without `multiple` emits a single File, not File[]
+  const file = Array.isArray(files) ? files[0] : files
+  if (!file) return
   const text = await file.text()
   const lines = text.split('\n').filter(l => l.trim())
   
