@@ -49,7 +49,9 @@ export default defineNuxtConfig({
       callback: '/auth/confirm',
       exclude: ['/auth/*', '/public/*', '/public/**'],
       cookieRedirect: false
-    }
+    },
+    // Map SUPABASE_SERVICE_ROLE_KEY to the key the module expects for serverSupabaseServiceRole()
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY
   },
 
   // Runtime config
