@@ -194,9 +194,9 @@
               </v-chip>
             </template>
 
-            <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2">
-                {{ formatRelativeDate(getLatestDate(item.last_login_at, item.last_sign_in_at)) }}
+            <template #item.effective_last_login="{ item }">
+              <span v-if="item.effective_last_login" class="text-body-2">
+                {{ formatRelativeDate(item.effective_last_login) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -389,9 +389,9 @@
               </v-chip>
             </template>
 
-            <template #item.last_sign_in_at="{ item }">
-              <span v-if="item.last_sign_in_at || item.last_login_at" class="text-body-2 text-grey">
-                {{ formatRelativeDate(getLatestDate(item.last_login_at, item.last_sign_in_at)) }}
+            <template #item.effective_last_login="{ item }">
+              <span v-if="item.effective_last_login" class="text-body-2 text-grey">
+                {{ formatRelativeDate(item.effective_last_login) }}
               </span>
               <span v-else class="text-caption text-grey">Never</span>
             </template>
@@ -794,7 +794,7 @@ const snackbar = reactive({
 const userHeaders = [
   { title: 'User', key: 'user', sortable: true },
   { title: 'Access Level', key: 'role', sortable: true },
-  { title: 'Last Login', key: 'last_sign_in_at', sortable: true },
+  { title: 'Last Login', key: 'effective_last_login', sortable: true },
   { title: 'Created', key: 'created_at', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
 ]
@@ -829,6 +829,13 @@ const stats = computed(() => {
 
 const activeUsers = computed(() => users.value.filter(u => u.is_active))
 
+function withEffectiveLastLogin<T extends { last_login_at?: string | null; last_sign_in_at?: string | null }>(items: T[]) {
+  return items.map(u => ({
+    ...u,
+    effective_last_login: getLatestDate(u.last_login_at, u.last_sign_in_at)
+  }))
+}
+
 const filteredActiveUsers = computed(() => {
   let result = activeUsers.value
   
@@ -847,10 +854,10 @@ const filteredActiveUsers = computed(() => {
     result = result.filter(u => u.role === filterRole.value)
   }
   
-  return result
+  return withEffectiveLastLogin(result)
 })
 
-const disabledUsers = computed(() => users.value.filter(u => !u.is_active))
+const disabledUsers = computed(() => withEffectiveLastLogin(users.value.filter(u => !u.is_active)))
 
 // Helper Methods
 function showNotification(message: string, color = 'success') {

@@ -292,7 +292,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const supabase = useSupabaseClient()
 
 // Date range state
 const preset = ref('last30')
@@ -413,14 +412,11 @@ async function generateReport() {
     const from = dateFrom.value
     const to = dateTo.value
 
-    // ── 1. Fetch ALL revenue line items from referral_revenue_line_items ──
-    // transaction_date is TEXT so we can't do server-side date filtering;
-    // fetch all and filter client-side by parsed date.
-    const { data: rawLineItems, error: lineError } = await supabase
-      .from('referral_revenue_line_items')
-      .select('partner_id, transaction_date, amount')
-
-    if (lineError) throw lineError
+    // ── 1. Fetch line items + visits via server API (bypasses RLS) ──
+    const { lineItems: rawLineItems, visits: visitData } = await $fetch<{
+      lineItems: { partner_id: string; transaction_date: string; amount: number }[]
+      visits: any[]
+    }>('/api/marketing/referral-report-data', { params: { from, to } })
 
     // Parse dates and filter to the selected range
     const lineItems = (rawLineItems || [])
@@ -437,16 +433,7 @@ async function generateReport() {
       partnerAgg.set(li.partner_id, agg)
     }
 
-    // ── 3. Fetch clinic visits in the date range ──
-    const { data: visits, error: visitError } = await supabase
-      .from('clinic_visits')
-      .select('*')
-      .gte('visit_date', from)
-      .lte('visit_date', to)
-      .order('visit_date', { ascending: false })
-
-    if (visitError) throw visitError
-    const visitsList = visits || []
+    const visitsList = visitData || []
 
     // ── 4. Compute summary metrics ──
     const totalReferrals = lineItems.length
