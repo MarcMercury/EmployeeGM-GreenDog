@@ -382,6 +382,21 @@ function applyPreset(value: string) {
   }
 }
 
+/** Parse a transaction_date TEXT value (various CSV formats) into an ISO date string or null */
+function parseTransactionDate(raw: string): string | null {
+  if (!raw) return null
+  const d = new Date(raw)
+  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  // Try MM-DD-YYYY or MM/DD/YYYY
+  const parts = raw.split(/[-\/]/)
+  if (parts.length === 3) {
+    const [m, day, y] = parts
+    const d2 = new Date(`${y}-${m.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    if (!isNaN(d2.getTime())) return d2.toISOString().split('T')[0]
+  }
+  return null
+}
+
 async function generateReport() {
   if (!dateFrom.value || !dateTo.value) {
     applyPreset(preset.value)
@@ -391,67 +406,84 @@ async function generateReport() {
   hasData.value = false
 
   try {
-    // The partners data is passed as a prop — filter by those with referral activity.
-    // We use the partner data already loaded in the parent (referral_partners table).
     const allPartners = props.partners
+    const partnerMap = new Map<string, any>()
+    for (const p of allPartners) partnerMap.set(p.id, p)
 
-    // Filter partners that have last_referral_date within the range
     const from = dateFrom.value
     const to = dateTo.value
 
-    // Partners with referrals in range (using last_referral_date as a proxy)
-    // For an accurate count we use the stored totals on the partner record
-    const partnersInRange = allPartners.filter(p => {
-      if (!p.total_referrals_all_time && !p.total_revenue_all_time) return false
-      // If partner has a last_referral_date, check if it falls in range
-      if (p.last_referral_date) {
-        return p.last_referral_date >= from && p.last_referral_date <= to
-      }
-      // Include all-time partners for "all" preset
-      return preset.value === 'all'
-    })
+    // ── 1. Fetch ALL revenue line items from referral_revenue_line_items ──
+    // transaction_date is TEXT so we can't do server-side date filtering;
+    // fetch all and filter client-side by parsed date.
+    const { data: rawLineItems, error: lineError } = await supabase
+      .from('referral_revenue_line_items')
+      .select('partner_id, transaction_date, amount')
 
-    // Fetch clinic visits in the date range
-    let visitQuery = supabase
+    if (lineError) throw lineError
+
+    // Parse dates and filter to the selected range
+    const lineItems = (rawLineItems || [])
+      .map(li => ({ ...li, isoDate: parseTransactionDate(li.transaction_date) }))
+      .filter(li => li.isoDate && li.isoDate >= from && li.isoDate <= to)
+
+    // ── 2. Aggregate referral data per partner ──
+    const partnerAgg = new Map<string, { referrals: number; revenue: number }>()
+    for (const li of lineItems) {
+      if (!li.partner_id) continue
+      const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
+      agg.referrals++
+      agg.revenue += Number(li.amount) || 0
+      partnerAgg.set(li.partner_id, agg)
+    }
+
+    // ── 3. Fetch clinic visits in the date range ──
+    const { data: visits, error: visitError } = await supabase
       .from('clinic_visits')
       .select('*')
       .gte('visit_date', from)
       .lte('visit_date', to)
       .order('visit_date', { ascending: false })
 
-    const { data: visits, error: visitError } = await visitQuery
     if (visitError) throw visitError
-
     const visitsList = visits || []
 
-    // Calculate metrics
-    reportData.totalReferrals = partnersInRange.reduce((s, p) => s + (p.total_referrals_all_time || 0), 0)
-    reportData.totalRevenue = partnersInRange.reduce((s, p) => s + (Number(p.total_revenue_all_time) || 0), 0)
+    // ── 4. Compute summary metrics ──
+    const totalReferrals = lineItems.length
+    const totalRevenue = lineItems.reduce((s, li) => s + (Number(li.amount) || 0), 0)
+    const activePartnerIds = new Set(lineItems.map(li => li.partner_id).filter(Boolean))
+
+    reportData.totalReferrals = totalReferrals
+    reportData.totalRevenue = Math.round(totalRevenue * 100) / 100
     reportData.totalVisits = visitsList.length
-    reportData.activePartners = partnersInRange.length
-    reportData.avgRevenuePerReferral = reportData.totalReferrals > 0 ? reportData.totalRevenue / reportData.totalReferrals : 0
-    reportData.avgReferralsPerPartner = partnersInRange.length > 0 ? reportData.totalReferrals / partnersInRange.length : 0
+    reportData.activePartners = activePartnerIds.size
+    reportData.avgRevenuePerReferral = totalReferrals > 0 ? totalRevenue / totalReferrals : 0
+    reportData.avgReferralsPerPartner = activePartnerIds.size > 0 ? totalReferrals / activePartnerIds.size : 0
 
-    // Top clinics by referrals
-    reportData.topClinics = [...partnersInRange]
-      .sort((a, b) => (b.total_referrals_all_time || 0) - (a.total_referrals_all_time || 0))
+    // ── 5. Top clinics by referrals in period ──
+    reportData.topClinics = Array.from(partnerAgg.entries())
+      .map(([pid, agg]) => {
+        const p = partnerMap.get(pid)
+        return {
+          id: pid,
+          name: p?.name || 'Unknown',
+          referrals: agg.referrals,
+          revenue: Math.round(agg.revenue * 100) / 100,
+          tier: p?.tier || ''
+        }
+      })
+      .sort((a, b) => b.referrals - a.referrals)
       .slice(0, 10)
-      .map(p => ({
-        id: p.id,
-        name: p.name,
-        referrals: p.total_referrals_all_time || 0,
-        revenue: Number(p.total_revenue_all_time) || 0,
-        tier: p.tier || ''
-      }))
 
-    // Group by tier
+    // ── 6. Group by tier ──
     const tierMap = new Map<string, { count: number; referrals: number; revenue: number }>()
-    for (const p of partnersInRange) {
-      const tier = p.tier || 'Unset'
+    for (const [pid, agg] of partnerAgg) {
+      const p = partnerMap.get(pid)
+      const tier = p?.tier || 'Unset'
       const existing = tierMap.get(tier) || { count: 0, referrals: 0, revenue: 0 }
       existing.count++
-      existing.referrals += p.total_referrals_all_time || 0
-      existing.revenue += Number(p.total_revenue_all_time) || 0
+      existing.referrals += agg.referrals
+      existing.revenue += agg.revenue
       tierMap.set(tier, existing)
     }
     const tierOrder = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Coal', 'Unset']
@@ -459,20 +491,20 @@ async function generateReport() {
       .filter(t => tierMap.has(t))
       .map(t => ({ tier: t, ...tierMap.get(t)! }))
 
-    // Group by zone — combine partner data + visit counts
+    // ── 7. Group by zone — referral data + visit counts ──
     const zoneMap = new Map<string, { count: number; referrals: number; revenue: number; visits: number }>()
-    for (const p of partnersInRange) {
-      const zone = p.zone || 'Unassigned'
+    for (const [pid, agg] of partnerAgg) {
+      const p = partnerMap.get(pid)
+      const zone = p?.zone || 'Unassigned'
       const existing = zoneMap.get(zone) || { count: 0, referrals: 0, revenue: 0, visits: 0 }
       existing.count++
-      existing.referrals += p.total_referrals_all_time || 0
-      existing.revenue += Number(p.total_revenue_all_time) || 0
+      existing.referrals += agg.referrals
+      existing.revenue += agg.revenue
       zoneMap.set(zone, existing)
     }
-    // Add visit counts per zone from clinic_visits
     for (const v of visitsList) {
-      const partner = allPartners.find(p => p.id === v.partner_id)
-      const zone = partner?.zone || 'Unassigned'
+      const p = partnerMap.get(v.partner_id)
+      const zone = p?.zone || 'Unassigned'
       const existing = zoneMap.get(zone) || { count: 0, referrals: 0, revenue: 0, visits: 0 }
       existing.visits++
       zoneMap.set(zone, existing)
@@ -481,7 +513,7 @@ async function generateReport() {
       .map(([zone, data]) => ({ zone, ...data }))
       .sort((a, b) => b.revenue - a.revenue)
 
-    // Visit list for table
+    // ── 8. Visit list for the table ──
     reportData.visitsList = visitsList
 
     hasData.value = true
