@@ -9,17 +9,18 @@
  *   to    — ISO date string (inclusive end)
  */
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   // Auth check — must be logged in
-  const user = await serverSupabaseUser(event)
+  const supabaseUser = await serverSupabaseClient(event)
+  const { data: { user } } = await supabaseUser.auth.getUser()
   if (!user) throw createError({ statusCode: 401, message: 'Not authenticated' })
 
   const { from, to } = getQuery(event) as { from?: string; to?: string }
   if (!from || !to) throw createError({ statusCode: 400, message: 'from and to query params required' })
 
-  const db = serverSupabaseServiceRole(event)
+  const db = await serverSupabaseServiceRole(event)
 
   // Fetch all line items (transaction_date is TEXT, so we filter client-side)
   const { data: lineItems, error: lineError } = await db
