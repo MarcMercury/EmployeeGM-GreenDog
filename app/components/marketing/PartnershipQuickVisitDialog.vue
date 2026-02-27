@@ -118,42 +118,20 @@
           class="mb-4"
         />
 
-        <!-- Voice-to-Text Notes Section -->
+        <!-- Visit Notes -->
         <div class="mb-2">
-          <div class="d-flex align-center justify-space-between mb-2">
-            <div class="text-body-2 text-grey-darken-1">
-              <v-icon size="small" class="mr-1">mdi-note-text</v-icon>
-              Visit Notes
-            </div>
-            <v-btn
-              :color="isListening ? 'error' : 'primary'"
-              :variant="isListening ? 'flat' : 'tonal'"
-              size="small"
-              :class="{ 'pulse-animation': isListening }"
-              @mousedown="startListening"
-              @mouseup="stopListening"
-              @mouseleave="stopListening"
-              @touchstart.prevent="startListening"
-              @touchend.prevent="stopListening"
-            >
-              <v-icon start>{{ isListening ? 'mdi-microphone' : 'mdi-microphone-outline' }}</v-icon>
-              {{ isListening ? 'Listening...' : 'Hold to Speak' }}
-            </v-btn>
+          <div class="text-body-2 text-grey-darken-1 mb-2">
+            <v-icon size="small" class="mr-1">mdi-note-text</v-icon>
+            Visit Notes
           </div>
           <v-textarea
             v-model="form.visit_notes"
-            placeholder="Tap the microphone and speak, or type your notes here..."
+            placeholder="Type your notes here..."
             variant="outlined"
             density="comfortable"
             rows="4"
             auto-grow
-            :readonly="isListening"
-            :class="{ 'listening-textarea': isListening }"
           />
-          <div v-if="!speechSupported" class="text-caption text-warning">
-            <v-icon size="small">mdi-alert</v-icon>
-            Voice input not supported in this browser
-          </div>
         </div>
       </v-card-text>
     </v-card>
@@ -187,11 +165,6 @@ function localDateString(d: Date = new Date()): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
-
-// Speech recognition
-const isListening = ref(false)
-const speechSupported = ref(false)
-let recognition: any = null
 
 const discussionItems = [
   { value: 'surgery', label: 'Surgery', icon: 'mdi-medical-bag' },
@@ -230,7 +203,6 @@ function open() {
   form.items_discussed = []
   form.next_visit_date = null
   form.visit_notes = ''
-  initSpeechRecognition()
   visible.value = true
 }
 
@@ -242,12 +214,10 @@ function openWithPartner(partner: { id: string; name: string; best_contact_perso
   form.items_discussed = []
   form.next_visit_date = null
   form.visit_notes = ''
-  initSpeechRecognition()
   visible.value = true
 }
 
 function close() {
-  stopListening()
   visible.value = false
 }
 
@@ -269,83 +239,6 @@ function toggleDiscussionItem(item: string) {
   } else {
     form.items_discussed.push(item)
   }
-}
-
-// --- Speech Recognition ---
-function initSpeechRecognition() {
-  if (typeof window === 'undefined') return
-
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-
-  if (!SpeechRecognition) {
-    speechSupported.value = false
-    return
-  }
-
-  speechSupported.value = true
-  recognition = new SpeechRecognition()
-  recognition.continuous = false
-  recognition.interimResults = false
-  recognition.lang = 'en-US'
-  recognition.maxAlternatives = 1
-
-  recognition.onresult = (event: any) => {
-    let newText = ''
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      if (event.results[i].isFinal) {
-        newText += event.results[i][0].transcript
-      }
-    }
-
-    if (newText) {
-      const currentNotes = form.visit_notes || ''
-      if (currentNotes && !currentNotes.endsWith(' ') && !currentNotes.endsWith('.')) {
-        form.visit_notes = currentNotes + ' ' + newText.trim()
-      } else {
-        form.visit_notes = currentNotes + newText.trim()
-      }
-    }
-  }
-
-  recognition.onerror = (event: any) => {
-    console.error('[SpeechRecognition] Error:', event.error)
-    isListening.value = false
-  }
-
-  recognition.onend = () => {
-    if (isListening.value) {
-      try {
-        recognition.start()
-      } catch (_e) {
-        isListening.value = false
-      }
-    }
-  }
-}
-
-function startListening() {
-  if (!speechSupported.value || !recognition) {
-    initSpeechRecognition()
-    if (!recognition) return
-  }
-
-  try {
-    recognition.start()
-    isListening.value = true
-  } catch (e) {
-    console.error('[SpeechRecognition] Start error:', e)
-  }
-}
-
-function stopListening() {
-  if (recognition && isListening.value) {
-    try {
-      recognition.stop()
-    } catch (e) {
-      console.error('[SpeechRecognition] Stop error:', e)
-    }
-  }
-  isListening.value = false
 }
 
 async function save() {
