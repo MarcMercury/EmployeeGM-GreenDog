@@ -99,86 +99,14 @@
         </v-col>
         <v-col cols="6" md="3">
           <v-card variant="outlined" class="text-center pa-4">
-            <div class="text-h5 font-weight-bold text-orange">{{ reportData.partnersByTier.length }}</div>
-            <div class="text-caption text-grey-darken-1 mt-1">Tier Breakdown</div>
+            <div class="text-h5 font-weight-bold text-orange">${{ formatCurrency(reportData.topClinics.length ? reportData.topClinics[0].revenue : 0) }}</div>
+            <div class="text-caption text-grey-darken-1 mt-1">Top Clinic Revenue</div>
           </v-card>
         </v-col>
         <v-col cols="6" md="3">
           <v-card variant="outlined" class="text-center pa-4">
             <div class="text-h5 font-weight-bold text-pink">{{ reportData.zoneBreakdown.length }}</div>
             <div class="text-caption text-grey-darken-1 mt-1">Zones Active</div>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <v-row>
-        <!-- Top Referring Clinics -->
-        <v-col cols="12" md="6">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
-              <v-icon start color="amber" size="20">mdi-trophy</v-icon>
-              Top Referring Clinics
-            </v-card-title>
-            <v-divider />
-            <v-list density="compact" class="pa-0">
-              <v-list-item
-                v-for="(clinic, idx) in reportData.topClinics"
-                :key="clinic.id"
-                class="px-4"
-              >
-                <template #prepend>
-                  <v-avatar :color="idx < 3 ? 'amber' : 'grey-lighten-2'" size="28" class="mr-3">
-                    <span class="text-caption font-weight-bold" :class="idx < 3 ? 'text-white' : ''">{{ idx + 1 }}</span>
-                  </v-avatar>
-                </template>
-                <v-list-item-title class="text-body-2">{{ clinic.name }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  {{ clinic.referrals.toLocaleString() }} referrals &bull; ${{ Number(clinic.revenue).toLocaleString() }}
-                </v-list-item-subtitle>
-                <template #append>
-                  <v-chip size="x-small" :color="getTierColor(clinic.tier)" variant="flat">
-                    {{ clinic.tier || 'N/A' }}
-                  </v-chip>
-                </template>
-              </v-list-item>
-              <v-list-item v-if="!reportData.topClinics.length">
-                <v-list-item-title class="text-body-2 text-grey text-center">No referral data in this period</v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card>
-        </v-col>
-
-        <!-- Revenue by Tier -->
-        <v-col cols="12" md="6">
-          <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
-              <v-icon start color="deep-purple" size="20">mdi-chart-donut</v-icon>
-              Breakdown by Tier
-            </v-card-title>
-            <v-divider />
-            <v-list density="compact" class="pa-0">
-              <v-list-item
-                v-for="tier in reportData.partnersByTier"
-                :key="tier.tier"
-                class="px-4"
-              >
-                <template #prepend>
-                  <v-avatar :color="getTierChipColor(tier.tier)" size="28" class="mr-3">
-                    <span class="text-caption font-weight-bold text-white">{{ getTierLabel(tier.tier) }}</span>
-                  </v-avatar>
-                </template>
-                <v-list-item-title class="text-body-2">{{ tier.tier || 'Unset' }}</v-list-item-title>
-                <v-list-item-subtitle class="text-caption">
-                  {{ tier.count }} partners &bull; {{ tier.referrals.toLocaleString() }} referrals &bull; ${{ Number(tier.revenue).toLocaleString() }}
-                </v-list-item-subtitle>
-                <template #append>
-                  <span class="text-body-2 font-weight-medium text-success">${{ formatCurrency(tier.revenue) }}</span>
-                </template>
-              </v-list-item>
-              <v-list-item v-if="!reportData.partnersByTier.length">
-                <v-list-item-title class="text-body-2 text-grey text-center">No tier data</v-list-item-title>
-              </v-list-item>
-            </v-list>
           </v-card>
         </v-col>
       </v-row>
@@ -228,48 +156,40 @@
         </v-col>
       </v-row>
 
-      <!-- Recent Visit Activity in Period -->
+      <!-- Top Referring Clinics -->
       <v-row class="mt-2 mb-4">
-        <v-col cols="12">
+        <v-col cols="12" md="8">
           <v-card variant="outlined">
-            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center justify-space-between">
-              <div class="d-flex align-center">
-                <v-icon start color="blue" size="20">mdi-calendar-check</v-icon>
-                Visit Activity in Period
-              </div>
-              <span class="text-caption text-grey">{{ reportData.visitsList.length }} visits</span>
+            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
+              <v-icon start color="amber" size="20">mdi-trophy</v-icon>
+              Top Referring Clinics
             </v-card-title>
             <v-divider />
-            <v-data-table
-              :headers="visitHeaders"
-              :items="reportData.visitsList"
-              :items-per-page="10"
-              density="compact"
-              class="elevation-0"
-            >
-              <template #item.visit_date="{ item }">
-                <span class="text-body-2">{{ formatPartnerDate(item.visit_date) }}</span>
-              </template>
-              <template #item.items_discussed="{ item }">
-                <div class="d-flex flex-wrap gap-1">
-                  <v-chip
-                    v-for="topic in (item.items_discussed || []).slice(0, 3)"
-                    :key="topic"
-                    size="x-small"
-                    variant="tonal"
-                    color="primary"
-                  >
-                    {{ topic }}
+            <v-list density="compact" class="pa-0">
+              <v-list-item
+                v-for="(clinic, idx) in reportData.topClinics"
+                :key="clinic.id"
+                class="px-4"
+              >
+                <template #prepend>
+                  <v-avatar :color="idx < 3 ? 'amber' : 'grey-lighten-2'" size="28" class="mr-3">
+                    <span class="text-caption font-weight-bold" :class="idx < 3 ? 'text-white' : ''">{{ idx + 1 }}</span>
+                  </v-avatar>
+                </template>
+                <v-list-item-title class="text-body-2">{{ clinic.name }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ clinic.referrals.toLocaleString() }} referrals &bull; ${{ Number(clinic.revenue).toLocaleString() }}
+                </v-list-item-subtitle>
+                <template #append>
+                  <v-chip size="x-small" :color="getTierColor(clinic.tier)" variant="flat">
+                    {{ clinic.tier || 'N/A' }}
                   </v-chip>
-                  <v-chip v-if="(item.items_discussed || []).length > 3" size="x-small" variant="text">
-                    +{{ item.items_discussed.length - 3 }}
-                  </v-chip>
-                </div>
-              </template>
-              <template #no-data>
-                <div class="text-center text-grey py-4">No visits in this period</div>
-              </template>
-            </v-data-table>
+                </template>
+              </v-list-item>
+              <v-list-item v-if="!reportData.topClinics.length">
+                <v-list-item-title class="text-body-2 text-grey text-center">No referral data in this period</v-list-item-title>
+              </v-list-item>
+            </v-list>
           </v-card>
         </v-col>
       </v-row>
@@ -285,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatPartnerDate, formatCurrency, getTierColor, getTierLabel } from '~/utils/partnershipHelpers'
+import { formatCurrency, getTierColor } from '~/utils/partnershipHelpers'
 
 interface Props {
   partners: any[]
@@ -308,14 +228,6 @@ const presetOptions = [
   { title: 'Year to Date', value: 'ytd' },
   { title: 'All Time', value: 'all' },
   { title: 'Custom', value: 'custom' }
-]
-
-const visitHeaders = [
-  { title: 'Date', key: 'visit_date', sortable: true },
-  { title: 'Clinic', key: 'clinic_name', sortable: true },
-  { title: 'Spoke To', key: 'spoke_to', sortable: false },
-  { title: 'Topics', key: 'items_discussed', sortable: false },
-  { title: 'Notes', key: 'visit_notes', sortable: false }
 ]
 
 interface ReportData {
@@ -343,14 +255,6 @@ const reportData = reactive<ReportData>({
   zoneBreakdown: [],
   visitsList: []
 })
-
-function getTierChipColor(tier: string): string {
-  const map: Record<string, string> = {
-    Platinum: 'blue-grey', Gold: 'amber-darken-2', Silver: 'grey', Bronze: 'brown', Coal: 'grey-darken-3',
-    platinum: 'blue-grey', gold: 'amber-darken-2', silver: 'grey', bronze: 'brown'
-  }
-  return map[tier] || 'grey'
-}
 
 function applyPreset(value: string) {
   const today = new Date()
@@ -423,22 +327,42 @@ async function generateReport() {
       .map(li => ({ ...li, isoDate: parseTransactionDate(li.transaction_date) }))
       .filter(li => li.isoDate && li.isoDate >= from && li.isoDate <= to)
 
-    // ── 2. Aggregate referral data per partner ──
-    const partnerAgg = new Map<string, { referrals: number; revenue: number }>()
-    for (const li of lineItems) {
-      if (!li.partner_id) continue
-      const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
-      agg.referrals++
-      agg.revenue += Number(li.amount) || 0
-      partnerAgg.set(li.partner_id, agg)
-    }
-
     const visitsList = visitData || []
 
+    // Determine if we have line-item-level data or should fall back to partner-level totals
+    const hasLineItems = lineItems.length > 0
+
+    // ── 2. Aggregate referral data per partner ──
+    const partnerAgg = new Map<string, { referrals: number; revenue: number }>()
+
+    if (hasLineItems) {
+      // Use granular line-item data when available
+      for (const li of lineItems) {
+        if (!li.partner_id) continue
+        const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
+        agg.referrals++
+        agg.revenue += Number(li.amount) || 0
+        partnerAgg.set(li.partner_id, agg)
+      }
+    } else {
+      // Fallback: use partner-level totals (total_referrals_all_time, total_revenue_all_time)
+      for (const p of allPartners) {
+        const referrals = Number(p.total_referrals_all_time) || Number(p.total_referrals) || 0
+        const revenue = Number(p.total_revenue_all_time) || 0
+        if (referrals > 0 || revenue > 0) {
+          partnerAgg.set(p.id, { referrals, revenue })
+        }
+      }
+    }
+
     // ── 4. Compute summary metrics ──
-    const totalReferrals = lineItems.length
-    const totalRevenue = lineItems.reduce((s, li) => s + (Number(li.amount) || 0), 0)
-    const activePartnerIds = new Set(lineItems.map(li => li.partner_id).filter(Boolean))
+    let totalReferrals = 0
+    let totalRevenue = 0
+    for (const agg of partnerAgg.values()) {
+      totalReferrals += agg.referrals
+      totalRevenue += agg.revenue
+    }
+    const activePartnerIds = new Set(Array.from(partnerAgg.keys()))
 
     reportData.totalReferrals = totalReferrals
     reportData.totalRevenue = Math.round(totalRevenue * 100) / 100
@@ -453,7 +377,7 @@ async function generateReport() {
         const p = partnerMap.get(pid)
         return {
           id: pid,
-          name: p?.name || 'Unknown',
+          name: p?.hospital_name || p?.name || 'Unknown',
           referrals: agg.referrals,
           revenue: Math.round(agg.revenue * 100) / 100,
           tier: p?.tier || ''
