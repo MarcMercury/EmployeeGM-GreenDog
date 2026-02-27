@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Deprecated: growth/partners has been consolidated into marketing/partnerships (Referral CRM)
-definePageMeta({ layout: 'default' })
-navigateTo('/marketing/partnerships', { redirectCode: 301 })
+definePageMeta({ layout: 'default', middleware: ['auth'] })
+await navigateTo('/marketing/partnerships', { redirectCode: 301 })
 </script>
 
 <template>

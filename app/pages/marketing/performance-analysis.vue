@@ -523,7 +523,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'default', middleware: ['auth', 'marketing-admin'] })
 
 const route = useRoute()
 

@@ -3,12 +3,25 @@
  * Returns health status of the agents system including OpenAI integration
  */
 
-export default defineEventHandler(async (event) => {
-  const supabase = await useSupabaseServer()
-  const user = await requireAuth(event)
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
-  // Only admins can check agent health
-  if (user.role !== 'super_admin' && user.role !== 'admin') {
+export default defineEventHandler(async (event) => {
+  // Authenticate user
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
+  const supabase = await serverSupabaseServiceRole(event)
+
+  // Verify admin role
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  if (!profile || !ADMIN_ROLES.includes(profile.role as any)) {
     throw createError({
       statusCode: 403,
       message: 'Only admins can check agent health',

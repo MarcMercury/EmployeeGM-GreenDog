@@ -12,9 +12,15 @@
  * }
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Require authentication
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
   const client = await serverSupabaseClient(event)
   const body = await readBody(event)
 
@@ -46,7 +52,7 @@ export default defineEventHandler(async (event) => {
     // Replace placeholders like {{employee_name}} with actual values
     if (data && typeof data === 'object') {
       for (const [key, value] of Object.entries(data)) {
-        const placeholder = `{{${key}}}`
+        const placeholder = `{{${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}}}`
         message = message.replace(new RegExp(placeholder, 'g'), String(value || ''))
       }
     }

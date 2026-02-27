@@ -158,6 +158,13 @@ export const useScheduleStore = defineStore('schedule', {
     },
 
     async createSchedule(schedule: Partial<Schedule>) {
+      // Guard: only management roles can create schedules
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to create schedules')
+      }
+
       const supabase = useSupabaseClient()
       
       try {
@@ -271,6 +278,13 @@ export const useScheduleStore = defineStore('schedule', {
     async reviewTimeOff(id: string, status: 'approved' | 'denied', notes?: string) {
       const supabase = useSupabaseClient()
       const authStore = useAuthStore()
+
+      // Guard: only management roles can review time-off requests
+      const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to review time-off requests')
+      }
+
       if ((authStore.profile as any)?.is_emergency) {
         throw new Error('Cannot review time-off requests in emergency admin mode')
       }

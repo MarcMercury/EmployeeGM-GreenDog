@@ -6,9 +6,26 @@
  * GET /api/slack/sync/status
  */
 
-import { serverSupabaseClient } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
+  // Require authentication + admin role
+  const user = await serverSupabaseUser(event)
+  if (!user) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
+  const adminClient = await serverSupabaseServiceRole(event)
+  const { data: profile } = await adminClient
+    .from('profiles')
+    .select('role')
+    .eq('auth_user_id', user.id)
+    .single()
+
+  if (!profile || !ADMIN_ROLES.includes(profile.role as any)) {
+    throw createError({ statusCode: 403, statusMessage: 'Admin access required' })
+  }
+
   const client = await serverSupabaseClient(event)
 
   try {

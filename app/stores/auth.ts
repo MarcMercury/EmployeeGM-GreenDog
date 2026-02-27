@@ -148,6 +148,12 @@ export const useAuthStore = defineStore('auth', {
         throw new Error('No profile to update or supabase not ready')
       }
 
+      // Prevent role escalation — strip sensitive fields from client-side updates
+      const safeUpdates = { ...updates }
+      delete (safeUpdates as any).role
+      delete (safeUpdates as any).auth_user_id
+      delete (safeUpdates as any).is_active
+
       this.isLoading = true
       this.error = null
 
@@ -155,7 +161,7 @@ export const useAuthStore = defineStore('auth', {
         const { data, error } = await supabase
           .from('profiles')
           .update({
-            ...updates,
+            ...safeUpdates,
             updated_at: new Date().toISOString()
           })
           .eq('id', this.profile.id)

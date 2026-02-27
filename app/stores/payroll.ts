@@ -143,8 +143,17 @@ export const usePayrollStore = defineStore('payroll', {
     
     /**
      * Fetch payroll summary for all employees
+     * Restricted to admin/hr roles — payroll data is sensitive.
      */
     async fetchPayrollSummary() {
+      // Guard: only admin, hr_admin, super_admin can access payroll data
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'hr_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        this.error = 'Insufficient permissions to view payroll data'
+        return
+      }
+
       this.loading = true
       this.error = null
       
@@ -192,8 +201,17 @@ export const usePayrollStore = defineStore('payroll', {
     
     /**
      * Fallback method if database function isn't available
+     * Restricted to admin/hr roles — payroll data is sensitive.
      */
     async fetchPayrollSummaryFallback() {
+      // Guard: only admin, hr_admin, super_admin can access payroll data
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'hr_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        this.error = 'Insufficient permissions to view payroll data'
+        return
+      }
+
       const supabase = useSupabaseClient()
       
       try {
@@ -499,6 +517,13 @@ export const usePayrollStore = defineStore('payroll', {
       amount: number,
       note: string
     ) {
+      // Guard: only admin/hr roles can add payroll adjustments
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'hr_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to add payroll adjustments')
+      }
+
       const supabase = useSupabaseClient()
       const userStore = useUserStore()
       
@@ -543,6 +568,13 @@ export const usePayrollStore = defineStore('payroll', {
      * Remove a payroll adjustment
      */
     async removeAdjustment(adjustmentId: string) {
+      // Guard: only admin/hr roles can remove payroll adjustments
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'hr_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to remove payroll adjustments')
+      }
+
       const supabase = useSupabaseClient()
       
       const adj = this.selectedEmployeeAdjustments.find(a => a.id === adjustmentId)
@@ -581,6 +613,13 @@ export const usePayrollStore = defineStore('payroll', {
      * Approve an employee's payroll for the period
      */
     async approvePayroll(employeeId: string, notes?: string) {
+      // Guard: only admin/hr roles can approve payroll
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'hr_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to approve payroll')
+      }
+
       const supabase = useSupabaseClient()
       const userStore = useUserStore()
       

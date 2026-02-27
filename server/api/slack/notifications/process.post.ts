@@ -20,9 +20,10 @@ export default defineEventHandler(async (event) => {
   const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
 
   if (!isCronAuth) {
-    // If not cron, this endpoint should only be called from internal server routes
-    // or by authenticated admin users. For now, log a warning.
-    logger.warn('Notification process called without cron auth', 'slack/notifications/process')
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Unauthorized: valid cron secret required',
+    })
   }
 
   const SLACK_BOT_TOKEN = config.slackBotToken

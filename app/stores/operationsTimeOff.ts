@@ -130,6 +130,13 @@ export const useOperationsTimeOffStore = defineStore('operations-time-off', {
     },
 
     async reviewTimeOffRequest(requestId: string, status: 'approved' | 'denied', approverId: string, comment?: string) {
+      // Guard: only management roles can review time-off requests
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'office_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        throw new Error('Insufficient permissions to review time-off requests')
+      }
+
       const supabase = useSupabaseClient()
 
       try {

@@ -22,11 +22,11 @@ export default defineEventHandler(async (event) => {
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('auth_user_id', user.id)
     .single()
 
   const isAdmin =
-    profile?.role === 'admin' || profile?.role === 'marketing_admin' || profile?.role === 'partner'
+    profile?.role === 'super_admin' || profile?.role === 'admin' || profile?.role === 'manager' || profile?.role === 'marketing_admin'
 
   if (!isAdmin) {
     throw createError({

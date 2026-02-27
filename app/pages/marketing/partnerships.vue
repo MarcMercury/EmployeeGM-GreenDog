@@ -55,6 +55,10 @@
         Upload Log
         <v-badge v-if="unmatchedEntries.length" :content="unmatchedEntries.length" color="warning" inline class="ml-1" />
       </v-tab>
+      <v-tab value="reports">
+        <v-icon start>mdi-chart-bar</v-icon>
+        Reports
+      </v-tab>
     </v-tabs>
 
     <v-window v-model="mainTab">
@@ -582,6 +586,11 @@
             </template>
           </v-data-table>
         </v-card>
+      </v-window-item>
+
+      <!-- REPORTS TAB -->
+      <v-window-item value="reports">
+        <MarketingPartnershipReportsTab :partners="partners" />
       </v-window-item>
     </v-window>
 

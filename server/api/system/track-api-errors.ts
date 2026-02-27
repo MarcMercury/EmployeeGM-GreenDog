@@ -6,6 +6,8 @@
  * Works gracefully even if migrations haven't been run yet
  */
 
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+
 export default defineEventHandler(async (event) => {
   if (event.node.req.method === 'POST') {
     try {
@@ -16,9 +18,9 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 400, message: 'Invalid errors format' })
       }
 
-      // Try to log to database, but fail gracefully if tables don't exist
-      const supabase = await useSupabaseServer()
-      const user = await getSession(event).catch(() => null)
+      // Use service role client for error tracking (POST may come from client-side tracker)
+      const supabase = await serverSupabaseServiceRole(event)
+      const user = await serverSupabaseUser(event).catch(() => null)
 
       for (const error of errors) {
         const { endpoint, method = 'GET', status, statusText, duration, body: reqBody } = error
@@ -32,7 +34,7 @@ export default defineEventHandler(async (event) => {
               method,
               status_code: status,
               error_message: statusText,
-              user_id: user?.user?.id || null,
+              user_id: user?.id || null,
               user_agent: event.node.req.headers['user-agent'],
               request_body: reqBody ? JSON.stringify(reqBody).substring(0, 500) : null,
               duration_ms: duration,
@@ -90,11 +92,21 @@ export default defineEventHandler(async (event) => {
   // GET: Return error summary for dashboard
   if (event.node.req.method === 'GET') {
     try {
-      const supabase = await useSupabaseServer()
-      const user = await requireAuth(event)
+      const user = await serverSupabaseUser(event)
+      if (!user) {
+        throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+      }
 
-      // Only admins can view
-      if (!['super_admin', 'admin'].includes(user.role)) {
+      const supabase = await serverSupabaseServiceRole(event)
+
+      // Verify admin role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('auth_user_id', user.id)
+        .single()
+
+      if (!profile || !ADMIN_ROLES.includes(profile.role as any)) {
         throw createError({ statusCode: 403, message: 'Admin access required' })
       }
 

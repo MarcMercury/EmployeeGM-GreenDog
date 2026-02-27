@@ -9,17 +9,22 @@
  * - Performance metrics
  */
 
-export default defineEventHandler(async (event) => {
-  const isLocalRequest = event.node.req.headers['x-forwarded-for'] === undefined
-  const isCronSecret = event.node.req.headers['x-cron-secret'] === process.env.CRON_SECRET
+import { serverSupabaseServiceRole } from '#supabase/server'
 
-  // Verify request is from Vercel Cron or localhost
-  if (!isLocalRequest && !isCronSecret) {
-    throw createError({ statusCode: 403, message: 'Unauthorized' })
+export default defineEventHandler(async (event) => {
+  const cronSecret = useRuntimeConfig().cronSecret
+  const authHeader = getHeader(event, 'authorization')
+  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
+
+  // Also allow x-cron-secret header for backward compatibility
+  const isCronSecretHeader = cronSecret && getHeader(event, 'x-cron-secret') === cronSecret
+
+  if (!isCronAuth && !isCronSecretHeader) {
+    throw createError({ statusCode: 401, statusMessage: 'Unauthorized: valid cron secret required' })
   }
 
   try {
-    const supabase = await useSupabaseServer()
+    const supabase = await serverSupabaseServiceRole(event)
 
     // 1. Refresh error trends from last 24 hours
     console.log('[Health Check] Refreshing error trends...')

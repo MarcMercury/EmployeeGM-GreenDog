@@ -1656,7 +1656,7 @@ import { format, formatDistanceToNow, differenceInDays, differenceInMonths, diff
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth']
+  middleware: ['auth', 'management']
 })
 
 const route = useRoute()

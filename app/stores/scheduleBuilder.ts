@@ -600,6 +600,14 @@ export const useScheduleBuilderStore = defineStore('scheduleBuilder', {
      * Publish the schedule (save + mark as published + notify)
      */
     async publishSchedule() {
+      // Guard: only schedule-manage roles can publish
+      const authStore = useAuthStore()
+      const allowedRoles = ['super_admin', 'admin', 'manager', 'sup_admin', 'office_admin']
+      if (!authStore.profile || !allowedRoles.includes(authStore.profile.role || '')) {
+        this.error = 'Insufficient permissions to publish schedules'
+        return false
+      }
+
       const client = useSupabaseClient()
       this.isPublishing = true
       this.error = null
