@@ -37,13 +37,13 @@ export default defineEventHandler(async (event) => {
       .eq('auth_user_id', userId)
       .single()
     
-    const allowedRoles = ['super_admin', 'admin']
+    const allowedRoles = ['super_admin', 'admin', 'marketing_admin']
     if (profileError) {
       throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
     }
     
     if (!profile || !allowedRoles.includes(profile.role)) {
-      throw createError({ statusCode: 403, message: `Super Admin or Admin access required for this operation. Your role: ${profile?.role || 'unknown'}` })
+      throw createError({ statusCode: 403, message: `Admin or Marketing Admin access required for this operation. Your role: ${profile?.role || 'unknown'}` })
     }
     
     logger.info('Access granted', 'clear-referral-stats', { role: profile.role })
