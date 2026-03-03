@@ -664,6 +664,7 @@ const categories = [
   { value: 'training', label: 'Training', icon: 'mdi-school', color: 'green', emoji: '🎓' },
   { value: 'hr', label: 'HR', icon: 'mdi-briefcase', color: 'orange', emoji: '💼' },
   { value: 'marketing', label: 'Marketing', icon: 'mdi-bullhorn', color: 'pink', emoji: '📣' },
+  { value: 'referrals', label: 'Referrals', icon: 'mdi-handshake', color: 'cyan', emoji: '🤝' },
   { value: 'pto', label: 'Time Off', icon: 'mdi-palm-tree', color: 'teal', emoji: '🏖️' },
   { value: 'system', label: 'System', icon: 'mdi-cog', color: 'grey', emoji: '⚙️' },
 ]
@@ -900,6 +901,12 @@ const NOTIFICATION_TYPE_CATEGORY_MAP: Record<string, string> = {
   promotion: 'hr',
   // Marketing
   marketing_update: 'marketing',
+  // Referrals
+  referral_contact_updated: 'referrals',
+  referral_visit_logged: 'referrals',
+  referral_report_uploaded: 'referrals',
+  referral_stats_updated: 'referrals',
+  referral_new_partner: 'referrals',
   // System
   system_welcome: 'system',
   system: 'system',
@@ -1109,6 +1116,7 @@ const getCategoryColor = (category: string) => {
     training: 'rgba(76, 175, 80, 0.15)',
     hr: 'rgba(255, 152, 0, 0.15)',
     marketing: 'rgba(233, 30, 99, 0.15)',
+    referrals: 'rgba(0, 188, 212, 0.15)',
     pto: 'rgba(0, 150, 136, 0.15)',
     system: 'rgba(158, 158, 158, 0.15)',
   }

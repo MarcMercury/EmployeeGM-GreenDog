@@ -1054,6 +1054,7 @@ useHead({ title: 'Medical Partnerships CRM' })
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const authStore = useAuthStore()
+const { notifyReferralReportUpload, notifyReferralContactUpdated } = useReferralNotifications()
 
 // Template refs
 const quickVisitRef = ref<{ open: () => void; openWithPartner: (partner: any) => void } | null>(null)
@@ -1608,6 +1609,24 @@ async function savePartner() {
       const { error } = await supabase.from('referral_partners').update(payload).eq('id', form.id)
       if (error) throw error
       snackbar.message = 'Partner updated'
+
+      // Track contact-related field changes for notification
+      const contactFields = ['contact_name', 'best_contact_person', 'email', 'phone', 'address']
+      const changedFields = contactFields.filter(f => {
+        const oldPartner = partners.value.find(p => p.id === form.id)
+        return oldPartner && (oldPartner as any)[f] !== (payload as any)[f]
+      })
+      if (changedFields.length > 0) {
+        const updaterName = authStore.fullName || authStore.profile?.email || 'A team member'
+        notifyReferralContactUpdated({
+          partnerName: form.name,
+          partnerId: form.id!,
+          changedFields,
+          updatedBy: updaterName,
+        }, authStore.profile?.id).catch(err => {
+          console.error('[Partnerships] Contact update notification error:', err)
+        })
+      }
     } else {
       const { error } = await supabase.from('referral_partners').insert(payload)
       if (error) throw error
@@ -1740,6 +1759,22 @@ async function processUpload() {
       snackbar.message = response.message || `Updated ${response.updated} partners`
       snackbar.color = 'success'
       snackbar.show = true
+
+      // Fire referral notifications to admins/managers/marketing admins
+      if (response.updated > 0) {
+        const uploaderName = authStore.fullName || authStore.profile?.email || 'A team member'
+        const partnerNames = (response.details || [])
+          .filter((d: any) => d.matched)
+          .map((d: any) => d.matchedTo || d.clinicName)
+        notifyReferralReportUpload({
+          partnersUpdated: response.updated,
+          reportType: response.reportType || 'revenue',
+          uploadedBy: uploaderName,
+          partnerNames,
+        }, authStore.profile?.id).catch(err => {
+          console.error('[Partnerships] Referral report notification error:', err)
+        })
+      }
     }
   } catch (error: any) {
     console.error('Upload error:', error)

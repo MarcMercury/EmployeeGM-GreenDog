@@ -1177,6 +1177,10 @@ useHead({
 })
 
 const { sanitize } = useSanitizedHtml()
+const authStore = useAuthStore()
+const canRevealCredentials = computed(() =>
+  authStore.isAdmin || authStore.isManager || authStore.isSupervisor || authStore.isSuperAdmin
+)
 
 // State
 const searchQuery = ref('')
@@ -1568,12 +1572,6 @@ function markHelpful() {
 function printArticle() {
   window.print()
 }
-
-// Auth for credential reveal
-const authStore = useAuthStore()
-const canRevealCredentials = computed(() =>
-  authStore.isAdmin || authStore.isManager || authStore.isSupervisor || authStore.isSuperAdmin
-)
 
 // Resource navigation
 const router = useRouter()

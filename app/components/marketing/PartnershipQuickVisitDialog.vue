@@ -153,6 +153,7 @@ const emit = defineEmits<{
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 const authStore = useAuthStore()
+const { notifyReferralVisit } = useReferralNotifications()
 
 // Dialog visibility
 const visible = ref(false)
@@ -301,6 +302,21 @@ async function save() {
     emit('notify', { message: 'Visit Logged ✓', color: 'success' })
     close()
     emit('saved')
+
+    // Fire referral notifications to admins/managers/marketing admins
+    if (form.partner_id) {
+      const loggedByName = authStore.fullName || authStore.profile?.email || 'A team member'
+      notifyReferralVisit({
+        partnerName: form.clinic_name || 'Unknown Clinic',
+        partnerId: form.partner_id,
+        spokeTo: form.spoke_to || null,
+        visitDate: form.visit_date,
+        visitNotes: form.visit_notes || null,
+        loggedBy: loggedByName,
+      }, authStore.profile?.id).catch(err => {
+        console.error('[QuickVisit] Referral notification error:', err)
+      })
+    }
   } catch (err: any) {
     console.error('[QuickVisit] Save error:', err)
     emit('notify', { message: err.message || 'Failed to log visit', color: 'error' })
