@@ -228,6 +228,57 @@
                 </v-list-item>
               </v-list>
 
+              <!-- Account & Portal Info -->
+              <v-divider class="my-4" />
+              <div class="text-subtitle-2 mb-2">Account & Portal Info</div>
+              <v-list density="compact" class="bg-transparent">
+                <v-list-item v-if="selectedPartner.account_number">
+                  <template #prepend><v-icon>mdi-pound</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.account_number }}</v-list-item-title>
+                  <v-list-item-subtitle>Account Number</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.location_code">
+                  <template #prepend><v-icon>mdi-map-marker-radius</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.location_code }}</v-list-item-title>
+                  <v-list-item-subtitle>Location</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.department">
+                  <template #prepend><v-icon>mdi-domain</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.department }}</v-list-item-title>
+                  <v-list-item-subtitle>Department</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.portal_url && selectedPartner.portal_url !== 'NA'">
+                  <template #prepend><v-icon>mdi-login</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.portal_url }}</v-list-item-title>
+                  <v-list-item-subtitle>Portal URL</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.portal_username && selectedPartner.portal_username !== 'NA'">
+                  <template #prepend><v-icon>mdi-account-key</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.portal_username }}</v-list-item-title>
+                  <v-list-item-subtitle>Portal Username</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.order_method">
+                  <template #prepend><v-icon>mdi-cart</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.order_method }}</v-list-item-title>
+                  <v-list-item-subtitle>Order Method</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.payment_method">
+                  <template #prepend><v-icon>mdi-credit-card</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.payment_method }}</v-list-item-title>
+                  <v-list-item-subtitle>Payment Method</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.browser_preference">
+                  <template #prepend><v-icon>mdi-web</v-icon></template>
+                  <v-list-item-title>{{ selectedPartner.browser_preference }}</v-list-item-title>
+                  <v-list-item-subtitle>Browser Preference</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="selectedPartner.vendor_info">
+                  <template #prepend><v-icon>mdi-information</v-icon></template>
+                  <v-list-item-title class="text-wrap">{{ selectedPartner.vendor_info }}</v-list-item-title>
+                  <v-list-item-subtitle>Additional Info</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
               <v-divider class="my-4" />
 
               <div class="text-subtitle-2 mb-2">Products & Services</div>
@@ -664,6 +715,126 @@
             </v-row>
 
             <v-divider class="my-3" />
+            <div class="text-subtitle-2 mb-2">Account & Portal</div>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.account_number"
+                  label="Account Number"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.location_code"
+                  :items="locationCodes"
+                  label="Location"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.department"
+                  :items="departments"
+                  label="Department"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.cost_type"
+                  label="Cost Type"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="e.g., MED SUPPLIES, PATIENTS"
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.portal_url"
+                  label="Portal URL"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="Login portal URL"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.portal_username"
+                  label="Portal Username"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.portal_password"
+                  label="Portal Password"
+                  variant="outlined"
+                  density="compact"
+                  :type="showPassword ? 'text' : 'password'"
+                  :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showPassword = !showPassword"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="partnerForm.browser_preference"
+                  :items="browserOptions"
+                  label="Browser Preference"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                />
+              </v-col>
+            </v-row>
+
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.order_method"
+                  label="Order Method"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="Website, Phone, Email, etc."
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model="partnerForm.payment_method"
+                  label="Payment Method"
+                  variant="outlined"
+                  density="compact"
+                  placeholder="Monthly auto, CC on file, etc."
+                />
+              </v-col>
+            </v-row>
+
+            <v-textarea
+              v-model="partnerForm.vendor_info"
+              label="Additional Vendor Info"
+              variant="outlined"
+              density="compact"
+              rows="2"
+              class="mb-2"
+            />
+
+            <v-divider class="my-3" />
             <div class="text-subtitle-2 mb-2">Display Options</div>
 
             <v-row>
@@ -876,7 +1047,21 @@ const partnerForm = reactive({
   status: 'active',
   icon: 'mdi-factory',
   color: 'grey',
-  products: [] as string[]
+  products: [] as string[],
+  // New fields from Med Contacts spreadsheet
+  location_code: '',
+  department: '',
+  cost_type: '',
+  has_cc_fees: null as boolean | null,
+  account_number: '',
+  portal_url: '',
+  portal_username: '',
+  portal_password: '',
+  form_filled: null as boolean | null,
+  browser_preference: '',
+  vendor_info: '',
+  order_method: '',
+  payment_method: ''
 })
 
 const categories = [
@@ -925,11 +1110,17 @@ const colorOptions = [
 
 const tableHeaders = [
   { title: 'Partner', key: 'name' },
+  { title: 'Location', key: 'location_code' },
   { title: 'Status', key: 'status' },
   { title: 'Contact', key: 'contact' },
   { title: 'Email', key: 'email' },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' as const }
 ]
+
+const locationCodes = ['MVS ALL', 'AETNA', 'SO', 'VEN', 'MPMV']
+const departments = ['ALL OTHER', 'EXOTICS', 'INTERNAL MED']
+const browserOptions = ['Chrome', 'Safari', 'Either']
+const showPassword = ref(false)
 
 // Partners from database
 const partners = ref<any[]>([])
@@ -1266,7 +1457,20 @@ function resetForm() {
     status: 'active',
     icon: 'mdi-factory',
     color: 'grey',
-    products: []
+    products: [],
+    location_code: '',
+    department: '',
+    cost_type: '',
+    has_cc_fees: null,
+    account_number: '',
+    portal_url: '',
+    portal_username: '',
+    portal_password: '',
+    form_filled: null,
+    browser_preference: '',
+    vendor_info: '',
+    order_method: '',
+    payment_method: ''
   })
 }
 
@@ -1290,7 +1494,20 @@ function openEditDialog(partner: any) {
     status: partner.status || 'active',
     icon: partner.icon || 'mdi-factory',
     color: partner.color || 'grey',
-    products: partner.products || []
+    products: partner.products || [],
+    location_code: partner.location_code || '',
+    department: partner.department || '',
+    cost_type: partner.cost_type || '',
+    has_cc_fees: partner.has_cc_fees ?? null,
+    account_number: partner.account_number || '',
+    portal_url: partner.portal_url || '',
+    portal_username: partner.portal_username || '',
+    portal_password: partner.portal_password || '',
+    form_filled: partner.form_filled ?? null,
+    browser_preference: partner.browser_preference || '',
+    vendor_info: partner.vendor_info || '',
+    order_method: partner.order_method || '',
+    payment_method: partner.payment_method || ''
   })
   isEditing.value = true
   partnerDialog.value = false
@@ -1345,7 +1562,20 @@ async function savePartner() {
       is_active: partnerForm.status === 'active',
       icon: partnerForm.icon,
       color: partnerForm.color,
-      products: partnerForm.products
+      products: partnerForm.products,
+      location_code: partnerForm.location_code || null,
+      department: partnerForm.department || null,
+      cost_type: partnerForm.cost_type || null,
+      has_cc_fees: partnerForm.has_cc_fees,
+      account_number: partnerForm.account_number || null,
+      portal_url: partnerForm.portal_url || null,
+      portal_username: partnerForm.portal_username || null,
+      portal_password: partnerForm.portal_password || null,
+      form_filled: partnerForm.form_filled,
+      browser_preference: partnerForm.browser_preference || null,
+      vendor_info: partnerForm.vendor_info || null,
+      order_method: partnerForm.order_method || null,
+      payment_method: partnerForm.payment_method || null
     }
 
     if (isEditing.value) {
