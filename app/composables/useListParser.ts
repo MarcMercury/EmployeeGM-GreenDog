@@ -65,9 +65,50 @@ export function useListParser() {
   }
 
   /**
-   * Parse a single CSV line handling quoted values
+   * Auto-detect the field delimiter used in a CSV/TSV file.
+   * Checks the first few lines for tabs, semicolons, pipes, or commas.
    */
-  function parseCSVLine(line: string): string[] {
+  function detectDelimiter(content: string): string {
+    const sampleLines = content.split(/\r?\n/).slice(0, 5).filter(l => l.trim())
+    const delimiters = ['\t', ';', '|', ',']
+
+    let bestDelimiter = ','
+    let bestScore = 0
+
+    for (const d of delimiters) {
+      // Count occurrences per line, then check consistency
+      const counts = sampleLines.map(line => {
+        let count = 0
+        let inQuotes = false
+        for (const ch of line) {
+          if (ch === '"') inQuotes = !inQuotes
+          else if (ch === d && !inQuotes) count++
+        }
+        return count
+      })
+
+      // Score: high if consistent non-zero count across lines
+      const avgCount = counts.reduce((a, b) => a + b, 0) / counts.length
+      const allNonZero = counts.every(c => c > 0)
+      const score = allNonZero ? avgCount * 10 : avgCount
+
+      if (score > bestScore) {
+        bestScore = score
+        bestDelimiter = d
+      }
+    }
+
+    if (bestDelimiter !== ',') {
+      console.log(`[ListParser] Auto-detected delimiter: ${bestDelimiter === '\t' ? 'TAB' : `"${bestDelimiter}"`}`)
+    }
+    return bestDelimiter
+  }
+
+  /**
+   * Parse a single CSV/TSV line handling quoted values.
+   * Accepts a configurable delimiter (defaults to comma).
+   */
+  function parseCSVLine(line: string, delimiter: string = ','): string[] {
     const result: string[] = []
     let current = ''
     let inQuotes = false
@@ -82,7 +123,7 @@ export function useListParser() {
         } else {
           inQuotes = !inQuotes
         }
-      } else if (char === ',' && !inQuotes) {
+      } else if (char === delimiter && !inQuotes) {
         result.push(current.trim())
         current = ''
       } else {
@@ -129,11 +170,24 @@ export function useListParser() {
   }
 
   /**
-   * Parse CSV content into rows.
-   * Automatically detects header row (handles files with title rows).
+   * Strip BOM (Byte Order Mark) from the beginning of file content.
+   */
+  function stripBOM(content: string): string {
+    if (content.charCodeAt(0) === 0xFEFF) {
+      console.log('[ListParser] Stripped UTF-8 BOM from file')
+      return content.slice(1)
+    }
+    return content
+  }
+
+  /**
+   * Parse CSV/TSV content into rows.
+   * Automatically detects delimiter, header row, and handles BOM.
    */
   function parseCSV(content: string): { headers: string[]; data: Record<string, any>[] } {
-    const lines = content.trim().split(/\r?\n/)
+    const cleanContent = stripBOM(content)
+    const delimiter = detectDelimiter(cleanContent)
+    const lines = cleanContent.trim().split(/\r?\n/)
     if (lines.length < 2) {
       return { headers: [], data: [] }
     }
@@ -141,11 +195,11 @@ export function useListParser() {
     const headerRowIndex = detectHeaderRow(lines)
     const headerLine: string | undefined = lines[headerRowIndex]
     if (headerLine === undefined) return { headers: [], data: [] }
-    const headers = parseCSVLine(headerLine)
+    const headers = parseCSVLine(headerLine, delimiter)
 
     const data = lines
       .slice(headerRowIndex + 1)
-      .map(line => parseCSVLine(line))
+      .map(line => parseCSVLine(line, delimiter))
       .filter(row => row.some(cell => cell.trim()))
       .filter(row => {
         const nonEmptyCells = row.filter(cell => cell.trim()).length
@@ -305,12 +359,32 @@ export function useListParser() {
         const content = await readFileAsText(file)
         const { headers, data } = parseCSV(content)
 
+        console.log(`[ListParser] ${file.name}: ${headers.length} headers, ${data.length} rows`)
+        console.log(`[ListParser] Headers:`, headers)
+
         if (headers.length === 0) {
           toast.error(`${file.name} appears to be empty or invalid`)
           continue
         }
 
+        if (headers.length === 1 && data.length > 0) {
+          console.warn(`[ListParser] ${file.name}: Only 1 column detected — file may use an unsupported delimiter`)
+          toast.warning(`${file.name}: Only 1 column detected. Check the file format.`)
+        }
+
         const { mapped, candidates } = mapHeaders(headers)
+
+        console.log(`[ListParser] ${file.name} mappings:`, mapped)
+        if (candidates.length > 0) {
+          console.log(`[ListParser] ${file.name} needs confirmation:`, candidates)
+        }
+
+        // Warn if no column mapped to email or phone
+        const mappedFields = Object.values(mapped)
+        if (!mappedFields.includes('email') && !mappedFields.includes('phone')) {
+          console.warn(`[ListParser] ${file.name}: No email or phone column detected!`)
+          toast.warning(`${file.name}: No email or phone column found — processing may produce 0 results`)
+        }
 
         const parsedFile: ParsedFile = {
           id: generateId(),
@@ -330,7 +404,7 @@ export function useListParser() {
           showMappingDialog.value = true
         }
 
-        toast.success(`Loaded ${file.name} (${data.length} rows)`)
+        toast.success(`Loaded ${file.name} (${data.length} rows, ${headers.length} columns)`)
       } catch (err) {
         console.error('Error parsing file:', err)
         toast.error(`Failed to parse ${file.name}`)

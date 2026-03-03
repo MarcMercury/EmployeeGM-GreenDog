@@ -26,7 +26,7 @@
           color="primary"
           variant="outlined"
           prepend-icon="mdi-printer"
-          @click="window.print()"
+          @click="printReport"
         >
           Print Report
         </v-btn>
@@ -143,7 +143,7 @@
               <div>
                 <div class="text-h5 font-weight-bold">{{ formatNumber(data.kpis.clients.activeContacts) }}</div>
                 <div class="text-caption text-grey">Active Clients</div>
-                <div class="text-caption text-grey">{{ data.kpis.clients.retentionRate12Mo || data.kpis.clients.retentionRate3Mo }}% 12-mo retention</div>
+                <div class="text-caption text-grey">{{ data.kpis.clients.retentionRate12Mo ?? data.kpis.clients.retentionRate3Mo }}% 12-mo retention</div>
               </div>
             </div>
           </v-card>
@@ -511,8 +511,10 @@ const staffBarOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
   colors: ['#8B5CF6'],
   xaxis: {
+    labels: { formatter: (v: number) => '$' + (Number(v) / 1000).toFixed(0) + 'k' },
+  },
+  yaxis: {
     categories: (data.value?.charts?.topStaff || []).map((d: any) => d.name),
-    labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' },
   },
   plotOptions: { bar: { borderRadius: 4, horizontal: true } },
   dataLabels: { enabled: false },
@@ -554,6 +556,10 @@ const retentionBarOptions = computed(() => ({
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
+function printReport() {
+  window.print()
+}
+
 function formatNumber(n: number): string {
   return n?.toLocaleString() ?? '0'
 }
@@ -584,7 +590,9 @@ async function loadDashboard() {
       startDate: filters.startDate,
       endDate: filters.endDate,
     })
-    const result = await $fetch(`/api/analytics/practice-overview?${params.toString()}`) as any
+    const result = await $fetch(`/api/analytics/practice-overview?${params.toString()}`, {
+      retry: 0,  // Don't retry on error — prevents console flood
+    }) as any
 
     if (result.success) {
       data.value = result

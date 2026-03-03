@@ -43,11 +43,22 @@ export default defineEventHandler(async (event) => {
   const startDate = (query.startDate as string) || defaultStart
   const endDate = (query.endDate as string) || defaultEnd
 
+  /** Safely run an async query section, returning a fallback on error */
+  async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+    try {
+      return await fn()
+    } catch (err: any) {
+      console.error(`[PracticeAnalytics] ${label} failed:`, err?.message || err)
+      return fallback
+    }
+  }
+
   try {
     // Fetch the invoice dashboard RPC once for all revenue/dept/staff data
-    const invoiceDashboard = await getInvoiceDashboard(supabase, startDate, endDate)
+    const invoiceDashboard = await safe('InvoiceDashboard',
+      () => getInvoiceDashboard(supabase, startDate, endDate), {})
 
-    // Run remaining queries in parallel for speed
+    // Run remaining queries in parallel for speed — each is individually resilient
     const [
       appointmentMetrics,
       clientMetrics,
@@ -56,16 +67,22 @@ export default defineEventHandler(async (event) => {
       appointmentsByType,
       clientRetention,
     ] = await Promise.all([
-      getAppointmentMetrics(supabase, startDate, endDate),
-      getClientMetrics(supabase),
-      getReferralMetrics(supabase),
-      getSyncStatus(supabase),
-      getAppointmentsByType(supabase, startDate, endDate),
-      getClientRetention(supabase),
+      safe('Appointments', () => getAppointmentMetrics(supabase, startDate, endDate),
+        { totalAppointments: 0, avgPerDay: 0, uniqueTypes: 0, dataSource: 'none' }),
+      safe('Clients', () => getClientMetrics(supabase),
+        { totalContacts: 0, activeContacts: 0, recentVisitors: 0, lapsedClients: 0, retentionRate3Mo: 0, retentionRate12Mo: 0 }),
+      safe('Referrals', () => getReferralMetrics(supabase),
+        { totalPartners: 0, activePartners: 0, totalReferrals: 0, totalReferralRevenue: 0, tierBreakdown: {} }),
+      safe('SyncStatus', () => getSyncStatus(supabase),
+        { mode: 'unknown', lastSyncByType: {}, isStale: true, hasApiData: false }),
+      safe('AppointmentsByType', () => getAppointmentsByType(supabase, startDate, endDate), []),
+      safe('ClientRetention', () => getClientRetention(supabase), []),
     ])
 
     // Extract KPIs and charts from the single RPC call
-    const revenueMetrics = await getRevenueMetrics(supabase, invoiceDashboard, startDate, endDate)
+    const revenueMetrics = await safe('Revenue',
+      () => getRevenueMetrics(supabase, invoiceDashboard, startDate, endDate),
+      { totalRevenue: 0, uniqueInvoices: 0, uniqueClients: 0, avgRevenuePerInvoice: 0, lineCount: 0, revenueChangePct: 0 })
 
     return {
       success: true,
@@ -380,13 +397,6 @@ async function getClientRetention(supabase: any) {
   const results: Array<{ label: string; count: number }> = []
 
   for (let i = 0; i < bands.length; i++) {
-    const minDate = i > 0
-      ? new Date(now.getTime() - bands[i].maxDays * 86400000).toISOString().split('T')[0]
-      : null
-    const maxDate = i > 0
-      ? new Date(now.getTime() - bands[i - 1].maxDays * 86400000).toISOString().split('T')[0]
-      : new Date(now.getTime() - 0).toISOString().split('T')[0]
-
     let query = supabase
       .from('ezyvet_crm_contacts')
       .select('*', { count: 'exact', head: true })

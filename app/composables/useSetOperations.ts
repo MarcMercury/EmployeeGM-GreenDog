@@ -227,20 +227,34 @@ export function useSetOperations() {
     try {
       const allTargetRows: Record<string, any>[] = []
       let multiEmailCount = 0
+      let skippedNoMatch = 0
+
+      console.log(`[SetOps] Processing ${targetFiles.value.length} file(s) with operation: ${operationType.value}, match: ${matchField.value}`)
 
       for (const file of targetFiles.value) {
+        let fileRows = 0
+        let fileSkipped = 0
         for (const row of file.data) {
           const normalizedRows = normalizeRow(row, file.mappedHeaders)
           if (normalizedRows.length > 1) {
             multiEmailCount += normalizedRows.length - 1
           }
+          if (normalizedRows.length === 0) {
+            fileSkipped++
+          }
           for (const normalized of normalizedRows) {
             if (getMatchValue(normalized)) {
               allTargetRows.push(normalized)
+              fileRows++
+            } else {
+              skippedNoMatch++
             }
           }
         }
+        console.log(`[SetOps] File "${file.name}": ${file.data.length} raw → ${fileRows} valid rows (${fileSkipped} had no ${matchField.value}, ${skippedNoMatch} failed match)`)
       }
+
+      console.log(`[SetOps] Total valid rows: ${allTargetRows.length} (${skippedNoMatch} skipped, ${multiEmailCount} multi-splits)`)
 
       processingStats.value.totalRows = allTargetRows.length
       processingStats.value.multiEmailSplit = multiEmailCount
@@ -263,8 +277,18 @@ export function useSetOperations() {
       processingStats.value.finalCount = result.length
       processingStats.value.duplicatesRemoved = processingStats.value.totalRows - result.length
 
+      console.log(`[SetOps] Result: ${result.length} unique records (${processingStats.value.duplicatesRemoved} removed)`)
+
       if (result.length === 0) {
-        toast.warning('No valid records found after processing')
+        if (allTargetRows.length === 0) {
+          toast.warning(`No records had a valid ${matchField.value}. Check that the CSV has an ${matchField.value} column.`)
+        } else if (operationType.value === 'find_new') {
+          toast.warning('All records matched the suppression list — 0 new leads found')
+        } else if (operationType.value === 'common_ground') {
+          toast.warning('No records appeared in all files — 0 common matches')
+        } else {
+          toast.warning('No valid records found after processing')
+        }
       } else {
         toast.success(`Processed ${processingStats.value.totalRows} rows → ${result.length} unique records`)
       }
