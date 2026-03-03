@@ -493,7 +493,7 @@
                     </div>
                     <div v-if="log.spoke_to" class="text-body-2">Spoke with: {{ log.spoke_to }}</div>
                     <div v-if="log.items_discussed?.length" class="text-body-2">
-                      Discussed / Dropped Off: {{ formatItemsDiscussed(log.items_discussed) }}
+                      Discussed: {{ log.items_discussed.join(', ') }}
                     </div>
                     <div v-if="log.visit_notes" class="text-body-2">{{ log.visit_notes }}</div>
                     <div v-if="log.summary" class="text-body-2">{{ log.summary }}</div>
@@ -661,35 +661,11 @@ const emit = defineEmits<{
 const supabase = useSupabaseClient()
 const user = useSupabaseUser()
 
-// Map raw items_discussed values to human-readable labels
-const DISCUSSION_ITEM_LABELS: Record<string, string> = {
-  surgery: 'Surgery',
-  dental_surgery: 'Dental Surgery',
-  im: 'IM',
-  exotics: 'Exotics',
-  urgent_care: 'Urgent Care',
-  ce: 'CE',
-  gdd_event: 'GDD Event',
-  other: 'Other'
-}
-
-function formatItemsDiscussed(items: string[]): string {
-  return items.map(v => DISCUSSION_ITEM_LABELS[v] || v).join(', ')
-}
-
 // Dialog state
 const visible = ref(false)
 const detailTab = ref('overview')
 const saving = ref(false)
 const partner = ref<any>(null)
-
-/** Return YYYY-MM-DD in the user's local timezone (avoids UTC date shift). */
-function localDateString(d: Date = new Date()): string {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 // Detail data
 const partnerContacts = ref<any[]>([])
@@ -894,7 +870,7 @@ async function addNote() {
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name')
+      .select('first_name, last_name')
       .eq('auth_user_id', user.value?.id)
       .single()
 
@@ -909,7 +885,7 @@ async function addNote() {
       partner_id: partner.value.id,
       content: newNote.value.trim(),
       note_type: 'general',
-      created_by: profile?.id || null,
+      created_by: user.value?.id,
       author_initials: initials.toUpperCase(),
       created_by_name: fullName
     })
@@ -918,7 +894,7 @@ async function addNote() {
     const { error: updateError } = await supabase
       .from('referral_partners')
       .update({
-        last_contact_date: localDateString(),
+        last_contact_date: new Date().toISOString().split('T')[0],
         updated_at: new Date().toISOString()
       })
       .eq('id', partner.value.id)
@@ -946,7 +922,7 @@ async function saveEditedNote(note: any) {
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name')
+      .select('first_name, last_name')
       .eq('auth_user_id', user.value?.id)
       .single()
 
@@ -957,7 +933,7 @@ async function saveEditedNote(note: any) {
     const { error } = await supabase.from('partner_notes').update({
       content: editNoteContent.value.trim(),
       edited_at: new Date().toISOString(),
-      edited_by: profile?.id || null,
+      edited_by: user.value?.id,
       edited_by_initials: initials.toUpperCase()
     }).eq('id', note.id)
     if (error) throw error
@@ -983,12 +959,5 @@ async function deleteNote(note: any) {
   }
 }
 
-/** Reload visits / notes / contacts for the currently-open partner */
-function refresh() {
-  if (partner.value?.id) {
-    loadPartnerDetails(partner.value.id)
-  }
-}
-
-defineExpose({ open, refresh })
+defineExpose({ open })
 </script>

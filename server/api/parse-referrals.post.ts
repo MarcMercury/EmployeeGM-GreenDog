@@ -1,503 +1,596 @@
 /**
- * Referral CSV Parser API — Re-engineered
- *
- * Accepts TWO EzyVet report types (auto-detected from header):
- *
- * 1. "Referrer Revenue" CSV
- *    Header: Date/Time, Referring Vet Clinic, Referring Vet, Client, Animal, Division, Amount
- *    PRIMARY source — extracts per-clinic: referral count, total revenue, last referral date.
- *    Uses ROW-LEVEL dedup so re-uploads only add genuinely new rows.
- *    Partner totals are recalculated from stored line items.
- *    Rows with "Unknown Clinic" are skipped.
- *
- * 2. "Referral Statistics" CSV
- *    Header: Clinic Name, Vet, Date of Last Referral, …, Total Referrals 12 Months, …
- *    SECONDARY source — quick snapshot of referral count & last referral date.
- *    Uses file-level dedup (same file is rejected).
- *    Updates total_referrals_all_time and last_referral_date only.
- *
- * After processing either report the API calls recalculate_partner_metrics()
- * which auto-computes Tier, Priority, Visit Tier, Relationship Health, and Overdue.
+ * Referral Stats CSV Parser API
+ * Parses TWO types of EzyVet reports:
+ * 
+ * 1. "Referrer Revenue" CSV - Updates revenue totals
+ *    Header: Date/Time,Referring Vet Clinic,Referring Vet,Client,Animal,Division,Amount
+ *    Updates: total_revenue_all_time
+ * 
+ * 2. "Referral Statistics" CSV - Updates visit counts and last visit date
+ *    Header: Clinic Name,Vet,Date of Last Referral,...,Total Referrals 12 Months,...
+ *    Updates: total_referrals_all_time, last_contact_date (but NOT revenue)
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
-import { createHash } from 'crypto'
 
-// ─── Types ────────────────────────────────────────────────────────────
-
+// Report type detection
 type ReportType = 'revenue' | 'statistics'
 
-interface RevenueRow {
-  date: string
+interface ParsedRevenueEntry {
   clinicName: string
-  referringVet: string
-  clientName: string
-  animalName: string
-  division: string
   amount: number
+  date: string
 }
 
-interface StatisticsRow {
+interface ParsedStatisticsEntry {
   clinicName: string
   lastReferralDate: string | null
   totalReferrals12Months: number
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────
-
-/** SHA-256 hash of file content for file-level tracking */
-function hashFileContent(csv: string): string {
-  return createHash('sha256')
-    .update(csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim())
-    .digest('hex')
+interface SyncResult {
+  reportType: ReportType
+  updated: number
+  skipped: number
+  notMatched: number
+  revenueAdded: number
+  visitorsAdded: number
+  details: Array<{
+    clinicName: string
+    matched: boolean
+    matchedTo?: string
+    visits: number
+    revenue: number
+    lastVisitDate?: string
+  }>
 }
 
-/** SHA-256 hash for a single revenue row (date+clinic+vet+client+animal+amount) */
-function hashRevenueRow(r: RevenueRow): string {
-  const key = [
-    r.date.trim().toLowerCase(),
-    r.clinicName.trim().toLowerCase(),
-    r.referringVet.trim().toLowerCase(),
-    r.clientName.trim().toLowerCase(),
-    r.animalName.trim().toLowerCase(),
-    r.amount.toFixed(2),
-  ].join('|')
-  return createHash('sha256').update(key).digest('hex')
-}
-
-/** Parse a single CSV line handling quoted fields */
-function parseCsvLine(line: string): string[] {
-  const fields: string[] = []
-  let current = ''
-  let inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') { inQuotes = !inQuotes }
-    else if (ch === ',' && !inQuotes) { fields.push(current.trim()); current = '' }
-    else { current += ch }
+/**
+ * Detect which type of report this CSV is based on the header row
+ */
+function detectReportType(csvText: string): ReportType {
+  const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const firstLine = normalizedText.split('\n')[0].toLowerCase()
+  
+  // Referral Statistics has "Clinic Name" and "Date of Last Referral" in header
+  if (firstLine.includes('clinic name') && firstLine.includes('date of last referral')) {
+    return 'statistics'
   }
-  fields.push(current.trim())
-  return fields
-}
-
-/** Detect report type from the first line */
-function detectReportType(csv: string): ReportType {
-  const first = csv.replace(/\r\n/g, '\n').split('\n')[0].toLowerCase()
-  if (first.includes('clinic name') && first.includes('date of last referral')) return 'statistics'
+  
+  // Referrer Revenue has "Date/Time" and "Referring Vet Clinic" and "Amount"
+  if (firstLine.includes('date/time') && firstLine.includes('referring vet clinic')) {
+    return 'revenue'
+  }
+  
+  // Default to revenue format
   return 'revenue'
 }
 
-/** Normalise a clinic name for fuzzy matching */
-function normaliseName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
-}
-
-/** Extract significant keywords */
-function extractKeywords(name: string): string[] {
-  const generic = new Set([
-    'the', 'and', 'for', 'of', 'at', 'in', 'vet', 'vets', 'pet', 'pets', 'animal', 'animals',
-    'clinic', 'clinics', 'hospital', 'hospitals', 'center', 'centre', 'medical', 'veterinary',
-    'care', 'health', 'wellness', 'group', 'practice', 'dr', 'dvm', 'inc', 'llc', 'corp',
-  ])
-  return name.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 1 && !generic.has(w))
-}
-
-/** Match a CSV clinic name to the best referral_partners record */
-function findBestMatch(clinicName: string, partners: any[]): any | null {
-  const normalised = normaliseName(clinicName)
-
-  // 1. Exact (case-insensitive)
-  let m = partners.find(p => p.name.toLowerCase().trim() === clinicName.toLowerCase().trim())
-  if (m) return m
-
-  // 2. Normalised exact
-  m = partners.find(p => normaliseName(p.name) === normalised)
-  if (m) return m
-
-  // 3. Contains (at least 6 chars)
-  m = partners.find(p => {
-    const np = normaliseName(p.name)
-    const shorter = normalised.length < np.length ? normalised : np
-    if (shorter.length < 6) return false
-    return normalised.includes(np) || np.includes(normalised)
-  })
-  if (m) return m
-
-  // 4. Keyword overlap (≥ 2 required, or 1 if only 1 keyword)
-  const kw = extractKeywords(clinicName)
-  if (!kw.length) return null
-  const minReq = kw.length >= 2 ? 2 : 1
-  let best: any = null, bestScore = 0
-  for (const p of partners) {
-    const pk = extractKeywords(p.name)
-    if (!pk.length) continue
-    const score = kw.filter(w => pk.includes(w)).length
-    if (score >= minReq && score > bestScore) { bestScore = score; best = p }
+/**
+ * Parse a single CSV line, handling quoted fields with commas
+ */
+function parseCSVLine(line: string): string[] {
+  const fields: string[] = []
+  let current = ''
+  let inQuotes = false
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    
+    if (char === '"') {
+      inQuotes = !inQuotes
+    } else if (char === ',' && !inQuotes) {
+      fields.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
   }
-  return best
+  
+  // Push the last field
+  fields.push(current.trim())
+  
+  return fields
 }
 
-// ─── CSV Parsers ──────────────────────────────────────────────────────
-
-function parseRevenueCSV(csv: string): RevenueRow[] {
-  const lines = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-  const rows: RevenueRow[] = []
+/**
+ * Parse "Referrer Revenue" CSV content
+ * Header: Date/Time,Referring Vet Clinic,Referring Vet,Client,Animal,Division,Amount
+ */
+function parseRevenueCSV(csvText: string): ParsedRevenueEntry[] {
+  const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalizedText.split('\n')
+  const entries: ParsedRevenueEntry[] = []
+  
+  // Skip header row
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
-    const f = parseCsvLine(line)
-    if (f.length < 7) continue
-
-    const date = f[0].trim()
-    const clinicName = f[1].trim()
-    const referringVet = (f[2] || '').trim()
-    const clientName = (f[3] || '').trim()
-    const animalName = (f[4] || '').trim()
-    const division = (f[5] || '').trim()
-    const amount = parseFloat((f[6] || '').replace(/[,$]/g, '')) || 0
-
-    // Skip summary rows (no date), unknown clinics, empty clinics, zero/negative amounts
-    if (!date) continue
-    if (!clinicName) continue
+    
+    const fields = parseCSVLine(line)
+    if (fields.length < 7) continue
+    
+    const dateTime = fields[0].trim()
+    const clinicName = fields[1].trim()
+    const amountStr = fields[6].trim()
+    
+    // Only count rows WITH a date (skip summary rows that have empty date)
+    if (!dateTime) continue
+    
+    // Skip "Unknown Clinic" entries
     if (clinicName.toLowerCase() === 'unknown clinic') continue
-    if (clinicName.toLowerCase().startsWith('total ')) continue
+    
+    // Skip empty clinic names
+    if (!clinicName) continue
+    
+    const amount = parseFloat(amountStr.replace(/[,$]/g, '')) || 0
     if (amount <= 0) continue
-
-    rows.push({ date, clinicName, referringVet, clientName, animalName, division, amount })
+    
+    entries.push({
+      clinicName,
+      amount,
+      date: dateTime
+    })
   }
-  return rows
+  
+  return entries
 }
 
-function parseStatisticsCSV(csv: string): StatisticsRow[] {
-  const lines = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
-  const rows: StatisticsRow[] = []
-  const header = parseCsvLine(lines[0])
-  let nameIdx = header.findIndex(h => h.toLowerCase().includes('clinic name'))
-  let dateIdx = header.findIndex(h => h.toLowerCase().includes('date of last referral'))
-  let countIdx = header.findIndex(h => h.toLowerCase().includes('total referrals 12 months'))
-  if (nameIdx === -1) nameIdx = 0
-  if (dateIdx === -1) dateIdx = 2
-  if (countIdx === -1) countIdx = 6
-
+/**
+ * Parse "Referral Statistics" CSV content
+ * Header: Clinic Name,Vet,Date of Last Referral,Date of Second to Last Referral,Difference,
+ *         Total Referrals 6 Months...,Total Referrals 12 Months...,Total Referrals 24 Months...,Monthly Average...
+ */
+function parseStatisticsCSV(csvText: string): ParsedStatisticsEntry[] {
+  const normalizedText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const lines = normalizedText.split('\n')
+  const entries: ParsedStatisticsEntry[] = []
+  
+  // Parse header to find column indices (they may vary)
+  const headerLine = lines[0]
+  const headerFields = parseCSVLine(headerLine)
+  
+  // Find column indices
+  let clinicNameIdx = headerFields.findIndex(h => h.toLowerCase().includes('clinic name'))
+  let lastReferralIdx = headerFields.findIndex(h => h.toLowerCase().includes('date of last referral'))
+  let total12MonthsIdx = headerFields.findIndex(h => h.toLowerCase().includes('total referrals 12 months'))
+  
+  // Fallback to fixed positions if headers not found
+  if (clinicNameIdx === -1) clinicNameIdx = 0
+  if (lastReferralIdx === -1) lastReferralIdx = 2
+  if (total12MonthsIdx === -1) total12MonthsIdx = 6
+  
+  logger.debug('Statistics CSV columns', 'parse-referrals', { clinicNameIdx, lastReferralIdx, total12MonthsIdx })
+  
+  // Parse data rows
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
-    const f = parseCsvLine(line)
-    if (f.length < 7) continue
-
-    const clinicName = (f[nameIdx] || '').trim()
-    const dateStr = (f[dateIdx] || '').trim()
-    const countStr = (f[countIdx] || '').trim()
-
+    
+    const fields = parseCSVLine(line)
+    if (fields.length < 7) continue
+    
+    const clinicName = fields[clinicNameIdx]?.trim() || ''
+    const lastReferralStr = fields[lastReferralIdx]?.trim() || ''
+    const total12MonthsStr = fields[total12MonthsIdx]?.trim() || ''
+    
+    // Skip empty or unknown clinics
     if (!clinicName || clinicName.toLowerCase() === 'unknown') continue
-
-    // Parse MM-DD-YYYY → YYYY-MM-DD
+    
+    // Parse date (format: MM-DD-YYYY or N/A)
     let lastReferralDate: string | null = null
-    if (dateStr && dateStr.toLowerCase() !== 'n/a') {
-      const parts = dateStr.split('-')
+    if (lastReferralStr && lastReferralStr.toLowerCase() !== 'n/a') {
+      // Convert MM-DD-YYYY to YYYY-MM-DD for database
+      const parts = lastReferralStr.split('-')
       if (parts.length === 3) {
         const [month, day, year] = parts
         lastReferralDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       }
     }
-
-    rows.push({ clinicName, lastReferralDate, totalReferrals12Months: parseInt(countStr, 10) || 0 })
+    
+    // Parse referral count
+    const totalReferrals12Months = parseInt(total12MonthsStr, 10) || 0
+    
+    entries.push({
+      clinicName,
+      lastReferralDate,
+      totalReferrals12Months
+    })
   }
-  return rows
+  
+  return entries
 }
 
-// ─── Main handler ─────────────────────────────────────────────────────
+/**
+ * Aggregate revenue entries by clinic name
+ */
+function aggregateRevenueByClinic(entries: ParsedRevenueEntry[]): Array<{ clinicName: string; totalVisits: number; totalRevenue: number }> {
+  const clinicMap = new Map<string, { visits: number; revenue: number }>()
+  
+  for (const entry of entries) {
+    const existing = clinicMap.get(entry.clinicName) || { visits: 0, revenue: 0 }
+    existing.visits += 1
+    existing.revenue += entry.amount
+    clinicMap.set(entry.clinicName, existing)
+  }
+  
+  return Array.from(clinicMap.entries()).map(([clinicName, stats]) => ({
+    clinicName,
+    totalVisits: stats.visits,
+    totalRevenue: Math.round(stats.revenue * 100) / 100
+  }))
+}
+
+/**
+ * Normalize name for comparison — only strip punctuation and lowercase,
+ * preserving distinguishing words like location names
+ */
+function normalizeNameForComparison(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Extract significant keywords from a name (excluding generic vet terms)
+ */
+function extractKeywords(name: string): string[] {
+  const genericWords = new Set([
+    'the', 'and', 'for', 'of', 'at', 'in',
+    'vet', 'vets', 'pet', 'pets', 'animal', 'animals',
+    'clinic', 'clinics', 'hospital', 'hospitals',
+    'center', 'centre', 'medical', 'veterinary',
+    'care', 'health', 'wellness', 'group', 'practice',
+    'dr', 'dvm', 'inc', 'llc', 'corp'
+  ])
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !genericWords.has(w))
+}
+
+/**
+ * Find best matching partner for a clinic name.
+ * Uses tiered matching: exact → normalized exact → contains → keyword overlap.
+ * Requires at least 2 keyword matches (or 1 if only 1 keyword exists) to avoid false positives.
+ */
+function findBestMatch(clinicName: string, partners: any[]): any | null {
+  const normalizedInput = normalizeNameForComparison(clinicName)
+  
+  // 1. Try exact match (case-insensitive)
+  let match = partners.find(p => 
+    p.name.toLowerCase().trim() === clinicName.toLowerCase().trim()
+  )
+  if (match) return match
+  
+  // 2. Try normalized exact match
+  match = partners.find(p => 
+    normalizeNameForComparison(p.name) === normalizedInput
+  )
+  if (match) return match
+  
+  // 3. Try contains match (one fully contains the other after normalization)
+  match = partners.find(p => {
+    const normalizedPartner = normalizeNameForComparison(p.name)
+    // Only match if the shorter string is substantial (>= 6 chars) to avoid trivial matches
+    const shorter = normalizedInput.length < normalizedPartner.length ? normalizedInput : normalizedPartner
+    if (shorter.length < 6) return false
+    return normalizedInput.includes(normalizedPartner) || 
+           normalizedPartner.includes(normalizedInput)
+  })
+  if (match) return match
+  
+  // 4. Try keyword overlap (require at least 2 matching keywords, or exact-match the only keyword)
+  const inputKeywords = extractKeywords(clinicName)
+  if (inputKeywords.length === 0) return null
+  
+  const minRequiredMatches = inputKeywords.length >= 2 ? 2 : 1
+  
+  let bestMatch: any = null
+  let bestScore = 0
+  
+  for (const p of partners) {
+    const partnerKeywords = extractKeywords(p.name)
+    if (partnerKeywords.length === 0) continue
+    
+    // Count exact keyword matches (whole word only)
+    let matchCount = 0
+    for (const iw of inputKeywords) {
+      if (partnerKeywords.some((pw: string) => pw === iw)) {
+        matchCount++
+      }
+    }
+    
+    if (matchCount >= minRequiredMatches && matchCount > bestScore) {
+      bestScore = matchCount
+      bestMatch = p
+    }
+  }
+  
+  return bestMatch
+}
 
 export default defineEventHandler(async (event) => {
   try {
-    // ── Auth ──
+    // Get authenticated user
     const supabaseAdmin = await serverSupabaseServiceRole(event)
     const authHeader = event.headers.get('authorization')
-    if (!authHeader) throw createError({ statusCode: 401, message: 'No authorization header' })
-
+    
+    if (!authHeader) {
+      throw createError({ statusCode: 401, message: 'No authorization header' })
+    }
+    
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token)
-    if (authErr || !user) throw createError({ statusCode: 401, message: 'Invalid or expired session' })
-
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    
+    if (authError || !user) {
+      throw createError({ statusCode: 401, message: 'Invalid or expired session' })
+    }
+    
+    const userId = user.id
+    
+    // Get supabase client
     const supabase = await serverSupabaseClient(event)
-
-    // Untyped wrapper for tables not yet in generated Supabase types
-    // (referral_revenue_line_items, referral_sync_history, recalculate_partner_metrics)
-    const db = supabase as any
-
-    // ── Profile / role check ──
-    const { data: profile, error: profileErr } = await supabaseAdmin
-      .from('profiles').select('id, role, email, auth_user_id').eq('auth_user_id', user.id).single()
-    if (profileErr) throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileErr.message}` })
-    if (!profile || !['super_admin', 'admin', 'marketing_admin'].includes(profile.role)) {
+    
+    logger.debug('Looking up profile', 'parse-referrals', { authUserId: userId })
+    
+    // Check if user has appropriate role
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role, email, auth_user_id')
+      .eq('auth_user_id', userId)
+      .single()
+    
+    const allowedRoles = ['super_admin', 'admin', 'marketing_admin']
+    if (profileError) {
+      throw createError({ statusCode: 403, message: `Profile lookup failed: ${profileError.message}` })
+    }
+    
+    if (!profile || !allowedRoles.includes(profile.role)) {
       throw createError({ statusCode: 403, message: `Admin or Marketing Admin access required. Your role: ${profile?.role || 'unknown'}` })
     }
+    
     logger.info('Access granted', 'parse-referrals', { role: profile.role })
-
-    // ── Read uploaded file ──
+    
+    // Read multipart form data
     const formData = await readMultipartFormData(event)
-    if (!formData?.length) throw createError({ statusCode: 400, message: 'No file uploaded' })
+    if (!formData || formData.length === 0) {
+      throw createError({ statusCode: 400, message: 'No file uploaded' })
+    }
+    
     const file = formData.find(f => f.name === 'file')
-    if (!file?.data) throw createError({ statusCode: 400, message: 'No file found in upload' })
+    if (!file || !file.data) {
+      throw createError({ statusCode: 400, message: 'No file found in upload' })
+    }
+    
+    logger.info('File received', 'parse-referrals', { filename: file.filename, size: file.data.length })
+    
+    // Check file type - accept CSV
     const filename = file.filename?.toLowerCase() || ''
-    if (!filename.endsWith('.csv')) throw createError({ statusCode: 400, message: 'Please upload a CSV file.' })
-
+    if (!filename.endsWith('.csv')) {
+      throw createError({ statusCode: 400, message: 'Please upload a CSV file.' })
+    }
+    
+    // Parse CSV content
     const csvText = Buffer.from(file.data).toString('utf-8')
+    logger.debug('Parsing CSV', 'parse-referrals', { totalChars: csvText.length })
+    
+    // Detect report type from header
     const reportType = detectReportType(csvText)
-    const contentHash = hashFileContent(csvText)
-    logger.info('File received', 'parse-referrals', { filename: file.filename, size: csvText.length, reportType })
-
-    // ── Fetch all partners for matching ──
+    logger.info('Detected report type', 'parse-referrals', { reportType })
+    
+    // Fetch all partners for matching
+    // The table uses 'name' column (aliased from hospital_name in views/queries)
     const { data: partners } = await supabase
       .from('referral_partners')
-      .select('id, name, total_referrals_all_time, total_revenue_all_time, last_contact_date, last_referral_date, last_data_source')
-    if (!partners) throw createError({ statusCode: 500, message: 'Failed to fetch partners' })
-    logger.info('Partners available for matching', 'parse-referrals', { count: partners.length })
-
-    // ── Result object ──
-    const result = {
+      .select('id, name, total_referrals_all_time, total_revenue_all_time, last_contact_date')
+    
+    if (!partners) {
+      throw createError({ statusCode: 500, message: 'Failed to fetch partners' })
+    }
+    
+    logger.info('Found partners to match', 'parse-referrals', { count: partners.length })
+    
+    // Initialize result
+    const result: SyncResult = {
       reportType,
       updated: 0,
       skipped: 0,
-      newRows: 0,
       notMatched: 0,
       revenueAdded: 0,
       visitorsAdded: 0,
-      details: [] as Array<{ clinicName: string; matched: boolean; matchedTo?: string; visits: number; revenue: number; lastDate?: string }>,
+      details: []
     }
-    let dateRange: { start: string | null; end: string | null } = { start: null, end: null }
-
-    // ══════════════════════════════════════════════════════════════════
-    //  REVENUE REPORT — row-level dedup, recalculate totals
-    // ══════════════════════════════════════════════════════════════════
+    
     if (reportType === 'revenue') {
+      // ========================================
+      // REVENUE REPORT - Update revenue totals
+      // ========================================
       const entries = parseRevenueCSV(csvText)
-      if (!entries.length) {
-        throw createError({ statusCode: 400, message: 'No valid revenue entries found. Ensure the CSV has Date/Time, Referring Vet Clinic, and Amount columns.' })
-      }
-      logger.info('Parsed revenue rows', 'parse-referrals', { total: entries.length })
-
-      // Date range
-      const dates = entries.map(e => new Date(e.date)).filter(d => !isNaN(d.getTime())).sort((a, b) => a.getTime() - b.getTime())
-      if (dates.length) {
-        dateRange = { start: dates[0].toISOString().split('T')[0], end: dates[dates.length - 1].toISOString().split('T')[0] }
-      }
-
-      // Compute dedup hashes
-      const rowsHashed = entries.map(e => ({ ...e, hash: hashRevenueRow(e) }))
-
-      // Batch-check existing hashes
-      const existingHashes = new Set<string>()
-      const CHUNK = 500
-      for (let i = 0; i < rowsHashed.length; i += CHUNK) {
-        const chunk = rowsHashed.slice(i, i + CHUNK).map(r => r.hash)
-        const { data: found } = await db
-          .from('referral_revenue_line_items').select('dedup_hash').in('dedup_hash', chunk)
-        if (found) found.forEach((r: any) => existingHashes.add(r.dedup_hash))
-      }
-
-      const newRows = rowsHashed.filter(r => !existingHashes.has(r.hash))
-      result.skipped = rowsHashed.length - newRows.length
-      result.newRows = newRows.length
-      logger.info('Row dedup', 'parse-referrals', { total: rowsHashed.length, new: newRows.length, skipped: result.skipped })
-
-      // Match & prepare inserts
-      const affectedPartnerIds = new Set<string>()
-      const lineItems: any[] = []
-      const clinicAgg = new Map<string, { matched: boolean; matchedTo?: string; partnerId?: string; visits: number; revenue: number; lastDate?: string }>()
-
-      for (const row of newRows) {
-        const match = findBestMatch(row.clinicName, partners)
-        const key = row.clinicName // preserve original casing for display
-        const agg = clinicAgg.get(key) || { matched: false, visits: 0, revenue: 0 }
-        agg.visits++
-        agg.revenue += row.amount
-        // Track latest date
-        if (!agg.lastDate || row.date > agg.lastDate) agg.lastDate = row.date
-
-        if (match) {
-          agg.matched = true
-          agg.matchedTo = match.name
-          agg.partnerId = match.id
-          affectedPartnerIds.add(match.id)
-          lineItems.push({
-            partner_id: match.id,
-            transaction_date: row.date,
-            csv_clinic_name: row.clinicName,
-            referring_vet: row.referringVet || null,
-            client_name: row.clientName || null,
-            animal_name: row.animalName || null,
-            division: row.division || null,
-            amount: row.amount,
-            dedup_hash: row.hash,
-          })
-        }
-        clinicAgg.set(key, agg)
-      }
-
-      // Insert new line items
-      for (let i = 0; i < lineItems.length; i += CHUNK) {
-        const chunk = lineItems.slice(i, i + CHUNK)
-        const { error } = await db.from('referral_revenue_line_items').insert(chunk)
-        if (error) logger.error('Line item insert error', null, 'parse-referrals', { message: error.message, batch: i })
-      }
-
-      // Recalculate partner totals from ALL line items
-      if (affectedPartnerIds.size > 0) {
-        const ids = Array.from(affectedPartnerIds)
-        const { data: allItems } = await db
-          .from('referral_revenue_line_items')
-          .select('partner_id, amount, transaction_date')
-          .in('partner_id', ids)
-
-        if (allItems) {
-          const totals = new Map<string, { revenue: number; count: number; latestDate: string | null }>()
-          for (const item of allItems) {
-            const t = totals.get(item.partner_id) || { revenue: 0, count: 0, latestDate: null }
-            t.revenue += Number(item.amount)
-            t.count++
-            // Parse transaction_date for comparison (MM-DD-YYYY format from CSV)
-            if (item.transaction_date) {
-              const d = new Date(item.transaction_date)
-              const iso = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : null
-              if (iso && (!t.latestDate || iso > t.latestDate)) t.latestDate = iso
-            }
-            totals.set(item.partner_id, t)
-          }
-
-          const syncDate = new Date().toISOString()
-          for (const [id, t] of totals) {
-            const updateData: any = {
-              total_revenue_all_time: Math.round(t.revenue * 100) / 100,
-              total_referrals_all_time: t.count,
-              last_sync_date: syncDate,
-              last_data_source: 'csv_upload',
-            }
-            if (t.latestDate) {
-              updateData.last_referral_date = t.latestDate
-              updateData.last_contact_date = t.latestDate
-            }
-            const { error } = await supabase.from('referral_partners').update(updateData).eq('id', id)
-            if (error) logger.error('Partner update error', null, 'parse-referrals', { id, message: error.message })
-          }
-        }
-      }
-
-      // Build result details
-      for (const [clinicName, agg] of clinicAgg) {
-        if (agg.matched) { result.updated++; result.revenueAdded += agg.revenue; result.visitorsAdded += agg.visits }
-        else { result.notMatched++ }
-        result.details.push({
-          clinicName,
-          matched: agg.matched,
-          matchedTo: agg.matchedTo,
-          visits: agg.visits,
-          revenue: Math.round(agg.revenue * 100) / 100,
-          lastDate: agg.lastDate,
+      logger.info('Parsed revenue entries', 'parse-referrals', { count: entries.length })
+      
+      if (entries.length === 0) {
+        throw createError({ 
+          statusCode: 400, 
+          message: 'No valid entries found in Revenue CSV. Make sure the file has Date/Time, Referring Vet Clinic, and Amount columns.' 
         })
       }
-
-    // ══════════════════════════════════════════════════════════════════
-    //  STATISTICS REPORT — file-level dedup, replaces counts/dates
-    // ══════════════════════════════════════════════════════════════════
-    } else {
-      // File-level duplicate check (statistics use replacement semantics)
-      const { data: existing } = await db
-        .from('referral_sync_history').select('id, filename, created_at')
-        .eq('content_hash', contentHash).eq('report_type', 'statistics').limit(1).maybeSingle()
-      if (existing) {
-        const at = new Date(existing.created_at).toLocaleDateString()
-        throw createError({ statusCode: 409, message: `Duplicate upload. This file was already uploaded on ${at} ("${existing.filename}"). Clear stats first to re-import.` })
-      }
-
-      const entries = parseStatisticsCSV(csvText)
-      if (!entries.length) {
-        throw createError({ statusCode: 400, message: 'No valid statistics entries found. Ensure the CSV has Clinic Name, Date of Last Referral, and Total Referrals columns.' })
-      }
-      logger.info('Parsed statistics rows', 'parse-referrals', { count: entries.length })
-
-      // Date range
-      const validDates = entries.map(e => e.lastReferralDate).filter((d): d is string => !!d).sort()
-      if (validDates.length) dateRange = { start: validDates[0], end: validDates[validDates.length - 1] }
-
+      
+      // Aggregate by clinic
+      const aggregated = aggregateRevenueByClinic(entries)
+      logger.info('Aggregated to unique clinics', 'parse-referrals', { count: aggregated.length })
+      
+      const csvTotalVisits = aggregated.reduce((sum, a) => sum + a.totalVisits, 0)
+      const csvTotalRevenue = aggregated.reduce((sum, a) => sum + a.totalRevenue, 0)
+      logger.info('Revenue CSV Totals', 'parse-referrals', { visits: csvTotalVisits, revenue: csvTotalRevenue.toFixed(2) })
+      
+      // Match and batch-update (ONLY revenue, not visit counts)
+      const revenueUpdates: { id: string; total_revenue_all_time: number; last_sync_date: string }[] = []
       const syncDate = new Date().toISOString()
+
+      for (const agg of aggregated) {
+        const match = findBestMatch(agg.clinicName, partners)
+        
+        if (match) {
+          revenueUpdates.push({
+            id: match.id,
+            total_revenue_all_time: agg.totalRevenue,
+            last_sync_date: syncDate
+          })
+          result.updated++
+          result.revenueAdded += agg.totalRevenue
+          result.details.push({
+            clinicName: agg.clinicName,
+            matched: true,
+            matchedTo: match.name,
+            visits: agg.totalVisits,
+            revenue: agg.totalRevenue
+          })
+        } else {
+          result.notMatched++
+          result.details.push({
+            clinicName: agg.clinicName,
+            matched: false,
+            visits: agg.totalVisits,
+            revenue: agg.totalRevenue
+          })
+        }
+      }
+
+      // Batch upsert all matched revenue updates in one DB call
+      if (revenueUpdates.length > 0) {
+        const { error: batchError } = await supabase
+          .from('referral_partners')
+          .upsert(revenueUpdates, { onConflict: 'id' })
+
+        if (batchError) {
+          logger.error('Batch revenue update error', null, 'parse-referrals', { message: batchError.message })
+        }
+      }
+      
+    } else {
+      // ========================================
+      // STATISTICS REPORT - Update visit counts and last visit date (NOT revenue)
+      // ========================================
+      const entries = parseStatisticsCSV(csvText)
+      logger.info('Parsed statistics entries', 'parse-referrals', { count: entries.length })
+      
+      if (entries.length === 0) {
+        throw createError({ 
+          statusCode: 400, 
+          message: 'No valid entries found in Statistics CSV. Make sure the file has Clinic Name, Date of Last Referral, and Total Referrals columns.' 
+        })
+      }
+      
+      const csvTotalVisits = entries.reduce((sum, e) => sum + e.totalReferrals12Months, 0)
+      logger.info('Statistics CSV Total', 'parse-referrals', { visits: csvTotalVisits })
+      
+      // Match and batch-update (ONLY visit counts and last date, NOT revenue)
+      const statsUpdates: Record<string, any>[] = []
+      const syncDate = new Date().toISOString()
+
       for (const entry of entries) {
         const match = findBestMatch(entry.clinicName, partners)
+        
         if (match) {
+          // Build update object
           const updateData: any = {
+            id: match.id,
             total_referrals_all_time: entry.totalReferrals12Months,
-            last_sync_date: syncDate,
-            last_data_source: 'csv_upload',
+            last_sync_date: syncDate
           }
+          
           if (entry.lastReferralDate) {
             updateData.last_referral_date = entry.lastReferralDate
             updateData.last_contact_date = entry.lastReferralDate
           }
-          const { error } = await supabase.from('referral_partners').update(updateData).eq('id', match.id)
-          if (error) logger.error('Statistics update error', null, 'parse-referrals', { id: match.id, message: error.message })
 
+          statsUpdates.push(updateData)
           result.updated++
           result.visitorsAdded += entry.totalReferrals12Months
-          result.details.push({ clinicName: entry.clinicName, matched: true, matchedTo: match.name, visits: entry.totalReferrals12Months, revenue: 0, lastDate: entry.lastReferralDate || undefined })
+          result.details.push({
+            clinicName: entry.clinicName,
+            matched: true,
+            matchedTo: match.name,
+            visits: entry.totalReferrals12Months,
+            revenue: 0,
+            lastVisitDate: entry.lastReferralDate || undefined
+          })
         } else {
           result.notMatched++
-          result.details.push({ clinicName: entry.clinicName, matched: false, visits: entry.totalReferrals12Months, revenue: 0, lastDate: entry.lastReferralDate || undefined })
+          result.details.push({
+            clinicName: entry.clinicName,
+            matched: false,
+            visits: entry.totalReferrals12Months,
+            revenue: 0,
+            lastVisitDate: entry.lastReferralDate || undefined
+          })
+        }
+      }
+
+      // Batch upsert all matched statistics updates in one DB call
+      if (statsUpdates.length > 0) {
+        const { error: batchError } = await supabase
+          .from('referral_partners')
+          .upsert(statsUpdates, { onConflict: 'id' })
+
+        if (batchError) {
+          logger.error('Batch statistics update error', null, 'parse-referrals', { message: batchError.message })
         }
       }
     }
-
-    // ── Log sync history ──
-    await db.from('referral_sync_history').insert({
+    
+    // Log sync history
+    await supabase.from('referral_sync_history').insert({
       filename: file.filename || 'referral-report.csv',
-      content_hash: contentHash,
-      report_type: reportType,
-      data_source: 'csv_upload',
-      date_range_start: dateRange.start,
-      date_range_end: dateRange.end,
-      total_rows_parsed: reportType === 'revenue' ? result.newRows + result.skipped : result.details.length,
+      date_range_start: null,
+      date_range_end: null,
+      total_rows_parsed: result.details.length,
       total_rows_matched: result.updated,
       total_rows_skipped: result.skipped,
       total_revenue_added: result.revenueAdded,
       uploaded_by: profile?.id,
-      sync_details: { reportType, notMatched: result.notMatched, visitorsAdded: result.visitorsAdded, clinicDetails: result.details },
+      sync_details: {
+        reportType,
+        notMatched: result.notMatched,
+        visitorsAdded: result.visitorsAdded,
+        clinicDetails: result.details
+      }
     })
-
-    // ── Recalculate metrics (Tier, Priority, Health, Overdue) ──
-    logger.info('Recalculating partner metrics…', 'parse-referrals')
-    const { error: recalcErr } = await db.rpc('recalculate_partner_metrics')
-    if (recalcErr) logger.warn('Metrics recalc failed', 'parse-referrals', { message: recalcErr.message })
-    else logger.info('Metrics recalculated', 'parse-referrals')
-
-    logger.info('Sync complete', 'parse-referrals', { updated: result.updated, skipped: result.skipped, notMatched: result.notMatched })
-
-    // Build user-facing message
-    let message: string
-    if (reportType === 'revenue') {
-      const parts = [`${result.updated} partners updated`]
-      if (result.revenueAdded > 0) parts.push(`$${Math.round(result.revenueAdded).toLocaleString()} revenue`)
-      if (result.visitorsAdded > 0) parts.push(`${result.visitorsAdded} referrals`)
-      if (result.skipped > 0) parts.push(`${result.skipped} duplicate rows skipped`)
-      message = `Revenue Report: ${parts.join(', ')}`
+    
+    // Recalculate all partner metrics (Tier, Priority, Relationship Health, Overdue)
+    logger.info('Recalculating partner metrics...', 'parse-referrals')
+    const { error: recalcError } = await supabase.rpc('recalculate_partner_metrics')
+    if (recalcError) {
+      logger.warn('Failed to recalculate metrics', 'parse-referrals', { message: recalcError.message })
     } else {
-      message = `Statistics Report: Updated ${result.updated} partners with ${result.visitorsAdded} referrals`
+      logger.info('Partner metrics recalculated successfully', 'parse-referrals')
     }
-
+    
+    logger.info('Sync complete', 'parse-referrals', { updated: result.updated, notMatched: result.notMatched })
+    
     return {
       success: true,
       reportType,
-      message,
+      message: reportType === 'revenue' 
+        ? `Revenue Report: Updated ${result.updated} partners with $${result.revenueAdded.toLocaleString()} revenue`
+        : `Statistics Report: Updated ${result.updated} partners with ${result.visitorsAdded} visits`,
       updated: result.updated,
       skipped: result.skipped,
-      newRows: result.newRows,
       notMatched: result.notMatched,
       revenueAdded: Math.round(result.revenueAdded * 100) / 100,
       visitorsAdded: result.visitorsAdded,
-      dateRange,
-      details: result.details,
+      details: result.details
     }
-
+    
   } catch (error: any) {
     logger.error('Error', error, 'parse-referrals')
-    throw createError({ statusCode: error.statusCode || 500, message: error.message || 'Failed to parse CSV' })
+    throw createError({
+      statusCode: error.statusCode || 500,
+      message: error.message || 'Failed to parse CSV'
+    })
   }
 })
