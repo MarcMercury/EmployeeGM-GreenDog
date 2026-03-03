@@ -947,8 +947,225 @@
 
           <v-divider />
           <v-card-actions>
+            <v-btn variant="text" prepend-icon="mdi-pencil" @click="openEditPartnerDialog(selectedPartner)">Edit</v-btn>
+            <v-btn variant="text" prepend-icon="mdi-delete" color="error" @click="confirmDeleteMedPartner(selectedPartner)">Delete</v-btn>
             <v-spacer />
             <v-btn variant="text" @click="showPartnerDetailDialog = false">Close</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Edit Partner Dialog -->
+      <v-dialog v-model="showEditPartnerDialog" max-width="600" persistent>
+        <v-card rounded="lg">
+          <v-card-title class="d-flex align-center">
+            <v-icon color="indigo" class="mr-2">mdi-pencil</v-icon>
+            Edit Medical Partner
+          </v-card-title>
+          <v-divider />
+          <v-card-text>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.name"
+                  label="Partner Name *"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Name is required']"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="editPartnerForm.category"
+                  :items="partnerCategoryChoices"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.contact_name"
+                  label="Contact Name"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-account"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.contact_phone"
+                  label="Phone"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-phone"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.contact_email"
+                  label="Email"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-email-outline"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.website"
+                  label="Website"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-web"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.account_number"
+                  label="Account Number"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-pound"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.order_method"
+                  label="Order Method"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-cart"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.payment_method"
+                  label="Payment Method"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-credit-card"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.portal_url"
+                  label="Portal URL"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-login"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.portal_username"
+                  label="Portal Username"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-account-key"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.portal_password"
+                  label="Portal Password"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-lock"
+                  :type="showEditPassword ? 'text' : 'password'"
+                  :append-inner-icon="showEditPassword ? 'mdi-eye-off' : 'mdi-eye'"
+                  @click:append-inner="showEditPassword = !showEditPassword"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.browser_preference"
+                  label="Browser Preference"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-web"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.location_code"
+                  label="Location"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-map-marker"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="editPartnerForm.department"
+                  label="Department"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-domain"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="editPartnerForm.description"
+                  label="Description"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="editPartnerForm.notes"
+                  label="Notes"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="editPartnerForm.vendor_info"
+                  label="Additional Vendor Info"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
+          <v-divider />
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showEditPartnerDialog = false">Cancel</v-btn>
+            <v-btn
+              color="indigo"
+              variant="flat"
+              :loading="editPartnerSaving"
+              :disabled="!editPartnerForm.name"
+              @click="saveEditPartner"
+            >
+              Save Changes
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Delete Partner Confirmation Dialog -->
+      <v-dialog v-model="showDeletePartnerDialog" max-width="400">
+        <v-card rounded="lg">
+          <v-card-title class="text-h6">Delete Partner?</v-card-title>
+          <v-card-text>
+            <p>Are you sure you want to delete <strong>{{ partnerToDelete?.name }}</strong>?</p>
+            <p class="text-caption text-grey mt-2">This action cannot be undone.</p>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn variant="text" @click="showDeletePartnerDialog = false">Cancel</v-btn>
+            <v-spacer />
+            <v-btn color="error" variant="flat" :loading="deletePartnerLoading" @click="deleteMedPartner">
+              Delete
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -1201,6 +1418,13 @@ const showAddPartnerDialog = ref(false)
 const addPartnerSaving = ref(false)
 const selectedPartner = ref<any>(null)
 const showPartnerDetailDialog = ref(false)
+const showEditPartnerDialog = ref(false)
+const editPartnerSaving = ref(false)
+const showEditPassword = ref(false)
+const editPartnerForm = ref<any>({})
+const showDeletePartnerDialog = ref(false)
+const deletePartnerLoading = ref(false)
+const partnerToDelete = ref<any>(null)
 const selectedResource = ref<any>(null)
 const showResourceDetailDialog = ref(false)
 const newPartner = ref({
@@ -1788,6 +2012,88 @@ function resetNewPartner() {
 function openPartnerDetail(partner: any) {
   selectedPartner.value = partner
   showPartnerDetailDialog.value = true
+}
+
+function openEditPartnerDialog(partner: any) {
+  editPartnerForm.value = {
+    id: partner.id,
+    name: partner.name || '',
+    category: partner.category || 'Other',
+    contact_name: partner.contact_name || '',
+    contact_phone: partner.contact_phone || '',
+    contact_email: partner.contact_email || '',
+    website: partner.website || '',
+    description: partner.description || '',
+    account_number: partner.account_number || '',
+    order_method: partner.order_method || '',
+    payment_method: partner.payment_method || '',
+    portal_url: partner.portal_url || '',
+    portal_username: partner.portal_username || '',
+    portal_password: partner.portal_password || '',
+    browser_preference: partner.browser_preference || '',
+    location_code: partner.location_code || '',
+    department: partner.department || '',
+    notes: partner.notes || '',
+    vendor_info: partner.vendor_info || '',
+  }
+  showEditPassword.value = false
+  showPartnerDetailDialog.value = false
+  showEditPartnerDialog.value = true
+}
+
+async function saveEditPartner() {
+  if (!editPartnerForm.value.name) return
+  editPartnerSaving.value = true
+  try {
+    const { id, ...updates } = editPartnerForm.value
+    // Remove empty strings, set them to null
+    for (const key of Object.keys(updates)) {
+      if (updates[key] === '') updates[key] = null
+    }
+    updates.name = editPartnerForm.value.name // name should stay as-is
+    const { error } = await supabase
+      .from('med_ops_partners')
+      .update(updates)
+      .eq('id', id)
+    if (error) throw error
+    showEditPartnerDialog.value = false
+    await loadMedPartners()
+    // Re-select the updated partner
+    const updated = medPartners.value.find((p: any) => p.id === id)
+    if (updated) {
+      selectedPartner.value = updated
+      showPartnerDetailDialog.value = true
+    }
+  } catch (err) {
+    console.error('[Wiki] Failed to update medical partner:', err)
+  } finally {
+    editPartnerSaving.value = false
+  }
+}
+
+function confirmDeleteMedPartner(partner: any) {
+  partnerToDelete.value = partner
+  showPartnerDetailDialog.value = false
+  showDeletePartnerDialog.value = true
+}
+
+async function deleteMedPartner() {
+  if (!partnerToDelete.value) return
+  deletePartnerLoading.value = true
+  try {
+    const { error } = await supabase
+      .from('med_ops_partners')
+      .delete()
+      .eq('id', partnerToDelete.value.id)
+    if (error) throw error
+    showDeletePartnerDialog.value = false
+    partnerToDelete.value = null
+    await loadMedPartners()
+  } catch (err) {
+    console.error('[Wiki] Failed to delete medical partner:', err)
+  } finally {
+    deletePartnerLoading.value = false
+  }
 }
 
 function openResourceDetail(resource: any) {
