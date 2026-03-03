@@ -463,9 +463,30 @@
       <div class="d-flex align-center justify-space-between mb-4">
         <h3 class="text-h6 font-weight-bold">
           <v-icon color="indigo" class="mr-2">mdi-handshake</v-icon>
-          Medical Partners
+          Med Ops Partners
         </h3>
         <div class="d-flex align-center gap-2">
+          <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedPartners = false">
+            Back to Wiki
+          </v-btn>
+        </div>
+      </div>
+
+      <!-- Tabs: Partners + Vendor Contacts -->
+      <v-tabs v-model="medPartnersTab" color="indigo" class="mb-4">
+        <v-tab value="partners">
+          <v-icon start size="18">mdi-handshake</v-icon>
+          Partners
+        </v-tab>
+        <v-tab value="vendor-contacts">
+          <v-icon start size="18">mdi-card-account-phone</v-icon>
+          Vendor Contacts
+        </v-tab>
+      </v-tabs>
+
+      <!-- === Partners Tab === -->
+      <template v-if="medPartnersTab === 'partners'">
+        <div class="d-flex align-center justify-end gap-2 mb-3">
           <v-btn-toggle v-model="medPartnerViewMode" mandatory density="compact" variant="outlined" color="indigo">
             <v-btn value="list" size="small">
               <v-icon size="18">mdi-format-list-bulleted</v-icon>
@@ -477,56 +498,52 @@
           <v-btn color="indigo" variant="flat" size="small" prepend-icon="mdi-plus" @click="showAddPartnerDialog = true">
             Add Partner
           </v-btn>
-          <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedPartners = false">
-            Back to Wiki
-          </v-btn>
         </div>
-      </div>
 
-      <!-- Partner Search & Filter -->
-      <v-card variant="outlined" rounded="lg" class="mb-4">
-        <v-card-text class="pb-3">
-          <v-row dense>
-            <v-col cols="12" sm="6" md="6">
-              <v-text-field
-                v-model="medPartnerSearch"
-                prepend-inner-icon="mdi-magnify"
-                label="Search partners..."
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" sm="6" md="4">
-              <v-select
-                v-model="medPartnerCategoryFilter"
-                :items="medPartnerCategoryOptions"
-                label="Category"
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" md="2" class="d-flex align-center">
-              <v-chip size="small" variant="tonal" color="indigo">
-                {{ filteredMedPartners.length }} partner{{ filteredMedPartners.length !== 1 ? 's' : '' }}
-              </v-chip>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
+        <!-- Partner Search & Filter -->
+        <v-card variant="outlined" rounded="lg" class="mb-4">
+          <v-card-text class="pb-3">
+            <v-row dense>
+              <v-col cols="12" sm="6" md="6">
+                <v-text-field
+                  v-model="medPartnerSearch"
+                  prepend-inner-icon="mdi-magnify"
+                  label="Search partners..."
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" sm="6" md="4">
+                <v-select
+                  v-model="medPartnerCategoryFilter"
+                  :items="medPartnerCategoryOptions"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="2" class="d-flex align-center">
+                <v-chip size="small" variant="tonal" color="indigo">
+                  {{ filteredMedPartners.length }} partner{{ filteredMedPartners.length !== 1 ? 's' : '' }}
+                </v-chip>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
 
-      <!-- Loading State -->
-      <div v-if="medPartnersLoading" class="text-center py-6">
-        <v-progress-circular indeterminate color="indigo" />
-        <p class="text-body-2 text-grey mt-2">Loading medical partners...</p>
-      </div>
+        <!-- Loading State -->
+        <div v-if="medPartnersLoading" class="text-center py-6">
+          <v-progress-circular indeterminate color="indigo" />
+          <p class="text-body-2 text-grey mt-2">Loading medical partners...</p>
+        </div>
 
-      <!-- Partner Tile View -->
-      <v-row v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'tile'">
-        <v-col v-for="partner in filteredMedPartners" :key="partner.id" cols="12" sm="6" md="4">
+        <!-- Partner Tile View -->
+        <v-row v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'tile'">
+          <v-col v-for="partner in filteredMedPartners" :key="partner.id" cols="12" sm="6" md="4">
           <v-card variant="outlined" rounded="lg" class="h-100 partner-wiki-card clickable-card" @click="openPartnerDetail(partner)">
             <v-card-text>
               <div class="d-flex align-center gap-3 mb-3">
@@ -616,12 +633,178 @@
         </v-list>
       </v-card>
 
-      <!-- No Results -->
-      <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
-        <v-icon size="48" color="grey" class="mb-3">mdi-handshake</v-icon>
-        <h3 class="text-h6 mb-2">No partners found</h3>
-        <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
-      </v-card>
+        <!-- No Results -->
+        <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
+          <v-icon size="48" color="grey" class="mb-3">mdi-handshake</v-icon>
+          <h3 class="text-h6 mb-2">No partners found</h3>
+          <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
+        </v-card>
+      </template>
+
+      <!-- === Vendor Contacts Tab === -->
+      <template v-if="medPartnersTab === 'vendor-contacts'">
+        <!-- Search & Filter -->
+        <v-card variant="outlined" rounded="lg" class="mb-4">
+          <v-card-text class="pb-3">
+            <v-row dense>
+              <v-col cols="12" sm="6" md="6">
+                <v-text-field
+                  v-model="medContactSearch"
+                  prepend-inner-icon="mdi-magnify"
+                  label="Search contacts..."
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" sm="4" md="4">
+                <v-select
+                  v-model="medContactCategoryFilter"
+                  :items="medContactCategoryOptions"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="2" class="d-flex align-center">
+                <v-chip size="small" variant="tonal" color="deep-purple">
+                  {{ filteredMedContacts.length }} contact{{ filteredMedContacts.length !== 1 ? 's' : '' }}
+                </v-chip>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+
+        <!-- Credential legend -->
+        <v-alert v-if="canRevealCredentials" type="info" variant="tonal" density="compact" class="mb-4">
+          <v-icon start size="16">mdi-shield-lock</v-icon>
+          User ID &amp; Password fields are hidden. Click the <v-icon size="16">mdi-eye</v-icon> icon on any row to reveal credentials.
+        </v-alert>
+        <v-alert v-else type="warning" variant="tonal" density="compact" class="mb-4">
+          <v-icon start size="16">mdi-lock</v-icon>
+          Login credentials are restricted to Admin, Supervisor, and Manager roles.
+        </v-alert>
+
+        <!-- Loading -->
+        <div v-if="medContactsLoading" class="text-center py-6">
+          <v-progress-circular indeterminate color="deep-purple" />
+          <p class="text-body-2 text-grey mt-2">Loading vendor contacts...</p>
+        </div>
+
+        <!-- Contacts Table -->
+        <v-card v-else-if="filteredMedContacts.length > 0" variant="outlined" rounded="lg">
+          <v-data-table-virtual
+            :headers="[
+              { title: 'Vendor', key: 'vendor_name', width: '180px' },
+              { title: 'Category', key: 'category', width: '130px' },
+              { title: 'Contact', key: 'contact_name', width: '140px' },
+              { title: 'Phone', key: 'contact_phone', width: '145px' },
+              { title: 'Email', key: 'contact_email', width: '180px' },
+              { title: 'Website', key: 'website', width: '160px' },
+              { title: 'Account #', key: 'account_number', width: '120px' },
+              { title: 'User ID', key: 'login_user_id', width: '140px' },
+              { title: 'Password', key: 'login_password', width: '140px' },
+              { title: '', key: 'actions', width: '50px', sortable: false },
+            ]"
+            :items="filteredMedContacts"
+            :item-value="'id'"
+            height="600"
+            density="compact"
+            class="med-contacts-table"
+            hover
+          >
+            <template #item.vendor_name="{ item }">
+              <div class="font-weight-bold text-body-2">{{ item.vendor_name }}</div>
+              <div v-if="item.sub_label" class="text-caption text-grey">{{ item.sub_label }}</div>
+            </template>
+
+            <template #item.category="{ item }">
+              <v-chip size="x-small" variant="tonal" color="deep-purple">
+                {{ item.category }}
+              </v-chip>
+            </template>
+
+            <template #item.contact_name="{ item }">
+              <span class="text-body-2">{{ item.contact_name || '\u2014' }}</span>
+            </template>
+
+            <template #item.contact_phone="{ item }">
+              <a v-if="item.contact_phone" :href="'tel:' + item.contact_phone" class="text-decoration-none text-body-2">
+                {{ item.contact_phone }}
+              </a>
+              <span v-else class="text-grey">\u2014</span>
+            </template>
+
+            <template #item.contact_email="{ item }">
+              <a v-if="item.contact_email" :href="'mailto:' + item.contact_email" class="text-decoration-none text-body-2" style="word-break: break-all;">
+                {{ item.contact_email }}
+              </a>
+              <span v-else class="text-grey">\u2014</span>
+            </template>
+
+            <template #item.website="{ item }">
+              <a v-if="item.website" :href="item.website.startsWith('http') ? item.website : 'https://' + item.website" target="_blank" class="text-decoration-none text-body-2" style="word-break: break-all;">
+                {{ item.website.replace(/^https?:\/\//, '').replace(/\/$/, '') }}
+              </a>
+              <span v-else class="text-grey">\u2014</span>
+            </template>
+
+            <template #item.account_number="{ item }">
+              <span class="text-body-2">{{ item.account_number || '\u2014' }}</span>
+            </template>
+
+            <template #item.login_user_id="{ item }">
+              <template v-if="item.login_user_id">
+                <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
+                  {{ item.login_user_id }}
+                </span>
+                <span v-else class="credential-hidden text-body-2">
+                  \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
+                </span>
+              </template>
+              <span v-else class="text-grey">\u2014</span>
+            </template>
+
+            <template #item.login_password="{ item }">
+              <template v-if="item.login_password">
+                <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
+                  {{ item.login_password }}
+                </span>
+                <span v-else class="credential-hidden text-body-2">
+                  \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
+                </span>
+              </template>
+              <span v-else class="text-grey">\u2014</span>
+            </template>
+
+            <template #item.actions="{ item }">
+              <v-btn
+                v-if="canRevealCredentials && (item.login_user_id || item.login_password)"
+                icon
+                size="x-small"
+                variant="text"
+                :color="isCredentialRevealed(item.id) ? 'deep-purple' : 'grey'"
+                @click="toggleCredential(item.id)"
+              >
+                <v-icon size="16">{{ isCredentialRevealed(item.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                <v-tooltip activator="parent" location="top">
+                  {{ isCredentialRevealed(item.id) ? 'Hide credentials' : 'Reveal credentials' }}
+                </v-tooltip>
+              </v-btn>
+            </template>
+          </v-data-table-virtual>
+        </v-card>
+
+        <!-- No Results -->
+        <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
+          <v-icon size="48" color="grey" class="mb-3">mdi-card-account-phone</v-icon>
+          <h3 class="text-h6 mb-2">No contacts found</h3>
+          <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
+        </v-card>
+      </template>
 
       <!-- Add Partner Dialog -->
       <v-dialog v-model="showAddPartnerDialog" max-width="600" persistent>
@@ -825,182 +1008,7 @@
       </v-dialog>
     </template>
 
-    <!-- Med Contacts Section -->
-    <template v-if="showMedContacts">
-      <div class="d-flex align-center justify-space-between mb-4">
-        <h3 class="text-h6 font-weight-bold">
-          <v-icon color="deep-purple" class="mr-2">mdi-card-account-phone</v-icon>
-          Medical Contacts &amp; Vendor Accounts
-        </h3>
-        <div class="d-flex align-center gap-2">
-          <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedContacts = false">
-            Back to Wiki
-          </v-btn>
-        </div>
-      </div>
 
-      <!-- Search & Filter -->
-      <v-card variant="outlined" rounded="lg" class="mb-4">
-        <v-card-text class="pb-3">
-          <v-row dense>
-            <v-col cols="12" sm="6" md="6">
-              <v-text-field
-                v-model="medContactSearch"
-                prepend-inner-icon="mdi-magnify"
-                label="Search contacts..."
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" sm="4" md="4">
-              <v-select
-                v-model="medContactCategoryFilter"
-                :items="medContactCategoryOptions"
-                label="Category"
-                variant="outlined"
-                density="compact"
-                clearable
-                hide-details
-              />
-            </v-col>
-            <v-col cols="12" md="2" class="d-flex align-center">
-              <v-chip size="small" variant="tonal" color="deep-purple">
-                {{ filteredMedContacts.length }} contact{{ filteredMedContacts.length !== 1 ? 's' : '' }}
-              </v-chip>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-
-      <!-- Credential legend -->
-      <v-alert v-if="canRevealCredentials" type="info" variant="tonal" density="compact" class="mb-4">
-        <v-icon start size="16">mdi-shield-lock</v-icon>
-        User ID &amp; Password fields are hidden. Click the <v-icon size="16">mdi-eye</v-icon> icon on any row to reveal credentials.
-      </v-alert>
-      <v-alert v-else type="warning" variant="tonal" density="compact" class="mb-4">
-        <v-icon start size="16">mdi-lock</v-icon>
-        Login credentials are restricted to Admin, Supervisor, and Manager roles.
-      </v-alert>
-
-      <!-- Loading -->
-      <div v-if="medContactsLoading" class="text-center py-6">
-        <v-progress-circular indeterminate color="deep-purple" />
-        <p class="text-body-2 text-grey mt-2">Loading medical contacts...</p>
-      </div>
-
-      <!-- Contacts Table -->
-      <v-card v-else-if="filteredMedContacts.length > 0" variant="outlined" rounded="lg">
-        <v-data-table-virtual
-          :headers="[
-            { title: 'Vendor', key: 'vendor_name', width: '180px' },
-            { title: 'Category', key: 'category', width: '130px' },
-            { title: 'Contact', key: 'contact_name', width: '140px' },
-            { title: 'Phone', key: 'contact_phone', width: '145px' },
-            { title: 'Email', key: 'contact_email', width: '180px' },
-            { title: 'Website', key: 'website', width: '160px' },
-            { title: 'Account #', key: 'account_number', width: '120px' },
-            { title: 'User ID', key: 'login_user_id', width: '140px' },
-            { title: 'Password', key: 'login_password', width: '140px' },
-            { title: '', key: 'actions', width: '50px', sortable: false },
-          ]"
-          :items="filteredMedContacts"
-          :item-value="'id'"
-          height="600"
-          density="compact"
-          class="med-contacts-table"
-          hover
-        >
-          <template #item.vendor_name="{ item }">
-            <div class="font-weight-bold text-body-2">{{ item.vendor_name }}</div>
-            <div v-if="item.sub_label" class="text-caption text-grey">{{ item.sub_label }}</div>
-          </template>
-
-          <template #item.category="{ item }">
-            <v-chip size="x-small" variant="tonal" color="deep-purple">
-              {{ item.category }}
-            </v-chip>
-          </template>
-
-          <template #item.contact_name="{ item }">
-            <span class="text-body-2">{{ item.contact_name || '—' }}</span>
-          </template>
-
-          <template #item.contact_phone="{ item }">
-            <a v-if="item.contact_phone" :href="'tel:' + item.contact_phone" class="text-decoration-none text-body-2">
-              {{ item.contact_phone }}
-            </a>
-            <span v-else class="text-grey">—</span>
-          </template>
-
-          <template #item.contact_email="{ item }">
-            <a v-if="item.contact_email" :href="'mailto:' + item.contact_email" class="text-decoration-none text-body-2" style="word-break: break-all;">
-              {{ item.contact_email }}
-            </a>
-            <span v-else class="text-grey">—</span>
-          </template>
-
-          <template #item.website="{ item }">
-            <a v-if="item.website" :href="item.website.startsWith('http') ? item.website : 'https://' + item.website" target="_blank" class="text-decoration-none text-body-2" style="word-break: break-all;">
-              {{ item.website.replace(/^https?:\/\//, '').replace(/\/$/, '') }}
-            </a>
-            <span v-else class="text-grey">—</span>
-          </template>
-
-          <template #item.account_number="{ item }">
-            <span class="text-body-2">{{ item.account_number || '—' }}</span>
-          </template>
-
-          <template #item.login_user_id="{ item }">
-            <template v-if="item.login_user_id">
-              <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
-                {{ item.login_user_id }}
-              </span>
-              <span v-else class="credential-hidden text-body-2">
-                ••••••••
-              </span>
-            </template>
-            <span v-else class="text-grey">—</span>
-          </template>
-
-          <template #item.login_password="{ item }">
-            <template v-if="item.login_password">
-              <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
-                {{ item.login_password }}
-              </span>
-              <span v-else class="credential-hidden text-body-2">
-                ••••••••
-              </span>
-            </template>
-            <span v-else class="text-grey">—</span>
-          </template>
-
-          <template #item.actions="{ item }">
-            <v-btn
-              v-if="canRevealCredentials && (item.login_user_id || item.login_password)"
-              icon
-              size="x-small"
-              variant="text"
-              :color="isCredentialRevealed(item.id) ? 'deep-purple' : 'grey'"
-              @click="toggleCredential(item.id)"
-            >
-              <v-icon size="16">{{ isCredentialRevealed(item.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
-              <v-tooltip activator="parent" location="top">
-                {{ isCredentialRevealed(item.id) ? 'Hide credentials' : 'Reveal credentials' }}
-              </v-tooltip>
-            </v-btn>
-          </template>
-        </v-data-table-virtual>
-      </v-card>
-
-      <!-- No Results -->
-      <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
-        <v-icon size="48" color="grey" class="mb-3">mdi-card-account-phone</v-icon>
-        <h3 class="text-h6 mb-2">No contacts found</h3>
-        <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
-      </v-card>
-    </template>
 
     <!-- Facility Resource Detail Dialog -->
     <v-dialog v-model="showResourceDetailDialog" max-width="700" scrollable>
@@ -1107,7 +1115,7 @@
     </v-dialog>
 
     <!-- Recent Searches (default view) -->
-    <template v-if="!hasSearched && !showPolicies && !showFacilityResources && !showMedPartners && !showMedContacts">
+    <template v-if="!hasSearched && !showPolicies && !showFacilityResources && !showMedPartners">
       <div class="mt-2" v-if="recentSearches.length > 0">
         <h3 class="text-subtitle-1 font-weight-bold mb-3">Recent Searches</h3>
         <v-chip-group>
@@ -1219,7 +1227,7 @@ const medPartnersLoading = ref(false)
 const medPartnerSearch = ref('')
 const medPartnerCategoryFilter = ref<string | null>(null)
 const medPartnerViewMode = ref<'list' | 'tile'>('list')
-const showMedContacts = ref(false)
+const medPartnersTab = ref<'partners' | 'vendor-contacts'>('partners')
 const medContacts = ref<any[]>([])
 const medContactsLoading = ref(false)
 const medContactSearch = ref('')
@@ -1310,7 +1318,6 @@ const resourceButtons = [
   { id: 'policies', name: 'Policies', icon: 'mdi-file-document-outline', color: 'teal', action: 'policies' },
   { id: 'contact-list', name: 'Contact List', icon: 'mdi-contacts', color: 'blue', route: '/contact-list' },
   { id: 'med-partners', name: 'Med Ops Partners', icon: 'mdi-handshake', color: 'indigo', action: 'med-partners' },
-  { id: 'med-contacts', name: 'Med Contacts', icon: 'mdi-card-account-phone', color: 'deep-purple', action: 'med-contacts' },
   { id: 'list-hygiene', name: 'List Hygiene', icon: 'mdi-broom', color: 'green', route: '/marketing/list-hygiene' },
   { id: 'safety-logs', name: 'Safety Logs', icon: 'mdi-shield-check', color: 'red', route: '/med-ops/safety' },
   { id: 'drug-calculators', name: 'Drug Calculators', icon: 'mdi-calculator', color: 'purple', route: '/med-ops/calculators' },
@@ -1584,7 +1591,6 @@ function navigateToResource(resource: any) {
     showPolicies.value = true
     showFacilityResources.value = false
     showMedPartners.value = false
-    showMedContacts.value = false
     hasSearched.value = false
     searchQuery.value = ''
     aiResponse.value = ''
@@ -1594,7 +1600,6 @@ function navigateToResource(resource: any) {
     showFacilityResources.value = true
     showPolicies.value = false
     showMedPartners.value = false
-    showMedContacts.value = false
     hasSearched.value = false
     searchQuery.value = ''
     aiResponse.value = ''
@@ -1605,23 +1610,13 @@ function navigateToResource(resource: any) {
     showMedPartners.value = true
     showPolicies.value = false
     showFacilityResources.value = false
-    showMedContacts.value = false
     hasSearched.value = false
     searchQuery.value = ''
     aiResponse.value = ''
     internalResults.value = []
     topicResults.value = []
+    medPartnersTab.value = 'partners'
     loadMedPartners()
-  } else if (resource.action === 'med-contacts') {
-    showMedContacts.value = true
-    showPolicies.value = false
-    showFacilityResources.value = false
-    showMedPartners.value = false
-    hasSearched.value = false
-    searchQuery.value = ''
-    aiResponse.value = ''
-    internalResults.value = []
-    topicResults.value = []
     loadMedContacts()
   }
 }
