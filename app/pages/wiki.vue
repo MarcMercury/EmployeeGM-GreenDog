@@ -244,7 +244,7 @@
       <!-- Resource Tile View -->
       <v-row v-else-if="filteredFacilityResources.length > 0 && facilityViewMode === 'tile'">
         <v-col v-for="resource in filteredFacilityResources" :key="resource.id" cols="12" sm="6" md="4">
-          <v-card variant="outlined" rounded="lg" class="h-100 facility-card">
+          <v-card variant="outlined" rounded="lg" class="h-100 facility-card clickable-card" @click="openResourceDetail(resource)">
             <v-card-text>
               <div class="d-flex align-center gap-3 mb-3">
                 <v-avatar :color="getFacilityTypeColor(resource.resource_type)" size="44">
@@ -295,7 +295,7 @@
       <v-card v-else-if="filteredFacilityResources.length > 0 && facilityViewMode === 'list'" variant="outlined" rounded="lg">
         <v-list lines="two" class="py-0">
           <template v-for="(resource, idx) in filteredFacilityResources" :key="resource.id">
-            <v-list-item class="py-3">
+            <v-list-item class="py-3 clickable-item" @click="openResourceDetail(resource)">
               <template #prepend>
                 <v-avatar :color="getFacilityTypeColor(resource.resource_type)" size="40" class="mr-3">
                   <v-icon size="20" color="white">{{ getFacilityTypeIcon(resource.resource_type) }}</v-icon>
@@ -527,7 +527,7 @@
       <!-- Partner Tile View -->
       <v-row v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'tile'">
         <v-col v-for="partner in filteredMedPartners" :key="partner.id" cols="12" sm="6" md="4">
-          <v-card variant="outlined" rounded="lg" class="h-100 partner-wiki-card">
+          <v-card variant="outlined" rounded="lg" class="h-100 partner-wiki-card clickable-card" @click="openPartnerDetail(partner)">
             <v-card-text>
               <div class="d-flex align-center gap-3 mb-3">
                 <v-avatar :color="partner.color || 'indigo'" size="44">
@@ -576,7 +576,7 @@
       <v-card v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'list'" variant="outlined" rounded="lg">
         <v-list lines="two" class="py-0">
           <template v-for="(partner, idx) in filteredMedPartners" :key="partner.id">
-            <v-list-item class="py-3">
+            <v-list-item class="py-3 clickable-item" @click="openPartnerDetail(partner)">
               <template #prepend>
                 <v-avatar :color="partner.color || 'indigo'" size="40" class="mr-3">
                   <v-icon size="20" color="white">{{ partner.icon || 'mdi-factory' }}</v-icon>
@@ -715,7 +715,219 @@
           </v-card-actions>
         </v-card>
       </v-dialog>
+
+      <!-- Partner Detail Dialog -->
+      <v-dialog v-model="showPartnerDetailDialog" max-width="700" scrollable>
+        <v-card v-if="selectedPartner" rounded="lg">
+          <v-card-title class="d-flex align-center justify-space-between pa-4">
+            <div class="d-flex align-center gap-3">
+              <v-avatar :color="selectedPartner.color || 'indigo'" size="48">
+                <v-icon size="24" color="white">{{ selectedPartner.icon || 'mdi-factory' }}</v-icon>
+              </v-avatar>
+              <div>
+                <h3 class="text-h6 font-weight-bold">{{ selectedPartner.name }}</h3>
+                <v-chip size="x-small" variant="tonal" color="indigo">
+                  {{ selectedPartner.category || 'Other' }}
+                </v-chip>
+              </div>
+            </div>
+            <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showPartnerDetailDialog = false" />
+          </v-card-title>
+
+          <v-divider />
+
+          <v-card-text class="pa-4">
+            <!-- Description -->
+            <div v-if="selectedPartner.description" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">Description</div>
+              <p class="text-body-1" style="white-space: pre-wrap;">{{ selectedPartner.description }}</p>
+            </div>
+
+            <!-- Contact Information -->
+            <div class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <v-icon size="16" class="mr-1">mdi-card-account-details</v-icon>
+                Contact Information
+              </div>
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Contact Name</div>
+                  <div class="text-body-2">{{ selectedPartner.contact_name || 'N/A' }}</div>
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Phone</div>
+                  <div class="text-body-2">
+                    <a v-if="selectedPartner.contact_phone" :href="'tel:' + selectedPartner.contact_phone" class="text-decoration-none">
+                      <v-icon size="14" class="mr-1">mdi-phone</v-icon>{{ selectedPartner.contact_phone }}
+                    </a>
+                    <span v-else>N/A</span>
+                  </div>
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Email</div>
+                  <div class="text-body-2">
+                    <a v-if="selectedPartner.contact_email" :href="'mailto:' + selectedPartner.contact_email" class="text-decoration-none">
+                      <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>{{ selectedPartner.contact_email }}
+                    </a>
+                    <span v-else>N/A</span>
+                  </div>
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Website</div>
+                  <div class="text-body-2">
+                    <a v-if="selectedPartner.website" :href="selectedPartner.website" target="_blank" class="text-decoration-none">
+                      <v-icon size="14" class="mr-1">mdi-web</v-icon>{{ selectedPartner.website }}
+                    </a>
+                    <span v-else>N/A</span>
+                  </div>
+                </v-col>
+              </v-row>
+            </div>
+
+            <!-- Location -->
+            <div v-if="selectedPartner.location_code" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
+                Location
+              </div>
+              <div class="text-body-2">{{ selectedPartner.location_code }}</div>
+            </div>
+
+            <!-- Products -->
+            <div v-if="selectedPartner.products?.length" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <v-icon size="16" class="mr-1">mdi-package-variant</v-icon>
+                Products
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <v-chip v-for="product in selectedPartner.products" :key="product" size="small" variant="tonal" color="indigo">
+                  {{ product }}
+                </v-chip>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div v-if="selectedPartner.notes" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                <v-icon size="16" class="mr-1">mdi-note-text</v-icon>
+                Notes
+              </div>
+              <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.notes }}</p>
+            </div>
+          </v-card-text>
+
+          <v-divider />
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showPartnerDetailDialog = false">Close</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
+
+    <!-- Facility Resource Detail Dialog -->
+    <v-dialog v-model="showResourceDetailDialog" max-width="700" scrollable>
+      <v-card v-if="selectedResource" rounded="lg">
+        <v-card-title class="d-flex align-center justify-space-between pa-4">
+          <div class="d-flex align-center gap-3">
+            <v-avatar :color="getFacilityTypeColor(selectedResource.resource_type)" size="48">
+              <v-icon size="24" color="white">{{ getFacilityTypeIcon(selectedResource.resource_type) }}</v-icon>
+            </v-avatar>
+            <div>
+              <h3 class="text-h6 font-weight-bold">{{ selectedResource.name }}</h3>
+              <div class="d-flex align-center gap-2">
+                <v-chip size="x-small" variant="tonal" :color="getFacilityTypeColor(selectedResource.resource_type)">
+                  {{ formatFacilityType(selectedResource.resource_type) }}
+                </v-chip>
+                <v-chip v-if="selectedResource.emergency_contact" size="x-small" color="error" variant="flat">
+                  <v-icon start size="10">mdi-alert</v-icon>
+                  Emergency
+                </v-chip>
+                <v-chip v-if="selectedResource.is_preferred" size="x-small" color="amber" variant="flat">
+                  <v-icon start size="10">mdi-star</v-icon>
+                  Preferred
+                </v-chip>
+              </div>
+            </div>
+          </div>
+          <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showResourceDetailDialog = false" />
+        </v-card-title>
+
+        <v-divider />
+
+        <v-card-text class="pa-4">
+          <!-- Company -->
+          <div v-if="selectedResource.company_name" class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-1">
+              <v-icon size="16" class="mr-1">mdi-domain</v-icon>
+              Company
+            </div>
+            <div class="text-body-1">{{ selectedResource.company_name }}</div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-2">
+              <v-icon size="16" class="mr-1">mdi-card-account-details</v-icon>
+              Contact Information
+            </div>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <div class="text-caption text-medium-emphasis">Phone</div>
+                <div class="text-body-2">
+                  <a v-if="selectedResource.phone" :href="'tel:' + selectedResource.phone" class="text-decoration-none">
+                    <v-icon size="14" class="mr-1">mdi-phone</v-icon>{{ selectedResource.phone }}
+                  </a>
+                  <span v-else>N/A</span>
+                </div>
+              </v-col>
+              <v-col cols="12" sm="6">
+                <div class="text-caption text-medium-emphasis">Email</div>
+                <div class="text-body-2">
+                  <a v-if="selectedResource.email" :href="'mailto:' + selectedResource.email" class="text-decoration-none">
+                    <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>{{ selectedResource.email }}
+                  </a>
+                  <span v-else>N/A</span>
+                </div>
+              </v-col>
+            </v-row>
+          </div>
+
+          <!-- Hours -->
+          <div v-if="selectedResource.hours_of_operation" class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-1">
+              <v-icon size="16" class="mr-1">mdi-clock-outline</v-icon>
+              Hours of Operation
+            </div>
+            <div class="text-body-1">{{ selectedResource.hours_of_operation }}</div>
+          </div>
+
+          <!-- Address -->
+          <div v-if="selectedResource.address" class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-1">
+              <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
+              Address
+            </div>
+            <div class="text-body-1">{{ selectedResource.address }}</div>
+          </div>
+
+          <!-- Notes -->
+          <div v-if="selectedResource.notes" class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-1">
+              <v-icon size="16" class="mr-1">mdi-note-text</v-icon>
+              Notes
+            </div>
+            <p class="text-body-1" style="white-space: pre-wrap;">{{ selectedResource.notes }}</p>
+          </div>
+        </v-card-text>
+
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showResourceDetailDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Recent Searches (default view) -->
     <template v-if="!hasSearched && !showPolicies && !showFacilityResources && !showMedPartners">
@@ -828,6 +1040,10 @@ const medPartnerCategoryFilter = ref<string | null>(null)
 const medPartnerViewMode = ref<'list' | 'tile'>('list')
 const showAddPartnerDialog = ref(false)
 const addPartnerSaving = ref(false)
+const selectedPartner = ref<any>(null)
+const showPartnerDetailDialog = ref(false)
+const selectedResource = ref<any>(null)
+const showResourceDetailDialog = ref(false)
 const newPartner = ref({
   name: '',
   category: 'Other',
@@ -1393,6 +1609,16 @@ function resetNewPartner() {
   }
 }
 
+function openPartnerDetail(partner: any) {
+  selectedPartner.value = partner
+  showPartnerDetailDialog.value = true
+}
+
+function openResourceDetail(resource: any) {
+  selectedResource.value = resource
+  showResourceDetailDialog.value = true
+}
+
 async function saveNewPartner() {
   if (!newPartner.value.name) return
   addPartnerSaving.value = true
@@ -1483,7 +1709,6 @@ async function saveNewPartner() {
 }
 
 .facility-card {
-  cursor: default;
   transition: all 0.2s;
 }
 
@@ -1493,12 +1718,23 @@ async function saveNewPartner() {
 }
 
 .partner-wiki-card {
-  cursor: default;
   transition: all 0.2s;
 }
 
 .partner-wiki-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.clickable-card {
+  cursor: pointer;
+}
+
+.clickable-item {
+  cursor: pointer;
+}
+
+.clickable-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.04);
 }
 </style>
