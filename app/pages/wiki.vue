@@ -182,9 +182,22 @@
           <v-icon color="brown" class="mr-2">mdi-tools</v-icon>
           Facility Resources
         </h3>
-        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showFacilityResources = false">
-          Back to Wiki
-        </v-btn>
+        <div class="d-flex align-center gap-2">
+          <v-btn-toggle v-model="facilityViewMode" mandatory density="compact" variant="outlined" color="brown">
+            <v-btn value="list" size="small">
+              <v-icon size="18">mdi-format-list-bulleted</v-icon>
+            </v-btn>
+            <v-btn value="tile" size="small">
+              <v-icon size="18">mdi-view-grid</v-icon>
+            </v-btn>
+          </v-btn-toggle>
+          <v-btn color="brown" variant="flat" size="small" prepend-icon="mdi-plus" @click="showAddResourceDialog = true">
+            Add Resource
+          </v-btn>
+          <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showFacilityResources = false">
+            Back to Wiki
+          </v-btn>
+        </div>
       </div>
 
       <!-- Facility Search & Filter -->
@@ -228,8 +241,8 @@
         <p class="text-body-2 text-grey mt-2">Loading facility resources...</p>
       </div>
 
-      <!-- Resource Cards -->
-      <v-row v-else-if="filteredFacilityResources.length > 0">
+      <!-- Resource Tile View -->
+      <v-row v-else-if="filteredFacilityResources.length > 0 && facilityViewMode === 'tile'">
         <v-col v-for="resource in filteredFacilityResources" :key="resource.id" cols="12" sm="6" md="4">
           <v-card variant="outlined" rounded="lg" class="h-100 facility-card">
             <v-card-text>
@@ -278,12 +291,171 @@
         </v-col>
       </v-row>
 
+      <!-- Resource List View (default) -->
+      <v-card v-else-if="filteredFacilityResources.length > 0 && facilityViewMode === 'list'" variant="outlined" rounded="lg">
+        <v-list lines="two" class="py-0">
+          <template v-for="(resource, idx) in filteredFacilityResources" :key="resource.id">
+            <v-list-item class="py-3">
+              <template #prepend>
+                <v-avatar :color="getFacilityTypeColor(resource.resource_type)" size="40" class="mr-3">
+                  <v-icon size="20" color="white">{{ getFacilityTypeIcon(resource.resource_type) }}</v-icon>
+                </v-avatar>
+              </template>
+              <v-list-item-title class="font-weight-bold text-subtitle-2 mb-1">
+                {{ resource.name }}
+                <v-chip v-if="resource.emergency_contact" size="x-small" color="error" variant="flat" class="ml-2">
+                  <v-icon start size="10">mdi-alert</v-icon>
+                  Emergency
+                </v-chip>
+                <v-chip v-if="resource.is_preferred" size="x-small" color="amber" variant="flat" class="ml-1">
+                  <v-icon start size="10">mdi-star</v-icon>
+                  Preferred
+                </v-chip>
+              </v-list-item-title>
+              <v-list-item-subtitle>
+                <span class="d-inline-flex align-center gap-3 flex-wrap">
+                  <v-chip size="x-small" variant="tonal" :color="getFacilityTypeColor(resource.resource_type)">
+                    {{ formatFacilityType(resource.resource_type) }}
+                  </v-chip>
+                  <span v-if="resource.company_name" class="text-body-2 text-grey">
+                    <v-icon size="12" class="mr-1">mdi-domain</v-icon>{{ resource.company_name }}
+                  </span>
+                  <span v-if="resource.phone" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-phone</v-icon>
+                    <a :href="'tel:' + resource.phone" class="text-decoration-none">{{ resource.phone }}</a>
+                  </span>
+                  <span v-if="resource.email" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-email-outline</v-icon>
+                    <a :href="'mailto:' + resource.email" class="text-decoration-none">{{ resource.email }}</a>
+                  </span>
+                  <span v-if="resource.hours_of_operation" class="text-body-2 text-grey">
+                    <v-icon size="12" class="mr-1">mdi-clock-outline</v-icon>{{ resource.hours_of_operation }}
+                  </span>
+                </span>
+              </v-list-item-subtitle>
+            </v-list-item>
+            <v-divider v-if="idx < filteredFacilityResources.length - 1" />
+          </template>
+        </v-list>
+      </v-card>
+
       <!-- No Results -->
       <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
         <v-icon size="48" color="grey" class="mb-3">mdi-tools</v-icon>
         <h3 class="text-h6 mb-2">No vendors found</h3>
         <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
       </v-card>
+
+      <!-- Add Resource Dialog -->
+      <v-dialog v-model="showAddResourceDialog" max-width="600" persistent>
+        <v-card rounded="lg">
+          <v-card-title class="d-flex align-center">
+            <v-icon color="brown" class="mr-2">mdi-plus-circle</v-icon>
+            Add Facility Resource
+          </v-card-title>
+          <v-divider />
+          <v-card-text>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newResource.name"
+                  label="Vendor / Contact Name *"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Name is required']"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="newResource.resource_type"
+                  :items="facilityResourceTypes"
+                  label="Service Type *"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Type is required']"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newResource.company_name"
+                  label="Company Name"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newResource.phone"
+                  label="Phone"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-phone"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newResource.email"
+                  label="Email"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-email-outline"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newResource.hours_of_operation"
+                  label="Hours of Operation"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-clock-outline"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="newResource.notes"
+                  label="Notes"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-checkbox
+                  v-model="newResource.emergency_contact"
+                  label="Emergency Contact"
+                  color="error"
+                  density="compact"
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="6">
+                <v-checkbox
+                  v-model="newResource.is_preferred"
+                  label="Preferred Vendor"
+                  color="amber"
+                  density="compact"
+                  hide-details
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
+          <v-divider />
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showAddResourceDialog = false; resetNewResource()">Cancel</v-btn>
+            <v-btn
+              color="brown"
+              variant="flat"
+              :loading="addResourceSaving"
+              :disabled="!newResource.name || !newResource.resource_type"
+              @click="saveNewResource"
+            >
+              Save Resource
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
 
     <!-- Medical Partners Section -->
@@ -484,6 +656,20 @@ const facilityResources = ref<any[]>([])
 const facilityResourcesLoading = ref(false)
 const facilitySearch = ref('')
 const facilityTypeFilter = ref<string | null>(null)
+const facilityViewMode = ref<'list' | 'tile'>('list')
+const showAddResourceDialog = ref(false)
+const addResourceSaving = ref(false)
+const newResource = ref({
+  name: '',
+  company_name: '',
+  resource_type: '',
+  phone: '',
+  email: '',
+  hours_of_operation: '',
+  notes: '',
+  emergency_contact: false,
+  is_preferred: false,
+})
 const showMedPartners = ref(false)
 const medPartners = ref<any[]>([])
 const medPartnersLoading = ref(false)
@@ -944,6 +1130,41 @@ const facilityTypeOptions = computed(() =>
     .map(t => ({ value: t, title: formatFacilityType(t) }))
     .sort((a, b) => a.title.localeCompare(b.title))
 )
+
+function resetNewResource() {
+  newResource.value = {
+    name: '',
+    company_name: '',
+    resource_type: '',
+    phone: '',
+    email: '',
+    hours_of_operation: '',
+    notes: '',
+    emergency_contact: false,
+    is_preferred: false,
+  }
+}
+
+async function saveNewResource() {
+  if (!newResource.value.name || !newResource.value.resource_type) return
+  addResourceSaving.value = true
+  try {
+    const { error } = await supabase
+      .from('facility_resources')
+      .insert({
+        ...newResource.value,
+        is_active: true,
+      })
+    if (error) throw error
+    showAddResourceDialog.value = false
+    resetNewResource()
+    await loadFacilityResources()
+  } catch (err) {
+    console.error('[Wiki] Failed to save facility resource:', err)
+  } finally {
+    addResourceSaving.value = false
+  }
+}
 
 // Medical Partners
 async function loadMedPartners() {
