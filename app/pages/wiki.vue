@@ -576,6 +576,14 @@
                 <v-icon size="14" class="mr-1">mdi-web</v-icon>
                 <a :href="partner.website" target="_blank" class="text-decoration-none">{{ partner.website }}</a>
               </div>
+              <div v-if="partner.account_number" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-pound</v-icon>
+                <span class="text-medium-emphasis">Acct:</span> {{ partner.account_number }}
+              </div>
+              <div v-if="partner.location_code" class="text-body-2 mb-1">
+                <v-icon size="14" class="mr-1">mdi-map-marker</v-icon>
+                {{ partner.location_code }}
+              </div>
               <div v-if="partner.products?.length" class="mt-2 d-flex flex-wrap gap-1">
                 <v-chip v-for="product in partner.products.slice(0, 3)" :key="product" size="x-small" variant="outlined">
                   {{ product }}
@@ -624,6 +632,9 @@
                   </span>
                   <span v-if="partner.location_code" class="text-body-2 text-grey">
                     <v-icon size="12" class="mr-1">mdi-map-marker</v-icon>{{ partner.location_code }}
+                  </span>
+                  <span v-if="partner.account_number" class="text-body-2 text-grey">
+                    <v-icon size="12" class="mr-1">mdi-pound</v-icon>{{ partner.account_number }}
                   </span>
                 </span>
               </v-list-item-subtitle>
@@ -967,13 +978,83 @@
               </v-row>
             </div>
 
-            <!-- Location -->
-            <div v-if="selectedPartner.location_code" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">
-                <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
-                Location
+            <!-- Account & Ordering -->
+            <div v-if="selectedPartner.account_number || selectedPartner.order_method || selectedPartner.payment_method" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <v-icon size="16" class="mr-1">mdi-clipboard-text</v-icon>
+                Account &amp; Ordering
               </div>
-              <div class="text-body-2">{{ selectedPartner.location_code }}</div>
+              <v-row dense>
+                <v-col v-if="selectedPartner.account_number" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Account Number</div>
+                  <div class="text-body-2 font-weight-medium">{{ selectedPartner.account_number }}</div>
+                </v-col>
+                <v-col v-if="selectedPartner.order_method" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Order Method</div>
+                  <div class="text-body-2">{{ selectedPartner.order_method }}</div>
+                </v-col>
+                <v-col v-if="selectedPartner.payment_method" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Payment Method</div>
+                  <div class="text-body-2">{{ selectedPartner.payment_method }}</div>
+                </v-col>
+              </v-row>
+            </div>
+
+            <!-- Portal Credentials (role-restricted) -->
+            <div v-if="selectedPartner.portal_username || selectedPartner.portal_password" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <v-icon size="16" class="mr-1">mdi-shield-lock</v-icon>
+                Login Credentials
+                <v-btn
+                  v-if="canRevealCredentials"
+                  size="x-small"
+                  variant="text"
+                  :color="isCredentialRevealed(selectedPartner.id) ? 'deep-purple' : 'grey'"
+                  class="ml-2"
+                  @click="toggleCredential(selectedPartner.id)"
+                >
+                  <v-icon size="16" class="mr-1">{{ isCredentialRevealed(selectedPartner.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                  {{ isCredentialRevealed(selectedPartner.id) ? 'Hide' : 'Reveal' }}
+                </v-btn>
+              </div>
+              <v-row v-if="canRevealCredentials" dense>
+                <v-col v-if="selectedPartner.portal_username" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">User ID</div>
+                  <div class="text-body-2">
+                    <span v-if="isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_username }}</span>
+                    <span v-else class="credential-hidden">••••••••</span>
+                  </div>
+                </v-col>
+                <v-col v-if="selectedPartner.portal_password" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Password</div>
+                  <div class="text-body-2">
+                    <span v-if="isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_password }}</span>
+                    <span v-else class="credential-hidden">••••••••</span>
+                  </div>
+                </v-col>
+              </v-row>
+              <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-1">
+                <v-icon start size="14">mdi-lock</v-icon>
+                Credentials restricted to Admin, Supervisor, and Manager roles.
+              </v-alert>
+            </div>
+
+            <!-- Location & Department -->
+            <div v-if="selectedPartner.location_code || selectedPartner.department" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">
+                <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
+                Location &amp; Department
+              </div>
+              <v-row dense>
+                <v-col v-if="selectedPartner.location_code" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Location</div>
+                  <div class="text-body-2">{{ selectedPartner.location_code }}</div>
+                </v-col>
+                <v-col v-if="selectedPartner.department" cols="12" sm="6">
+                  <div class="text-caption text-medium-emphasis">Department</div>
+                  <div class="text-body-2">{{ selectedPartner.department }}</div>
+                </v-col>
+              </v-row>
             </div>
 
             <!-- Products -->
@@ -989,6 +1070,15 @@
               </div>
             </div>
 
+            <!-- Browser Preference -->
+            <div v-if="selectedPartner.browser_preference" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                <v-icon size="16" class="mr-1">mdi-web</v-icon>
+                Browser Preference
+              </div>
+              <div class="text-body-2">{{ selectedPartner.browser_preference }}</div>
+            </div>
+
             <!-- Notes -->
             <div v-if="selectedPartner.notes" class="mb-4">
               <div class="text-subtitle-2 text-medium-emphasis mb-1">
@@ -996,6 +1086,15 @@
                 Notes
               </div>
               <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.notes }}</p>
+            </div>
+
+            <!-- Vendor Info -->
+            <div v-if="selectedPartner.vendor_info" class="mb-4">
+              <div class="text-subtitle-2 text-medium-emphasis mb-1">
+                <v-icon size="16" class="mr-1">mdi-information</v-icon>
+                Additional Info
+              </div>
+              <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.vendor_info }}</p>
             </div>
           </v-card-text>
 
@@ -1778,7 +1877,12 @@ const filteredMedPartners = computed(() => {
       p.description?.toLowerCase().includes(q) ||
       p.contact_name?.toLowerCase().includes(q) ||
       p.contact_email?.toLowerCase().includes(q) ||
+      p.contact_phone?.includes(medPartnerSearch.value) ||
       p.category?.toLowerCase().includes(q) ||
+      p.account_number?.toLowerCase().includes(q) ||
+      p.notes?.toLowerCase().includes(q) ||
+      p.location_code?.toLowerCase().includes(q) ||
+      p.department?.toLowerCase().includes(q) ||
       p.products?.some((pr: string) => pr.toLowerCase().includes(q))
     )
   }
