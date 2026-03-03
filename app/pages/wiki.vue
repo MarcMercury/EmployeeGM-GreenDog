@@ -465,9 +465,22 @@
           <v-icon color="indigo" class="mr-2">mdi-handshake</v-icon>
           Medical Partners
         </h3>
-        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedPartners = false">
-          Back to Wiki
-        </v-btn>
+        <div class="d-flex align-center gap-2">
+          <v-btn-toggle v-model="medPartnerViewMode" mandatory density="compact" variant="outlined" color="indigo">
+            <v-btn value="list" size="small">
+              <v-icon size="18">mdi-format-list-bulleted</v-icon>
+            </v-btn>
+            <v-btn value="tile" size="small">
+              <v-icon size="18">mdi-view-grid</v-icon>
+            </v-btn>
+          </v-btn-toggle>
+          <v-btn color="indigo" variant="flat" size="small" prepend-icon="mdi-plus" @click="showAddPartnerDialog = true">
+            Add Partner
+          </v-btn>
+          <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="showMedPartners = false">
+            Back to Wiki
+          </v-btn>
+        </div>
       </div>
 
       <!-- Partner Search & Filter -->
@@ -511,8 +524,8 @@
         <p class="text-body-2 text-grey mt-2">Loading medical partners...</p>
       </div>
 
-      <!-- Partner Cards -->
-      <v-row v-else-if="filteredMedPartners.length > 0">
+      <!-- Partner Tile View -->
+      <v-row v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'tile'">
         <v-col v-for="partner in filteredMedPartners" :key="partner.id" cols="12" sm="6" md="4">
           <v-card variant="outlined" rounded="lg" class="h-100 partner-wiki-card">
             <v-card-text>
@@ -559,12 +572,149 @@
         </v-col>
       </v-row>
 
+      <!-- Partner List View (default) -->
+      <v-card v-else-if="filteredMedPartners.length > 0 && medPartnerViewMode === 'list'" variant="outlined" rounded="lg">
+        <v-list lines="two" class="py-0">
+          <template v-for="(partner, idx) in filteredMedPartners" :key="partner.id">
+            <v-list-item class="py-3">
+              <template #prepend>
+                <v-avatar :color="partner.color || 'indigo'" size="40" class="mr-3">
+                  <v-icon size="20" color="white">{{ partner.icon || 'mdi-factory' }}</v-icon>
+                </v-avatar>
+              </template>
+              <v-list-item-title class="font-weight-bold text-subtitle-2 mb-1">
+                {{ partner.name }}
+                <v-chip size="x-small" variant="tonal" color="indigo" class="ml-2">
+                  {{ partner.category || 'Other' }}
+                </v-chip>
+              </v-list-item-title>
+              <v-list-item-subtitle>
+                <span class="d-inline-flex align-center gap-3 flex-wrap">
+                  <span v-if="partner.contact_name" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-account</v-icon>{{ partner.contact_name }}
+                  </span>
+                  <span v-if="partner.contact_phone" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-phone</v-icon>
+                    <a :href="'tel:' + partner.contact_phone" class="text-decoration-none">{{ partner.contact_phone }}</a>
+                  </span>
+                  <span v-if="partner.contact_email" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-email-outline</v-icon>
+                    <a :href="'mailto:' + partner.contact_email" class="text-decoration-none">{{ partner.contact_email }}</a>
+                  </span>
+                  <span v-if="partner.website" class="text-body-2">
+                    <v-icon size="12" class="mr-1">mdi-web</v-icon>
+                    <a :href="partner.website" target="_blank" class="text-decoration-none">{{ partner.website }}</a>
+                  </span>
+                  <span v-if="partner.location_code" class="text-body-2 text-grey">
+                    <v-icon size="12" class="mr-1">mdi-map-marker</v-icon>{{ partner.location_code }}
+                  </span>
+                </span>
+              </v-list-item-subtitle>
+            </v-list-item>
+            <v-divider v-if="idx < filteredMedPartners.length - 1" />
+          </template>
+        </v-list>
+      </v-card>
+
       <!-- No Results -->
       <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
         <v-icon size="48" color="grey" class="mb-3">mdi-handshake</v-icon>
         <h3 class="text-h6 mb-2">No partners found</h3>
         <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
       </v-card>
+
+      <!-- Add Partner Dialog -->
+      <v-dialog v-model="showAddPartnerDialog" max-width="600" persistent>
+        <v-card rounded="lg">
+          <v-card-title class="d-flex align-center">
+            <v-icon color="indigo" class="mr-2">mdi-plus-circle</v-icon>
+            Add Medical Partner
+          </v-card-title>
+          <v-divider />
+          <v-card-text>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newPartner.name"
+                  label="Partner Name *"
+                  variant="outlined"
+                  density="compact"
+                  :rules="[v => !!v || 'Name is required']"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="newPartner.category"
+                  :items="partnerCategoryChoices"
+                  label="Category"
+                  variant="outlined"
+                  density="compact"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newPartner.contact_name"
+                  label="Contact Name"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-account"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newPartner.contact_phone"
+                  label="Phone"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-phone"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newPartner.contact_email"
+                  label="Email"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-email-outline"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="newPartner.website"
+                  label="Website"
+                  variant="outlined"
+                  density="compact"
+                  prepend-inner-icon="mdi-web"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="newPartner.description"
+                  label="Description"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  auto-grow
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
+          <v-divider />
+          <v-card-actions>
+            <v-spacer />
+            <v-btn variant="text" @click="showAddPartnerDialog = false; resetNewPartner()">Cancel</v-btn>
+            <v-btn
+              color="indigo"
+              variant="flat"
+              :loading="addPartnerSaving"
+              :disabled="!newPartner.name"
+              @click="saveNewPartner"
+            >
+              Save Partner
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </template>
 
     <!-- Recent Searches (default view) -->
@@ -675,6 +825,28 @@ const medPartners = ref<any[]>([])
 const medPartnersLoading = ref(false)
 const medPartnerSearch = ref('')
 const medPartnerCategoryFilter = ref<string | null>(null)
+const medPartnerViewMode = ref<'list' | 'tile'>('list')
+const showAddPartnerDialog = ref(false)
+const addPartnerSaving = ref(false)
+const newPartner = ref({
+  name: '',
+  category: 'Other',
+  contact_name: '',
+  contact_phone: '',
+  contact_email: '',
+  website: '',
+  description: '',
+})
+const partnerCategoryChoices = [
+  'Laboratory',
+  'Equipment/Imaging',
+  'Supplies & Consumables',
+  'Software & Digital',
+  'Pharmacy & Compounding',
+  'Professional Services',
+  'Office & Administrative',
+  'Other'
+]
 const hasSearched = ref(false)
 
 // Load recent searches from localStorage
@@ -1208,6 +1380,39 @@ const medPartnerCategoryOptions = computed(() =>
     .filter(Boolean)
     .sort()
 )
+
+function resetNewPartner() {
+  newPartner.value = {
+    name: '',
+    category: 'Other',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
+    website: '',
+    description: '',
+  }
+}
+
+async function saveNewPartner() {
+  if (!newPartner.value.name) return
+  addPartnerSaving.value = true
+  try {
+    const { error } = await supabase
+      .from('med_ops_partners')
+      .insert({
+        ...newPartner.value,
+        is_active: true,
+      })
+    if (error) throw error
+    showAddPartnerDialog.value = false
+    resetNewPartner()
+    await loadMedPartners()
+  } catch (err) {
+    console.error('[Wiki] Failed to save medical partner:', err)
+  } finally {
+    addPartnerSaving.value = false
+  }
+}
 </script>
 
 <style scoped>
