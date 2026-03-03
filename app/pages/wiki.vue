@@ -346,7 +346,6 @@
                   </span>
                 </span>
               </v-list-item-subtitle>
-            </v-list-item>
               <template #append>
                 <div v-if="getWikiResourceLocations(resource.id).length > 0" class="d-flex flex-wrap gap-1 align-center">
                   <v-chip 
