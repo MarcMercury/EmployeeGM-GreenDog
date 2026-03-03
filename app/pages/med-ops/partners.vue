@@ -968,7 +968,7 @@ const userStore = useUserStore()
 // State
 const search = ref('')
 const categoryFilter = ref<string | null>(null)
-const viewMode = ref('grid')
+const viewMode = ref('list')
 const partnerDialog = ref(false)
 const showPartnerForm = ref(false)
 const showDeleteConfirm = ref(false)

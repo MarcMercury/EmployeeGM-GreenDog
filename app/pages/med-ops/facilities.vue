@@ -12,7 +12,6 @@
           <v-btn :value="true">Show All</v-btn>
         </v-btn-toggle>
         <v-btn
-          v-if="isAdmin"
           color="primary"
           prepend-icon="mdi-plus"
           @click="openAddDialog"
@@ -125,7 +124,7 @@
       <p class="text-body-2 text-grey mb-4">
         {{ resources.length === 0 ? 'Get started by adding your first facility vendor.' : 'No vendors match your current filters.' }}
       </p>
-      <v-btn v-if="resources.length === 0 && isAdmin" color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
+      <v-btn v-if="resources.length === 0" color="primary" prepend-icon="mdi-plus" @click="openAddDialog">
         Add Resource
       </v-btn>
     </v-card>
@@ -710,7 +709,7 @@ const search = ref('')
 const typeFilter = ref<string | null>(null)
 const locationFilter = ref<string | null>(null)
 const showInactive = ref(false)
-const viewMode = ref('grid')
+const viewMode = ref('list')
 
 // Dialogs
 const resourceDialog = ref(false)
