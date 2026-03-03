@@ -103,6 +103,9 @@
             <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="openEditDialog(partner)">
               Edit
             </v-btn>
+            <v-btn variant="text" size="small" prepend-icon="mdi-delete" color="error" @click.stop="confirmDeletePartner(partner)">
+              Delete
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -143,6 +146,7 @@
         </template>
         <template #item.actions="{ item }">
           <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit partner" @click.stop="openEditDialog(item)" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete partner" @click.stop="confirmDeletePartner(item)" />
           <v-btn icon="mdi-phone" size="small" variant="text" aria-label="Call" @click.stop="callPartner(item)" />
           <v-btn icon="mdi-email" size="small" variant="text" aria-label="Send email" @click.stop="emailPartner(item)" />
           <v-btn icon="mdi-web" size="small" variant="text" aria-label="Visit website" @click.stop="visitWebsite(item)" />
@@ -461,6 +465,7 @@
         
         <v-card-actions>
           <v-btn variant="text" prepend-icon="mdi-pencil" @click="openEditDialog(selectedPartner)">Edit Partner</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-delete" color="error" @click="confirmDeletePartner(selectedPartner); partnerDialog = false">Delete</v-btn>
           <v-spacer />
           <v-btn color="primary" prepend-icon="mdi-phone" @click="callPartner(selectedPartner)">
             Call
@@ -920,7 +925,7 @@
       <v-card>
         <v-card-title class="text-h6">Delete Partner?</v-card-title>
         <v-card-text>
-          <p>Are you sure you want to delete <strong>{{ partnerForm.name }}</strong>?</p>
+          <p>Are you sure you want to delete <strong>{{ partnerToDelete?.name || partnerForm.name }}</strong>?</p>
           <p class="text-caption text-grey mt-2">
             This action cannot be undone. Consider disabling the partner instead if you may need this record later.
           </p>
@@ -972,6 +977,7 @@ const viewMode = ref('list')
 const partnerDialog = ref(false)
 const showPartnerForm = ref(false)
 const showDeleteConfirm = ref(false)
+const partnerToDelete = ref<any>(null)
 const showInactive = ref(false)
 const selectedPartner = ref<any>(null)
 const formRef = ref()
@@ -1608,21 +1614,31 @@ async function savePartner() {
 }
 
 function confirmDelete() {
+  partnerToDelete.value = { id: partnerForm.id, name: partnerForm.name }
+  showDeleteConfirm.value = true
+}
+
+function confirmDeletePartner(partner: any) {
+  partnerToDelete.value = partner
   showDeleteConfirm.value = true
 }
 
 async function deletePartner() {
+  const deleteId = partnerToDelete.value?.id || partnerForm.id
+  if (!deleteId) return
+
   deleting.value = true
   try {
     const { error } = await (supabase as any)
       .from('med_ops_partners')
       .delete()
-      .eq('id', partnerForm.id)
+      .eq('id', deleteId)
     
     if (error) throw error
     
     showSuccess('Partner deleted successfully')
     showDeleteConfirm.value = false
+    partnerToDelete.value = null
     closeFormDialog()
     await loadPartners()
   } catch (err: any) {
@@ -1634,17 +1650,21 @@ async function deletePartner() {
 }
 
 async function disablePartner() {
+  const disableId = partnerToDelete.value?.id || partnerForm.id
+  if (!disableId) return
+
   deleting.value = true
   try {
     const { error } = await (supabase as any)
       .from('med_ops_partners')
       .update({ is_active: false })
-      .eq('id', partnerForm.id)
+      .eq('id', disableId)
     
     if (error) throw error
     
     showSuccess('Partner disabled successfully')
     showDeleteConfirm.value = false
+    partnerToDelete.value = null
     closeFormDialog()
     await loadPartners()
   } catch (err: any) {

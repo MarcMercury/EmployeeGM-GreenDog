@@ -184,6 +184,9 @@
             <v-btn v-if="isAdmin" variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="openEditDialog(resource)">
               Edit
             </v-btn>
+            <v-btn v-if="isAdmin" variant="text" size="small" prepend-icon="mdi-delete" color="error" @click.stop="confirmDeleteResource(resource)">
+              Delete
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -248,6 +251,7 @@
           <v-btn v-if="item.email" icon="mdi-email" size="small" variant="text" aria-label="Send email" @click.stop="emailResource(item)" />
           <v-btn v-if="item.website" icon="mdi-web" size="small" variant="text" aria-label="Visit website" @click.stop="visitWebsite(item)" />
           <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" aria-label="Edit resource" @click.stop="openEditDialog(item)" />
+          <v-btn v-if="isAdmin" icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete resource" @click.stop="confirmDeleteResource(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -396,6 +400,9 @@
         <v-divider />
 
         <v-card-actions>
+          <v-btn v-if="isAdmin" color="error" variant="text" prepend-icon="mdi-delete" @click="confirmDeleteResource(selectedResource); resourceDialog = false">
+            Delete
+          </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="resourceDialog = false">Close</v-btn>
           <v-btn v-if="isAdmin" color="primary" variant="flat" @click="openEditDialog(selectedResource); resourceDialog = false">
@@ -687,7 +694,7 @@
       <v-card>
         <v-card-title class="text-h6">Delete Resource?</v-card-title>
         <v-card-text>
-          Are you sure you want to delete <strong>{{ form.name }}</strong>? This action cannot be undone.
+          Are you sure you want to delete <strong>{{ resourceToDelete?.name || form.name }}</strong>? This action cannot be undone.
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -733,6 +740,7 @@ const resourceDialog = ref(false)
 const editDialog = ref(false)
 const deleteDialog = ref(false)
 const selectedResource = ref<any>(null)
+const resourceToDelete = ref<any>(null)
 const isEditing = ref(false)
 
 // Form
@@ -1085,23 +1093,31 @@ async function saveResource() {
 }
 
 function confirmDelete() {
+  resourceToDelete.value = { id: form.value.id, name: form.value.name }
+  deleteDialog.value = true
+}
+
+function confirmDeleteResource(resource: any) {
+  resourceToDelete.value = resource
   deleteDialog.value = true
 }
 
 async function deleteResource() {
-  if (!form.value.id) return
+  const deleteId = resourceToDelete.value?.id || form.value.id
+  if (!deleteId) return
 
   deleting.value = true
   try {
     const { error } = await supabase
       .from('facility_resources')
       .delete()
-      .eq('id', form.value.id)
+      .eq('id', deleteId)
 
     if (error) throw error
 
     toast.success('Resource deleted')
     deleteDialog.value = false
+    resourceToDelete.value = null
     closeEditDialog()
     await loadData()
   } catch (error: any) {

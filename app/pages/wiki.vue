@@ -498,20 +498,7 @@
         </div>
       </div>
 
-      <!-- Tabs: Partners + Vendor Contacts -->
-      <v-tabs v-model="medPartnersTab" color="indigo" class="mb-4">
-        <v-tab value="partners">
-          <v-icon start size="18">mdi-handshake</v-icon>
-          Partners
-        </v-tab>
-        <v-tab value="vendor-contacts">
-          <v-icon start size="18">mdi-card-account-phone</v-icon>
-          Vendor Contacts
-        </v-tab>
-      </v-tabs>
-
-      <!-- === Partners Tab === -->
-      <template v-if="medPartnersTab === 'partners'">
+      <!-- === Partners === -->
         <div class="d-flex align-center justify-end gap-2 mb-3">
           <v-btn-toggle v-model="medPartnerViewMode" mandatory density="compact" variant="outlined" color="indigo">
             <v-btn value="list" size="small">
@@ -676,151 +663,6 @@
           <h3 class="text-h6 mb-2">No partners found</h3>
           <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
         </v-card>
-      </template>
-
-      <!-- === Vendor Contacts Tab === -->
-      <template v-if="medPartnersTab === 'vendor-contacts'">
-        <!-- Search & Filter -->
-        <v-card variant="outlined" rounded="lg" class="mb-4">
-          <v-card-text class="pb-3">
-            <v-row dense>
-              <v-col cols="12" sm="6" md="6">
-                <v-text-field
-                  v-model="medContactSearch"
-                  prepend-inner-icon="mdi-magnify"
-                  label="Search contacts..."
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </v-col>
-              <v-col cols="12" sm="4" md="4">
-                <v-select
-                  v-model="medContactCategoryFilter"
-                  :items="medContactCategoryOptions"
-                  label="Category"
-                  variant="outlined"
-                  density="compact"
-                  clearable
-                  hide-details
-                />
-              </v-col>
-              <v-col cols="12" md="2" class="d-flex align-center">
-                <v-chip size="small" variant="tonal" color="deep-purple">
-                  {{ filteredMedContacts.length }} contact{{ filteredMedContacts.length !== 1 ? 's' : '' }}
-                </v-chip>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
-
-        <!-- Credential legend -->
-        <v-alert v-if="canRevealCredentials" type="info" variant="tonal" density="compact" class="mb-4">
-          <v-icon start size="16">mdi-shield-lock</v-icon>
-          User ID &amp; Password fields are hidden. Click the <v-icon size="16">mdi-eye</v-icon> icon on any row to reveal credentials.
-        </v-alert>
-        <v-alert v-else type="warning" variant="tonal" density="compact" class="mb-4">
-          <v-icon start size="16">mdi-lock</v-icon>
-          Login credentials are restricted to Admin, Supervisor, and Manager roles.
-        </v-alert>
-
-        <!-- Loading -->
-        <div v-if="medContactsLoading" class="text-center py-6">
-          <v-progress-circular indeterminate color="deep-purple" />
-          <p class="text-body-2 text-grey mt-2">Loading vendor contacts...</p>
-        </div>
-
-        <!-- Contacts Table -->
-        <v-card v-else-if="filteredMedContacts.length > 0" variant="outlined" rounded="lg">
-          <v-data-table-virtual
-            :headers="medContactHeaders"
-            :items="filteredMedContacts"
-            :item-value="'id'"
-            height="600"
-            density="compact"
-            class="med-contacts-table"
-            hover
-            fixed-header
-          >
-            <template #item.vendor_name="{ item }">
-              <div class="font-weight-bold text-body-2 text-no-wrap">{{ item.vendor_name }}</div>
-              <div v-if="item.sub_label" class="text-caption text-grey text-truncate" style="max-width: 180px;">{{ item.sub_label }}</div>
-            </template>
-
-            <template #item.category="{ item }">
-              <v-chip size="x-small" variant="tonal" color="deep-purple">
-                {{ item.category }}
-              </v-chip>
-            </template>
-
-            <template #item.contact_name="{ item }">
-              <span class="text-body-2">{{ item.contact_name || '\u2014' }}</span>
-            </template>
-
-            <template #item.contact_phone="{ item }">
-              <a v-if="item.contact_phone" :href="'tel:' + stripPhoneForHref(item.contact_phone)" class="text-decoration-none text-body-2 text-no-wrap">
-                {{ formatPhone(item.contact_phone) }}
-              </a>
-              <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.contact_email="{ item }">
-              <a v-if="item.contact_email" :href="'mailto:' + item.contact_email" class="text-decoration-none text-body-2" style="word-break: break-all; font-size: 11px;">
-                {{ item.contact_email }}
-              </a>
-              <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.login_user_id="{ item }">
-              <template v-if="item.login_user_id">
-                <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
-                  {{ item.login_user_id }}
-                </span>
-                <span v-else class="credential-hidden text-body-2">
-                  \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
-                </span>
-              </template>
-              <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.login_password="{ item }">
-              <template v-if="item.login_password">
-                <span v-if="isCredentialRevealed(item.id)" class="text-body-2 font-weight-medium credential-revealed">
-                  {{ item.login_password }}
-                </span>
-                <span v-else class="credential-hidden text-body-2">
-                  \u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022
-                </span>
-              </template>
-              <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.actions="{ item }">
-              <v-btn
-                v-if="canRevealCredentials && (item.login_user_id || item.login_password)"
-                icon
-                size="x-small"
-                variant="text"
-                :color="isCredentialRevealed(item.id) ? 'deep-purple' : 'grey'"
-                @click="toggleCredential(item.id)"
-              >
-                <v-icon size="16">{{ isCredentialRevealed(item.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
-                <v-tooltip activator="parent" location="top">
-                  {{ isCredentialRevealed(item.id) ? 'Hide credentials' : 'Reveal credentials' }}
-                </v-tooltip>
-              </v-btn>
-            </template>
-          </v-data-table-virtual>
-        </v-card>
-
-        <!-- No Results -->
-        <v-card v-else variant="outlined" rounded="lg" class="pa-6 text-center">
-          <v-icon size="48" color="grey" class="mb-3">mdi-card-account-phone</v-icon>
-          <h3 class="text-h6 mb-2">No contacts found</h3>
-          <p class="text-body-2 text-grey">Try adjusting your search or filter criteria</p>
-        </v-card>
-      </template>
 
       <!-- Add Partner Dialog -->
       <v-dialog v-model="showAddPartnerDialog" max-width="600" persistent>
@@ -1354,11 +1196,6 @@ const medPartnersLoading = ref(false)
 const medPartnerSearch = ref('')
 const medPartnerCategoryFilter = ref<string | null>(null)
 const medPartnerViewMode = ref<'list' | 'tile'>('list')
-const medPartnersTab = ref<'partners' | 'vendor-contacts'>('partners')
-const medContacts = ref<any[]>([])
-const medContactsLoading = ref(false)
-const medContactSearch = ref('')
-const medContactCategoryFilter = ref<string | null>(null)
 const revealedCredentials = ref<Set<string>>(new Set())
 const showAddPartnerDialog = ref(false)
 const addPartnerSaving = ref(false)
@@ -1742,9 +1579,7 @@ function navigateToResource(resource: any) {
     aiResponse.value = ''
     internalResults.value = []
     topicResults.value = []
-    medPartnersTab.value = 'partners'
     loadMedPartners()
-    loadMedContacts()
   }
 }
 
@@ -1979,93 +1814,6 @@ async function saveNewPartner() {
   } finally {
     addPartnerSaving.value = false
   }
-}
-
-// Med Contacts
-async function loadMedContacts() {
-  medContactsLoading.value = true
-  try {
-    const { data, error } = await supabase
-      .from('med_contacts')
-      .select('*')
-      .eq('is_active', true)
-      .order('category')
-      .order('vendor_name')
-    if (error) throw error
-    medContacts.value = data || []
-  } catch (err) {
-    console.error('[Wiki] Failed to load med contacts:', err)
-  } finally {
-    medContactsLoading.value = false
-  }
-}
-
-const filteredMedContacts = computed(() => {
-  let filtered = medContacts.value
-  if (medContactSearch.value) {
-    const q = medContactSearch.value.toLowerCase()
-    filtered = filtered.filter(c =>
-      c.vendor_name?.toLowerCase().includes(q) ||
-      c.contact_name?.toLowerCase().includes(q) ||
-      c.contact_email?.toLowerCase().includes(q) ||
-      c.contact_phone?.includes(medContactSearch.value) ||
-      c.website?.toLowerCase().includes(q) ||
-      c.notes?.toLowerCase().includes(q) ||
-      c.category?.toLowerCase().includes(q) ||
-      c.account_number?.toLowerCase().includes(q)
-    )
-  }
-  if (medContactCategoryFilter.value) {
-    filtered = filtered.filter(c => c.category === medContactCategoryFilter.value)
-  }
-  return filtered
-})
-
-const medContactCategoryOptions = computed(() =>
-  [...new Set(medContacts.value.map(c => c.category))]
-    .filter(Boolean)
-    .sort()
-)
-
-const medContactHeaders = computed(() => {
-  const headers = [
-    { title: 'Vendor', key: 'vendor_name' },
-    { title: 'Category', key: 'category' },
-    { title: 'Contact', key: 'contact_name' },
-    { title: 'Phone', key: 'contact_phone' },
-    { title: 'Email', key: 'contact_email' },
-    { title: 'User ID', key: 'login_user_id' },
-    { title: 'Password', key: 'login_password' },
-    { title: '', key: 'actions', sortable: false, width: '40px' },
-  ]
-  return headers
-})
-
-// Phone formatting: strips letters and non-phone chars, formats as (XXX) XXX-XXXX
-function formatPhone(phone: string): string {
-  if (!phone) return ''
-  // Extract the first phone-number-like sequence of digits
-  const digits = phone.replace(/[^0-9]/g, '')
-  if (digits.length === 0) return phone
-  // Format based on digit count
-  if (digits.length === 11 && digits.startsWith('1')) {
-    // 1-800-XXX-XXXX -> (800) XXX-XXXX
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`
-  }
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
-  }
-  if (digits.length === 7) {
-    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}`
-  }
-  // For other lengths, just return cleaned digits with the original punctuation stripped
-  return digits.replace(/(\d{3})(\d{3})(\d{4}).*/, '($1) $2-$3')
-}
-
-function stripPhoneForHref(phone: string): string {
-  if (!phone) return ''
-  const digits = phone.replace(/[^0-9]/g, '')
-  return digits.length >= 10 ? '+1' + digits.slice(-10) : digits
 }
 
 function toggleCredential(contactId: string) {
