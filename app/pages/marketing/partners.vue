@@ -588,10 +588,9 @@ async function deletePartner(id: string) {
   refresh()
 }
 
-// Handle clicking on list item
+// Handle clicking on list item — navigate to full profile page
 function handleItemClick(partner: Partner) {
-  // Open profile dialog for partners
-  openPartnerProfile(partner)
+  navigateTo(`/marketing/partner/${partner.id}`)
 }
 
 // Handle delete

@@ -494,10 +494,14 @@ definePageMeta({
   middleware: ['auth', 'marketing-admin']
 })
 
-const { isAdmin } = useAppData()
+const { isAdmin: appIsAdmin } = useAppData()
+const authStore = useAuthStore()
 const supabase = useSupabaseClient()
 const route = useRoute()
 const { showSuccess, showError } = useToast()
+
+// Allow marketing_admin to manage resources (not just super_admin/admin)
+const isAdmin = computed(() => appIsAdmin.value || authStore.isMarketingAdmin)
 
 useHead({
   title: 'Resources'
