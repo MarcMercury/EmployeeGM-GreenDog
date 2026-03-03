@@ -158,6 +158,23 @@
               </v-chip>
             </div>
             <p v-if="resource.phone" class="text-body-2 text-grey">{{ resource.phone }}</p>
+            <!-- Assigned Locations -->
+            <div v-if="getResourceLocations(resource.id).length > 0" class="d-flex justify-center flex-wrap gap-1 mt-2">
+              <v-chip 
+                v-for="loc in getResourceLocations(resource.id)" 
+                :key="loc.id" 
+                size="x-small" 
+                variant="outlined"
+                color="primary"
+              >
+                <v-icon start size="10">mdi-map-marker</v-icon>
+                {{ loc.name }}
+              </v-chip>
+            </div>
+            <!-- Notes preview -->
+            <div v-if="resource.notes" class="text-caption text-grey mt-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              {{ resource.notes }}
+            </div>
           </div>
           <v-divider />
           <v-card-actions class="justify-center">

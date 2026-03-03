@@ -283,6 +283,19 @@
                 <v-icon size="14" class="mr-1">mdi-clock-outline</v-icon>
                 {{ resource.hours_of_operation }}
               </div>
+              <!-- Assigned Locations -->
+              <div v-if="getWikiResourceLocations(resource.id).length > 0" class="d-flex flex-wrap gap-1 mt-2">
+                <v-chip 
+                  v-for="loc in getWikiResourceLocations(resource.id)" 
+                  :key="loc.id" 
+                  size="x-small" 
+                  variant="outlined"
+                  color="primary"
+                >
+                  <v-icon start size="10">mdi-map-marker</v-icon>
+                  {{ loc.name }}
+                </v-chip>
+              </div>
               <div v-if="resource.notes" class="text-caption text-grey mt-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                 {{ resource.notes }}
               </div>
@@ -333,6 +346,20 @@
                   </span>
                 </span>
               </v-list-item-subtitle>
+            </v-list-item>
+              <template #append>
+                <div v-if="getWikiResourceLocations(resource.id).length > 0" class="d-flex flex-wrap gap-1 align-center">
+                  <v-chip 
+                    v-for="loc in getWikiResourceLocations(resource.id)" 
+                    :key="loc.id" 
+                    size="x-small" 
+                    variant="outlined"
+                    color="primary"
+                  >
+                    {{ loc.name }}
+                  </v-chip>
+                </div>
+              </template>
             </v-list-item>
             <v-divider v-if="idx < filteredFacilityResources.length - 1" />
           </template>
@@ -708,28 +735,18 @@
         <!-- Contacts Table -->
         <v-card v-else-if="filteredMedContacts.length > 0" variant="outlined" rounded="lg">
           <v-data-table-virtual
-            :headers="[
-              { title: 'Vendor', key: 'vendor_name', width: '180px' },
-              { title: 'Category', key: 'category', width: '130px' },
-              { title: 'Contact', key: 'contact_name', width: '140px' },
-              { title: 'Phone', key: 'contact_phone', width: '145px' },
-              { title: 'Email', key: 'contact_email', width: '180px' },
-              { title: 'Website', key: 'website', width: '160px' },
-              { title: 'Account #', key: 'account_number', width: '120px' },
-              { title: 'User ID', key: 'login_user_id', width: '140px' },
-              { title: 'Password', key: 'login_password', width: '140px' },
-              { title: '', key: 'actions', width: '50px', sortable: false },
-            ]"
+            :headers="medContactHeaders"
             :items="filteredMedContacts"
             :item-value="'id'"
             height="600"
             density="compact"
             class="med-contacts-table"
             hover
+            fixed-header
           >
             <template #item.vendor_name="{ item }">
-              <div class="font-weight-bold text-body-2">{{ item.vendor_name }}</div>
-              <div v-if="item.sub_label" class="text-caption text-grey">{{ item.sub_label }}</div>
+              <div class="font-weight-bold text-body-2 text-no-wrap">{{ item.vendor_name }}</div>
+              <div v-if="item.sub_label" class="text-caption text-grey text-truncate" style="max-width: 180px;">{{ item.sub_label }}</div>
             </template>
 
             <template #item.category="{ item }">
@@ -743,28 +760,17 @@
             </template>
 
             <template #item.contact_phone="{ item }">
-              <a v-if="item.contact_phone" :href="'tel:' + item.contact_phone" class="text-decoration-none text-body-2">
-                {{ item.contact_phone }}
+              <a v-if="item.contact_phone" :href="'tel:' + stripPhoneForHref(item.contact_phone)" class="text-decoration-none text-body-2 text-no-wrap">
+                {{ formatPhone(item.contact_phone) }}
               </a>
               <span v-else class="text-grey">\u2014</span>
             </template>
 
             <template #item.contact_email="{ item }">
-              <a v-if="item.contact_email" :href="'mailto:' + item.contact_email" class="text-decoration-none text-body-2" style="word-break: break-all;">
+              <a v-if="item.contact_email" :href="'mailto:' + item.contact_email" class="text-decoration-none text-body-2" style="word-break: break-all; font-size: 11px;">
                 {{ item.contact_email }}
               </a>
               <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.website="{ item }">
-              <a v-if="item.website" :href="item.website.startsWith('http') ? item.website : 'https://' + item.website" target="_blank" class="text-decoration-none text-body-2" style="word-break: break-all;">
-                {{ item.website.replace(/^https?:\/\//, '').replace(/\/$/, '') }}
-              </a>
-              <span v-else class="text-grey">\u2014</span>
-            </template>
-
-            <template #item.account_number="{ item }">
-              <span class="text-body-2">{{ item.account_number || '\u2014' }}</span>
             </template>
 
             <template #item.login_user_id="{ item }">
@@ -1195,6 +1201,27 @@
             <div class="text-body-1">{{ selectedResource.address }}</div>
           </div>
 
+          <!-- Assigned Locations -->
+          <div v-if="getWikiResourceLocations(selectedResource.id).length > 0" class="mb-4">
+            <div class="text-subtitle-2 text-medium-emphasis mb-2">
+              <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
+              Assigned Locations
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <v-chip 
+                v-for="loc in getWikiResourceLocations(selectedResource.id)" 
+                :key="loc.id" 
+                size="small" 
+                variant="tonal"
+                color="primary"
+              >
+                <v-icon start size="14">mdi-map-marker</v-icon>
+                {{ loc.name }}
+                <v-icon v-if="loc.is_primary" end size="14" color="amber">mdi-star</v-icon>
+              </v-chip>
+            </div>
+          </div>
+
           <!-- Notes -->
           <div v-if="selectedResource.notes" class="mb-4">
             <div class="text-subtitle-2 text-medium-emphasis mb-1">
@@ -1304,6 +1331,8 @@ const showPolicies = ref(false)
 const showFacilityResources = ref(false)
 const facilityResources = ref<any[]>([])
 const facilityResourcesLoading = ref(false)
+const facilityLocations = ref<any[]>([])
+const facilityResourceLocations = ref<any[]>([])
 const facilitySearch = ref('')
 const facilityTypeFilter = ref<string | null>(null)
 const facilityViewMode = ref<'list' | 'tile'>('list')
@@ -1775,18 +1804,30 @@ function formatFacilityType(type: string) {
 async function loadFacilityResources() {
   facilityResourcesLoading.value = true
   try {
-    const { data, error } = await supabase
-      .from('facility_resources')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
-    if (error) throw error
-    facilityResources.value = data || []
+    const [resourcesRes, locationsRes, resourceLocsRes] = await Promise.all([
+      supabase.from('facility_resources').select('*').eq('is_active', true).order('name'),
+      supabase.from('locations').select('id, name').eq('is_active', true).order('name'),
+      supabase.from('facility_resource_locations').select('*')
+    ])
+    if (resourcesRes.error) throw resourcesRes.error
+    if (locationsRes.error) throw locationsRes.error
+    if (resourceLocsRes.error) throw resourceLocsRes.error
+    facilityResources.value = resourcesRes.data || []
+    facilityLocations.value = locationsRes.data || []
+    facilityResourceLocations.value = resourceLocsRes.data || []
   } catch (err) {
     console.error('[Wiki] Failed to load facility resources:', err)
   } finally {
     facilityResourcesLoading.value = false
   }
+}
+
+function getWikiResourceLocations(resourceId: string) {
+  const locs = facilityResourceLocations.value.filter(rl => rl.resource_id === resourceId)
+  return locs.map(rl => {
+    const loc = facilityLocations.value.find(l => l.id === rl.location_id)
+    return loc ? { ...loc, is_primary: rl.is_primary } : null
+  }).filter(Boolean)
 }
 
 const filteredFacilityResources = computed(() => {
@@ -1987,6 +2028,47 @@ const medContactCategoryOptions = computed(() =>
     .sort()
 )
 
+const medContactHeaders = computed(() => {
+  const headers = [
+    { title: 'Vendor', key: 'vendor_name' },
+    { title: 'Category', key: 'category' },
+    { title: 'Contact', key: 'contact_name' },
+    { title: 'Phone', key: 'contact_phone' },
+    { title: 'Email', key: 'contact_email' },
+    { title: 'User ID', key: 'login_user_id' },
+    { title: 'Password', key: 'login_password' },
+    { title: '', key: 'actions', sortable: false, width: '40px' },
+  ]
+  return headers
+})
+
+// Phone formatting: strips letters and non-phone chars, formats as (XXX) XXX-XXXX
+function formatPhone(phone: string): string {
+  if (!phone) return ''
+  // Extract the first phone-number-like sequence of digits
+  const digits = phone.replace(/[^0-9]/g, '')
+  if (digits.length === 0) return phone
+  // Format based on digit count
+  if (digits.length === 11 && digits.startsWith('1')) {
+    // 1-800-XXX-XXXX -> (800) XXX-XXXX
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 11)}`
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+  }
+  if (digits.length === 7) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}`
+  }
+  // For other lengths, just return cleaned digits with the original punctuation stripped
+  return digits.replace(/(\d{3})(\d{3})(\d{4}).*/, '($1) $2-$3')
+}
+
+function stripPhoneForHref(phone: string): string {
+  if (!phone) return ''
+  const digits = phone.replace(/[^0-9]/g, '')
+  return digits.length >= 10 ? '+1' + digits.slice(-10) : digits
+}
+
 function toggleCredential(contactId: string) {
   if (!canRevealCredentials.value) return
   if (revealedCredentials.value.has(contactId)) {
@@ -2116,14 +2198,66 @@ function isCredentialRevealed(contactId: string) {
   word-break: break-all;
 }
 
+.med-contacts-table {
+  width: 100% !important;
+}
+
+.med-contacts-table :deep(table) {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
 .med-contacts-table :deep(th) {
   white-space: nowrap !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
+  padding: 6px 8px !important;
+  overflow: hidden;
 }
 
 .med-contacts-table :deep(td) {
-  font-size: 13px !important;
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.med-contacts-table :deep(th:nth-child(1)),
+.med-contacts-table :deep(td:nth-child(1)) {
+  width: 16% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(2)),
+.med-contacts-table :deep(td:nth-child(2)) {
+  width: 12% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(3)),
+.med-contacts-table :deep(td:nth-child(3)) {
+  width: 13% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(4)),
+.med-contacts-table :deep(td:nth-child(4)) {
+  width: 14% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(5)),
+.med-contacts-table :deep(td:nth-child(5)) {
+  width: 18% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(6)),
+.med-contacts-table :deep(td:nth-child(6)) {
+  width: 12% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(7)),
+.med-contacts-table :deep(td:nth-child(7)) {
+  width: 12% !important;
+}
+
+.med-contacts-table :deep(th:nth-child(8)),
+.med-contacts-table :deep(td:nth-child(8)) {
+  width: 3% !important;
 }
 </style>
