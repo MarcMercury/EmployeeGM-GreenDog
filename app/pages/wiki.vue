@@ -1292,8 +1292,184 @@
 
         <v-divider />
         <v-card-actions>
+          <v-btn variant="text" prepend-icon="mdi-pencil" @click="openEditResourceDialog(selectedResource)">Edit</v-btn>
+          <v-btn variant="text" prepend-icon="mdi-delete" color="error" @click="confirmDeleteResource(selectedResource)">Delete</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="showResourceDetailDialog = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Edit Resource Dialog -->
+    <v-dialog v-model="showEditResourceDialog" max-width="600" persistent>
+      <v-card rounded="lg">
+        <v-card-title class="d-flex align-center">
+          <v-icon color="brown" class="mr-2">mdi-pencil</v-icon>
+          Edit Facility Resource
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.name"
+                label="Vendor / Contact Name *"
+                variant="outlined"
+                density="compact"
+                :rules="[v => !!v || 'Name is required']"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="editResourceForm.resource_type"
+                :items="facilityResourceTypes"
+                label="Service Type *"
+                variant="outlined"
+                density="compact"
+                :rules="[v => !!v || 'Type is required']"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.company_name"
+                label="Company Name"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.phone"
+                label="Phone"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-phone"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.phone_alt"
+                label="Alt Phone"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-phone-plus"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.email"
+                label="Email"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-email-outline"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.website"
+                label="Website"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-web"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.hours_of_operation"
+                label="Hours of Operation"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-clock-outline"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.address_line1"
+                label="Address"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-map-marker"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.service_area"
+                label="Service Area"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-map"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="editResourceForm.emergency_phone"
+                label="Emergency Phone"
+                variant="outlined"
+                density="compact"
+                prepend-inner-icon="mdi-phone-alert"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="editResourceForm.notes"
+                label="Notes"
+                variant="outlined"
+                density="compact"
+                rows="2"
+                auto-grow
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-checkbox
+                v-model="editResourceForm.emergency_contact"
+                label="Emergency Contact"
+                color="error"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-checkbox
+                v-model="editResourceForm.is_preferred"
+                label="Preferred Vendor"
+                color="amber"
+                density="compact"
+                hide-details
+              />
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showEditResourceDialog = false">Cancel</v-btn>
+          <v-btn
+            color="brown"
+            variant="flat"
+            :loading="editResourceSaving"
+            :disabled="!editResourceForm.name || !editResourceForm.resource_type"
+            @click="saveEditResource"
+          >
+            Save Changes
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Resource Confirmation Dialog -->
+    <v-dialog v-model="showDeleteResourceDialog" max-width="400">
+      <v-card rounded="lg">
+        <v-card-title class="text-h6">Delete Resource?</v-card-title>
+        <v-card-text>
+          <p>Are you sure you want to delete <strong>{{ resourceToDelete?.name }}</strong>?</p>
+          <p class="text-caption text-grey mt-2">This action cannot be undone.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn variant="text" @click="showDeleteResourceDialog = false">Cancel</v-btn>
+          <v-spacer />
+          <v-btn color="error" variant="flat" :loading="deleteResourceLoading" @click="deleteFacilityResource">
+            Delete
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1427,6 +1603,12 @@ const deletePartnerLoading = ref(false)
 const partnerToDelete = ref<any>(null)
 const selectedResource = ref<any>(null)
 const showResourceDetailDialog = ref(false)
+const showEditResourceDialog = ref(false)
+const editResourceSaving = ref(false)
+const editResourceForm = ref<any>({})
+const showDeleteResourceDialog = ref(false)
+const deleteResourceLoading = ref(false)
+const resourceToDelete = ref<any>(null)
 const newPartner = ref({
   name: '',
   category: 'Other',
@@ -2099,6 +2281,84 @@ async function deleteMedPartner() {
 function openResourceDetail(resource: any) {
   selectedResource.value = resource
   showResourceDetailDialog.value = true
+}
+
+function openEditResourceDialog(resource: any) {
+  editResourceForm.value = {
+    id: resource.id,
+    name: resource.name || '',
+    resource_type: resource.resource_type || '',
+    company_name: resource.company_name || '',
+    phone: resource.phone || '',
+    phone_alt: resource.phone_alt || '',
+    email: resource.email || '',
+    website: resource.website || '',
+    hours_of_operation: resource.hours_of_operation || '',
+    address_line1: resource.address_line1 || resource.address || '',
+    service_area: resource.service_area || '',
+    emergency_phone: resource.emergency_phone || '',
+    notes: resource.notes || '',
+    emergency_contact: resource.emergency_contact || false,
+    is_preferred: resource.is_preferred || false,
+  }
+  showResourceDetailDialog.value = false
+  showEditResourceDialog.value = true
+}
+
+async function saveEditResource() {
+  if (!editResourceForm.value.name || !editResourceForm.value.resource_type) return
+  editResourceSaving.value = true
+  try {
+    const { id, ...updates } = editResourceForm.value
+    // Convert empty strings to null
+    for (const key of Object.keys(updates)) {
+      if (typeof updates[key] === 'string' && updates[key] === '') updates[key] = null
+    }
+    updates.name = editResourceForm.value.name
+    updates.resource_type = editResourceForm.value.resource_type
+    const { error } = await supabase
+      .from('facility_resources')
+      .update(updates)
+      .eq('id', id)
+    if (error) throw error
+    showEditResourceDialog.value = false
+    await loadFacilityResources()
+    // Re-select the updated resource
+    const updated = facilityResources.value.find((r: any) => r.id === id)
+    if (updated) {
+      selectedResource.value = updated
+      showResourceDetailDialog.value = true
+    }
+  } catch (err) {
+    console.error('[Wiki] Failed to update facility resource:', err)
+  } finally {
+    editResourceSaving.value = false
+  }
+}
+
+function confirmDeleteResource(resource: any) {
+  resourceToDelete.value = resource
+  showResourceDetailDialog.value = false
+  showDeleteResourceDialog.value = true
+}
+
+async function deleteFacilityResource() {
+  if (!resourceToDelete.value) return
+  deleteResourceLoading.value = true
+  try {
+    const { error } = await supabase
+      .from('facility_resources')
+      .delete()
+      .eq('id', resourceToDelete.value.id)
+    if (error) throw error
+    showDeleteResourceDialog.value = false
+    resourceToDelete.value = null
+    await loadFacilityResources()
+  } catch (err) {
+    console.error('[Wiki] Failed to delete facility resource:', err)
+  } finally {
+    deleteResourceLoading.value = false
+  }
 }
 
 async function saveNewPartner() {
