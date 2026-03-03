@@ -181,10 +181,10 @@
             <v-btn variant="text" size="small" prepend-icon="mdi-phone" @click.stop="callResource(resource)">
               Call
             </v-btn>
-            <v-btn v-if="isAdmin" variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="openEditDialog(resource)">
+            <v-btn variant="text" size="small" prepend-icon="mdi-pencil" @click.stop="openEditDialog(resource)">
               Edit
             </v-btn>
-            <v-btn v-if="isAdmin" variant="text" size="small" prepend-icon="mdi-delete" color="error" @click.stop="confirmDeleteResource(resource)">
+            <v-btn variant="text" size="small" prepend-icon="mdi-delete" color="error" @click.stop="confirmDeleteResource(resource)">
               Delete
             </v-btn>
           </v-card-actions>
@@ -250,8 +250,8 @@
           <v-btn icon="mdi-phone" size="small" variant="text" aria-label="Call" @click.stop="callResource(item)" />
           <v-btn v-if="item.email" icon="mdi-email" size="small" variant="text" aria-label="Send email" @click.stop="emailResource(item)" />
           <v-btn v-if="item.website" icon="mdi-web" size="small" variant="text" aria-label="Visit website" @click.stop="visitWebsite(item)" />
-          <v-btn v-if="isAdmin" icon="mdi-pencil" size="small" variant="text" aria-label="Edit resource" @click.stop="openEditDialog(item)" />
-          <v-btn v-if="isAdmin" icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete resource" @click.stop="confirmDeleteResource(item)" />
+          <v-btn icon="mdi-pencil" size="small" variant="text" aria-label="Edit resource" @click.stop="openEditDialog(item)" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" aria-label="Delete resource" @click.stop="confirmDeleteResource(item)" />
         </template>
       </v-data-table>
     </v-card>
@@ -400,12 +400,12 @@
         <v-divider />
 
         <v-card-actions>
-          <v-btn v-if="isAdmin" color="error" variant="text" prepend-icon="mdi-delete" @click="confirmDeleteResource(selectedResource); resourceDialog = false">
+          <v-btn color="error" variant="text" prepend-icon="mdi-delete" @click="confirmDeleteResource(selectedResource); resourceDialog = false">
             Delete
           </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="resourceDialog = false">Close</v-btn>
-          <v-btn v-if="isAdmin" color="primary" variant="flat" @click="openEditDialog(selectedResource); resourceDialog = false">
+          <v-btn color="primary" variant="flat" @click="openEditDialog(selectedResource); resourceDialog = false">
             Edit
           </v-btn>
         </v-card-actions>
@@ -717,10 +717,6 @@ definePageMeta({
 const supabase = useSupabaseClient()
 const { useToast } = await import('~/composables/useToast')
 const toast = useToast()
-
-// Auth Store
-const authStore = useAuthStore()
-const isAdmin = computed(() => authStore.isAdmin)
 
 // State
 const loading = ref(true)
