@@ -1340,7 +1340,8 @@ async function parseFileClientSide(file: File): Promise<Record<string, any>[]> {
     const row = rawRows[i]
     if (!row || row.every((c: any) => !String(c).trim())) continue
     const obj: Record<string, any> = {}
-    headers.forEach((h: string, idx: number) => { if (h) obj[h] = row[idx] ?? '' })
+    // Stringify all values so server-side parsers get consistent string input
+    headers.forEach((h: string, idx: number) => { if (h) obj[h] = row[idx] != null ? String(row[idx]) : '' })
     rows.push(obj)
   }
   return rows

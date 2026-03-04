@@ -10,9 +10,21 @@
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
-function parseDate(val: string | undefined): string | null {
-  if (!val) return null
-  const v = val.trim()
+function parseDate(val: any): string | null {
+  if (val == null || val === '') return null
+
+  // If it's a number, treat as Excel serial date (days since 1899-12-30)
+  if (typeof val === 'number') {
+    if (val > 1 && val < 200000) {
+      // Excel serial date → JS Date
+      const d = new Date((val - 25569) * 86400 * 1000)
+      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+    }
+    return null
+  }
+
+  const v = String(val).trim()
+  if (!v) return null
 
   // ISO: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
@@ -47,17 +59,27 @@ function parseDate(val: string | undefined): string | null {
   return null
 }
 
-function parseTime(val: string | undefined): string | null {
-  if (!val) return null
+function parseTime(val: any): string | null {
+  if (val == null || val === '') return null
+  // If it's an Excel time fraction (0.5 = 12:00:00)
+  if (typeof val === 'number' && val >= 0 && val < 1) {
+    const totalSeconds = Math.round(val * 86400)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
   // Try to extract HH:MM from various formats
-  const match = val.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/)
+  const str = String(val)
+  const match = str.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/)
   if (match) return `${match[1].padStart(2, '0')}:${match[2]}:${match[3] || '00'}`
   return null
 }
 
-function parseNumber(val: string | undefined): number | null {
-  if (!val) return null
-  const cleaned = val.replace(/[$,\s]/g, '').replace(/^\(([^)]+)\)$/, '-$1')
+function parseNumber(val: any): number | null {
+  if (val == null || val === '') return null
+  if (typeof val === 'number') return isNaN(val) ? null : val
+  const cleaned = String(val).replace(/[$,\s]/g, '').replace(/^\(([^)]+)\)$/, '-$1')
   const n = parseFloat(cleaned)
   return isNaN(n) ? null : n
 }
