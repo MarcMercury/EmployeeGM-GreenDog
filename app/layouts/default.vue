@@ -490,10 +490,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
                   EzyVet Analytics
                 </NuxtLink>
-                <NuxtLink to="/marketing/performance-analysis" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-purple-500/20">📊</div>
-                  Performance Analysis
-                </NuxtLink>
               </div>
             </div>
           </template>

@@ -1,11 +1,11 @@
 <template>
   <div class="practice-analytics-page">
     <!-- Page Header -->
-    <div class="d-flex justify-space-between align-center mb-6">
+    <div class="d-flex justify-space-between align-center mb-4">
       <div>
         <h1 class="text-h4 font-weight-bold">Practice Analytics</h1>
-        <p class="text-subtitle-1 text-grey">
-          Unified key performance metrics across revenue, appointments, clients &amp; referrals
+        <p class="text-subtitle-2 text-grey">
+          Unified performance metrics — revenue, appointments, clients &amp; referrals across all locations
         </p>
         <div v-if="syncStatus" class="text-caption mt-1" :class="syncStatus.isStale ? 'text-warning' : 'text-success'">
           <v-icon size="14" class="mr-1">{{ syncStatus.hasApiData ? 'mdi-cloud-check' : 'mdi-cloud-off-outline' }}</v-icon>
@@ -14,69 +14,66 @@
         </div>
       </div>
       <div class="d-flex gap-2">
-        <v-btn
-          color="success"
-          prepend-icon="mdi-cloud-sync"
-          :loading="syncing"
-          @click="syncAll"
-        >
-          Sync All Data
+        <v-menu>
+          <template #activator="{ props }">
+            <v-btn v-bind="props" color="primary" prepend-icon="mdi-upload" variant="outlined" size="small">
+              Upload Data
+            </v-btn>
+          </template>
+          <v-list density="compact">
+            <v-list-subheader class="text-caption">EzyVet Exports</v-list-subheader>
+            <v-list-item prepend-icon="mdi-receipt-text" @click="showInvoiceUpload = true">
+              <v-list-item-title>Invoice Lines Report</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-clock-check-outline" @click="showStatusUpload = true">
+              <v-list-item-title>Appointment Status Report</v-list-item-title>
+            </v-list-item>
+            <v-list-item prepend-icon="mdi-table-large" @click="showTrackingUpload = true">
+              <v-list-item-title>Appointment Tracking (Batch)</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+        <v-btn color="success" prepend-icon="mdi-cloud-sync" :loading="syncing" size="small" @click="syncAll">
+          Sync All
         </v-btn>
-        <v-btn
-          color="primary"
-          variant="outlined"
-          prepend-icon="mdi-printer"
-          @click="printReport"
-        >
-          Print Report
+        <v-btn color="primary" variant="outlined" prepend-icon="mdi-printer" size="small" @click="printReport">
+          Print
         </v-btn>
-        <v-btn
-          color="primary"
-          prepend-icon="mdi-refresh"
-          :loading="loading"
-          @click="loadDashboard"
-        >
+        <v-btn color="primary" prepend-icon="mdi-refresh" :loading="loading" size="small" @click="loadAll">
           Refresh
         </v-btn>
       </div>
     </div>
 
-    <!-- Date Range Filter -->
-    <v-card class="mb-6" elevation="2">
-      <v-card-text>
+    <!-- Global Filters -->
+    <v-card class="mb-5" elevation="1">
+      <v-card-text class="py-3">
         <v-row dense align="center">
           <v-col cols="12" md="3">
-            <v-text-field
-              v-model="filters.startDate"
-              type="date"
-              label="From Date"
-              variant="outlined"
+            <v-select
+              v-model="locationFilter"
+              :items="locationOptions"
+              label="Location"
               density="compact"
+              variant="outlined"
               hide-details
-              prepend-inner-icon="mdi-calendar-start"
-              @update:model-value="loadDashboard"
+              clearable
+              placeholder="All Locations"
             />
           </v-col>
-          <v-col cols="12" md="3">
-            <v-text-field
-              v-model="filters.endDate"
-              type="date"
-              label="To Date"
-              variant="outlined"
-              density="compact"
-              hide-details
-              prepend-inner-icon="mdi-calendar-end"
-              @update:model-value="loadDashboard"
-            />
+          <v-col cols="6" md="2">
+            <v-text-field v-model="dateRange.start" type="date" label="From" density="compact" variant="outlined" hide-details />
           </v-col>
-          <v-col cols="12" md="6">
-            <div class="d-flex gap-2 flex-wrap">
+          <v-col cols="6" md="2">
+            <v-text-field v-model="dateRange.end" type="date" label="To" density="compact" variant="outlined" hide-details />
+          </v-col>
+          <v-col cols="12" md="5">
+            <div class="d-flex flex-wrap gap-1">
               <v-chip
-                v-for="preset in datePresets"
-                :key="preset.label"
+                v-for="preset in datePresets" :key="preset.label"
                 :color="isActivePreset(preset) ? 'primary' : 'default'"
-                :variant="isActivePreset(preset) ? 'flat' : 'outlined'"
-                size="small"
+                :variant="isActivePreset(preset) ? 'elevated' : 'outlined'"
+                size="small" class="cursor-pointer"
                 @click="applyPreset(preset)"
               >
                 {{ preset.label }}
@@ -87,77 +84,75 @@
       </v-card-text>
     </v-card>
 
-    <!-- Loading State -->
+    <!-- Loading -->
     <div v-if="loading" class="text-center pa-12">
-      <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-h6 mt-4 text-grey">Loading practice analytics...</div>
+      <v-progress-circular indeterminate color="primary" size="56" />
+      <p class="text-grey mt-4">Loading analytics...</p>
     </div>
 
-    <!-- Dashboard Content -->
-    <div v-else-if="data">
-
-      <!-- ===== TOP-LEVEL KPI CARDS ===== -->
-      <v-row class="mb-6">
-        <v-col cols="12" sm="6" md="3">
+    <template v-else-if="hasData">
+      <!-- ═══ KPI Cards ═══ -->
+      <v-row class="mb-5">
+        <v-col cols="6" md="3">
           <v-card class="pa-4" elevation="2">
             <div class="d-flex align-center">
-              <v-avatar color="green-darken-1" size="48" class="mr-3">
-                <v-icon color="white">mdi-currency-usd</v-icon>
+              <v-avatar color="green-darken-1" size="44" class="mr-3">
+                <v-icon color="white" size="22">mdi-currency-usd</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">${{ formatCurrency(data.kpis.revenue.totalRevenue) }}</div>
+                <div class="text-h5 font-weight-bold">${{ fmtCur(kpis.totalRevenue) }}</div>
                 <div class="text-caption text-grey">Total Revenue</div>
                 <v-chip
-                  v-if="data.kpis.revenue.revenueChangePct !== 0"
-                  :color="data.kpis.revenue.revenueChangePct > 0 ? 'success' : 'error'"
-                  size="x-small"
-                  label
-                  class="mt-1"
+                  v-if="overviewData?.kpis?.revenue?.revenueChangePct"
+                  :color="overviewData.kpis.revenue.revenueChangePct > 0 ? 'success' : 'error'"
+                  size="x-small" label class="mt-1"
                 >
-                  {{ data.kpis.revenue.revenueChangePct > 0 ? '+' : '' }}{{ data.kpis.revenue.revenueChangePct }}%
+                  {{ overviewData.kpis.revenue.revenueChangePct > 0 ? '+' : '' }}{{ overviewData.kpis.revenue.revenueChangePct }}%
                 </v-chip>
               </div>
             </div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="6" md="3">
           <v-card class="pa-4" elevation="2">
             <div class="d-flex align-center">
-              <v-avatar color="blue-darken-1" size="48" class="mr-3">
-                <v-icon color="white">mdi-calendar-check</v-icon>
+              <v-avatar color="deep-purple-darken-1" size="44" class="mr-3">
+                <v-icon color="white" size="22">mdi-calendar-check</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ formatNumber(data.kpis.appointments.totalAppointments) }}</div>
+                <div class="text-h5 font-weight-bold">{{ fmt(kpis.totalAppointments) }}</div>
                 <div class="text-caption text-grey">Appointments</div>
-                <div class="text-caption text-grey">{{ data.kpis.appointments.avgPerDay }}/day avg</div>
+                <div v-if="overviewData?.kpis?.appointments?.avgPerDay" class="text-caption text-grey">
+                  {{ overviewData.kpis.appointments.avgPerDay }}/day avg
+                </div>
               </div>
             </div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="6" md="3">
           <v-card class="pa-4" elevation="2">
             <div class="d-flex align-center">
-              <v-avatar color="purple-darken-1" size="48" class="mr-3">
-                <v-icon color="white">mdi-account-group</v-icon>
+              <v-avatar color="blue-darken-1" size="44" class="mr-3">
+                <v-icon color="white" size="22">mdi-account-group</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ formatNumber(data.kpis.clients.activeContacts) }}</div>
+                <div class="text-h5 font-weight-bold">{{ fmt(clientKpis.activeContacts) }}</div>
                 <div class="text-caption text-grey">Active Clients</div>
-                <div class="text-caption text-grey">{{ data.kpis.clients.retentionRate12Mo ?? data.kpis.clients.retentionRate3Mo }}% 12-mo retention</div>
+                <div class="text-caption text-grey">{{ clientKpis.retentionRate12Mo }}% 12-mo retention</div>
               </div>
             </div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
+        <v-col cols="6" md="3">
           <v-card class="pa-4" elevation="2">
             <div class="d-flex align-center">
-              <v-avatar color="teal-darken-1" size="48" class="mr-3">
-                <v-icon color="white">mdi-handshake</v-icon>
+              <v-avatar color="teal-darken-1" size="44" class="mr-3">
+                <v-icon color="white" size="22">mdi-handshake</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ formatNumber(data.kpis.referrals.totalReferrals) }}</div>
+                <div class="text-h5 font-weight-bold">{{ fmt(referralKpis.totalReferrals) }}</div>
                 <div class="text-caption text-grey">Referral Partners</div>
-                <div class="text-caption text-grey">${{ formatCurrency(data.kpis.referrals.totalReferralRevenue) }} revenue</div>
+                <div class="text-caption text-grey">${{ fmtCur(referralKpis.totalReferralRevenue) }} revenue</div>
               </div>
             </div>
           </v-card>
@@ -165,439 +160,1093 @@
       </v-row>
 
       <!-- Secondary KPIs -->
-      <v-row class="mb-6">
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" elevation="1">
-            <div class="text-h6 font-weight-bold">${{ formatCurrency(data.kpis.revenue.avgRevenuePerInvoice) }}</div>
-            <div class="text-caption text-grey">Avg Revenue / Invoice</div>
+      <v-row class="mb-5">
+        <v-col cols="6" sm="3">
+          <v-card class="pa-3" elevation="1">
+            <div class="text-h6 font-weight-bold">${{ fmtCur(kpis.avgRevenuePerAppt) }}</div>
+            <div class="text-caption text-grey">Revenue / Appointment</div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ formatNumber(data.kpis.revenue.uniqueInvoices) }}</div>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-3" elevation="1">
+            <div class="text-h6 font-weight-bold">{{ fmt(overviewData?.kpis?.revenue?.uniqueInvoices || 0) }}</div>
             <div class="text-caption text-grey">Unique Invoices</div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ formatNumber(data.kpis.clients.recentVisitors) }}</div>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-3" elevation="1">
+            <div class="text-h6 font-weight-bold">{{ fmt(clientKpis.recentVisitors) }}</div>
             <div class="text-caption text-grey">Recent Visitors (90d)</div>
           </v-card>
         </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" elevation="1">
-            <div class="text-h6 font-weight-bold text-error">{{ formatNumber(data.kpis.clients.lapsedClients) }}</div>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-3" elevation="1">
+            <div class="text-h6 font-weight-bold text-error">{{ fmt(clientKpis.lapsedClients) }}</div>
             <div class="text-caption text-grey">Lapsed Clients (&gt;1yr)</div>
           </v-card>
         </v-col>
       </v-row>
 
-      <!-- ===== CHARTS ROW 1: Revenue ===== -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="8">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="success">mdi-chart-line</v-icon>
+      <!-- ═══ TABS ═══ -->
+      <v-tabs v-model="activeTab" color="deep-purple" class="mb-5">
+        <v-tab value="overview"><v-icon start size="18">mdi-view-dashboard</v-icon>Overview</v-tab>
+        <v-tab value="appointments"><v-icon start size="18">mdi-calendar-check</v-icon>Appointments</v-tab>
+        <v-tab value="revenue"><v-icon start size="18">mdi-currency-usd</v-icon>Revenue</v-tab>
+        <v-tab value="actions"><v-icon start size="18">mdi-lightbulb-on</v-icon>Recommended Actions</v-tab>
+      </v-tabs>
+
+      <v-window v-model="activeTab">
+
+        <!-- ══════════════════════════════════════════════════════
+             OVERVIEW TAB
+             ══════════════════════════════════════════════════════ -->
+        <v-window-item value="overview">
+          <!-- Location Comparison -->
+          <v-row class="mb-5">
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-map-marker</v-icon>
+                  Appointments by Location
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart v-if="hasLocBarData" type="bar" height="280" :options="locBarOptions" :series="locBarSeries" :key="'locbar'+chartKey" />
+                  </ClientOnly>
+                  <div v-if="!hasLocBarData" class="text-center text-grey pa-8">No data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-cash-multiple</v-icon>
+                  Revenue per Appointment by Location
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart v-if="hasRevPerApptData" type="bar" height="280" :options="revPerApptOptions" :series="revPerApptSeries" :key="'rpa'+chartKey" />
+                  </ClientOnly>
+                  <div v-if="!hasRevPerApptData" class="text-center text-grey pa-8">No data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Monthly Trend — Dual axis: Revenue + Appointments -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-chart-timeline-variant</v-icon>
+              Monthly Trend
+              <v-chip class="ml-2" size="x-small" color="green" variant="outlined">Revenue</v-chip>
+              <v-chip class="ml-1" size="x-small" color="deep-purple" variant="outlined">Appointments</v-chip>
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart v-if="monthlyTrendSeries.length" type="line" height="320" :options="monthlyTrendOptions" :series="monthlyTrendSeries" :key="'mtrend'+chartKey" />
+              </ClientOnly>
+              <div v-if="!monthlyTrendSeries.length" class="text-center text-grey pa-8">No trend data</div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Client Retention + Referral Tiers -->
+          <v-row class="mb-5">
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-clock-outline</v-icon>
+                  Client Retention Bands
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart
+                      v-if="retentionSeries.length"
+                      type="bar" height="280"
+                      :options="retentionOptions"
+                      :series="[{ name: 'Clients', data: retentionSeries }]"
+                      :key="'ret'+chartKey"
+                    />
+                  </ClientOnly>
+                  <div v-if="!retentionSeries.length" class="text-center text-grey pa-8">No client data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-handshake-outline</v-icon>
+                  Referral Partner Tiers
+                </v-card-title>
+                <v-card-text>
+                  <div v-if="referralKpis.totalPartners > 0">
+                    <v-row dense>
+                      <v-col v-for="(count, tier) in referralKpis.tierBreakdown" :key="tier" cols="6" sm="4">
+                        <v-card variant="outlined" class="pa-3 text-center">
+                          <div class="text-h5 font-weight-bold">{{ count }}</div>
+                          <div class="text-caption text-grey">{{ tier }}</div>
+                        </v-card>
+                      </v-col>
+                    </v-row>
+                    <div class="mt-4 text-center">
+                      <div class="text-h4 font-weight-bold text-teal">${{ fmtCur(referralKpis.totalReferralRevenue) }}</div>
+                      <div class="text-caption text-grey">Total Referral Revenue</div>
+                    </div>
+                  </div>
+                  <div v-else class="text-center text-grey pa-8">No referral data yet</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Service Category + Day of Week -->
+          <v-row class="mb-5">
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-tag-multiple</v-icon>
+                  Service Category Distribution
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart v-if="svcCatSeries.length" type="donut" height="320" :options="svcCatOptions" :series="svcCatSeries" :key="'svccat'+chartKey" />
+                  </ClientOnly>
+                  <div v-if="!svcCatSeries.length" class="text-center text-grey pa-8">No data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-calendar-week</v-icon>
+                  Demand by Day of Week
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart v-if="dowSeries.length" type="bar" height="320" :options="dowOptions" :series="dowSeries" :key="'dow'+chartKey" />
+                  </ClientOnly>
+                  <div v-if="!dowSeries.length" class="text-center text-grey pa-8">No data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-window-item>
+
+        <!-- ══════════════════════════════════════════════════════
+             APPOINTMENTS TAB
+             ══════════════════════════════════════════════════════ -->
+        <v-window-item value="appointments">
+          <!-- Appointment Type Breakdown -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0 d-flex align-center">
+              <v-icon start size="18" class="mr-1">mdi-format-list-numbered</v-icon>
+              Appointment Types
+              <v-spacer />
+              <v-select
+                v-model="typeLocationFilter"
+                :items="['All Locations', ...clinicLocations]"
+                density="compact" variant="outlined" hide-details
+                style="max-width: 200px" class="ml-3"
+              />
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart v-if="typeSeries[0]?.data?.length" type="bar" height="420" :options="typeOptions" :series="typeSeries" :key="'type'+chartKey+typeLocationFilter" />
+              </ClientOnly>
+              <div v-if="!typeSeries[0]?.data?.length" class="text-center text-grey pa-8">No appointment type data</div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Weekly Volume Trend -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-trending-up</v-icon>
+              Weekly Appointment Volume
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart v-if="weeklyTrendSeries.length" type="area" height="300" :options="weeklyTrendOptions" :series="weeklyTrendSeries" :key="'wtrend'+chartKey" />
+              </ClientOnly>
+              <div v-if="!weeklyTrendSeries.length" class="text-center text-grey pa-8">No trend data</div>
+            </v-card-text>
+          </v-card>
+
+          <!-- Day of Week Detail -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0 d-flex align-center">
+              <v-icon start size="18" class="mr-1">mdi-calendar-week</v-icon>
+              Demand by Day of Week
+              <v-spacer />
+              <v-select
+                v-model="dowLocationFilter"
+                :items="dayOfWeekLocationOptions"
+                density="compact" variant="outlined" hide-details
+                style="max-width: 220px" class="ml-3"
+              />
+            </v-card-title>
+            <v-card-text>
+              <ClientOnly>
+                <apexchart v-if="dowDetailSeries.length" type="bar" height="320" :options="dowDetailOptions" :series="dowDetailSeries" :key="'dowdet'+chartKey+dowLocationFilter" />
+              </ClientOnly>
+              <div v-if="!dowDetailSeries.length" class="text-center text-grey pa-8">No data</div>
+            </v-card-text>
+          </v-card>
+        </v-window-item>
+
+        <!-- ══════════════════════════════════════════════════════
+             REVENUE TAB
+             ══════════════════════════════════════════════════════ -->
+        <v-window-item value="revenue">
+          <!-- Monthly Revenue Trend -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-chart-line</v-icon>
               Monthly Revenue Trend
             </v-card-title>
             <v-card-text>
               <ClientOnly>
-                <apexchart
-                  v-if="data.charts.monthlyRevenue.length"
-                  type="area"
-                  height="300"
-                  :options="monthlyRevenueOptions"
-                  :series="monthlyRevenueSeries"
-                />
-                <div v-else class="text-center text-grey pa-8">No revenue data for selected period</div>
+                <apexchart v-if="revTrendSeries.length" type="area" height="320" :options="revTrendOptions" :series="revTrendSeries" :key="'revtrend'+chartKey" />
               </ClientOnly>
+              <div v-if="!revTrendSeries.length" class="text-center text-grey pa-8">No revenue data</div>
             </v-card-text>
           </v-card>
-        </v-col>
-        <v-col cols="12" md="4">
-          <v-card elevation="2" class="fill-height">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="info">mdi-chart-donut</v-icon>
-              Revenue by Department
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  v-if="data.charts.departmentRevenue.length"
-                  type="donut"
-                  height="280"
-                  :options="deptDonutOptions"
-                  :series="deptDonutSeries"
-                />
-                <div v-else class="text-center text-grey pa-8">No department data</div>
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
 
-      <!-- ===== CHARTS ROW 2: Staff & Appointments ===== -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="purple">mdi-account-star</v-icon>
+          <!-- Department Revenue + Product Groups -->
+          <v-row class="mb-5">
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-chart-donut</v-icon>
+                  Revenue by Department
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart
+                      v-if="deptDonutSeries.length"
+                      type="donut" height="300"
+                      :options="deptDonutOptions"
+                      :series="deptDonutSeries"
+                      :key="'dept'+chartKey"
+                    />
+                  </ClientOnly>
+                  <div v-if="!deptDonutSeries.length" class="text-center text-grey pa-8">No department data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2">
+                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+                  <v-icon start size="18" class="mr-1">mdi-package-variant</v-icon>
+                  Top Product Groups
+                </v-card-title>
+                <v-card-text>
+                  <ClientOnly>
+                    <apexchart v-if="pgSeries[0]?.data?.length" type="bar" height="300" :options="pgOptions" :series="pgSeries" :key="'pg'+chartKey" />
+                  </ClientOnly>
+                  <div v-if="!pgSeries[0]?.data?.length" class="text-center text-grey pa-8">No data</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- Top Staff -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-account-star</v-icon>
               Top Staff by Revenue
             </v-card-title>
             <v-card-text>
               <ClientOnly>
-                <apexchart
-                  v-if="data.charts.topStaff.length"
-                  type="bar"
-                  height="300"
-                  :options="staffBarOptions"
-                  :series="staffBarSeries"
-                />
-                <div v-else class="text-center text-grey pa-8">No staff data</div>
+                <apexchart v-if="staffSeries[0]?.data?.length" type="bar" height="380" :options="staffOptions" :series="staffSeries" :key="'staff'+chartKey" />
               </ClientOnly>
+              <div v-if="!staffSeries[0]?.data?.length" class="text-center text-grey pa-8">No data</div>
             </v-card-text>
           </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="blue">mdi-calendar-month</v-icon>
-              Appointments by Type
-            </v-card-title>
-            <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  v-if="data.charts.appointmentsByType.length"
-                  type="bar"
-                  height="300"
-                  :options="apptTypeOptions"
-                  :series="apptTypeSeries"
-                />
-                <div v-else class="text-center text-grey pa-8">No appointment data</div>
-              </ClientOnly>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
 
-      <!-- ===== CHARTS ROW 3: Clients & Referrals ===== -->
-      <v-row class="mb-6">
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="amber">mdi-clock-outline</v-icon>
-              Client Retention Bands
+          <!-- Revenue / Appointment Cross-Reference Table -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-swap-horizontal</v-icon>
+              Revenue / Appointment Cross-Reference
             </v-card-title>
             <v-card-text>
-              <ClientOnly>
-                <apexchart
-                  v-if="data.charts.clientRetention.length"
-                  type="bar"
-                  height="280"
-                  :options="retentionBarOptions"
-                  :series="retentionBarSeries"
-                />
-                <div v-else class="text-center text-grey pa-8">No client data</div>
-              </ClientOnly>
+              <v-table density="comfortable">
+                <thead>
+                  <tr>
+                    <th>Location</th>
+                    <th class="text-right">Appointments</th>
+                    <th class="text-right">Revenue</th>
+                    <th class="text-right">Rev / Appointment</th>
+                    <th class="text-right">Avg Duration (min)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="loc in clinicLocations" :key="loc">
+                    <td class="font-weight-medium">{{ loc }}</td>
+                    <td class="text-right">{{ fmt(rpaTable[loc]?.appointments || 0) }}</td>
+                    <td class="text-right">${{ fmtCur(rpaTable[loc]?.revenue || 0) }}</td>
+                    <td class="text-right font-weight-bold">${{ fmtCur(rpaTable[loc]?.perAppt || 0) }}</td>
+                    <td class="text-right">{{ perfData?.avgDurationByLocation?.[loc] || '—' }}</td>
+                  </tr>
+                  <tr class="bg-grey-lighten-4 font-weight-bold">
+                    <td>Total / Average</td>
+                    <td class="text-right">{{ fmt(kpis.totalAppointments) }}</td>
+                    <td class="text-right">${{ fmtCur(kpis.totalRevenue) }}</td>
+                    <td class="text-right">${{ fmtCur(kpis.avgRevenuePerAppt) }}</td>
+                    <td class="text-right">—</td>
+                  </tr>
+                </tbody>
+              </v-table>
             </v-card-text>
           </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card elevation="2">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="teal">mdi-handshake-outline</v-icon>
-              Referral Partner Tiers
+        </v-window-item>
+
+        <!-- ══════════════════════════════════════════════════════
+             RECOMMENDED ACTIONS TAB
+             ══════════════════════════════════════════════════════ -->
+        <v-window-item value="actions">
+          <!-- Data Source Status -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-database-sync</v-icon>
+              Data Sources
             </v-card-title>
             <v-card-text>
-              <div v-if="data.kpis.referrals.totalPartners > 0">
-                <v-row dense>
-                  <v-col v-for="(count, tier) in data.kpis.referrals.tierBreakdown" :key="tier" cols="6" sm="4">
-                    <v-card variant="outlined" class="pa-3 text-center">
-                      <div class="text-h5 font-weight-bold">{{ count }}</div>
-                      <div class="text-caption text-grey">{{ tier }}</div>
+              <v-row dense>
+                <v-col v-for="(info, syncType) in syncStatus?.lastSyncByType" :key="syncType" cols="12" sm="6" md="3">
+                  <v-card variant="tonal" class="pa-3">
+                    <div class="d-flex align-center mb-1">
+                      <v-icon size="16" color="success" class="mr-1">mdi-check-circle</v-icon>
+                      <span class="text-caption font-weight-bold text-uppercase">{{ syncType }}</span>
+                    </div>
+                    <div class="text-caption text-grey">Last: {{ formatDateTime(info.lastSync) }}</div>
+                    <div class="text-caption text-grey">{{ info.recordsSynced?.toLocaleString() || 0 }} records</div>
+                  </v-card>
+                </v-col>
+                <v-col v-if="!syncStatus?.hasApiData" cols="12">
+                  <v-alert type="info" variant="tonal" density="compact">
+                    <strong>API not configured.</strong> Data is from manual CSV uploads.
+                    <NuxtLink to="/marketing/ezyvet-integration" class="ml-1">Set up ezyVet API →</NuxtLink>
+                  </v-alert>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
+          <!-- Actionable Insights -->
+          <v-card class="mb-5" elevation="2">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-lightbulb-on-outline</v-icon>
+              Insights &amp; Actions
+            </v-card-title>
+            <v-card-text>
+              <v-list density="compact">
+                <v-list-item v-if="clientKpis.lapsedClients > 50" prepend-icon="mdi-account-alert" class="text-warning">
+                  <v-list-item-title class="font-weight-medium">{{ fmt(clientKpis.lapsedClients) }} lapsed clients (&gt;1 year)</v-list-item-title>
+                  <v-list-item-subtitle>Consider a re-engagement campaign targeting clients not seen in 12+ months.</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="weakestLocation" prepend-icon="mdi-map-marker-alert" class="text-info">
+                  <v-list-item-title class="font-weight-medium">{{ weakestLocation.name }} has lowest rev/appt (${{ fmtCur(weakestLocation.perAppt) }})</v-list-item-title>
+                  <v-list-item-subtitle>Review appointment mix and upsell opportunities at this location.</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="slowestDay" prepend-icon="mdi-calendar-clock" class="text-info">
+                  <v-list-item-title class="font-weight-medium">{{ slowestDay }} is the slowest weekday</v-list-item-title>
+                  <v-list-item-subtitle>Consider promotions or shifting availability to boost this day.</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="referralKpis.totalPartners > 0 && referralKpis.activePartners < referralKpis.totalPartners * 0.5" prepend-icon="mdi-handshake-outline" class="text-warning">
+                  <v-list-item-title class="font-weight-medium">Only {{ referralKpis.activePartners }} of {{ referralKpis.totalPartners }} referral partners are active</v-list-item-title>
+                  <v-list-item-subtitle>Re-engage dormant referral partners to grow the pipeline.</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item v-if="!overviewData && !perfData" prepend-icon="mdi-database-off" class="text-grey">
+                  <v-list-item-title class="font-weight-medium">No data loaded</v-list-item-title>
+                  <v-list-item-subtitle>Upload data or sync from ezyVet to see recommendations.</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+
+          <!-- Quick Links -->
+          <v-card class="mb-5" elevation="1">
+            <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
+              <v-icon start size="18" class="mr-1">mdi-link-variant</v-icon>
+              Related Pages
+            </v-card-title>
+            <v-card-text>
+              <v-row dense>
+                <v-col cols="12" sm="6" md="3">
+                  <NuxtLink to="/marketing/ezyvet-analytics" class="text-decoration-none">
+                    <v-card class="pa-4 text-center" elevation="1" hover>
+                      <v-icon size="32" color="purple">mdi-chart-box</v-icon>
+                      <div class="text-body-2 mt-2">Client Analytics</div>
                     </v-card>
-                  </v-col>
-                </v-row>
-                <div class="mt-4 text-center">
-                  <div class="text-h4 font-weight-bold text-teal">${{ formatCurrency(data.kpis.referrals.totalReferralRevenue) }}</div>
-                  <div class="text-caption text-grey">Total Referral Revenue</div>
-                </div>
-              </div>
-              <div v-else class="text-center text-grey pa-8">No referral data yet</div>
+                  </NuxtLink>
+                </v-col>
+                <v-col cols="12" sm="6" md="3">
+                  <NuxtLink to="/marketing/partnerships" class="text-decoration-none">
+                    <v-card class="pa-4 text-center" elevation="1" hover>
+                      <v-icon size="32" color="teal">mdi-handshake</v-icon>
+                      <div class="text-body-2 mt-2">Referral CRM</div>
+                    </v-card>
+                  </NuxtLink>
+                </v-col>
+                <v-col cols="12" sm="6" md="3">
+                  <NuxtLink to="/marketing/sauron" class="text-decoration-none">
+                    <v-card class="pa-4 text-center" elevation="1" hover>
+                      <v-icon size="32" color="deep-purple">mdi-eye</v-icon>
+                      <div class="text-body-2 mt-2">Sauron Dashboard</div>
+                    </v-card>
+                  </NuxtLink>
+                </v-col>
+                <v-col cols="12" sm="6" md="3">
+                  <NuxtLink to="/marketing/ezyvet-integration" class="text-decoration-none">
+                    <v-card class="pa-4 text-center" elevation="1" hover>
+                      <v-icon size="32" color="green">mdi-api</v-icon>
+                      <div class="text-body-2 mt-2">ezyVet Integration</div>
+                    </v-card>
+                  </NuxtLink>
+                </v-col>
+              </v-row>
             </v-card-text>
           </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- ===== DATA SOURCE STATUS ===== -->
-      <v-card class="mb-6" elevation="1">
-        <v-card-title class="text-subtitle-1">
-          <v-icon class="mr-2" size="small">mdi-database-sync</v-icon>
-          Data Sources
-        </v-card-title>
-        <v-card-text>
-          <v-row dense>
-            <v-col v-for="(info, syncType) in syncStatus?.lastSyncByType" :key="syncType" cols="12" sm="6" md="3">
-              <v-card variant="tonal" class="pa-3">
-                <div class="d-flex align-center mb-1">
-                  <v-icon size="16" color="success" class="mr-1">mdi-check-circle</v-icon>
-                  <span class="text-caption font-weight-bold text-uppercase">{{ syncType }}</span>
-                </div>
-                <div class="text-caption text-grey">Last: {{ formatDateTime(info.lastSync) }}</div>
-                <div class="text-caption text-grey">{{ info.recordsSynced?.toLocaleString() || 0 }} records</div>
-              </v-card>
-            </v-col>
-            <v-col v-if="!syncStatus?.hasApiData" cols="12">
-              <v-alert type="info" variant="tonal" density="compact">
-                <strong>API not configured.</strong> Data is from manual CSV uploads.
-                <NuxtLink to="/marketing/ezyvet-integration" class="ml-1">Set up ezyVet API →</NuxtLink>
-              </v-alert>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-
-      <!-- Quick Links -->
-      <v-row class="mb-6">
-        <v-col cols="12" sm="6" md="3">
-          <NuxtLink to="/marketing/performance-analysis" class="text-decoration-none">
-            <v-card class="pa-4 text-center" elevation="1" hover>
-              <v-icon size="32" color="deep-purple">mdi-chart-bar-stacked</v-icon>
-              <div class="text-body-2 mt-2">Performance Analysis</div>
-            </v-card>
-          </NuxtLink>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <NuxtLink to="/marketing/ezyvet-analytics" class="text-decoration-none">
-            <v-card class="pa-4 text-center" elevation="1" hover>
-              <v-icon size="32" color="purple">mdi-chart-box</v-icon>
-              <div class="text-body-2 mt-2">Client Analytics</div>
-            </v-card>
-          </NuxtLink>
-        </v-col>
-        <v-col cols="12" sm="6" md="3">
-          <NuxtLink to="/marketing/partnerships" class="text-decoration-none">
-            <v-card class="pa-4 text-center" elevation="1" hover>
-              <v-icon size="32" color="teal">mdi-handshake</v-icon>
-              <div class="text-body-2 mt-2">Referral CRM</div>
-            </v-card>
-          </NuxtLink>
-        </v-col>
-      </v-row>
-    </div>
+        </v-window-item>
+      </v-window>
+    </template>
 
     <!-- No Data State -->
     <v-card v-else-if="!loading && !error" class="pa-12 text-center" elevation="2">
       <v-icon size="80" color="grey">mdi-chart-areaspline</v-icon>
       <div class="text-h5 mt-4">No Analytics Data</div>
       <div class="text-grey mt-2 mb-6">
-        Sync data from ezyVet to populate the unified dashboard, or upload CSV data to each individual report.
+        Sync from ezyVet or upload CSV data to populate the dashboard.
       </div>
       <v-btn color="success" prepend-icon="mdi-cloud-sync" :loading="syncing" @click="syncAll">
         Sync All Data from ezyVet
       </v-btn>
     </v-card>
 
-    <!-- Error State -->
-    <v-alert v-if="error" type="error" class="mt-4" closable @click:close="error = null">
-      {{ error }}
-    </v-alert>
+    <!-- Error -->
+    <v-alert v-if="error" type="error" class="mt-4" closable @click:close="error = null">{{ error }}</v-alert>
+
+    <!-- ═══ UPLOAD DIALOGS ═══ -->
+
+    <!-- Invoice Upload -->
+    <v-dialog v-model="showInvoiceUpload" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-receipt-text</v-icon>Invoice Lines Upload
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="showInvoiceUpload = false" />
+        </v-card-title>
+        <v-card-text>
+          <v-file-input
+            v-model="invFile"
+            accept=".csv,.xls,.xlsx,.tsv"
+            label="Select Invoice Lines file"
+            prepend-icon="mdi-file-table"
+            variant="outlined" density="compact" show-size
+          />
+          <p class="text-caption text-grey mt-1">Upload EzyVet Invoice Lines export (CSV/XLS/XLSX). Duplicates are automatically skipped.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showInvoiceUpload = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="uploadingInvoice" :disabled="!invFile" @click="uploadInvoice">Upload</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Status Upload -->
+    <v-dialog v-model="showStatusUpload" max-width="600" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-clock-check-outline</v-icon>Appointment Status Upload
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="showStatusUpload = false" />
+        </v-card-title>
+        <v-card-text>
+          <v-file-input
+            v-model="statusFile"
+            accept=".xls,.xlsx,.csv"
+            label="Select Appointment Status file"
+            prepend-icon="mdi-file-table"
+            variant="outlined" density="compact" show-size
+          />
+          <v-select
+            v-model="statusDupAction"
+            :items="[{title:'Skip duplicates',value:'skip'},{title:'Replace duplicates',value:'replace'}]"
+            label="Duplicate handling"
+            density="compact" variant="outlined" class="mt-2"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showStatusUpload = false">Cancel</v-btn>
+          <v-btn color="primary" :loading="uploadingStatus" :disabled="!statusFile" @click="uploadStatus">Upload</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Tracking Batch Upload -->
+    <v-dialog v-model="showTrackingUpload" max-width="700" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-table-large</v-icon>Appointment Tracking — Batch Upload
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeTrackingUpload" />
+        </v-card-title>
+        <v-card-text>
+          <v-file-input
+            v-model="trackingFiles"
+            accept=".csv,.xls,.xlsx"
+            label="Select tracking files"
+            prepend-icon="mdi-file-multiple"
+            variant="outlined" density="compact" multiple show-size
+            @update:model-value="onTrackingFilesSelected"
+          />
+          <v-select
+            v-model="trackingDupAction"
+            :items="[{title:'Skip duplicates',value:'skip'},{title:'Replace duplicates',value:'replace'}]"
+            label="Duplicate handling"
+            density="compact" variant="outlined" class="mt-2"
+          />
+          <div v-if="trackingBatch.length" class="mt-3">
+            <v-list density="compact" class="pa-0">
+              <v-list-item v-for="(f, i) in trackingBatch" :key="i" class="px-0">
+                <template #prepend>
+                  <v-icon :color="f.status === 'done' ? 'success' : f.status === 'error' ? 'error' : f.status === 'uploading' ? 'primary' : 'grey'" size="18">
+                    {{ f.status === 'done' ? 'mdi-check-circle' : f.status === 'error' ? 'mdi-alert-circle' : f.status === 'uploading' ? 'mdi-loading mdi-spin' : 'mdi-circle-outline' }}
+                  </v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ f.name }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  <template v-if="f.status === 'done'">{{ f.inserted }} inserted, {{ f.skipped }} skipped</template>
+                  <template v-else-if="f.status === 'error'">{{ f.error }}</template>
+                  <template v-else-if="f.status === 'uploading'">Uploading...</template>
+                  <template v-else>Pending</template>
+                </v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+            <v-progress-linear v-if="trackingProcessing" :model-value="(trackingCurrentIdx + 1) / trackingBatch.length * 100" color="primary" class="mt-2" />
+          </div>
+          <div v-if="trackingCompleted" class="mt-3">
+            <v-alert type="info" variant="tonal" density="compact">
+              Batch complete: {{ trackingTotalInserted }} records from {{ trackingBatch.filter(f => f.status === 'done').length }} file(s).
+              <template v-if="trackingTotalErrors"> {{ trackingTotalErrors }} file(s) had errors.</template>
+            </v-alert>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="closeTrackingUpload">Close</v-btn>
+          <v-btn color="primary" :loading="trackingProcessing" :disabled="!trackingBatch.length || trackingCompleted" @click="runTrackingBatch">
+            Upload {{ trackingBatch.length }} File(s)
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Snackbar -->
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="5000" location="top">
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" location="bottom right">
       {{ snackbar.message }}
     </v-snackbar>
   </div>
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  layout: 'default',
-  middleware: ['auth', 'marketing-admin'],
-})
+definePageMeta({ layout: 'default', middleware: ['auth', 'marketing-admin'] })
+
+const route = useRoute()
 
 // ── State ────────────────────────────────────────────────────────────────
 
 const loading = ref(false)
 const syncing = ref(false)
 const error = ref<string | null>(null)
-const data = ref<any>(null)
-const syncStatus = ref<any>(null)
 
-// Default date range: end-of-last-complete-month (consistent with Sauron, Invoice, Appointment)
-const endOfLastMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 0)
-const filters = reactive({
-  startDate: new Date(endOfLastMonth.getTime() - 89 * 86400000).toISOString().split('T')[0],
-  endDate: endOfLastMonth.toISOString().split('T')[0],
+// Two API responses: performance (location-based) and practice-overview (client/referral/sync)
+const perfData = ref<any>(null)
+const overviewData = ref<any>(null)
+
+const activeTab = ref((route.query.tab as string) || 'overview')
+const chartKey = ref(0)
+
+// Location filter
+const locationFilter = ref<string | null>(null)
+const clinicLocations = computed(() => perfData.value?.locations || ['Sherman Oaks', 'Van Nuys', 'Venice'])
+const locationOptions = computed(() => ['All Locations', 'Compare Locations', ...clinicLocations.value])
+
+// Per-chart filters
+const typeLocationFilter = ref('All Locations')
+const dowLocationFilter = ref('Compare Locations')
+const dayOfWeekLocationOptions = computed(() => ['All Locations', 'Compare Locations', ...clinicLocations.value])
+
+// Date range — anchored to end of last complete month (consistent with all reports )
+const now = new Date()
+const lastCompleteMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+const dateRange = reactive({
+  start: new Date(lastCompleteMonth.getTime() - 89 * 86400000).toISOString().split('T')[0],
+  end: lastCompleteMonth.toISOString().split('T')[0],
 })
-
-const snackbar = reactive({
-  show: false,
-  message: '',
-  color: 'success',
-})
-
-// ── Date Presets ─────────────────────────────────────────────────────────
 
 const datePresets = [
-  { label: 'Last 30 Days', days: 30 },
-  { label: 'Last 90 Days', days: 90 },
-  { label: 'Last 6 Months', days: 180 },
-  { label: 'Last 12 Months', days: 365 },
+  { label: 'Last 30d', days: 30 },
+  { label: 'Last 90d', days: 90 },
+  { label: '6 Months', days: 180 },
+  { label: '12 Months', days: 365 },
   { label: 'YTD', days: -1 },
+  { label: 'All Time', days: -2 },
 ]
 
-function isActivePreset(preset: { days: number }): boolean {
-  if (preset.days === -1) {
-    return filters.startDate === new Date().getFullYear() + '-01-01'
-  }
-  const lcm = endOfLastMonth
-  const expectedStart = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
-  return filters.startDate === expectedStart
+function isActivePreset(p: { days: number }) {
+  if (p.days === -2) return dateRange.start === '2024-01-01'
+  if (p.days === -1) return dateRange.start === now.getFullYear() + '-01-01'
+  return dateRange.start === new Date(lastCompleteMonth.getTime() - (p.days - 1) * 86400000).toISOString().split('T')[0]
 }
 
-function applyPreset(preset: { days: number }) {
-  // Anchor to end-of-last-complete-month (consistent with other analytics pages)
-  const lcm = endOfLastMonth
-  filters.endDate = lcm.toISOString().split('T')[0]
-  if (preset.days === -1) {
-    filters.startDate = new Date().getFullYear() + '-01-01'
-  } else {
-    filters.startDate = new Date(lcm.getTime() - (preset.days - 1) * 86400000).toISOString().split('T')[0]
-  }
-  loadDashboard()
+function applyPreset(p: { days: number }) {
+  dateRange.end = lastCompleteMonth.toISOString().split('T')[0]
+  if (p.days === -2) dateRange.start = '2024-01-01'
+  else if (p.days === -1) dateRange.start = now.getFullYear() + '-01-01'
+  else dateRange.start = new Date(lastCompleteMonth.getTime() - (p.days - 1) * 86400000).toISOString().split('T')[0]
+  loadAll()
 }
 
-// ── Chart Computed ───────────────────────────────────────────────────────
+// Upload state
+const showInvoiceUpload = ref(false)
+const showStatusUpload = ref(false)
+const showTrackingUpload = ref(false)
+const invFile = ref<File | null>(null)
+const statusFile = ref<File | null>(null)
+const trackingFiles = ref<File[]>([])
+const uploadingInvoice = ref(false)
+const uploadingStatus = ref(false)
+const statusDupAction = ref('skip')
+const trackingDupAction = ref('skip')
 
-const monthlyRevenueSeries = computed(() => [{
-  name: 'Revenue',
-  data: (data.value?.charts?.monthlyRevenue || []).map((d: any) => d.revenue),
-}])
+interface BatchFile { name: string; file: File; status: 'pending' | 'uploading' | 'done' | 'error'; inserted: number; skipped: number; error: string }
+const trackingBatch = ref<BatchFile[]>([])
+const trackingProcessing = ref(false)
+const trackingCompleted = ref(false)
+const trackingCurrentIdx = ref(-1)
+const trackingTotalInserted = ref(0)
+const trackingTotalErrors = ref(0)
 
-const monthlyRevenueOptions = computed(() => ({
-  chart: { type: 'area', toolbar: { show: false }, fontFamily: 'inherit' },
-  colors: ['#10B981'],
-  fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.1 } },
-  stroke: { curve: 'smooth', width: 2 },
-  xaxis: {
-    categories: (data.value?.charts?.monthlyRevenue || []).map((d: any) => d.month),
-    labels: { rotate: -45, style: { fontSize: '10px' } },
-  },
-  yaxis: { labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
-  dataLabels: { enabled: false },
-  tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
-}))
-
-const deptDonutSeries = computed(() =>
-  (data.value?.charts?.departmentRevenue || []).map((d: any) => d.revenue)
-)
-
-const deptDonutOptions = computed(() => ({
-  chart: { type: 'donut', fontFamily: 'inherit' },
-  labels: (data.value?.charts?.departmentRevenue || []).map((d: any) => d.department),
-  colors: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#14B8A6', '#F97316', '#6366F1'],
-  legend: { position: 'bottom', fontSize: '11px' },
-  dataLabels: { enabled: true, formatter: (val: number) => `${Math.round(val)}%` },
-  tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
-}))
-
-const staffBarSeries = computed(() => [{
-  name: 'Revenue',
-  data: (data.value?.charts?.topStaff || []).map((d: any) => d.revenue),
-}])
-
-const staffBarOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
-  colors: ['#8B5CF6'],
-  xaxis: {
-    labels: { formatter: (v: number) => '$' + (Number(v) / 1000).toFixed(0) + 'k' },
-  },
-  yaxis: {
-    categories: (data.value?.charts?.topStaff || []).map((d: any) => d.name),
-  },
-  plotOptions: { bar: { borderRadius: 4, horizontal: true } },
-  dataLabels: { enabled: false },
-  tooltip: { theme: 'dark', y: { formatter: (v: number) => '$' + v.toLocaleString() } },
-}))
-
-const apptTypeSeries = computed(() => [{
-  name: 'Count',
-  data: (data.value?.charts?.appointmentsByType || []).map((d: any) => d.count),
-}])
-
-const apptTypeOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
-  colors: ['#3B82F6'],
-  xaxis: {
-    categories: (data.value?.charts?.appointmentsByType || []).map((d: any) => d.type),
-    labels: { rotate: -45, style: { fontSize: '10px' } },
-  },
-  plotOptions: { bar: { borderRadius: 4 } },
-  dataLabels: { enabled: true, style: { fontSize: '10px' } },
-  tooltip: { theme: 'dark' },
-}))
-
-const retentionBarSeries = computed(() => [{
-  name: 'Clients',
-  data: (data.value?.charts?.clientRetention || []).map((d: any) => d.count),
-}])
-
-const retentionBarOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
-  colors: ['#F59E0B'],
-  xaxis: {
-    categories: (data.value?.charts?.clientRetention || []).map((d: any) => d.label),
-  },
-  plotOptions: { bar: { borderRadius: 4 } },
-  dataLabels: { enabled: true, style: { fontSize: '10px' } },
-  tooltip: { theme: 'dark' },
-}))
+const snackbar = reactive({ show: false, message: '', color: 'success' })
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-function printReport() {
-  window.print()
+function fmt(n: number) { return (n || 0).toLocaleString() }
+function fmtCur(n: number | string | null) {
+  if (n === null || n === undefined) return '0'
+  const v = typeof n === 'string' ? parseFloat(n) : n
+  return isNaN(v) ? '0' : v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
-
-function formatNumber(n: number): string {
-  return n?.toLocaleString() ?? '0'
-}
-
-function formatCurrency(n: number): string {
-  if (n === null || n === undefined) return '0.00'
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
 function formatDateTime(d: string | null): string {
   if (!d) return 'Never'
   return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
+function printReport() { window.print() }
+function notify(message: string, color = 'success') { snackbar.message = message; snackbar.color = color; snackbar.show = true }
 
-function showNotification(message: string, color = 'success') {
-  snackbar.message = message
-  snackbar.color = color
-  snackbar.show = true
+const LOC_COLORS: Record<string, string> = {
+  'Sherman Oaks': '#7C3AED',
+  'Van Nuys': '#3B82F6',
+  'Venice': '#10B981',
 }
+
+// ── Combined data presence ───────────────────────────────────────────────
+
+const hasData = computed(() => !!perfData.value || !!overviewData.value)
+const syncStatus = computed(() => overviewData.value?.syncStatus || null)
+
+// ── KPIs — single source of truth from performance API (location-accurate) ──
+
+const kpis = computed(() => {
+  if (!perfData.value) {
+    // Fallback to overview data if performance unavailable
+    const ov = overviewData.value
+    if (!ov) return { totalAppointments: 0, totalRevenue: 0, uniqueClients: 0, avgRevenuePerAppt: 0 }
+    return {
+      totalAppointments: ov.kpis?.appointments?.totalAppointments || 0,
+      totalRevenue: ov.kpis?.revenue?.totalRevenue || 0,
+      uniqueClients: ov.kpis?.clients?.activeContacts || 0,
+      avgRevenuePerAppt: 0,
+    }
+  }
+  const loc = locationFilter.value
+  if (!loc || loc === 'All Locations' || loc === 'Compare Locations') return perfData.value.kpis
+  const appts = perfData.value.apptsByLocation?.[loc] || 0
+  const rev = perfData.value.revenueByLocation?.[loc] || 0
+  return {
+    totalAppointments: appts,
+    totalRevenue: rev,
+    uniqueClients: perfData.value.clientsByLocation?.[loc] || 0,
+    avgRevenuePerAppt: appts > 0 ? Math.round(rev / appts * 100) / 100 : 0,
+  }
+})
+
+// Client and referral KPIs come only from the overview API (CRM data)
+const clientKpis = computed(() => overviewData.value?.kpis?.clients || {
+  activeContacts: 0, recentVisitors: 0, lapsedClients: 0, retentionRate12Mo: 0,
+})
+const referralKpis = computed(() => overviewData.value?.kpis?.referrals || {
+  totalPartners: 0, activePartners: 0, totalReferrals: 0, totalReferralRevenue: 0, tierBreakdown: {},
+})
+
+const rpaTable = computed(() => perfData.value?.revenuePerAppt || {})
+
+// ── Insight computeds ───────────────────────────────────────────────────
+
+const weakestLocation = computed(() => {
+  if (!perfData.value?.revenuePerAppt) return null
+  let worst: { name: string; perAppt: number } | null = null
+  for (const loc of clinicLocations.value) {
+    const rpa = perfData.value.revenuePerAppt[loc]
+    if (rpa && rpa.appointments > 10 && (!worst || rpa.perAppt < worst.perAppt)) {
+      worst = { name: loc, perAppt: rpa.perAppt }
+    }
+  }
+  return worst
+})
+
+const slowestDay = computed(() => {
+  const dow = perfData.value?.dayOfWeek
+  if (!dow?.length) return null
+  // Only weekdays Mon-Sat
+  const weekdays = dow.filter((d: any) => d.index >= 1 && d.index <= 6)
+  if (!weekdays.length) return null
+  const min = weekdays.reduce((a: any, b: any) => a.total < b.total ? a : b)
+  return min.day
+})
+
+// ── Location helpers ─────────────────────────────────────────────────────
+
+function isCompare(): boolean { return locationFilter.value === 'Compare Locations' }
+function isSingleLoc(): boolean {
+  const loc = locationFilter.value
+  return !!loc && loc !== 'All Locations' && loc !== 'Compare Locations'
+}
+function activeLoc(): string { return locationFilter.value || '' }
+function locVal(byLocation: Record<string, number> | undefined, fallbackTotal: number): number {
+  if (!byLocation) return fallbackTotal
+  if (isSingleLoc()) return byLocation[activeLoc()] || 0
+  return fallbackTotal
+}
+
+const CHART_THEME = { theme: 'dark' as const }
+
+// ════════════════════════════════════════════════════════════════
+// CHART COMPUTEDS
+// ════════════════════════════════════════════════════════════════
+
+// ── Location bar (Overview) ──
+const hasLocBarData = computed(() => (locBarSeries.value[0]?.data?.length ?? 0) > 0)
+const locBarSeries = computed(() => {
+  if (!perfData.value) return [{ name: 'Appointments', data: [] }]
+  return [{ name: 'Appointments', data: clinicLocations.value.map((l: string) => perfData.value.apptsByLocation?.[l] || 0) }]
+})
+const locBarOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: clinicLocations.value.map((l: string) => LOC_COLORS[l] || '#888'),
+  plotOptions: { bar: { borderRadius: 6, distributed: true, columnWidth: '55%' } },
+  xaxis: { categories: clinicLocations.value },
+  yaxis: { title: { text: 'Appointments' } },
+  dataLabels: { enabled: true, style: { fontSize: '12px' } },
+  tooltip: { ...CHART_THEME }, legend: { show: false },
+}))
+
+// ── Revenue per Appointment by Location (Overview) ──
+const hasRevPerApptData = computed(() => (revPerApptSeries.value[0]?.data?.length ?? 0) > 0)
+const revPerApptSeries = computed(() => {
+  if (!perfData.value?.revenuePerAppt) return [{ name: 'Rev/Appt', data: [] }]
+  return [{ name: 'Rev/Appt', data: clinicLocations.value.map((l: string) => perfData.value.revenuePerAppt[l]?.perAppt || 0) }]
+})
+const revPerApptOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: clinicLocations.value.map((l: string) => LOC_COLORS[l] || '#888'),
+  plotOptions: { bar: { borderRadius: 6, distributed: true, columnWidth: '55%' } },
+  xaxis: { categories: clinicLocations.value },
+  yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + Math.round(v) } },
+  dataLabels: { enabled: true, formatter: (v: number) => '$' + Math.round(v), style: { fontSize: '12px' } },
+  tooltip: { ...CHART_THEME, y: { formatter: (v: number) => '$' + v.toFixed(2) } },
+  legend: { show: false },
+}))
+
+// ── Monthly Trend dual-axis (Overview) ──
+const monthlyTrendSeries = computed(() => {
+  if (!perfData.value?.monthlyTrend?.length) return []
+  const trend = perfData.value.monthlyTrend
+  if (isCompare()) {
+    const series: any[] = []
+    for (const l of clinicLocations.value) {
+      series.push({ name: `${l} Revenue`, type: 'line', data: trend.map((m: any) => m.revenueByLocation?.[l] || 0) })
+    }
+    for (const l of clinicLocations.value) {
+      series.push({ name: `${l} Appts`, type: 'column', data: trend.map((m: any) => m.appointmentsByLocation?.[l] || 0) })
+    }
+    return series
+  }
+  return [
+    { name: 'Revenue', type: 'area', data: trend.map((m: any) => isSingleLoc() ? (m.revenueByLocation?.[activeLoc()] || 0) : m.revenue) },
+    { name: 'Appointments', type: 'column', data: trend.map((m: any) => isSingleLoc() ? (m.appointmentsByLocation?.[activeLoc()] || 0) : m.appointments) },
+  ]
+})
+const monthlyTrendOptions = computed(() => {
+  const labels = (perfData.value?.monthlyTrend || []).map((m: any) => m.label)
+  const isComp = isCompare()
+  return {
+    chart: { toolbar: { show: false }, fontFamily: 'inherit', stacked: false },
+    colors: isComp
+      ? [...clinicLocations.value.map((l: string) => LOC_COLORS[l] || '#888'), ...clinicLocations.value.map((l: string) => LOC_COLORS[l] || '#888')]
+      : ['#10B981', '#7C3AED'],
+    stroke: { width: isComp ? [2, 2, 2, 0, 0, 0] : [2, 0], curve: 'smooth' as const },
+    fill: isComp ? {} : { type: ['gradient', 'solid'], gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+    xaxis: { categories: labels, labels: { rotate: -45, style: { fontSize: '10px' } } },
+    yaxis: isComp ? [
+      { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+    ] : [
+      { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+      { opposite: true, title: { text: 'Appointments' } },
+    ],
+    dataLabels: { enabled: false },
+    tooltip: { ...CHART_THEME, shared: true },
+    legend: { position: 'top' as const, fontSize: '11px' },
+    plotOptions: { bar: { borderRadius: 3, columnWidth: isComp ? '80%' : '50%' } },
+  }
+})
+
+// ── Client Retention (Overview, from overview API) ──
+const retentionSeries = computed(() =>
+  (overviewData.value?.charts?.clientRetention || []).map((d: any) => d.count)
+)
+const retentionOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: ['#F59E0B'],
+  xaxis: { categories: (overviewData.value?.charts?.clientRetention || []).map((d: any) => d.label) },
+  plotOptions: { bar: { borderRadius: 4 } },
+  dataLabels: { enabled: true, style: { fontSize: '10px' } },
+  tooltip: { ...CHART_THEME },
+}))
+
+// ── Service Category (Overview, from performance API) ──
+const svcCatSeries = computed(() => {
+  if (!perfData.value?.serviceCategories?.length) return []
+  return perfData.value.serviceCategories.map((c: any) => locVal(c.byLocation, c.total)).filter((v: number) => v > 0)
+})
+const svcCatOptions = computed(() => {
+  const cats = (perfData.value?.serviceCategories || []).filter((c: any) => locVal(c.byLocation, c.total) > 0)
+  return {
+    chart: { type: 'donut', fontFamily: 'inherit' },
+    labels: cats.map((c: any) => c.category),
+    colors: ['#7C3AED', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#06B6D4', '#8B5CF6', '#14B8A6', '#F97316'],
+    legend: { position: 'bottom' as const, fontSize: '11px' },
+    dataLabels: { enabled: true, formatter: (val: number) => `${Math.round(val)}%` },
+    tooltip: { ...CHART_THEME },
+  }
+})
+
+// ── Day of Week (Overview, compare locations) ──
+const dowSeries = computed(() => {
+  if (!perfData.value?.dayOfWeek?.length) return []
+  if (isSingleLoc()) return [{ name: activeLoc(), data: perfData.value.dayOfWeek.map((d: any) => d.byLocation?.[activeLoc()] || 0) }]
+  return clinicLocations.value.map((loc: string) => ({
+    name: loc, data: perfData.value.dayOfWeek.map((d: any) => d.byLocation?.[loc] || 0),
+  }))
+})
+const dowOptions = computed(() => ({
+  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: isSingleLoc() ? [LOC_COLORS[activeLoc()] || '#888'] : clinicLocations.value.map((l: string) => LOC_COLORS[l]),
+  xaxis: { categories: (perfData.value?.dayOfWeek || []).map((d: any) => d.day?.substring(0, 3)) },
+  yaxis: { title: { text: 'Appointments' } },
+  plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } },
+  dataLabels: { enabled: true, style: { fontSize: '10px' } },
+  tooltip: { ...CHART_THEME },
+  legend: { position: 'top' as const, fontSize: '11px' },
+}))
+
+// ── Appointment Types (Appointments tab) ──
+const typeSeries = computed(() => {
+  if (!perfData.value?.appointmentTypes?.length) return [{ name: 'Count', data: [] }]
+  const locF = typeLocationFilter.value
+  const top = perfData.value.appointmentTypes.slice(0, 20)
+  if (locF === 'All Locations') return [{ name: 'All Locations', data: top.map((t: any) => t.total) }]
+  return [{ name: locF, data: top.map((t: any) => t.byLocation?.[locF] || 0) }]
+})
+const typeOptions = computed(() => {
+  const top = (perfData.value?.appointmentTypes || []).slice(0, 20)
+  return {
+    chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+    colors: ['#7C3AED'],
+    plotOptions: { bar: { borderRadius: 4, horizontal: true } },
+    xaxis: { title: { text: 'Count' } },
+    yaxis: { labels: { style: { fontSize: '11px' }, maxWidth: 200 } },
+    dataLabels: { enabled: true, style: { fontSize: '10px' } },
+    tooltip: { ...CHART_THEME },
+    labels: top.map((t: any) => t.type),
+  }
+})
+
+// ── Weekly Volume (Appointments tab) ──
+const weeklyTrendSeries = computed(() => {
+  if (!perfData.value?.weeklyTrend?.length) return []
+  const trend = perfData.value.weeklyTrend
+  if (isCompare()) {
+    return clinicLocations.value.map((loc: string) => ({ name: loc, data: trend.map((w: any) => w.byLocation?.[loc] || 0) }))
+  }
+  return [{ name: isSingleLoc() ? activeLoc() : 'All Locations', data: trend.map((w: any) => isSingleLoc() ? (w.byLocation?.[activeLoc()] || 0) : w.total) }]
+})
+const weeklyTrendOptions = computed(() => ({
+  chart: { type: 'area', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: isCompare() ? clinicLocations.value.map((l: string) => LOC_COLORS[l]) : [isSingleLoc() ? (LOC_COLORS[activeLoc()] || '#7C3AED') : '#7C3AED'],
+  fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+  stroke: { curve: 'smooth' as const, width: 2 },
+  xaxis: { categories: (perfData.value?.weeklyTrend || []).map((w: any) => w.week), labels: { rotate: -45, style: { fontSize: '10px' } } },
+  yaxis: { title: { text: 'Appointments' } },
+  dataLabels: { enabled: false },
+  tooltip: { ...CHART_THEME, shared: true },
+  legend: { position: 'top' as const, fontSize: '11px' },
+}))
+
+// ── Day of Week Detail (Appointments tab) ──
+const dowDetailSeries = computed(() => {
+  if (!perfData.value?.dayOfWeek?.length) return []
+  const locF = dowLocationFilter.value
+  if (locF === 'Compare Locations') {
+    return clinicLocations.value.map((loc: string) => ({ name: loc, data: perfData.value.dayOfWeek.map((d: any) => d.byLocation?.[loc] || 0) }))
+  }
+  if (locF === 'All Locations') return [{ name: 'All Locations', data: perfData.value.dayOfWeek.map((d: any) => d.total) }]
+  return [{ name: locF, data: perfData.value.dayOfWeek.map((d: any) => d.byLocation?.[locF] || 0) }]
+})
+const dowDetailOptions = computed(() => {
+  const locF = dowLocationFilter.value
+  const isComp = locF === 'Compare Locations'
+  return {
+    chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+    colors: isComp ? clinicLocations.value.map((l: string) => LOC_COLORS[l]) : [locF !== 'All Locations' ? (LOC_COLORS[locF] || '#3B82F6') : '#3B82F6'],
+    xaxis: { categories: (perfData.value?.dayOfWeek || []).map((d: any) => d.day?.substring(0, 3)) },
+    yaxis: { title: { text: 'Appointments' } },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: isComp ? '80%' : '50%' } },
+    dataLabels: { enabled: true, style: { fontSize: '10px' } },
+    tooltip: { ...CHART_THEME },
+    legend: { position: 'top' as const, fontSize: '11px', show: isComp },
+  }
+})
+
+// ── Revenue Trend (Revenue tab) ──
+const revTrendSeries = computed(() => {
+  if (!perfData.value?.monthlyTrend?.length) return []
+  const trend = perfData.value.monthlyTrend
+  if (isCompare()) return clinicLocations.value.map((loc: string) => ({ name: loc, data: trend.map((m: any) => m.revenueByLocation?.[loc] || 0) }))
+  return [{ name: isSingleLoc() ? activeLoc() : 'All Locations', data: trend.map((m: any) => isSingleLoc() ? (m.revenueByLocation?.[activeLoc()] || 0) : m.revenue) }]
+})
+const revTrendOptions = computed(() => ({
+  chart: { type: 'area', toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: isCompare() ? clinicLocations.value.map((l: string) => LOC_COLORS[l]) : [isSingleLoc() ? (LOC_COLORS[activeLoc()] || '#10B981') : '#10B981'],
+  fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
+  stroke: { curve: 'smooth' as const, width: 2 },
+  xaxis: { categories: (perfData.value?.monthlyTrend || []).map((m: any) => m.label), labels: { rotate: -45, style: { fontSize: '10px' } } },
+  yaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+  dataLabels: { enabled: false },
+  tooltip: { ...CHART_THEME, shared: true, y: { formatter: (v: number) => '$' + (v || 0).toLocaleString() } },
+  legend: { position: 'top' as const, fontSize: '11px' },
+}))
+
+// ── Department Revenue donut (Revenue tab, from overview API) ──
+const deptDonutSeries = computed(() =>
+  (overviewData.value?.charts?.departmentRevenue || []).map((d: any) => d.revenue)
+)
+const deptDonutOptions = computed(() => ({
+  chart: { type: 'donut', fontFamily: 'inherit' },
+  labels: (overviewData.value?.charts?.departmentRevenue || []).map((d: any) => d.department),
+  colors: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899', '#14B8A6', '#F97316', '#6366F1'],
+  legend: { position: 'bottom' as const, fontSize: '11px' },
+  dataLabels: { enabled: true, formatter: (val: number) => `${Math.round(val)}%` },
+  tooltip: { ...CHART_THEME, y: { formatter: (v: number) => '$' + v.toLocaleString() } },
+}))
+
+// ── Product Groups (Revenue tab, from performance API) ──
+const pgSeries = computed(() => {
+  if (!perfData.value?.topProductGroups?.length) return [{ name: 'Revenue', data: [] }]
+  const pgs = perfData.value.topProductGroups.slice(0, 12)
+  if (isSingleLoc()) return [{ name: activeLoc(), data: pgs.map((p: any) => p.byLocation?.[activeLoc()] || 0) }]
+  if (isCompare()) return clinicLocations.value.map((loc: string) => ({ name: loc, data: pgs.map((p: any) => p.byLocation?.[loc] || 0) }))
+  return [{ name: 'All Locations', data: pgs.map((p: any) => p.revenue) }]
+})
+const pgOptions = computed(() => {
+  const pgs = (perfData.value?.topProductGroups || []).slice(0, 12)
+  return {
+    chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit', stacked: isCompare() },
+    colors: isCompare() ? clinicLocations.value.map((l: string) => LOC_COLORS[l]) : [isSingleLoc() ? (LOC_COLORS[activeLoc()] || '#3B82F6') : '#3B82F6'],
+    plotOptions: { bar: { borderRadius: 3, horizontal: true } },
+    xaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+    yaxis: { labels: { style: { fontSize: '10px' }, maxWidth: 180 } },
+    dataLabels: { enabled: false },
+    tooltip: { ...CHART_THEME, y: { formatter: (v: number) => '$' + (v || 0).toLocaleString() } },
+    legend: { position: 'top' as const, fontSize: '11px', show: isCompare() },
+    labels: pgs.map((p: any) => p.group),
+  }
+})
+
+// ── Top Staff (Revenue tab, from performance API — location-aware) ──
+const staffSeries = computed(() => {
+  if (!perfData.value?.topStaff?.length) return [{ name: 'Revenue', data: [] }]
+  let staffList = perfData.value.topStaff
+  if (isSingleLoc()) {
+    staffList = staffList.filter((s: any) => (s.byLocation?.[activeLoc()] || 0) > 0)
+      .sort((a: any, b: any) => (b.byLocation?.[activeLoc()] || 0) - (a.byLocation?.[activeLoc()] || 0))
+    return [{ name: activeLoc(), data: staffList.slice(0, 15).map((s: any) => s.byLocation?.[activeLoc()] || 0) }]
+  }
+  return [{ name: 'All Locations', data: staffList.slice(0, 15).map((s: any) => s.revenue) }]
+})
+const staffOptions = computed(() => {
+  let staffList = perfData.value?.topStaff || []
+  if (isSingleLoc()) {
+    staffList = staffList.filter((s: any) => (s.byLocation?.[activeLoc()] || 0) > 0)
+      .sort((a: any, b: any) => (b.byLocation?.[activeLoc()] || 0) - (a.byLocation?.[activeLoc()] || 0))
+  }
+  return {
+    chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
+    colors: [isSingleLoc() ? (LOC_COLORS[activeLoc()] || '#EC4899') : '#EC4899'],
+    plotOptions: { bar: { borderRadius: 3, horizontal: true } },
+    xaxis: { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
+    yaxis: { labels: { style: { fontSize: '10px' }, maxWidth: 180 } },
+    dataLabels: { enabled: false },
+    tooltip: { ...CHART_THEME, y: { formatter: (v: number) => '$' + (v || 0).toLocaleString() } },
+    labels: staffList.slice(0, 15).map((s: any) => s.name),
+  }
+})
 
 // ── Data Loading ─────────────────────────────────────────────────────────
 
-async function loadDashboard() {
+let _debounce: ReturnType<typeof setTimeout> | null = null
+
+async function loadAll() {
   loading.value = true
   error.value = null
   try {
-    const params = new URLSearchParams({
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-    })
-    const result = await $fetch(`/api/analytics/practice-overview?${params.toString()}`, {
-      retry: 0,  // Don't retry on error — prevents console flood
-    }) as any
+    const params = new URLSearchParams()
+    if (dateRange.start) params.set('startDate', dateRange.start)
+    if (dateRange.end) params.set('endDate', dateRange.end)
 
-    if (result.success) {
-      data.value = result
-      syncStatus.value = result.syncStatus
+    // Call both APIs in parallel — each is resilient independently
+    const [perfResult, overviewResult] = await Promise.allSettled([
+      $fetch(`/api/analytics/performance?${params.toString()}`),
+      $fetch(`/api/analytics/practice-overview?${params.toString()}`),
+    ])
+
+    if (perfResult.status === 'fulfilled') {
+      perfData.value = perfResult.value
+    } else {
+      console.warn('Performance API failed:', perfResult.reason)
     }
+
+    if (overviewResult.status === 'fulfilled') {
+      const ov = overviewResult.value as any
+      if (ov.success) overviewData.value = ov
+    } else {
+      console.warn('Overview API failed:', overviewResult.reason)
+    }
+
+    chartKey.value++
   } catch (err: any) {
     error.value = err.data?.message || err.message || 'Failed to load analytics'
   } finally {
@@ -605,50 +1254,131 @@ async function loadDashboard() {
   }
 }
 
+watch(() => [dateRange.start, dateRange.end], () => {
+  if (_debounce) clearTimeout(_debounce)
+  _debounce = setTimeout(() => loadAll(), 500)
+})
+
 // ── Sync All ─────────────────────────────────────────────────────────────
 
 async function syncAll() {
   syncing.value = true
   try {
-    const result = await $fetch('/api/ezyvet/sync-analytics', {
-      method: 'POST',
-      body: { syncType: 'all' },
-    }) as any
-
+    const result = await $fetch('/api/ezyvet/sync-analytics', { method: 'POST', body: { syncType: 'all' } }) as any
     if (result.success) {
       const first = Object.values(result.results)[0] as any
       const invoicesSynced = first?.invoices?.upserted || 0
       const contactsSynced = first?.contacts?.upserted || 0
-      const partnersUpdated = first?.referrals?.partnersUpdated || 0
-
-      showNotification(
-        `Synced ${invoicesSynced.toLocaleString()} invoices, ${contactsSynced.toLocaleString()} contacts, ${partnersUpdated} referral partners`,
-        'success'
-      )
-      await loadDashboard()
+      notify(`Synced ${invoicesSynced.toLocaleString()} invoices, ${contactsSynced.toLocaleString()} contacts`)
+      await loadAll()
     }
   } catch (err: any) {
     const msg = err.data?.message || err.message || 'Sync failed'
     if (msg.includes('No active ezyVet clinic')) {
-      showNotification('ezyVet API not configured. Set up credentials in the ezyVet Integration page.', 'warning')
+      notify('ezyVet API not configured. Set up credentials in the ezyVet Integration page.', 'warning')
     } else {
-      showNotification('Sync failed: ' + msg, 'error')
+      notify('Sync failed: ' + msg, 'error')
     }
   } finally {
     syncing.value = false
   }
 }
 
+// ── Upload Functions ─────────────────────────────────────────────────────
+
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const raw = reader.result as string
+      const parts = raw.split(',')
+      resolve(parts.length > 1 ? parts[1] as string : raw)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function uploadInvoice() {
+  if (!invFile.value) return
+  uploadingInvoice.value = true
+  try {
+    const fileData = await fileToBase64(invFile.value)
+    const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { fileData, fileName: invFile.value.name } }) as any
+    notify(`Uploaded ${result.inserted || 0} invoice lines. ${result.duplicatesSkipped || 0} duplicates skipped.`)
+    showInvoiceUpload.value = false; invFile.value = null
+    await loadAll()
+  } catch (err: any) { notify('Upload failed: ' + (err.data?.message || err.message), 'error') }
+  finally { uploadingInvoice.value = false }
+}
+
+async function uploadStatus() {
+  if (!statusFile.value) return
+  uploadingStatus.value = true
+  try {
+    const fileData = await fileToBase64(statusFile.value)
+    const result = await $fetch('/api/appointments/upload-status', { method: 'POST', body: { fileData, fileName: statusFile.value.name, duplicateAction: statusDupAction.value } }) as any
+    notify(`Uploaded ${result.inserted || 0} status records.`)
+    showStatusUpload.value = false; statusFile.value = null
+    await loadAll()
+  } catch (err: any) { notify('Upload failed: ' + (err.data?.message || err.message), 'error') }
+  finally { uploadingStatus.value = false }
+}
+
+function onTrackingFilesSelected(files: File | File[] | null) {
+  const list = Array.isArray(files) ? files : files ? [files] : []
+  trackingBatch.value = list.map(f => ({ name: f.name, file: f, status: 'pending', inserted: 0, skipped: 0, error: '' }))
+  trackingCompleted.value = false
+  trackingCurrentIdx.value = -1
+  trackingTotalInserted.value = 0
+  trackingTotalErrors.value = 0
+}
+
+function closeTrackingUpload() {
+  showTrackingUpload.value = false
+  trackingFiles.value = []
+  trackingBatch.value = []
+  trackingProcessing.value = false
+  trackingCompleted.value = false
+  if (trackingTotalInserted.value > 0) loadAll()
+}
+
+async function runTrackingBatch() {
+  if (!trackingBatch.value.length) return
+  trackingProcessing.value = true
+  trackingCompleted.value = false
+  trackingTotalInserted.value = 0
+  trackingTotalErrors.value = 0
+
+  for (let idx = 0; idx < trackingBatch.value.length; idx++) {
+    const entry = trackingBatch.value[idx] as BatchFile
+    trackingCurrentIdx.value = idx
+    entry.status = 'uploading'
+    try {
+      const fileData = await fileToBase64(entry.file)
+      const res = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body: { fileData, fileName: entry.name, duplicateAction: trackingDupAction.value } }) as any
+      entry.status = 'done'
+      entry.inserted = res.inserted || 0
+      entry.skipped = res.skippedDuplicates || 0
+      trackingTotalInserted.value += entry.inserted
+    } catch (err: any) {
+      entry.status = 'error'
+      entry.error = err.data?.message || err.message || 'Failed'
+      trackingTotalErrors.value++
+    }
+  }
+  trackingProcessing.value = false
+  trackingCompleted.value = true
+  notify(`Batch complete: ${trackingTotalInserted.value} records from ${trackingBatch.value.filter(f => f.status === 'done').length} file(s).`,
+    trackingTotalErrors.value ? 'warning' : 'success')
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 
-onMounted(() => {
-  loadDashboard()
-})
+onMounted(() => { loadAll() })
 </script>
 
 <style scoped>
-.practice-analytics-page {
-  max-width: 1400px;
-  margin: 0 auto;
-}
+.practice-analytics-page { max-width: 1400px; margin: 0 auto; }
+.cursor-pointer { cursor: pointer; }
 </style>
