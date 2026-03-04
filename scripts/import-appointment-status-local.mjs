@@ -271,10 +271,14 @@ async function main() {
     const minDate = incomingDates[0]
     const maxDate = incomingDates[incomingDates.length - 1]
 
+    // Determine the location for this file from parsed data
+    const fileLocation = parsed[0]?.division || ''
+
     const { data: existingRows } = await supabase
       .from('appointment_data')
       .select('appointment_date')
       .eq('source', 'appointment_status')
+      .eq('location_name', fileLocation)
       .gte('appointment_date', minDate)
       .lte('appointment_date', maxDate)
 
@@ -286,11 +290,14 @@ async function main() {
     let skipped = 0
 
     if (duplicateDates.length > 0) {
-      // Replace strategy: delete existing then re-insert
+      // Replace strategy: delete existing for THIS LOCATION only, then re-insert
       for (const date of duplicateDates) {
-        await supabase.from('appointment_data').delete().eq('source', 'appointment_status').eq('appointment_date', date)
+        await supabase.from('appointment_data').delete()
+          .eq('source', 'appointment_status')
+          .eq('location_name', fileLocation)
+          .eq('appointment_date', date)
       }
-      console.log(`  Replacing data for ${duplicateDates.length} overlapping dates`)
+      console.log(`  Replacing data for ${duplicateDates.length} overlapping dates for ${fileLocation}`)
     }
 
     // Insert in chunks

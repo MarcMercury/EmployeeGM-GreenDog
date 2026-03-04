@@ -61,24 +61,11 @@
               placeholder="All Locations"
             />
           </v-col>
-          <v-col cols="6" md="2">
+          <v-col cols="6" md="3">
             <v-text-field v-model="dateRange.start" type="date" label="From" density="compact" variant="outlined" hide-details />
           </v-col>
-          <v-col cols="6" md="2">
+          <v-col cols="6" md="3">
             <v-text-field v-model="dateRange.end" type="date" label="To" density="compact" variant="outlined" hide-details />
-          </v-col>
-          <v-col cols="12" md="5">
-            <div class="d-flex flex-wrap gap-1">
-              <v-chip
-                v-for="preset in datePresets" :key="preset.label"
-                :color="isActivePreset(preset) ? 'primary' : 'default'"
-                :variant="isActivePreset(preset) ? 'elevated' : 'outlined'"
-                size="small" class="cursor-pointer"
-                @click="applyPreset(preset)"
-              >
-                {{ preset.label }}
-              </v-chip>
-            </div>
           </v-col>
         </v-row>
       </v-card-text>
@@ -783,36 +770,11 @@ const typeLocationFilter = ref('All Locations')
 const dowLocationFilter = ref('Compare Locations')
 const dayOfWeekLocationOptions = computed(() => ['All Locations', 'Compare Locations', ...clinicLocations.value])
 
-// Date range — anchored to end of last complete month (consistent with all reports )
-const now = new Date()
-const lastCompleteMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+// Date range — default to full range of imported data
 const dateRange = reactive({
-  start: new Date(lastCompleteMonth.getTime() - 89 * 86400000).toISOString().split('T')[0],
-  end: lastCompleteMonth.toISOString().split('T')[0],
+  start: '2025-01-01',
+  end: new Date().toISOString().split('T')[0],
 })
-
-const datePresets = [
-  { label: 'Last 30d', days: 30 },
-  { label: 'Last 90d', days: 90 },
-  { label: '6 Months', days: 180 },
-  { label: '12 Months', days: 365 },
-  { label: 'YTD', days: -1 },
-  { label: 'All Time', days: -2 },
-]
-
-function isActivePreset(p: { days: number }) {
-  if (p.days === -2) return dateRange.start === '2024-01-01'
-  if (p.days === -1) return dateRange.start === now.getFullYear() + '-01-01'
-  return dateRange.start === new Date(lastCompleteMonth.getTime() - (p.days - 1) * 86400000).toISOString().split('T')[0]
-}
-
-function applyPreset(p: { days: number }) {
-  dateRange.end = lastCompleteMonth.toISOString().split('T')[0]
-  if (p.days === -2) dateRange.start = '2024-01-01'
-  else if (p.days === -1) dateRange.start = now.getFullYear() + '-01-01'
-  else dateRange.start = new Date(lastCompleteMonth.getTime() - (p.days - 1) * 86400000).toISOString().split('T')[0]
-  loadAll()
-}
 
 // Upload state
 const showInvoiceUpload = ref(false)
