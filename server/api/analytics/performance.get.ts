@@ -157,9 +157,10 @@ export default defineEventHandler(async (event) => {
   })
 
   // Exclude: availability rows, garbage types, Sunday, non-clinic locations
+  // Note: appointment_status rows have location name stored in appointment_type
+  // (import artifact), so garbage/availability filters only apply to weekly_tracking
   const booked = normalized.filter(a =>
-    !a.isAvailability &&
-    !a.isGarbage &&
+    (a.source === 'appointment_status' || (!a.isAvailability && !a.isGarbage)) &&
     a.dayOfWeek !== 0 && // Sunday excluded
     CLINIC_LOCATIONS.includes(a.location)
   )

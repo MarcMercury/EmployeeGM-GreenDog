@@ -1136,6 +1136,7 @@ async function loadAll() {
     const params = new URLSearchParams()
     if (dateRange.start) params.set('startDate', dateRange.start)
     if (dateRange.end) params.set('endDate', dateRange.end)
+    params.set('_t', Date.now().toString()) // cache-bust
 
     // Call both APIs in parallel — each is resilient independently
     const [perfResult, overviewResult] = await Promise.allSettled([
