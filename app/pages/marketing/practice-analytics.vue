@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-h4 font-weight-bold">Practice Analytics</h1>
         <p class="text-subtitle-2 text-grey">
-          Unified performance metrics — revenue, appointments, clients &amp; referrals across all locations
+          Unified performance metrics — revenue, appointments &amp; clients across all locations
         </p>
         <div v-if="syncStatus" class="text-caption mt-1" :class="syncStatus.isStale ? 'text-warning' : 'text-success'">
           <v-icon size="14" class="mr-1">{{ syncStatus.hasApiData ? 'mdi-cloud-check' : 'mdi-cloud-off-outline' }}</v-icon>
@@ -123,9 +123,9 @@
                 <v-icon color="white" size="22">mdi-account-group</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ fmt(clientKpis.activeContacts) }}</div>
-                <div class="text-caption text-grey">Active Clients</div>
-                <div class="text-caption text-grey">{{ clientKpis.retentionRate12Mo }}% 12-mo retention</div>
+                <div class="text-h5 font-weight-bold">{{ fmt(kpis.uniqueClients) }}</div>
+                <div class="text-caption text-grey">Unique Clients</div>
+                <div class="text-caption text-grey">from invoices in range</div>
               </div>
             </div>
           </v-card>
@@ -134,12 +134,12 @@
           <v-card class="pa-4" elevation="2">
             <div class="d-flex align-center">
               <v-avatar color="teal-darken-1" size="44" class="mr-3">
-                <v-icon color="white" size="22">mdi-handshake</v-icon>
+                <v-icon color="white" size="22">mdi-receipt-text-outline</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ fmt(referralKpis.totalReferrals) }}</div>
-                <div class="text-caption text-grey">Referral Partners</div>
-                <div class="text-caption text-grey">${{ fmtCur(referralKpis.totalReferralRevenue) }} revenue</div>
+                <div class="text-h5 font-weight-bold">${{ fmtCur(kpis.avgRevenuePerAppt) }}</div>
+                <div class="text-caption text-grey">Revenue / Appointment</div>
+                <div class="text-caption text-grey">{{ fmt(overviewData?.kpis?.revenue?.uniqueInvoices || 0) }} invoices</div>
               </div>
             </div>
           </v-card>
@@ -150,26 +150,26 @@
       <v-row class="mb-5">
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold">${{ fmtCur(kpis.avgRevenuePerAppt) }}</div>
-            <div class="text-caption text-grey">Revenue / Appointment</div>
-          </v-card>
-        </v-col>
-        <v-col cols="6" sm="3">
-          <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ fmt(overviewData?.kpis?.revenue?.uniqueInvoices || 0) }}</div>
-            <div class="text-caption text-grey">Unique Invoices</div>
+            <div class="text-h6 font-weight-bold">{{ fmt(clientKpis.activeContacts) }}</div>
+            <div class="text-caption text-grey">Active Clients (CRM)</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
             <div class="text-h6 font-weight-bold">{{ fmt(clientKpis.recentVisitors) }}</div>
-            <div class="text-caption text-grey">Recent Visitors (90d)</div>
+            <div class="text-caption text-grey">Visited Last 90 Days</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
             <div class="text-h6 font-weight-bold text-error">{{ fmt(clientKpis.lapsedClients) }}</div>
-            <div class="text-caption text-grey">Lapsed Clients (&gt;1yr)</div>
+            <div class="text-caption text-grey">Lapsed (&gt;1yr no visit)</div>
+          </v-card>
+        </v-col>
+        <v-col cols="6" sm="3">
+          <v-card class="pa-3" elevation="1">
+            <div class="text-h6 font-weight-bold">{{ clientKpis.retentionRate12Mo }}%</div>
+            <div class="text-caption text-grey">12-Month Retention</div>
           </v-card>
         </v-col>
       </v-row>
@@ -225,7 +225,7 @@
             <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
               <v-icon start size="18" class="mr-1">mdi-chart-timeline-variant</v-icon>
               Monthly Trend
-              <v-chip class="ml-2" size="x-small" color="green" variant="outlined">Revenue</v-chip>
+              <v-chip class="ml-2" size="x-small" color="green" variant="outlined">Revenue (Sep 2025+)</v-chip>
               <v-chip class="ml-1" size="x-small" color="deep-purple" variant="outlined">Appointments</v-chip>
             </v-card-title>
             <v-card-text>
@@ -236,54 +236,7 @@
             </v-card-text>
           </v-card>
 
-          <!-- Client Retention + Referral Tiers -->
-          <v-row class="mb-5">
-            <v-col cols="12" md="6">
-              <v-card elevation="2">
-                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
-                  <v-icon start size="18" class="mr-1">mdi-clock-outline</v-icon>
-                  Client Retention Bands
-                </v-card-title>
-                <v-card-text>
-                  <ClientOnly>
-                    <apexchart
-                      v-if="retentionSeries.length"
-                      type="bar" height="280"
-                      :options="retentionOptions"
-                      :series="[{ name: 'Clients', data: retentionSeries }]"
-                      :key="'ret'+chartKey"
-                    />
-                  </ClientOnly>
-                  <div v-if="!retentionSeries.length" class="text-center text-grey pa-8">No client data</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-card elevation="2">
-                <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
-                  <v-icon start size="18" class="mr-1">mdi-handshake-outline</v-icon>
-                  Referral Partner Tiers
-                </v-card-title>
-                <v-card-text>
-                  <div v-if="referralKpis.totalPartners > 0">
-                    <v-row dense>
-                      <v-col v-for="(count, tier) in referralKpis.tierBreakdown" :key="tier" cols="6" sm="4">
-                        <v-card variant="outlined" class="pa-3 text-center">
-                          <div class="text-h5 font-weight-bold">{{ count }}</div>
-                          <div class="text-caption text-grey">{{ tier }}</div>
-                        </v-card>
-                      </v-col>
-                    </v-row>
-                    <div class="mt-4 text-center">
-                      <div class="text-h4 font-weight-bold text-teal">${{ fmtCur(referralKpis.totalReferralRevenue) }}</div>
-                      <div class="text-caption text-grey">Total Referral Revenue</div>
-                    </div>
-                  </div>
-                  <div v-else class="text-center text-grey pa-8">No referral data yet</div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
+
 
           <!-- Service Category + Day of Week -->
           <v-row class="mb-5">
@@ -539,10 +492,7 @@
                   <v-list-item-title class="font-weight-medium">{{ slowestDay }} is the slowest weekday</v-list-item-title>
                   <v-list-item-subtitle>Consider promotions or shifting availability to boost this day.</v-list-item-subtitle>
                 </v-list-item>
-                <v-list-item v-if="referralKpis.totalPartners > 0 && referralKpis.activePartners < referralKpis.totalPartners * 0.5" prepend-icon="mdi-handshake-outline" class="text-warning">
-                  <v-list-item-title class="font-weight-medium">Only {{ referralKpis.activePartners }} of {{ referralKpis.totalPartners }} referral partners are active</v-list-item-title>
-                  <v-list-item-subtitle>Re-engage dormant referral partners to grow the pipeline.</v-list-item-subtitle>
-                </v-list-item>
+
                 <v-list-item v-if="!overviewData && !perfData" prepend-icon="mdi-database-off" class="text-grey">
                   <v-list-item-title class="font-weight-medium">No data loaded</v-list-item-title>
                   <v-list-item-subtitle>Upload data or sync from ezyVet to see recommendations.</v-list-item-subtitle>
@@ -850,12 +800,9 @@ const kpis = computed(() => {
   }
 })
 
-// Client and referral KPIs come only from the overview API (CRM data)
+// Client KPIs come only from the overview API (CRM data)
 const clientKpis = computed(() => overviewData.value?.kpis?.clients || {
   activeContacts: 0, recentVisitors: 0, lapsedClients: 0, retentionRate12Mo: 0,
-})
-const referralKpis = computed(() => overviewData.value?.kpis?.referrals || {
-  totalPartners: 0, activePartners: 0, totalReferrals: 0, totalReferralRevenue: 0, tierBreakdown: {},
 })
 
 const rpaTable = computed(() => perfData.value?.revenuePerAppt || {})
@@ -979,19 +926,6 @@ const monthlyTrendOptions = computed(() => {
     plotOptions: { bar: { borderRadius: 3, columnWidth: isComp ? '80%' : '50%' } },
   }
 })
-
-// ── Client Retention (Overview, from overview API) ──
-const retentionSeries = computed(() =>
-  (overviewData.value?.charts?.clientRetention || []).map((d: any) => d.count)
-)
-const retentionOptions = computed(() => ({
-  chart: { type: 'bar', toolbar: { show: false }, fontFamily: 'inherit' },
-  colors: ['#F59E0B'],
-  xaxis: { categories: (overviewData.value?.charts?.clientRetention || []).map((d: any) => d.label) },
-  plotOptions: { bar: { borderRadius: 4 } },
-  dataLabels: { enabled: true, style: { fontSize: '10px' } },
-  tooltip: { ...CHART_THEME },
-}))
 
 // ── Service Category (Overview, from performance API) ──
 const svcCatSeries = computed(() => {
