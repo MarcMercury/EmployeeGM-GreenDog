@@ -47,5 +47,12 @@
       "path": "/api/cron/endpoint-health-check",
       "schedule": "0 2 * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/marketing/performance-analysis",
+      "destination": "/marketing/practice-analytics",
+      "permanent": true
+    }
   ]
 }

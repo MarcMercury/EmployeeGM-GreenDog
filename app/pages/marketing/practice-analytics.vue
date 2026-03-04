@@ -644,7 +644,11 @@
             prepend-icon="mdi-file-table"
             variant="outlined" density="compact" show-size
           />
-          <p class="text-caption text-grey mt-1">Upload EzyVet Invoice Lines export (CSV/XLS/XLSX). Duplicates are automatically skipped.</p>
+          <p class="text-caption text-grey mt-1">Upload EzyVet Invoice Lines export (CSV/XLS/XLSX). File is parsed locally then uploaded in batches. Duplicates are automatically skipped.</p>
+          <div v-if="uploadProgress.total > 0" class="mt-3">
+            <v-progress-linear :model-value="uploadProgress.pct" color="primary" height="8" rounded class="mb-1" />
+            <div class="text-caption text-grey">{{ uploadProgress.status }}</div>
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -1286,7 +1290,20 @@ async function syncAll() {
 
 // ── Upload Functions ─────────────────────────────────────────────────────
 
-async function fileToBase64(file: File): Promise<string> {
+const uploadProgress = reactive({ total: 0, sent: 0, pct: 0, status: '' })
+
+/** Read file as ArrayBuffer for client-side XLSX parsing */
+function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as ArrayBuffer)
+    reader.onerror = reject
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+/** Read file as base64 (fallback for small files) */
+function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
@@ -1299,30 +1316,116 @@ async function fileToBase64(file: File): Promise<string> {
   })
 }
 
+/** Parse XLSX/CSV file client-side using SheetJS */
+async function parseFileClientSide(file: File): Promise<Record<string, any>[]> {
+  const XLSX = await import('xlsx')
+  const buffer = await readFileAsArrayBuffer(file)
+  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  if (!sheet) throw new Error('No sheets found in file')
+
+  // Get raw arrays to detect header row
+  const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+  const headerKeywords = ['invoice #', 'invoice', 'invoice line reference', 'invoice number', 'product name', 'appointment']
+  let headerIdx = 0
+  for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
+    const row = rawRows[i].map((c: any) => String(c).trim().toLowerCase())
+    const matchCount = headerKeywords.filter(kw => row.some((cell: string) => cell === kw || cell.includes(kw))).length
+    if (matchCount >= 2) { headerIdx = i; break }
+  }
+
+  const headers = rawRows[headerIdx].map((c: any) => String(c).trim())
+  const rows: Record<string, any>[] = []
+  for (let i = headerIdx + 1; i < rawRows.length; i++) {
+    const row = rawRows[i]
+    if (!row || row.every((c: any) => !String(c).trim())) continue
+    const obj: Record<string, any> = {}
+    headers.forEach((h: string, idx: number) => { if (h) obj[h] = row[idx] ?? '' })
+    rows.push(obj)
+  }
+  return rows
+}
+
+/** Upload rows in batches to avoid Vercel's 4.5MB body limit */
+async function uploadInBatches(url: string, allRows: Record<string, any>[], fileName: string, extra: Record<string, any> = {}): Promise<{ inserted: number; duplicatesSkipped: number }> {
+  const BATCH_SIZE = 2000
+  let totalInserted = 0
+  let totalSkipped = 0
+
+  uploadProgress.total = allRows.length
+  uploadProgress.sent = 0
+  uploadProgress.pct = 0
+
+  for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+    const batch = allRows.slice(i, i + BATCH_SIZE)
+    uploadProgress.status = `Uploading rows ${i + 1}–${Math.min(i + BATCH_SIZE, allRows.length)} of ${allRows.length}...`
+
+    const result = await $fetch(url, {
+      method: 'POST',
+      body: { invoiceLines: batch, fileName, ...extra },
+    }) as any
+
+    totalInserted += result.inserted || 0
+    totalSkipped += result.duplicatesSkipped || 0
+    uploadProgress.sent = Math.min(i + BATCH_SIZE, allRows.length)
+    uploadProgress.pct = Math.round((uploadProgress.sent / allRows.length) * 100)
+  }
+
+  uploadProgress.status = `Done — ${totalInserted} inserted, ${totalSkipped} duplicates skipped`
+  return { inserted: totalInserted, duplicatesSkipped: totalSkipped }
+}
+
 async function uploadInvoice() {
   if (!invFile.value) return
   uploadingInvoice.value = true
+  uploadProgress.total = 0
   try {
-    const fileData = await fileToBase64(invFile.value)
-    const result = await $fetch('/api/invoices/upload', { method: 'POST', body: { fileData, fileName: invFile.value.name } }) as any
-    notify(`Uploaded ${result.inserted || 0} invoice lines. ${result.duplicatesSkipped || 0} duplicates skipped.`)
+    // Parse file client-side to avoid Vercel 4.5MB body limit
+    uploadProgress.status = 'Parsing file...'
+    const rows = await parseFileClientSide(invFile.value)
+
+    if (rows.length === 0) {
+      notify('No data rows found in file', 'warning')
+      return
+    }
+
+    const result = await uploadInBatches('/api/invoices/upload', rows, invFile.value.name)
+    notify(`Uploaded ${result.inserted} invoice lines. ${result.duplicatesSkipped} duplicates skipped.`)
     showInvoiceUpload.value = false; invFile.value = null
     await loadAll()
-  } catch (err: any) { notify('Upload failed: ' + (err.data?.message || err.message), 'error') }
-  finally { uploadingInvoice.value = false }
+  } catch (err: any) {
+    notify('Upload failed: ' + (err.data?.message || err.message), 'error')
+  } finally {
+    uploadingInvoice.value = false
+    setTimeout(() => { uploadProgress.total = 0 }, 3000)
+  }
 }
 
 async function uploadStatus() {
   if (!statusFile.value) return
   uploadingStatus.value = true
+  uploadProgress.total = 0
   try {
-    const fileData = await fileToBase64(statusFile.value)
-    const result = await $fetch('/api/appointments/upload-status', { method: 'POST', body: { fileData, fileName: statusFile.value.name, duplicateAction: statusDupAction.value } }) as any
-    notify(`Uploaded ${result.inserted || 0} status records.`)
+    uploadProgress.status = 'Parsing file...'
+    const rows = await parseFileClientSide(statusFile.value)
+    if (rows.length === 0) { notify('No data rows found in file', 'warning'); return }
+
+    // Status upload uses fileData — send in batches as parsed rows if large, else base64
+    if (statusFile.value.size > 3 * 1024 * 1024) {
+      const result = await uploadInBatches('/api/appointments/upload-status', rows, statusFile.value.name, { duplicateAction: statusDupAction.value })
+      notify(`Uploaded ${result.inserted} status records. ${result.duplicatesSkipped} skipped.`)
+    } else {
+      const fileData = await fileToBase64(statusFile.value)
+      const result = await $fetch('/api/appointments/upload-status', { method: 'POST', body: { fileData, fileName: statusFile.value.name, duplicateAction: statusDupAction.value } }) as any
+      notify(`Uploaded ${result.inserted || 0} status records.`)
+    }
     showStatusUpload.value = false; statusFile.value = null
     await loadAll()
   } catch (err: any) { notify('Upload failed: ' + (err.data?.message || err.message), 'error') }
-  finally { uploadingStatus.value = false }
+  finally {
+    uploadingStatus.value = false
+    setTimeout(() => { uploadProgress.total = 0 }, 3000)
+  }
 }
 
 function onTrackingFilesSelected(files: File | File[] | null) {
@@ -1355,8 +1458,19 @@ async function runTrackingBatch() {
     trackingCurrentIdx.value = idx
     entry.status = 'uploading'
     try {
-      const fileData = await fileToBase64(entry.file)
-      const res = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body: { fileData, fileName: entry.name, duplicateAction: trackingDupAction.value } }) as any
+      // For large files, convert to CSV text client-side to avoid base64 inflation hitting Vercel 4.5MB limit
+      let body: Record<string, any>
+      if (entry.file.size > 3 * 1024 * 1024) {
+        const XLSX = await import('xlsx')
+        const arrayBuf = await readFileAsArrayBuffer(entry.file)
+        const wb = XLSX.read(new Uint8Array(arrayBuf), { type: 'array' })
+        const csvText = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { blankrows: true })
+        body = { csvText, fileName: entry.name, duplicateAction: trackingDupAction.value }
+      } else {
+        const fileData = await fileToBase64(entry.file)
+        body = { fileData, fileName: entry.name, duplicateAction: trackingDupAction.value }
+      }
+      const res = await $fetch('/api/appointments/upload-tracking', { method: 'POST', body }) as any
       entry.status = 'done'
       entry.inserted = res.inserted || 0
       entry.skipped = res.skippedDuplicates || 0

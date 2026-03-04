@@ -173,6 +173,8 @@ export default defineNuxtConfig({
     }
   },
 
-  // Route rules - explicitly defined to prevent hydration errors
-  routeRules: {},
+  // Route rules
+  routeRules: {
+    '/marketing/performance-analysis': { redirect: '/marketing/practice-analytics' },
+  },
 })

@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
     .eq('auth_user_id', user.id)
     .single()
 
-  if (!profile || !['admin', 'super_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
+  if (!profile || !['admin', 'super_admin', 'sup_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
     throw createError({ statusCode: 403, message: 'Admin access required' })
   }
 
