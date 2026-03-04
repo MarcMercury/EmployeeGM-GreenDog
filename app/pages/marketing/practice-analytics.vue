@@ -109,8 +109,8 @@
               <div>
                 <div class="text-h5 font-weight-bold">{{ fmt(kpis.totalAppointments) }}</div>
                 <div class="text-caption text-grey">Appointments</div>
-                <div v-if="overviewData?.kpis?.appointments?.avgPerDay" class="text-caption text-grey">
-                  {{ overviewData.kpis.appointments.avgPerDay }}/day avg
+                <div v-if="avgApptsPerDay > 0" class="text-caption text-grey">
+                  {{ fmtDec(avgApptsPerDay) }}/day avg
                 </div>
               </div>
             </div>
@@ -146,30 +146,30 @@
         </v-col>
       </v-row>
 
-      <!-- Secondary KPIs -->
+      <!-- Secondary KPIs (all derived from date-filtered data) -->
       <v-row class="mb-5">
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ fmt(clientKpis.activeContacts) }}</div>
-            <div class="text-caption text-grey">Active Clients (CRM)</div>
+            <div class="text-h6 font-weight-bold">${{ fmtCur(avgRevenuePerDay) }}</div>
+            <div class="text-caption text-grey">Avg Revenue / Day</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ fmt(clientKpis.recentVisitors) }}</div>
-            <div class="text-caption text-grey">Visited Last 90 Days</div>
+            <div class="text-h6 font-weight-bold">{{ fmtDec(avgApptsPerDay) }}</div>
+            <div class="text-caption text-grey">Avg Appointments / Day</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold text-error">{{ fmt(clientKpis.lapsedClients) }}</div>
-            <div class="text-caption text-grey">Lapsed (&gt;1yr no visit)</div>
+            <div class="text-h6 font-weight-bold">{{ fmt(overviewData?.kpis?.revenue?.uniqueInvoices || 0) }}</div>
+            <div class="text-caption text-grey">Unique Invoices</div>
           </v-card>
         </v-col>
         <v-col cols="6" sm="3">
           <v-card class="pa-3" elevation="1">
-            <div class="text-h6 font-weight-bold">{{ clientKpis.retentionRate12Mo }}%</div>
-            <div class="text-caption text-grey">12-Month Retention</div>
+            <div class="text-h6 font-weight-bold">{{ daysInRange }}</div>
+            <div class="text-caption text-grey">Days in Range</div>
           </v-card>
         </v-col>
       </v-row>
@@ -480,10 +480,6 @@
             </v-card-title>
             <v-card-text>
               <v-list density="compact">
-                <v-list-item v-if="clientKpis.lapsedClients > 50" prepend-icon="mdi-account-alert" class="text-warning">
-                  <v-list-item-title class="font-weight-medium">{{ fmt(clientKpis.lapsedClients) }} lapsed clients (&gt;1 year)</v-list-item-title>
-                  <v-list-item-subtitle>Consider a re-engagement campaign targeting clients not seen in 12+ months.</v-list-item-subtitle>
-                </v-list-item>
                 <v-list-item v-if="weakestLocation" prepend-icon="mdi-map-marker-alert" class="text-info">
                   <v-list-item-title class="font-weight-medium">{{ weakestLocation.name }} has lowest rev/appt (${{ fmtCur(weakestLocation.perAppt) }})</v-list-item-title>
                   <v-list-item-subtitle>Review appointment mix and upsell opportunities at this location.</v-list-item-subtitle>
@@ -751,6 +747,7 @@ const snackbar = reactive({ show: false, message: '', color: 'success' })
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function fmt(n: number) { return (n || 0).toLocaleString() }
+function fmtDec(n: number) { return (n || 0).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }
 function fmtCur(n: number | string | null) {
   if (n === null || n === undefined) return '0'
   const v = typeof n === 'string' ? parseFloat(n) : n
@@ -800,9 +797,19 @@ const kpis = computed(() => {
   }
 })
 
-// Client KPIs come only from the overview API (CRM data)
-const clientKpis = computed(() => overviewData.value?.kpis?.clients || {
-  activeContacts: 0, recentVisitors: 0, lapsedClients: 0, retentionRate12Mo: 0,
+// Date-responsive secondary KPIs (computed from perfData, always change with date range)
+const daysInRange = computed(() => {
+  const start = new Date(dateRange.start + 'T00:00:00')
+  const end = new Date(dateRange.end + 'T00:00:00')
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1)
+})
+const avgApptsPerDay = computed(() => {
+  const total = kpis.value.totalAppointments || 0
+  return total > 0 ? Math.round(total / daysInRange.value * 10) / 10 : 0
+})
+const avgRevenuePerDay = computed(() => {
+  const total = kpis.value.totalRevenue || 0
+  return total > 0 ? Math.round(total / daysInRange.value) : 0
 })
 
 const rpaTable = computed(() => perfData.value?.revenuePerAppt || {})
@@ -1122,6 +1129,9 @@ let _debounce: ReturnType<typeof setTimeout> | null = null
 async function loadAll() {
   loading.value = true
   error.value = null
+  // Clear old data so stale numbers don't persist if the new request fails
+  perfData.value = null
+  overviewData.value = null
   try {
     const params = new URLSearchParams()
     if (dateRange.start) params.set('startDate', dateRange.start)
