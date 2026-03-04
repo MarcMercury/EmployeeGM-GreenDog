@@ -45,16 +45,27 @@ export default defineEventHandler(async (event) => {
   const endDate = query.endDate as string | undefined
 
   try {
-    // Build base query with ALL filters pushed to the DB
-    function buildFilteredQuery(selectExpr: string = '*') {
+    // Build base query for contacts (division filter only — date filtering is on invoice_lines)
+    function buildContactQuery(selectExpr: string = '*') {
       let q = supabase.from('ezyvet_crm_contacts').select(selectExpr)
       if (division) q = q.eq('division', division)
-      if (startDate) q = q.gte('last_visit', startDate)
-      if (endDate) q = q.lte('last_visit', endDate)
       return q
     }
 
-    // Fetch filtered contacts with pagination
+    // Build base query for invoice_lines (division filter; date range applied at call site)
+    function buildInvoiceQuery(selectExpr: string = '*') {
+      let q = supabase.from('invoice_lines').select(selectExpr)
+        .not('invoice_type', 'eq', 'Header')
+      if (division) q = q.eq('division', division)
+      return q
+    }
+
+    // Determine YTD date range — if no custom dates provided, default to current year
+    const now = new Date()
+    const ytdStart = startDate || `${now.getFullYear()}-01-01`
+    const ytdEnd = endDate || now.toISOString().split('T')[0]
+
+    // Fetch filtered contacts with pagination (no date filter — contacts aren't transactions)
     let filteredContacts: any[] = []
     let page = 0
     const pageSize = 1000
@@ -64,7 +75,7 @@ export default defineEventHandler(async (event) => {
       const from = page * pageSize
       const to = from + pageSize - 1
 
-      const { data: pageData, error } = await buildFilteredQuery()
+      const { data: pageData, error } = await buildContactQuery()
         .range(from, to)
 
       if (error) {
@@ -83,9 +94,53 @@ export default defineEventHandler(async (event) => {
       }
     }
 
-    logger.info('Fetched filtered contacts', 'ezyvet-analytics', { count: filteredContacts.length })
+    // Fetch invoice lines for the date range (for accurate revenue, division, department)
+    let invoiceLines: any[] = []
+    let invPage = 0
+    let invHasMore = true
 
-    const now = new Date()
+    while (invHasMore) {
+      const from = invPage * pageSize
+      const to = from + pageSize - 1
+
+      const { data: invPageData, error: invError } = await buildInvoiceQuery(
+        'invoice_date, total_earned, division, department, client_code'
+      )
+        .gte('invoice_date', ytdStart)
+        .lte('invoice_date', ytdEnd)
+        .range(from, to)
+
+      if (invError) {
+        throw createError({
+          statusCode: 500,
+          message: `Invoice query error: ${invError.message}`
+        })
+      }
+
+      if (invPageData && invPageData.length > 0) {
+        invoiceLines = invoiceLines.concat(invPageData)
+        invHasMore = invPageData.length === pageSize
+        invPage++
+      } else {
+        invHasMore = false
+      }
+    }
+
+    logger.info('Fetched filtered contacts and invoice lines', 'ezyvet-analytics', {
+      contacts: filteredContacts.length,
+      invoiceLines: invoiceLines.length,
+      dateRange: `${ytdStart} to ${ytdEnd}`
+    })
+
+    // Build a map of client_code → total invoice revenue for the period
+    const clientInvoiceRevenue = new Map<string, number>()
+    for (const line of invoiceLines) {
+      const code = line.client_code
+      if (!code) continue
+      const earned = parseFloat(line.total_earned) || 0
+      clientInvoiceRevenue.set(code, (clientInvoiceRevenue.get(code) || 0) + earned)
+    }
+
     // Anchor recency boundaries to end-of-last-complete-month (consistent with Sauron)
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
     const threeMonthsAgo = new Date(endOfLastMonth)
@@ -122,17 +177,17 @@ export default defineEventHandler(async (event) => {
       return new Date(c.last_visit) >= oneYearAgo
     })
 
-    // For ARPU calculation, only include contacts with revenue >= $25
-    const qualifyingForArpu = filteredContacts.filter(c => {
-      const rev = parseFloat(c.revenue_ytd) || 0
-      return rev >= 25
-    })
+    // ========================================
+    // KPI METRICS — Revenue from invoice_lines (matches Invoice Analysis)
+    // ========================================
+    // Use actual invoice revenue for the period instead of the contacts snapshot
+    const totalRevenue = invoiceLines.reduce((sum, line) => sum + (parseFloat(line.total_earned) || 0), 0)
 
-    // ========================================
-    // KPI METRICS
-    // ========================================
-    const totalRevenue = filteredContacts.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
-    const qualifyingRevenue = qualifyingForArpu.reduce((sum, c) => sum + (parseFloat(c.revenue_ytd) || 0), 0)
+    // Build per-contact revenue from invoices for ARPU and segmentation
+    // Only include contacts with invoice revenue >= $25
+    const qualifyingForArpu = Array.from(clientInvoiceRevenue.entries())
+      .filter(([, rev]) => rev >= 25)
+    const qualifyingRevenue = qualifyingForArpu.reduce((sum, [, rev]) => sum + rev, 0)
     const arpu = qualifyingForArpu.length > 0 ? qualifyingRevenue / qualifyingForArpu.length : 0
 
     const kpis = {
@@ -146,7 +201,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // ========================================
-    // REVENUE DISTRIBUTION (Histogram) - Starting at $25+
+    // REVENUE DISTRIBUTION (Histogram) - Starting at $25+ — from invoice revenue
     // ========================================
     const revenueBuckets = [
       { label: '$25-$100', min: 25, max: 100 },
@@ -159,17 +214,18 @@ export default defineEventHandler(async (event) => {
       { label: '$10K+', min: 10000, max: Infinity }
     ]
 
-    const revenueQualifiedContacts = filteredContacts.filter(c => (parseFloat(c.revenue_ytd) || 0) >= 25)
+    // Build per-client revenue list from invoice lines
+    const clientRevenueList = Array.from(clientInvoiceRevenue.entries())
+      .filter(([, rev]) => rev >= 25)
 
     const revenueDistribution = revenueBuckets.map(bucket => {
-      const count = revenueQualifiedContacts.filter(c => {
-        const rev = parseFloat(c.revenue_ytd) || 0
+      const count = clientRevenueList.filter(([, rev]) => {
         return rev >= bucket.min && rev < bucket.max
       }).length
       return {
         label: bucket.label,
         count,
-        percentage: revenueQualifiedContacts.length > 0 ? Math.round((count / revenueQualifiedContacts.length) * 100) : 0
+        percentage: clientRevenueList.length > 0 ? Math.round((count / clientRevenueList.length) * 100) : 0
       }
     })
 
@@ -195,55 +251,67 @@ export default defineEventHandler(async (event) => {
     ]
 
     // ========================================
-    // DIVISION BREAKDOWN
+    // DIVISION BREAKDOWN — from invoice_lines (actual transaction data)
     // ========================================
-    const divisionMap = new Map<string, { count: number; revenue: number; active: number }>()
+    const divisionMap = new Map<string, { revenue: number; clients: Set<string>; lineCount: number }>()
     
-    for (const contact of filteredContacts) {
-      const div = contact.division || 'Unknown'
-      const existing = divisionMap.get(div) || { count: 0, revenue: 0, active: 0 }
-      existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
-        existing.active++
-      }
+    for (const line of invoiceLines) {
+      const div = line.division || 'Unknown'
+      const existing = divisionMap.get(div) || { revenue: 0, clients: new Set<string>(), lineCount: 0 }
+      existing.revenue += parseFloat(line.total_earned) || 0
+      if (line.client_code) existing.clients.add(line.client_code)
+      existing.lineCount++
       divisionMap.set(div, existing)
     }
 
+    // Cross-reference with contacts for active status
+    const contactActiveMap = new Map<string, boolean>()
+    for (const c of filteredContacts) {
+      if (c.ezyvet_contact_code) {
+        contactActiveMap.set(c.ezyvet_contact_code, !!(c.last_visit && new Date(c.last_visit) >= oneYearAgo))
+      }
+    }
+
     const divisionBreakdown = Array.from(divisionMap.entries())
-      .map(([division, data]) => ({
-        division,
-        totalClients: data.count,
-        activeClients: data.active,
-        totalRevenue: data.revenue,
-        avgRevenue: data.count > 0 ? data.revenue / data.count : 0
-      }))
+      .map(([div, data]) => {
+        const clientsArr = Array.from(data.clients)
+        const activeCount = clientsArr.filter(code => contactActiveMap.get(code)).length
+        return {
+          division: div,
+          totalClients: data.clients.size,
+          activeClients: activeCount,
+          totalRevenue: data.revenue,
+          avgRevenue: data.clients.size > 0 ? data.revenue / data.clients.size : 0
+        }
+      })
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
 
     // ========================================
-    // DEPARTMENT BREAKDOWN
+    // DEPARTMENT BREAKDOWN — from invoice_lines (each line has its own department)
     // ========================================
-    const departmentMap = new Map<string, { count: number; revenue: number; active: number }>()
+    const departmentMap = new Map<string, { revenue: number; clients: Set<string>; lineCount: number }>()
     
-    for (const contact of filteredContacts) {
-      const dept = contact.department || 'Unknown'
-      const existing = departmentMap.get(dept) || { count: 0, revenue: 0, active: 0 }
-      existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
-      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
-        existing.active++
-      }
+    for (const line of invoiceLines) {
+      const dept = line.department || 'Unknown'
+      const existing = departmentMap.get(dept) || { revenue: 0, clients: new Set<string>(), lineCount: 0 }
+      existing.revenue += parseFloat(line.total_earned) || 0
+      if (line.client_code) existing.clients.add(line.client_code)
+      existing.lineCount++
       departmentMap.set(dept, existing)
     }
 
     const departmentBreakdown = Array.from(departmentMap.entries())
-      .map(([department, data]) => ({
-        department,
-        totalClients: data.count,
-        activeClients: data.active,
-        totalRevenue: data.revenue,
-        avgRevenue: data.count > 0 ? data.revenue / data.count : 0
-      }))
+      .map(([dept, data]) => {
+        const clientsArr = Array.from(data.clients)
+        const activeCount = clientsArr.filter(code => contactActiveMap.get(code)).length
+        return {
+          department: dept,
+          totalClients: data.clients.size,
+          activeClients: activeCount,
+          totalRevenue: data.revenue,
+          avgRevenue: data.clients.size > 0 ? data.revenue / data.clients.size : 0
+        }
+      })
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
 
     // ========================================
@@ -327,7 +395,8 @@ export default defineEventHandler(async (event) => {
       const neighborhood = zipToNeighborhood(zip)
       const existing = neighborhoodMap.get(neighborhood) || { count: 0, revenue: 0, active: 0, zips: new Set<string>() }
       existing.count++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
+      // Use invoice-based revenue for this client
+      existing.revenue += clientInvoiceRevenue.get(contact.ezyvet_contact_code) || 0
       existing.zips.add(zip.slice(0, 5))
       if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
         existing.active++
@@ -360,7 +429,8 @@ export default defineEventHandler(async (event) => {
     }
 
     for (const contact of filteredContacts) {
-      const rev = parseFloat(contact.revenue_ytd) || 0
+      // Use invoice-based revenue for segmentation
+      const rev = clientInvoiceRevenue.get(contact.ezyvet_contact_code) || 0
       const isActive = contact.last_visit && new Date(contact.last_visit) >= oneYearAgo
 
       let seg: keyof typeof segments
@@ -386,7 +456,7 @@ export default defineEventHandler(async (event) => {
     // ========================================
     const churnRisk = filteredContacts
       .filter(c => {
-        const rev = parseFloat(c.revenue_ytd) || 0
+        const rev = clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0
         if (rev < 100) return false
         if (!c.last_visit) return true
         const daysSince = Math.floor((now.getTime() - new Date(c.last_visit).getTime()) / (1000 * 60 * 60 * 24))
@@ -400,7 +470,7 @@ export default defineEventHandler(async (event) => {
           name: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
           email: c.email,
           phone: c.phone_mobile,
-          revenue: parseFloat(c.revenue_ytd) || 0,
+          revenue: clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0,
           lastVisit: c.last_visit,
           daysSinceVisit: daysSince,
           division: c.division,
@@ -415,13 +485,13 @@ export default defineEventHandler(async (event) => {
     // TOP CLIENTS (by revenue)
     // ========================================
     const topClients = filteredContacts
-      .filter(c => (parseFloat(c.revenue_ytd) || 0) > 0)
-      .sort((a, b) => (parseFloat(b.revenue_ytd) || 0) - (parseFloat(a.revenue_ytd) || 0))
+      .filter(c => (clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0) > 0)
+      .sort((a, b) => (clientInvoiceRevenue.get(b.ezyvet_contact_code) || 0) - (clientInvoiceRevenue.get(a.ezyvet_contact_code) || 0))
       .slice(0, 25)
       .map(c => ({
         name: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
         email: c.email,
-        revenue: parseFloat(c.revenue_ytd) || 0,
+        revenue: clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0,
         lastVisit: c.last_visit,
         division: c.division,
         city: c.address_city,
@@ -441,7 +511,7 @@ export default defineEventHandler(async (event) => {
       missingLastVisit: filteredContacts.filter(c => !c.last_visit).length,
       missingZip: filteredContacts.filter(c => !c.address_zip).length,
       missingDivision: filteredContacts.filter(c => !c.division).length,
-      zeroRevenue: filteredContacts.filter(c => (parseFloat(c.revenue_ytd) || 0) === 0).length,
+      zeroRevenue: filteredContacts.filter(c => (clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0) === 0).length,
       overallScore: 0
     }
 
@@ -628,8 +698,33 @@ export default defineEventHandler(async (event) => {
     const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
     suggestedActions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
-    // Divisions list
-    const divisions = Array.from(divisionMap.keys()).filter(d => d !== 'Unknown').sort()
+    // Divisions list — collect from ALL contacts (unfiltered) and invoice_lines
+    // Fetch a broad sample to extract distinct divisions without pulling all rows
+    const allDivisions = new Set<string>()
+    // Get from contacts — paginate to collect all division values
+    let divPage = 0
+    let divHasMore = true
+    while (divHasMore) {
+      const { data: divRows } = await supabase
+        .from('ezyvet_crm_contacts')
+        .select('division')
+        .not('division', 'is', null)
+        .range(divPage * 1000, divPage * 1000 + 999)
+      if (divRows && divRows.length > 0) {
+        for (const r of divRows) {
+          if (r.division?.trim()) allDivisions.add(r.division.trim())
+        }
+        divHasMore = divRows.length === 1000
+        divPage++
+      } else {
+        divHasMore = false
+      }
+    }
+    // Also add from invoice_lines divisions
+    for (const entry of divisionMap.keys()) {
+      if (entry && entry !== 'Unknown') allDivisions.add(entry)
+    }
+    const divisions = Array.from(allDivisions).filter(d => d !== 'Unknown').sort()
 
     // ========================================
     // LAST SYNC INFO

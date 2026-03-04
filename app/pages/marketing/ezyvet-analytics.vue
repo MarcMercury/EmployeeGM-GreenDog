@@ -536,7 +536,7 @@
           <v-card elevation="2" class="fill-height">
             <v-card-title>
               <v-icon class="mr-2">mdi-domain</v-icon>
-              Division Performance
+              Division Performance (by Location)
             </v-card-title>
             <v-card-text>
               <v-data-table
@@ -568,7 +568,7 @@
           <v-card elevation="2" class="fill-height">
             <v-card-title>
               <v-icon class="mr-2">mdi-office-building</v-icon>
-              Department Performance
+              Department Performance (by Service)
             </v-card-title>
             <v-card-text>
               <v-data-table
