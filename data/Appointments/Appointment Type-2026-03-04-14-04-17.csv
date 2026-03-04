@@ -1,0 +1,43 @@
+Type,Count,"Average Time(Mins)","Total Time(Mins)"
+Imaging,19,26,615
+"Urgent Care (Returning) ",274,30,9150
+"IM - Consult - New ",95,58,5610
+"GDD (New)",457,18,8220
+"Venice - Green Dog Facility",7,23,210
+"Veterinary Exam New ",283,32,9630
+"OE Possible Same Day AP",92,16,1680
+"GDD (Returning)",1061,18,19245
+"IM - Consult - Recheck ",66,34,2385
+"Post Surgical Recheck ",14,15,210
+"Dog Ppl VE- Returning ",5,15,75
+"NEAT (Nails.Ears.Anal Glands) New",7,15,105
+"zVET SERVICES ONLY",1603,61,104424
+"Telemedicine Consult",9,24,240
+"EX - Sick/Referral New",1,120,240
+"Drop Off Urgent Care ",78,30,2550
+"EX - Same Day Urgent Care Returning",3,30,90
+"Post AP Recheck",92,15,1455
+"Advanced Procedure ",337,16,5535
+"Oral Exam (Returning)",82,17,1410
+"Oral Exam (New)",211,16,3525
+Bloodwork,136,15,2265
+"Cardiology Saelinger",49,15,825
+"Available Slot ",78,29,2340
+"Urgent Care (New) ",63,30,2055
+"Surgery ",83,18,1575
+"IM - Procedure",23,29,765
+"EX- Veterinary Exam- NEW ",2,30,60
+"Cardiology D'Urso",1,15,15
+"Veterinary Exam Returning",805,31,27105
+"VetFM Client",60,26,1815
+"Dog Ppl -VE NEW ",22,16,375
+"Dog Ppl- Tech services (VX) ",9,15,135
+"IM - Tech Recheck ",22,18,510
+"Tech Services (VX,AG,NT)",1144,15,19395
+"EX- Veterinary Exam- RETURNING ",6,28,165
+"MP - Meds Done",1,15,15
+Endodontics,1,15,15
+"NEAT (Nails.Ears.Anal Glands) Returning",13,15,195
+"WAITLIST - Not Confirmed",2,495,990
+TOTALS,7316,32,237219
+

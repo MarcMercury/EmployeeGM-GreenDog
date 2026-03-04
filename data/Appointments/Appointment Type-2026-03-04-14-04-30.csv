@@ -1,0 +1,29 @@
+Type,Count,"Average Time(Mins)","Total Time(Mins)"
+"Post AP Recheck",18,16,285
+"Veterinary Exam New ",34,32,1095
+"Urgent Care (New) ",11,26,315
+"Veterinary Exam Returning",241,30,7560
+"NEAT (Nails.Ears.Anal Glands) Returning",13,17,225
+"Sherman Oaks - Main Facility",4,19,75
+"Urgent Care (Returning) ",46,28,1290
+Bloodwork,40,15,615
+"Tech Services (VX,AG,NT)",262,16,4350
+"Oral Exam (Returning)",31,17,555
+"GDD (Returning)",772,19,14610
+"OE Possible Same Day AP",12,15,180
+"zVET SERVICES ONLY",923,181,176644
+"VetFM Client",18,22,435
+"Drop Off Urgent Care ",8,24,195
+"GDD (New)",49,20,1005
+"Oral Exam (New)",11,15,165
+"Available Slot ",118,29,3540
+"Advanced Procedure ",78,15,1230
+"NEAT (Nails.Ears.Anal Glands) New",1,15,15
+"MP - Meds Done",3,20,60
+"MP - Pickup ",4,30,120
+"MP - Shipment",3,25,75
+"EX- Veterinary Exam- NEW ",1,15,15
+"IM - Consult - Recheck ",2,30,60
+"WAITLIST - Not Confirmed",2,375,750
+TOTALS,2705,80,215464
+

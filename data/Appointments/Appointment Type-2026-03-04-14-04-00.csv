@@ -1,0 +1,45 @@
+Type,Count,"Average Time(Mins)","Total Time(Mins)"
+Imaging,33,28,945
+"EX - Sick/Referral New",38,63,2400
+"EX - Sick/Referral Returning ",11,60,660
+"Urgent Care (New) ",64,34,2235
+"EX - Recheck ",54,33,1845
+"OE Possible Same Day AP",63,15,1005
+"EX - Same Day Urgent Care New",65,47,3210
+"GDD (New)",600,19,11193
+"NEAT (Nails.Ears.Anal Glands) Returning",16,17,270
+"EX - Tech Grooming ",6,15,90
+"Post Surgical Recheck ",10,21,210
+"Cardiology D'Urso",61,15,960
+"GDD (Returning)",628,19,12212
+"IM - Procedure",1,30,30
+"IM - Consult - Recheck ",8,29,285
+"Van Nuys - Main Facility",2,23,45
+"NEAT (Nails.Ears.Anal Glands) New",7,15,105
+"Veterinary Exam Returning",390,31,12765
+"zVET SERVICES ONLY",1557,54,89038
+"EX - Wellness Exam (New)",27,32,885
+"Ultrasound w/Doc",17,19,340
+"EX- Veterinary Exam- RETURNING ",17,50,945
+"Drop Off Urgent Care ",51,27,1485
+"Veterinary Exam New ",233,33,7985
+"Tech Services (VX,AG,NT)",494,15,7935
+"Urgent Care (Returning) ",136,30,4305
+Bloodwork,106,15,1680
+"Oral Exam (Returning)",65,17,1185
+"EX- Veterinary Exam- NEW ",89,58,5190
+"Oral Exam (New)",313,16,4935
+"Available Slot ",192,30,5850
+"EX - Tech",23,55,1270
+"EX- Surgery ",7,150,1050
+"Post AP Recheck",152,15,2403
+"IM - Consult - New ",20,56,1230
+"VetFM Client",86,25,2280
+Endodontics,26,15,405
+"Advanced Procedure ",493,15,7848
+"EX - Same Day Urgent Care Returning",4,41,165
+"Surgery ",58,24,1410
+"Telemedicine Consult",2,15,30
+"WAITLIST - Not Confirmed",3,285,855
+TOTALS,6228,32,201169
+
