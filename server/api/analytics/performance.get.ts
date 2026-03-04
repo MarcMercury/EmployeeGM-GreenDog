@@ -196,10 +196,14 @@ export default defineEventHandler(async (event) => {
     .sort((a, b) => b.total - a.total)
 
   // ── Day of Week ──
+  // Only use appointment_status source for day-of-week distribution because
+  // weekly_tracking rows are summary data that lack real per-appointment dates
+  // (they were imported with a single default date, skewing everything to one day).
+  const datedAppts = booked.filter(a => a.source === 'appointment_status')
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const dowMap: Record<number, { total: number; byLocation: Record<string, number> }> = {}
   for (let d = 1; d <= 6; d++) dowMap[d] = { total: 0, byLocation: {} }
-  for (const a of booked) {
+  for (const a of datedAppts) {
     if (a.dayOfWeek === 0) continue
     dowMap[a.dayOfWeek].total += a.count
     dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + a.count
@@ -209,8 +213,9 @@ export default defineEventHandler(async (event) => {
     .sort((a, b) => a.index - b.index)
 
   // ── Weekly Trend ──
+  // Use only appointment_status for weekly trends (weekly_tracking has no real dates)
   const weekMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
-  for (const a of booked) {
+  for (const a of datedAppts) {
     if (!weekMap[a.weekStart]) weekMap[a.weekStart] = { total: 0, byLocation: {} }
     weekMap[a.weekStart].total += a.count
     weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + a.count
@@ -220,8 +225,9 @@ export default defineEventHandler(async (event) => {
     .sort((a, b) => a.week.localeCompare(b.week))
 
   // ── Monthly Appointment Trend ──
+  // Use only appointment_status for monthly trends (weekly_tracking has no real dates)
   const monthApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
-  for (const a of booked) {
+  for (const a of datedAppts) {
     if (!monthApptMap[a.month]) monthApptMap[a.month] = { total: 0, byLocation: {} }
     monthApptMap[a.month].total += a.count
     monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + a.count
