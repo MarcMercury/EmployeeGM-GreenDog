@@ -259,59 +259,95 @@ export default defineEventHandler(async (event) => {
 
   // ── 4. AGGREGATE INVOICE REVENUE (directly from invoice_lines) ────────
 
-  // Normalize invoice line locations (division → clinic name)
+  // Collect all division values for debugging and auto-normalization
+  const divisionCounts: Record<string, number> = {}
+  for (const line of invoiceLines) {
+    const d = line.division || '(null)'
+    divisionCounts[d] = (divisionCounts[d] || 0) + 1
+  }
+
+  // Build a dynamic normalization map: any division containing a clinic name maps to it
+  function normLocDynamic(raw: string | null): string {
+    if (!raw) return 'All Locations'
+    // Try the static map first
+    const staticMatch = LOCATION_NORM[raw.toLowerCase().trim()]
+    if (staticMatch) return staticMatch
+    // Dynamic matching: check if division contains a clinic name
+    const lower = raw.toLowerCase()
+    if (lower.includes('venice')) return 'Venice'
+    if (lower.includes('van nuys')) return 'Van Nuys'
+    if (lower.includes('sherman oaks')) return 'Sherman Oaks'
+    return 'All Locations'
+  }
+
+  // Totals across ALL invoice lines (no location filter)
+  let grandTotalRevenue = 0
+  const allClientCodes = new Set<string>()
+  const allInvoiceNumbers = new Set<string>()
+
+  // Per-location breakdowns (only for recognized clinics)
   const revenueByLocation: Record<string, number> = {}
   const clientsByLocation: Record<string, Set<string>> = {}
   const invoicesByLocation: Record<string, Set<string>> = {}
   const monthRevMap: Record<string, Record<string, number>> = {}
+  const monthRevTotalMap: Record<string, number> = {}
   const pgMap: Record<string, { revenue: number; byLocation: Record<string, number> }> = {}
   const staffMap: Record<string, { revenue: number; location: string; byLocation: Record<string, number> }> = {}
-  const allClientCodes = new Set<string>()
 
   for (const line of invoiceLines) {
-    const loc = normLoc(line.division)
-    if (!CLINIC_LOCATIONS.includes(loc)) continue
-
+    const loc = normLocDynamic(line.division)
     const rev = lineRevenue(line)
     const month = line.invoice_date?.substring(0, 7) || ''
+    const isClinic = CLINIC_LOCATIONS.includes(loc)
 
-    // Revenue by location
-    revenueByLocation[loc] = (revenueByLocation[loc] || 0) + rev
+    // ALWAYS count toward grand totals (regardless of location)
+    grandTotalRevenue += rev
+    if (line.client_code) allClientCodes.add(line.client_code)
+    if (line.invoice_number) allInvoiceNumbers.add(line.invoice_number)
 
-    // Unique clients by location (distinct client_code)
-    if (line.client_code) {
-      if (!clientsByLocation[loc]) clientsByLocation[loc] = new Set()
-      clientsByLocation[loc].add(line.client_code)
-      allClientCodes.add(line.client_code)
-    }
-
-    // Unique invoices by location
-    if (line.invoice_number) {
-      if (!invoicesByLocation[loc]) invoicesByLocation[loc] = new Set()
-      invoicesByLocation[loc].add(line.invoice_number)
-    }
-
-    // Monthly revenue by location
+    // Monthly revenue total (all locations)
     if (month) {
-      if (!monthRevMap[month]) monthRevMap[month] = {}
-      monthRevMap[month][loc] = (monthRevMap[month][loc] || 0) + rev
+      monthRevTotalMap[month] = (monthRevTotalMap[month] || 0) + rev
     }
 
-    // Product group breakdown by location
+    // Per-location breakdowns (only for recognized clinic locations)
+    if (isClinic) {
+      revenueByLocation[loc] = (revenueByLocation[loc] || 0) + rev
+
+      if (line.client_code) {
+        if (!clientsByLocation[loc]) clientsByLocation[loc] = new Set()
+        clientsByLocation[loc].add(line.client_code)
+      }
+
+      if (line.invoice_number) {
+        if (!invoicesByLocation[loc]) invoicesByLocation[loc] = new Set()
+        invoicesByLocation[loc].add(line.invoice_number)
+      }
+
+      if (month) {
+        if (!monthRevMap[month]) monthRevMap[month] = {}
+        monthRevMap[month][loc] = (monthRevMap[month][loc] || 0) + rev
+      }
+    }
+
+    // Product group breakdown (all locations for total, clinics for byLocation)
     const pg = line.product_group || 'Unknown'
     if (!pgMap[pg]) pgMap[pg] = { revenue: 0, byLocation: {} }
     pgMap[pg].revenue += rev
-    pgMap[pg].byLocation[loc] = (pgMap[pg].byLocation[loc] || 0) + rev
+    if (isClinic) {
+      pgMap[pg].byLocation[loc] = (pgMap[pg].byLocation[loc] || 0) + rev
+    }
 
-    // Staff breakdown by location
+    // Staff breakdown (all locations for total, clinics for byLocation)
     if (line.staff_member) {
       if (!staffMap[line.staff_member]) staffMap[line.staff_member] = { revenue: 0, location: loc, byLocation: {} }
       staffMap[line.staff_member].revenue += rev
-      staffMap[line.staff_member].byLocation[loc] = (staffMap[line.staff_member].byLocation[loc] || 0) + rev
-      // Primary location = highest revenue
-      const curPrimary = staffMap[line.staff_member].location
-      if ((staffMap[line.staff_member].byLocation[loc] || 0) > (staffMap[line.staff_member].byLocation[curPrimary] || 0)) {
-        staffMap[line.staff_member].location = loc
+      if (isClinic) {
+        staffMap[line.staff_member].byLocation[loc] = (staffMap[line.staff_member].byLocation[loc] || 0) + rev
+        const curPrimary = staffMap[line.staff_member].location
+        if ((staffMap[line.staff_member].byLocation[loc] || 0) > (staffMap[line.staff_member].byLocation[curPrimary] || 0)) {
+          staffMap[line.staff_member].location = loc
+        }
       }
     }
   }
@@ -323,7 +359,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Combine monthly trends (appointments + revenue)
-  const allMonths = new Set([...Object.keys(monthApptMap), ...Object.keys(monthRevMap)])
+  const allMonths = new Set([...Object.keys(monthApptMap), ...Object.keys(monthRevMap), ...Object.keys(monthRevTotalMap)])
   const monthLabels: Record<string, string> = {}
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   for (const m of allMonths) {
@@ -336,13 +372,13 @@ export default defineEventHandler(async (event) => {
     label: monthLabels[month] || month,
     appointments: monthApptMap[month]?.total || 0,
     appointmentsByLocation: monthApptMap[month]?.byLocation || {},
-    revenue: Object.values(monthRevMap[month] || {}).reduce((s, v) => s + v, 0),
+    revenue: monthRevTotalMap[month] || 0,
     revenueByLocation: monthRevMap[month] || {},
   }))
 
   // ── KPIs (cross-referenced) ──
   const totalAppointments = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
-  const totalRevenue = Object.values(revenueByLocation).reduce((s, v) => s + v, 0)
+  const totalRevenue = grandTotalRevenue
   const uniqueClients = allClientCodes.size
 
   // ── Revenue per Appointment cross-reference ──
@@ -416,6 +452,7 @@ export default defineEventHandler(async (event) => {
       invoiceLinesLoaded: invoiceLines.length,
       appointmentRowsLoaded: allAppts.length,
       completedAppointments: totalAppointments,
+      divisionValues: divisionCounts,
       allStatusCounts: {
         completed: normalized.filter(a => a.status === 'completed' && a.source === 'appointment_status').length,
         in_progress: normalized.filter(a => a.status === 'in_progress' && a.source === 'appointment_status').length,
