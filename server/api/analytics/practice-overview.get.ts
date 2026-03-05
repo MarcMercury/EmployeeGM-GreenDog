@@ -11,37 +11,27 @@
  *   - referral_partners (referral pipeline)
  *
  * Also returns sync status to indicate data freshness.
+ *
+ * NOTE — "department" here means service category (Surgery, Dentistry, etc.).
+ * This is distinct from "division" (clinic location) used in performance.get.ts.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+// Shared utils auto-imported from server/utils/
 
 export default defineEventHandler(async (event) => {
-  // Auth
-  const supabaseUser = await serverSupabaseClient(event)
-  const { data: { user } } = await supabaseUser.auth.getUser()
-  if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  const { supabase } = await requireRole(event, MARKETING_ROLES)
+  const query = validateQuery(event, analyticsQuerySchema)
 
-  const supabase = await serverSupabaseServiceRole(event)
-
-  // Verify admin role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || !['admin', 'super_admin', 'sup_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Admin access required' })
-  }
-
-  const query = getQuery(event)
   // Default endDate = end of last complete month (consistent with Sauron, Invoice, and Appointment reports)
   const now = new Date()
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
   const defaultEnd = endOfLastMonth.toISOString().split('T')[0]
   const defaultStart = new Date(endOfLastMonth.getTime() - 89 * 86400000).toISOString().split('T')[0]
-  const startDate = (query.startDate as string) || defaultStart
-  const endDate = (query.endDate as string) || defaultEnd
+  const startDate = query.startDate || defaultStart
+  const endDate = query.endDate || defaultEnd
+
+  const cacheKey = `analytics:practice-overview:${startDate}:${endDate}`
+  return getCached(cacheKey, async () => {
 
   /** Safely run an async query section, returning a fallback on error */
   async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
@@ -107,6 +97,7 @@ export default defineEventHandler(async (event) => {
     console.error('Practice analytics error:', err)
     throw createError({ statusCode: 500, message: err.message || 'Failed to load analytics' })
   }
+  }, CACHE_TTL.MEDIUM)
 })
 
 // ─── Invoice Dashboard RPC (single call) ─────────────────────
@@ -388,7 +379,7 @@ async function getAppointmentsByType(supabase: any, startDate: string, endDate: 
     .map(([type, count]) => ({ type, count }))
 }
 
-// ─── Client Retention Bands ───────────────────────────────────
+// ─── Client Retention Bands (parallelized) ───────────────────
 async function getClientRetention(supabase: any) {
   const now = new Date()
   const bands = [
@@ -400,26 +391,25 @@ async function getClientRetention(supabase: any) {
     { label: '2+ years', maxDays: Infinity },
   ]
 
-  const results: Array<{ label: string; count: number }> = []
-
-  for (let i = 0; i < bands.length; i++) {
+  // Build all queries up front, then execute in parallel instead of sequentially
+  const queries = bands.map((band, i) => {
     let query = supabase
       .from('ezyvet_crm_contacts')
       .select('*', { count: 'exact', head: true })
 
     if (i === 0) {
-      query = query.gte('last_visit', new Date(now.getTime() - bands[0].maxDays * 86400000).toISOString().split('T')[0])
-    } else if (bands[i].maxDays === Infinity) {
+      query = query.gte('last_visit', new Date(now.getTime() - band.maxDays * 86400000).toISOString().split('T')[0])
+    } else if (band.maxDays === Infinity) {
       query = query.lt('last_visit', new Date(now.getTime() - bands[i - 1].maxDays * 86400000).toISOString().split('T')[0])
     } else {
       query = query
-        .gte('last_visit', new Date(now.getTime() - bands[i].maxDays * 86400000).toISOString().split('T')[0])
+        .gte('last_visit', new Date(now.getTime() - band.maxDays * 86400000).toISOString().split('T')[0])
         .lt('last_visit', new Date(now.getTime() - bands[i - 1].maxDays * 86400000).toISOString().split('T')[0])
     }
 
-    const { count } = await query
-    results.push({ label: bands[i].label, count: count || 0 })
-  }
+    return query
+  })
 
-  return results
+  const results = await Promise.all(queries)
+  return bands.map((band, i) => ({ label: band.label, count: results[i].count || 0 }))
 }

@@ -7,42 +7,32 @@
  *
  * Benchmark thresholds sourced from ~/utils/vetBenchmarks.ts
  * (CA Vet Medical Practice Benchmarks — AAHA / VHMA / VetSuccess)
+ *
+ * NOTE — This endpoint uses both fields from invoice_lines:
+ *   "division" = clinic location (Venice, Van Nuys, Sherman Oaks) — used as filter
+ *   "department" = service category (Surgery, Dentistry, etc.) — used for breakdown
  */
 
-import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 import {
   CLIENT_BENCHMARKS,
   FINANCIAL_BENCHMARKS,
   evaluateRetention,
 } from '~/utils/vetBenchmarks'
+// Shared utils auto-imported from server/utils/:
+// requireRole, MARKETING_ROLES, validateQuery, analyticsQuerySchema,
+// getCached, CACHE_TTL, lineRevenue
 
 export default defineEventHandler(async (event) => {
-  // Authenticate user first
-  const supabaseUser = await serverSupabaseClient(event)
-  const { data: { user }, error: authError } = await supabaseUser.auth.getUser()
-  
-  if (!user) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  const { supabase } = await requireRole(event, MARKETING_ROLES)
+  const query = validateQuery(event, analyticsQuerySchema)
 
-  // Verify admin role
-  const supabase = await serverSupabaseServiceRole(event)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
-  
-  if (!profile || !['admin', 'super_admin', 'sup_admin', 'manager', 'marketing_admin'].includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Manager, marketing admin, or admin access required' })
-  }
-
-  const query = getQuery(event)
-  
   // Optional filters
   const division = query.division as string | undefined
   const startDate = query.startDate as string | undefined
   const endDate = query.endDate as string | undefined
+
+  const cacheKey = `analytics:ezyvet:${division || 'all'}:${startDate || 'ytd'}:${endDate || 'now'}`
+  return getCached(cacheKey, async () => {
 
   try {
     // Build base query for contacts (division filter only — date filtering is on invoice_lines)
@@ -104,7 +94,7 @@ export default defineEventHandler(async (event) => {
       const to = from + pageSize - 1
 
       const { data: invPageData, error: invError } = await buildInvoiceQuery(
-        'invoice_date, total_earned, division, department, client_code'
+        'invoice_date, total_earned, price_after_discount, division, department, client_code'
       )
         .gte('invoice_date', ytdStart)
         .lte('invoice_date', ytdEnd)
@@ -133,11 +123,12 @@ export default defineEventHandler(async (event) => {
     })
 
     // Build a map of client_code → total invoice revenue for the period
+    // Uses standardised lineRevenue() for consistent COALESCE(total_earned, price_after_discount)
     const clientInvoiceRevenue = new Map<string, number>()
     for (const line of invoiceLines) {
       const code = line.client_code
       if (!code) continue
-      const earned = parseFloat(line.total_earned) || 0
+      const earned = lineRevenue(line)
       clientInvoiceRevenue.set(code, (clientInvoiceRevenue.get(code) || 0) + earned)
     }
 
@@ -181,7 +172,7 @@ export default defineEventHandler(async (event) => {
     // KPI METRICS — Revenue from invoice_lines (matches Invoice Analysis)
     // ========================================
     // Use actual invoice revenue for the period instead of the contacts snapshot
-    const totalRevenue = invoiceLines.reduce((sum, line) => sum + (parseFloat(line.total_earned) || 0), 0)
+    const totalRevenue = invoiceLines.reduce((sum, line) => sum + lineRevenue(line), 0)
 
     // Build per-contact revenue from invoices for ARPU and segmentation
     // Only include contacts with invoice revenue >= $25
@@ -258,7 +249,7 @@ export default defineEventHandler(async (event) => {
     for (const line of invoiceLines) {
       const div = line.division || 'Unknown'
       const existing = divisionMap.get(div) || { revenue: 0, clients: new Set<string>(), lineCount: 0 }
-      existing.revenue += parseFloat(line.total_earned) || 0
+      existing.revenue += lineRevenue(line)
       if (line.client_code) existing.clients.add(line.client_code)
       existing.lineCount++
       divisionMap.set(div, existing)
@@ -294,7 +285,7 @@ export default defineEventHandler(async (event) => {
     for (const line of invoiceLines) {
       const dept = line.department || 'Unknown'
       const existing = departmentMap.get(dept) || { revenue: 0, clients: new Set<string>(), lineCount: 0 }
-      existing.revenue += parseFloat(line.total_earned) || 0
+      existing.revenue += lineRevenue(line)
       if (line.client_code) existing.clients.add(line.client_code)
       existing.lineCount++
       departmentMap.set(dept, existing)
@@ -698,26 +689,15 @@ export default defineEventHandler(async (event) => {
     const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 }
     suggestedActions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
-    // Divisions list — collect from ALL contacts (unfiltered) and invoice_lines
-    // Fetch a broad sample to extract distinct divisions without pulling all rows
+    // Divisions list — use SELECT DISTINCT instead of paginating all rows
     const allDivisions = new Set<string>()
-    // Get from contacts — paginate to collect all division values
-    let divPage = 0
-    let divHasMore = true
-    while (divHasMore) {
-      const { data: divRows } = await supabase
-        .from('ezyvet_crm_contacts')
-        .select('division')
-        .not('division', 'is', null)
-        .range(divPage * 1000, divPage * 1000 + 999)
-      if (divRows && divRows.length > 0) {
-        for (const r of divRows) {
-          if (r.division?.trim()) allDivisions.add(r.division.trim())
-        }
-        divHasMore = divRows.length === 1000
-        divPage++
-      } else {
-        divHasMore = false
+    const { data: distinctDivRows } = await supabase
+      .from('ezyvet_crm_contacts')
+      .select('division')
+      .not('division', 'is', null)
+    if (distinctDivRows) {
+      for (const r of distinctDivRows) {
+        if (r.division?.trim()) allDivisions.add(r.division.trim())
       }
     }
     // Also add from invoice_lines divisions
@@ -759,7 +739,17 @@ export default defineEventHandler(async (event) => {
         division: division || null,
         startDate: startDate || null,
         endDate: endDate || null
-      }
+      },
+      // Data integrity: client_code ↔ ezyvet_contact_code match rate
+      dataQualityNote: (() => {
+        const invoiceClientCodes = new Set(invoiceLines.map(l => l.client_code).filter(Boolean))
+        const contactCodes = new Set(filteredContacts.map((c: any) => c.ezyvet_contact_code).filter(Boolean))
+        const matched = [...invoiceClientCodes].filter(code => contactCodes.has(code)).length
+        const matchRate = invoiceClientCodes.size > 0 ? Math.round((matched / invoiceClientCodes.size) * 100) : 100
+        return matchRate < 90
+          ? `${matchRate}% of invoice client_codes matched a contact — ${invoiceClientCodes.size - matched} orphaned`
+          : undefined
+      })(),
     }
 
   } catch (err: any) {
@@ -772,6 +762,7 @@ export default defineEventHandler(async (event) => {
       message: err.message || 'Failed to load analytics'
     })
   }
+  }, CACHE_TTL.MEDIUM)
 })
 
 // Helper

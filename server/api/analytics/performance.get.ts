@@ -10,9 +10,15 @@
  * Revenue: Directly from invoice_lines table, grouped by division (location).
  * Appointments: Only COMPLETED appointments from appointment_status uploads.
  * Clients: DISTINCT client_code from invoice_lines.
+ *
+ * NOTE — "division" here means physical clinic location (Venice, Van Nuys,
+ * Sherman Oaks). This is distinct from "department" (service category like
+ * Surgery or Dentistry) used in practice-overview.get.ts.
  */
 
-import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
+// Shared utils auto-imported from server/utils/:
+// requireRole, MARKETING_ROLES, validateQuery, analyticsQuerySchema,
+// getCached, CACHE_TTL, lineRevenue
 
 // ── Location normalization ──────────────────────────────────────────────
 
@@ -56,34 +62,18 @@ function isAvailabilityType(type: string): boolean {
   return lower.includes('avail') || lower === 'uc openings' || lower.includes('same day uc')
 }
 
-/** Extract numeric revenue from an invoice line, with fallback chain */
-function lineRevenue(line: any): number {
-  const v = parseFloat(line.total_earned) || parseFloat(line.price_after_discount) || 0
-  return isNaN(v) ? 0 : v
-}
+// lineRevenue() — auto-imported from server/utils/lineRevenue.ts
 
 // ── Export ───────────────────────────────────────────────────────────────
 
 export default defineEventHandler(async (event) => {
-  // Auth
-  const supabaseUser = await serverSupabaseClient(event)
-  const { data: { user } } = await supabaseUser.auth.getUser()
-  if (!user) throw createError({ statusCode: 401, message: 'Unauthorized' })
+  const { supabase } = await requireRole(event, MARKETING_ROLES)
+  const query = validateQuery(event, analyticsQuerySchema)
+  const startDate = query.startDate || '2025-01-01'
+  const endDate = query.endDate || new Date().toISOString().split('T')[0]
 
-  const supabase = await serverSupabaseServiceRole(event)
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, role')
-    .eq('auth_user_id', user.id)
-    .single()
-
-  if (!profile || !['admin', 'super_admin', 'manager', 'sup_admin', 'marketing_admin'].includes(profile.role)) {
-    throw createError({ statusCode: 403, message: 'Admin access required' })
-  }
-
-  const query = getQuery(event)
-  const startDate = (query.startDate as string) || '2025-01-01'
-  const endDate = (query.endDate as string) || new Date().toISOString().split('T')[0]
+  const cacheKey = `analytics:performance:${startDate}:${endDate}`
+  return getCached(cacheKey, async () => {
 
   // ── 1. LOAD APPOINTMENT DATA (only completed from appointment_status) ─
 
@@ -110,31 +100,43 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ── 2. LOAD INVOICE LINES directly (no RPC dependency) ────────────────
+  // ── 2. LOAD INVOICE DATA (RPC preferred, pagination fallback) ─────────
 
+  let invoiceSummary: any = null
   let invoiceLines: any[] = []
-  let invPage = 0
-  let invHasMore = true
 
-  while (invHasMore) {
-    const from = invPage * pageSize
-    const to = from + pageSize - 1
+  try {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_performance_invoice_summary', {
+      p_start_date: startDate,
+      p_end_date: endDate,
+    })
+    if (!rpcError && rpcData) invoiceSummary = rpcData
+  } catch { /* RPC not available — fall back to pagination */ }
 
-    const { data: invData, error: invError } = await supabase
-      .from('invoice_lines')
-      .select('invoice_date, total_earned, price_after_discount, division, department, client_code, product_group, staff_member, invoice_number, invoice_type')
-      .not('invoice_type', 'eq', 'Header')
-      .gte('invoice_date', startDate)
-      .lte('invoice_date', endDate)
-      .range(from, to)
+  if (!invoiceSummary) {
+    let invPage = 0
+    let invHasMore = true
 
-    if (invError) throw createError({ statusCode: 500, message: 'Failed to load invoice lines: ' + invError.message })
-    if (invData && invData.length > 0) {
-      invoiceLines = invoiceLines.concat(invData)
-      invHasMore = invData.length === pageSize
-      invPage++
-    } else {
-      invHasMore = false
+    while (invHasMore) {
+      const from = invPage * pageSize
+      const to = from + pageSize - 1
+
+      const { data: invData, error: invError } = await supabase
+        .from('invoice_lines')
+        .select('invoice_date, total_earned, price_after_discount, division, department, client_code, product_group, staff_member, invoice_number, invoice_type')
+        .not('invoice_type', 'eq', 'Header')
+        .gte('invoice_date', startDate)
+        .lte('invoice_date', endDate)
+        .range(from, to)
+
+      if (invError) throw createError({ statusCode: 500, message: 'Failed to load invoice lines: ' + invError.message })
+      if (invData && invData.length > 0) {
+        invoiceLines = invoiceLines.concat(invData)
+        invHasMore = invData.length === pageSize
+        invPage++
+      } else {
+        invHasMore = false
+      }
     }
   }
 
@@ -259,20 +261,11 @@ export default defineEventHandler(async (event) => {
 
   // ── 4. AGGREGATE INVOICE REVENUE (directly from invoice_lines) ────────
 
-  // Collect all division values for debugging and auto-normalization
-  const divisionCounts: Record<string, number> = {}
-  for (const line of invoiceLines) {
-    const d = line.division || '(null)'
-    divisionCounts[d] = (divisionCounts[d] || 0) + 1
-  }
-
-  // Build a dynamic normalization map: any division containing a clinic name maps to it
+  // Dynamic normalization: raw division string → clinic name
   function normLocDynamic(raw: string | null): string {
     if (!raw) return 'All Locations'
-    // Try the static map first
     const staticMatch = LOCATION_NORM[raw.toLowerCase().trim()]
     if (staticMatch) return staticMatch
-    // Dynamic matching: check if division contains a clinic name
     const lower = raw.toLowerCase()
     if (lower.includes('venice')) return 'Venice'
     if (lower.includes('van nuys')) return 'Van Nuys'
@@ -280,82 +273,120 @@ export default defineEventHandler(async (event) => {
     return 'All Locations'
   }
 
-  // Totals across ALL invoice lines (no location filter)
+  // Output variables populated by either RPC or fallback path
   let grandTotalRevenue = 0
-  const allClientCodes = new Set<string>()
-  const allInvoiceNumbers = new Set<string>()
-
-  // Per-location breakdowns (only for recognized clinics)
+  let uniqueClients = 0
+  const divisionCounts: Record<string, number> = {}
   const revenueByLocation: Record<string, number> = {}
-  const clientsByLocation: Record<string, Set<string>> = {}
-  const invoicesByLocation: Record<string, Set<string>> = {}
+  const clientCountByLocation: Record<string, number> = {}
   const monthRevMap: Record<string, Record<string, number>> = {}
   const monthRevTotalMap: Record<string, number> = {}
   const pgMap: Record<string, { revenue: number; byLocation: Record<string, number> }> = {}
   const staffMap: Record<string, { revenue: number; location: string; byLocation: Record<string, number> }> = {}
 
-  for (const line of invoiceLines) {
-    const loc = normLocDynamic(line.division)
-    const rev = lineRevenue(line)
-    const month = line.invoice_date?.substring(0, 7) || ''
-    const isClinic = CLINIC_LOCATIONS.includes(loc)
+  if (invoiceSummary) {
+    // ── RPC fast path — single DB call, PostgreSQL-side aggregation ──
+    const rpc = invoiceSummary
+    grandTotalRevenue = Number(rpc.totals?.total_revenue || 0)
+    uniqueClients = Number(rpc.totals?.unique_clients || 0)
 
-    // ALWAYS count toward grand totals (regardless of location)
-    grandTotalRevenue += rev
-    if (line.client_code) allClientCodes.add(line.client_code)
-    if (line.invoice_number) allInvoiceNumbers.add(line.invoice_number)
-
-    // Monthly revenue total (all locations)
-    if (month) {
-      monthRevTotalMap[month] = (monthRevTotalMap[month] || 0) + rev
-    }
-
-    // Per-location breakdowns (only for recognized clinic locations)
-    if (isClinic) {
-      revenueByLocation[loc] = (revenueByLocation[loc] || 0) + rev
-
-      if (line.client_code) {
-        if (!clientsByLocation[loc]) clientsByLocation[loc] = new Set()
-        clientsByLocation[loc].add(line.client_code)
-      }
-
-      if (line.invoice_number) {
-        if (!invoicesByLocation[loc]) invoicesByLocation[loc] = new Set()
-        invoicesByLocation[loc].add(line.invoice_number)
-      }
-
-      if (month) {
-        if (!monthRevMap[month]) monthRevMap[month] = {}
-        monthRevMap[month][loc] = (monthRevMap[month][loc] || 0) + rev
+    for (const row of (rpc.byDivision || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      divisionCounts[row.division] = Number(row.unique_invoices || 0)
+      const loc = normLocDynamic(rawDiv)
+      if (CLINIC_LOCATIONS.includes(loc)) {
+        revenueByLocation[loc] = (revenueByLocation[loc] || 0) + Number(row.revenue || 0)
+        clientCountByLocation[loc] = (clientCountByLocation[loc] || 0) + Number(row.unique_clients || 0)
       }
     }
 
-    // Product group breakdown (all locations for total, clinics for byLocation)
-    const pg = line.product_group || 'Unknown'
-    if (!pgMap[pg]) pgMap[pg] = { revenue: 0, byLocation: {} }
-    pgMap[pg].revenue += rev
-    if (isClinic) {
-      pgMap[pg].byLocation[loc] = (pgMap[pg].byLocation[loc] || 0) + rev
+    for (const row of (rpc.byMonth || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      const loc = normLocDynamic(rawDiv)
+      const rev = Number(row.revenue || 0)
+      monthRevTotalMap[row.month] = (monthRevTotalMap[row.month] || 0) + rev
+      if (CLINIC_LOCATIONS.includes(loc)) {
+        if (!monthRevMap[row.month]) monthRevMap[row.month] = {}
+        monthRevMap[row.month][loc] = (monthRevMap[row.month][loc] || 0) + rev
+      }
     }
 
-    // Staff breakdown (all locations for total, clinics for byLocation)
-    if (line.staff_member) {
-      if (!staffMap[line.staff_member]) staffMap[line.staff_member] = { revenue: 0, location: loc, byLocation: {} }
-      staffMap[line.staff_member].revenue += rev
-      if (isClinic) {
-        staffMap[line.staff_member].byLocation[loc] = (staffMap[line.staff_member].byLocation[loc] || 0) + rev
-        const curPrimary = staffMap[line.staff_member].location
-        if ((staffMap[line.staff_member].byLocation[loc] || 0) > (staffMap[line.staff_member].byLocation[curPrimary] || 0)) {
-          staffMap[line.staff_member].location = loc
+    for (const row of (rpc.byProductGroup || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      const loc = normLocDynamic(rawDiv)
+      const rev = Number(row.revenue || 0)
+      if (!pgMap[row.product_group]) pgMap[row.product_group] = { revenue: 0, byLocation: {} }
+      pgMap[row.product_group].revenue += rev
+      if (CLINIC_LOCATIONS.includes(loc)) pgMap[row.product_group].byLocation[loc] = (pgMap[row.product_group].byLocation[loc] || 0) + rev
+    }
+
+    for (const row of (rpc.byStaff || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      const loc = normLocDynamic(rawDiv)
+      const rev = Number(row.revenue || 0)
+      if (!staffMap[row.staff_member]) staffMap[row.staff_member] = { revenue: 0, location: loc, byLocation: {} }
+      staffMap[row.staff_member].revenue += rev
+      if (CLINIC_LOCATIONS.includes(loc)) {
+        staffMap[row.staff_member].byLocation[loc] = (staffMap[row.staff_member].byLocation[loc] || 0) + rev
+        if ((staffMap[row.staff_member].byLocation[loc] || 0) > (staffMap[row.staff_member].byLocation[staffMap[row.staff_member].location] || 0)) {
+          staffMap[row.staff_member].location = loc
         }
       }
     }
-  }
+  } else {
+    // ── Fallback: client-side aggregation from raw invoice lines ──
+    const allClientCodes = new Set<string>()
+    const clientsByLocationSets: Record<string, Set<string>> = {}
 
-  // Convert client sets to counts
-  const clientCountByLocation: Record<string, number> = {}
-  for (const [loc, s] of Object.entries(clientsByLocation)) {
-    clientCountByLocation[loc] = s.size
+    for (const line of invoiceLines) {
+      const d = line.division || '(null)'
+      divisionCounts[d] = (divisionCounts[d] || 0) + 1
+    }
+
+    for (const line of invoiceLines) {
+      const loc = normLocDynamic(line.division)
+      const rev = lineRevenue(line)
+      const month = line.invoice_date?.substring(0, 7) || ''
+      const isClinic = CLINIC_LOCATIONS.includes(loc)
+
+      grandTotalRevenue += rev
+      if (line.client_code) allClientCodes.add(line.client_code)
+      if (month) monthRevTotalMap[month] = (monthRevTotalMap[month] || 0) + rev
+
+      if (isClinic) {
+        revenueByLocation[loc] = (revenueByLocation[loc] || 0) + rev
+        if (line.client_code) {
+          if (!clientsByLocationSets[loc]) clientsByLocationSets[loc] = new Set()
+          clientsByLocationSets[loc].add(line.client_code)
+        }
+        if (month) {
+          if (!monthRevMap[month]) monthRevMap[month] = {}
+          monthRevMap[month][loc] = (monthRevMap[month][loc] || 0) + rev
+        }
+      }
+
+      const pg = line.product_group || 'Unknown'
+      if (!pgMap[pg]) pgMap[pg] = { revenue: 0, byLocation: {} }
+      pgMap[pg].revenue += rev
+      if (isClinic) pgMap[pg].byLocation[loc] = (pgMap[pg].byLocation[loc] || 0) + rev
+
+      if (line.staff_member) {
+        if (!staffMap[line.staff_member]) staffMap[line.staff_member] = { revenue: 0, location: loc, byLocation: {} }
+        staffMap[line.staff_member].revenue += rev
+        if (isClinic) {
+          staffMap[line.staff_member].byLocation[loc] = (staffMap[line.staff_member].byLocation[loc] || 0) + rev
+          const curPrimary = staffMap[line.staff_member].location
+          if ((staffMap[line.staff_member].byLocation[loc] || 0) > (staffMap[line.staff_member].byLocation[curPrimary] || 0)) {
+            staffMap[line.staff_member].location = loc
+          }
+        }
+      }
+    }
+
+    uniqueClients = allClientCodes.size
+    for (const [loc, s] of Object.entries(clientsByLocationSets)) {
+      clientCountByLocation[loc] = s.size
+    }
   }
 
   // Combine monthly trends (appointments + revenue)
@@ -379,7 +410,6 @@ export default defineEventHandler(async (event) => {
   // ── KPIs (cross-referenced) ──
   const totalAppointments = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
   const totalRevenue = grandTotalRevenue
-  const uniqueClients = allClientCodes.size
 
   // ── Revenue per Appointment cross-reference ──
   const revenuePerAppt: Record<string, { appointments: number; revenue: number; perAppt: number }> = {}
@@ -449,16 +479,12 @@ export default defineEventHandler(async (event) => {
 
     // Data summary for debugging / transparency
     dataSummary: {
-      invoiceLinesLoaded: invoiceLines.length,
+      invoiceLinesLoaded: invoiceSummary ? Number(invoiceSummary.totals?.line_count || 0) : invoiceLines.length,
       appointmentRowsLoaded: allAppts.length,
       completedAppointments: totalAppointments,
       divisionValues: divisionCounts,
-      allStatusCounts: {
-        completed: normalized.filter(a => a.status === 'completed' && a.source === 'appointment_status').length,
-        in_progress: normalized.filter(a => a.status === 'in_progress' && a.source === 'appointment_status').length,
-        confirmed: normalized.filter(a => a.status === 'confirmed' && a.source === 'appointment_status').length,
-        scheduled: normalized.filter(a => a.status === 'scheduled' && a.source === 'appointment_status').length,
-      },
+      rpcUsed: !!invoiceSummary,
     },
   }
+  }, CACHE_TTL.MEDIUM)
 })

@@ -69,7 +69,7 @@
               clearable
               hide-details
               prepend-inner-icon="mdi-domain"
-              @update:model-value="loadAnalytics"
+              @update:model-value="debouncedLoadAnalytics"
             />
           </v-col>
           <v-col cols="12" md="3">
@@ -81,7 +81,7 @@
               density="compact"
               hide-details
               prepend-inner-icon="mdi-calendar-start"
-              @update:model-value="loadAnalytics"
+              @update:model-value="debouncedLoadAnalytics"
             />
           </v-col>
           <v-col cols="12" md="3">
@@ -93,7 +93,7 @@
               density="compact"
               hide-details
               prepend-inner-icon="mdi-calendar-end"
-              @update:model-value="loadAnalytics"
+              @update:model-value="debouncedLoadAnalytics"
             />
           </v-col>
           <v-col cols="12" md="3" class="d-flex align-center">
@@ -873,6 +873,13 @@ const filters = ref({
 const hasActiveFilters = computed(() => {
   return filters.value.division || filters.value.startDate || filters.value.endDate
 })
+
+// Debounced filter handler — avoids rapid API calls on each keystroke
+let _filterDebounce: ReturnType<typeof setTimeout> | null = null
+function debouncedLoadAnalytics() {
+  if (_filterDebounce) clearTimeout(_filterDebounce)
+  _filterDebounce = setTimeout(() => loadAnalytics(), 400)
+}
 
 // Load analytics data
 async function loadAnalytics() {
