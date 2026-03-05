@@ -741,6 +741,23 @@
                 <v-col cols="6">
                   <v-text-field v-model="form.contact_name" label="Primary Contact" variant="outlined" density="compact" />
                 </v-col>
+
+                <!-- Services Offered -->
+                <v-col cols="12">
+                  <div class="text-subtitle-2 mb-2">Services Offered</div>
+                  <div class="d-flex flex-wrap gap-1">
+                    <v-checkbox
+                      v-for="svc in serviceOptions"
+                      :key="svc"
+                      v-model="form.services"
+                      :label="svc"
+                      :value="svc"
+                      density="compact"
+                      hide-details
+                      class="mr-3"
+                    />
+                  </div>
+                </v-col>
                 
                 <!-- Relationship Health -->
                 <v-col cols="12" class="mt-2">
@@ -1089,8 +1106,9 @@ const exportColumns = [
   { key: 'email', title: 'Email' },
   { key: 'address', title: 'Address' },
   { key: 'clinic_type', title: 'Clinic Type' },
-  { key: 'referral_count', title: 'Total Referrals' },
-  { key: 'revenue', title: 'Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
+  { key: 'services', title: 'Services', format: (v: string[]) => v?.length ? v.join(', ') : '' },
+  { key: 'total_referrals_all_time', title: 'Total Referrals' },
+  { key: 'total_revenue_all_time', title: 'Revenue', format: (v: number) => v ? `$${v.toLocaleString()}` : '' },
   { key: 'last_referral_date', title: 'Last Referral' },
   { key: 'last_visit_date', title: 'Last Visit' },
   { key: 'notes', title: 'Notes' }
@@ -1167,6 +1185,7 @@ const priorityOptions = ['Very High', 'High', 'Medium', 'Low']
 const clinicTypeOptions = ['general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent']
 const sizeOptions = ['small', 'medium', 'large', 'enterprise']
 const organizationTypeOptions = ['independent', 'corporate', 'franchise', 'nonprofit', 'university', 'government']
+const serviceOptions = ['Dentistry', 'GP', 'Urg Care', 'Emergency', '24Hr Care', 'Internal Med', 'Cardio', 'Exotics', 'CT/Imaging', 'Derm', 'Optho', 'Accup', 'Other']
 const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually', 'as_needed']
 const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
 const timeOptions = ['morning', 'midday', 'afternoon']
@@ -1233,6 +1252,7 @@ const form = reactive({
   organization_type: null as string | null,
   employee_count: null as number | null,
   expected_visit_frequency_days: null as number | null,
+  services: [] as string[],
   // Agreements
   ce_event_host: false,
   lunch_and_learn_eligible: true,
@@ -1259,8 +1279,8 @@ const tableHeaders = [
 const activeCount = computed(() => partners.value.filter(p => p.status === 'active').length)
 const needsFollowupCount = computed(() => partners.value.filter(p => p.needs_followup).length)
 const overdueCount = computed(() => partners.value.filter(p => p.visit_overdue).length)
-const totalReferrals = computed(() => partners.value.reduce((sum, p) => sum + (p.total_referrals_all_time || 0), 0))
-const totalRevenue = computed(() => partners.value.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0))
+const totalReferrals = computed(() => filteredPartners.value.reduce((sum, p) => sum + (p.total_referrals_all_time || 0), 0))
+const totalRevenue = computed(() => filteredPartners.value.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0))
 
 const uniqueZones = computed(() => {
   return zoneDefinitions.map(z => z.value)
@@ -1511,6 +1531,7 @@ function openEditPartner(partner: any) {
     organization_type: partner.organization_type || null,
     employee_count: partner.employee_count || null,
     expected_visit_frequency_days: partner.expected_visit_frequency_days || null,
+    services: partner.services || [],
     // Agreements
     ce_event_host: partner.ce_event_host || false,
     lunch_and_learn_eligible: partner.lunch_and_learn_eligible !== false,
@@ -1575,6 +1596,7 @@ function resetForm() {
     organization_type: null,
     employee_count: null,
     expected_visit_frequency_days: null,
+    services: [],
     // Agreements
     ce_event_host: false,
     lunch_and_learn_eligible: true,
@@ -1625,6 +1647,7 @@ async function savePartner() {
       organization_type: form.organization_type || null,
       employee_count: form.employee_count || null,
       expected_visit_frequency_days: form.expected_visit_frequency_days || null,
+      services: form.services.length > 0 ? form.services : [],
       // Agreements
       ce_event_host: form.ce_event_host,
       lunch_and_learn_eligible: form.lunch_and_learn_eligible,

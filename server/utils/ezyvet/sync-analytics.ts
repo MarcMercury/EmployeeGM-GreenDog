@@ -341,7 +341,7 @@ export async function updateReferralStatsFromContacts(
     if (contactError) throw contactError
 
     // 4. Aggregate by referral source → partner match
-    const stats = new Map<string, { referrals: number; revenue: number; lastVisit: string | null }>()
+    const stats = new Map<string, { referrals: number; lastVisit: string | null }>()
 
     for (const contact of (referralContacts || [])) {
       const source = (contact.referral_source || '').toLowerCase().trim()
@@ -351,9 +351,8 @@ export async function updateReferralStatsFromContacts(
       const match = partnerMap.get(source)
       if (!match) continue
 
-      const existing = stats.get(match.id) || { referrals: 0, revenue: 0, lastVisit: null }
+      const existing = stats.get(match.id) || { referrals: 0, lastVisit: null }
       existing.referrals++
-      existing.revenue += parseFloat(contact.revenue_ytd) || 0
 
       if (contact.last_visit) {
         if (!existing.lastVisit || contact.last_visit > existing.lastVisit) {
@@ -368,7 +367,6 @@ export async function updateReferralStatsFromContacts(
     let partnersUpdated = 0
     let partnersSkipped = 0
     let totalReferrals = 0
-    let totalRevenue = 0
 
     for (const [partnerId, stat] of Array.from(stats)) {
       // Find the partner metadata
@@ -389,7 +387,6 @@ export async function updateReferralStatsFromContacts(
         .from('referral_partners')
         .update({
           total_referrals_all_time: stat.referrals,
-          total_revenue_all_time: stat.revenue,
           last_contact_date: stat.lastVisit,
           last_data_source: 'ezyvet_sync',
           updated_at: new Date().toISOString(),
@@ -399,7 +396,6 @@ export async function updateReferralStatsFromContacts(
       if (!updateError) {
         partnersUpdated++
         totalReferrals += stat.referrals
-        totalRevenue += stat.revenue
       }
     }
 
@@ -407,10 +403,9 @@ export async function updateReferralStatsFromContacts(
       partnersUpdated,
       partnersSkipped,
       totalReferrals,
-      totalRevenue,
     })
 
-    return { partnersUpdated, partnersSkipped, totalReferrals, totalRevenue }
+    return { partnersUpdated, partnersSkipped, totalReferrals, totalRevenue: 0 }
   } catch (err) {
     logger.error('Referral stats update failed', err instanceof Error ? err : null, 'ezyvet-sync-analytics')
     throw err

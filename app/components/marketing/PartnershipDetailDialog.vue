@@ -161,6 +161,12 @@
                       <div class="mb-1"><strong>Size:</strong> {{ partner.size || 'Not set' }}</div>
                       <div class="mb-1"><strong>Organization:</strong> {{ partner.organization_type || 'Not set' }}</div>
                       <div v-if="partner.employee_count"><strong>Employees:</strong> {{ partner.employee_count }}</div>
+                      <div v-if="partner.services && partner.services.length" class="mt-2">
+                        <strong>Services:</strong>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                          <v-chip v-for="svc in partner.services" :key="svc" size="x-small" variant="tonal" color="primary">{{ svc }}</v-chip>
+                        </div>
+                      </div>
                     </div>
                   </v-card>
                 </v-col>

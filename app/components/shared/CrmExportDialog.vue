@@ -209,9 +209,21 @@ async function doExport() {
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
       downloadBlob(blob, `${baseFilename}_${timestamp}.csv`)
     } else {
-      // Excel format (CSV with BOM for Excel compatibility)
-      const bom = '\uFEFF'
-      const blob = new Blob([bom + csv], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      // Generate real XLSX using SheetJS
+      const XLSX = await import('xlsx')
+      const exportCols = props.columns.filter(c => selectedColumns.value.includes(c.key))
+      const sheetData = props.data.map(row => {
+        const obj: Record<string, string> = {}
+        for (const col of exportCols) {
+          obj[col.title] = formatValue(row[col.key], col.format, row)
+        }
+        return obj
+      })
+      const ws = XLSX.utils.json_to_sheet(sheetData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, props.entityLabel)
+      const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+      const blob = new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       downloadBlob(blob, `${baseFilename}_${timestamp}.xlsx`)
     }
     
