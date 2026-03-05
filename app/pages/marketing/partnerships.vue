@@ -1383,7 +1383,16 @@ function expandAllOverdueZones() {
 async function recalculateMetrics() {
   recalculating.value = true
   try {
-    const response = await $fetch('/api/recalculate-partner-metrics', { method: 'POST' })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('No active session - please log in again')
+    }
+    const response = await $fetch('/api/recalculate-partner-metrics', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    })
     if (response.success) {
       snackbar.message = `Metrics recalculated for ${response.summary?.recordsUpdated || 0} partners`
       snackbar.color = 'success'
