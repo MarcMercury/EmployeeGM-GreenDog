@@ -332,6 +332,22 @@
                     <div v-if="partner.last_sync_date" class="mt-2 text-caption text-grey">
                       Last synced: {{ formatPartnerDate(partner.last_sync_date) }}
                     </div>
+                    
+                    <!-- Referral Divisions -->
+                    <div v-if="partner.referral_divisions?.length" class="mt-3">
+                      <div class="text-caption text-grey mb-1">Referred From Divisions</div>
+                      <div class="d-flex flex-wrap gap-1">
+                        <v-chip
+                          v-for="div in partner.referral_divisions"
+                          :key="div"
+                          size="x-small"
+                          color="teal"
+                          variant="tonal"
+                        >
+                          {{ div }}
+                        </v-chip>
+                      </div>
+                    </div>
                   </v-card>
                 </v-col>
 

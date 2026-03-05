@@ -205,6 +205,21 @@
               <span v-else class="text-grey">Never</span>
             </template>
 
+            <template #item.referral_divisions="{ item }">
+              <div v-if="item.referral_divisions?.length" class="d-flex flex-wrap gap-1" style="max-width: 200px;">
+                <v-chip
+                  v-for="div in item.referral_divisions"
+                  :key="div"
+                  size="x-small"
+                  color="teal"
+                  variant="tonal"
+                >
+                  {{ div.replace('Green Dog - ', '') }}
+                </v-chip>
+              </div>
+              <span v-else class="text-grey">—</span>
+            </template>
+
             <template #item.last_visit_date="{ item }">
               <div v-if="item.last_visit_date">
                 {{ formatPartnerDate(item.last_visit_date) }}
@@ -863,9 +878,9 @@
         </v-card-title>
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <strong>Supports two EzyVet report types:</strong>
+            <strong>Supports two EzyVet report types (CSV or XLS):</strong>
             <ul class="mt-1 mb-0" style="padding-left: 20px;">
-              <li><strong>Referrer Revenue</strong> (primary) — Extracts referral count, revenue &amp; last referral date per clinic</li>
+              <li><strong>Referrer Revenue</strong> (primary) — Extracts referral count, revenue, last referral date &amp; division per clinic</li>
               <li><strong>Referral Statistics</strong> (secondary) — Quick snapshot of referral counts &amp; last referral date</li>
             </ul>
             <div class="text-caption mt-1">Report type is auto-detected. Revenue uses row-level dedup — re-uploads only add new rows. Both reports auto-update Tier, Priority &amp; Health.</div>
@@ -907,8 +922,8 @@
           
           <v-file-input
             v-model="uploadFile"
-            accept=".csv"
-            label="Select CSV Report"
+            accept=".csv,.xls,.xlsx"
+            label="Select CSV or XLS Report"
             variant="outlined"
             prepend-icon="mdi-file-delimited"
             :disabled="uploadProcessing"
@@ -988,7 +1003,9 @@
                         </template>
                         <v-list-item-title>{{ detail.clinicName }}</v-list-item-title>
                         <v-list-item-subtitle>
-                          {{ detail.visits }} visits, ${{ detail.revenue.toLocaleString() }}
+                          {{ detail.visits }} referrals, ${{ detail.revenue.toLocaleString() }}
+                          <span v-if="detail.lastVisitDate"> · Last: {{ detail.lastVisitDate }}</span>
+                          <span v-if="detail.divisions?.length"> · {{ detail.divisions.join(', ') }}</span>
                           <span v-if="detail.matchedTo" class="text-success"> &rarr; {{ detail.matchedTo }}</span>
                           <span v-else class="text-warning"> (No match found)</span>
                         </v-list-item-subtitle>
@@ -1233,6 +1250,7 @@ const tableHeaders = [
   { title: 'Referrals', key: 'total_referrals_all_time', sortable: true },
   { title: 'Revenue', key: 'total_revenue_all_time', sortable: true },
   { title: 'Last Referral', key: 'last_referral_date', sortable: true },
+  { title: 'Divisions', key: 'referral_divisions', sortable: false },
   { title: 'Last Visit', key: 'last_visit_date', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, width: '160px' }
 ]

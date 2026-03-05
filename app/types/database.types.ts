@@ -4478,6 +4478,7 @@ export type Database = {
           total_referrals_all_time: number | null
           total_revenue_all_time: number | null
           last_sync_date: string | null
+          referral_divisions: string[] | null
           updated_at: string
           website: string | null
         }
@@ -4517,6 +4518,7 @@ export type Database = {
           total_referrals_all_time?: number | null
           total_revenue_all_time?: number | null
           last_sync_date?: string | null
+          referral_divisions?: string[] | null
           updated_at?: string
           website?: string | null
         }
@@ -4556,6 +4558,7 @@ export type Database = {
           total_referrals_all_time?: number | null
           total_revenue_all_time?: number | null
           last_sync_date?: string | null
+          referral_divisions?: string[] | null
           updated_at?: string
           website?: string | null
         }

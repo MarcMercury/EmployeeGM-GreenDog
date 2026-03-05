@@ -289,6 +289,7 @@ export interface ReferralPartner {
   total_referrals_ytd?: number
   total_revenue_all_time?: number
   last_sync_date?: string | null
+  referral_divisions?: string[]
 
   // Dates (054 + 195)
   last_visit_date?: string | null
