@@ -3,8 +3,13 @@
  *
  * GET /api/analytics/performance?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
  *
- * Returns pre-aggregated data for the redesigned Performance Analysis page.
- * Combines appointment data + invoice revenue with location normalization.
+ * Returns pre-aggregated data for the Practice Analytics page.
+ * Combines appointment_data (status reports) + invoice_lines (revenue)
+ * with location normalization and proper cross-referencing.
+ *
+ * Revenue: Directly from invoice_lines table, grouped by division (location).
+ * Appointments: Only COMPLETED appointments from appointment_status uploads.
+ * Clients: DISTINCT client_code from invoice_lines.
  */
 
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
@@ -42,7 +47,6 @@ const EXCLUDED_TYPES = new Set([
 function isGarbageType(type: string): boolean {
   const lower = type.toLowerCase().trim()
   if (EXCLUDED_TYPES.has(lower)) return true
-  // Facility / division names stored as appointment types
   if (lower.startsWith('green dog -')) return true
   return false
 }
@@ -50,6 +54,12 @@ function isGarbageType(type: string): boolean {
 function isAvailabilityType(type: string): boolean {
   const lower = type.toLowerCase()
   return lower.includes('avail') || lower === 'uc openings' || lower.includes('same day uc')
+}
+
+/** Extract numeric revenue from an invoice line, with fallback chain */
+function lineRevenue(line: any): number {
+  const v = parseFloat(line.total_earned) || parseFloat(line.price_after_discount) || 0
+  return isNaN(v) ? 0 : v
 }
 
 // ── Export ───────────────────────────────────────────────────────────────
@@ -75,7 +85,7 @@ export default defineEventHandler(async (event) => {
   const startDate = (query.startDate as string) || '2025-01-01'
   const endDate = (query.endDate as string) || new Date().toISOString().split('T')[0]
 
-  // ── 1. LOAD APPOINTMENT DATA ──────────────────────────────────────────
+  // ── 1. LOAD APPOINTMENT DATA (only completed from appointment_status) ─
 
   let allAppts: any[] = []
   let page = 0
@@ -100,43 +110,56 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ── 2. LOAD INVOICE REVENUE BY LOCATION+MONTH (via RPC) ──────────────
+  // ── 2. LOAD INVOICE LINES directly (no RPC dependency) ────────────────
 
-  const { data: revenueData, error: revErr } = await supabase
-    .rpc('get_revenue_by_location_month', { p_start: startDate, p_end: endDate })
+  let invoiceLines: any[] = []
+  let invPage = 0
+  let invHasMore = true
 
-  if (revErr) console.error('Revenue RPC error:', revErr.message)
+  while (invHasMore) {
+    const from = invPage * pageSize
+    const to = from + pageSize - 1
 
-  const { data: breakdownData, error: bdErr } = await supabase
-    .rpc('get_revenue_breakdowns', { p_start: startDate, p_end: endDate })
+    const { data: invData, error: invError } = await supabase
+      .from('invoice_lines')
+      .select('invoice_date, total_earned, price_after_discount, division, department, client_code, product_group, staff_member, invoice_number, invoice_type')
+      .not('invoice_type', 'eq', 'Header')
+      .gte('invoice_date', startDate)
+      .lte('invoice_date', endDate)
+      .range(from, to)
 
-  if (bdErr) console.error('Breakdown RPC error:', bdErr.message)
+    if (invError) throw createError({ statusCode: 500, message: 'Failed to load invoice lines: ' + invError.message })
+    if (invData && invData.length > 0) {
+      invoiceLines = invoiceLines.concat(invData)
+      invHasMore = invData.length === pageSize
+      invPage++
+    } else {
+      invHasMore = false
+    }
+  }
 
   // ── 3. AGGREGATE APPOINTMENT DATA ─────────────────────────────────────
 
-  // Normalize and categorize
   interface NormalizedAppt {
     date: string
     type: string
     category: string
     location: string
     source: string
-    count: number
+    status: string
     isAvailability: boolean
     isGarbage: boolean
     durationMinutes: number
-    dayOfWeek: number // 0=Sun, 6=Sat
-    month: string // 'YYYY-MM'
-    weekStart: string // Monday of that week
+    dayOfWeek: number
+    month: string
+    weekStart: string
   }
 
   const normalized: NormalizedAppt[] = allAppts.map(a => {
     const location = normLoc(a.location_name)
     const type = (a.appointment_type || '').trim()
-    const count = a.raw_data?.count || 1
     const d = new Date(a.appointment_date + 'T00:00:00')
     const dow = d.getDay()
-    // Get Monday of this week
     const mon = new Date(d)
     mon.setDate(mon.getDate() - ((dow + 6) % 7))
 
@@ -146,7 +169,7 @@ export default defineEventHandler(async (event) => {
       category: a.service_category || 'UNMAPPED',
       location,
       source: a.source,
-      count,
+      status: a.status || 'unknown',
       isAvailability: isAvailabilityType(type),
       isGarbage: isGarbageType(type),
       durationMinutes: a.duration_minutes || 0,
@@ -156,30 +179,34 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  // Exclude: availability rows, garbage types, Sunday, non-clinic locations
-  // Note: appointment_status rows have location name stored in appointment_type
-  // (import artifact), so garbage/availability filters only apply to weekly_tracking
-  const booked = normalized.filter(a =>
-    (a.source === 'appointment_status' || (!a.isAvailability && !a.isGarbage)) &&
-    a.dayOfWeek !== 0 && // Sunday excluded
-    CLINIC_LOCATIONS.includes(a.location)
-  )
+  // Only count COMPLETED appointments (departed/complete in ezyVet status report).
+  // For appointment_status rows: filter by status = 'completed'.
+  // For weekly_tracking rows: keep existing filters (no status field, used for type breakdowns only).
+  const booked = normalized.filter(a => {
+    if (!CLINIC_LOCATIONS.includes(a.location)) return false
+    if (a.dayOfWeek === 0) return false // Sunday excluded
+    if (a.source === 'appointment_status') {
+      return a.status === 'completed'
+    }
+    // weekly_tracking: apply garbage/availability filters (no per-row status available)
+    return !a.isAvailability && !a.isGarbage
+  })
 
   // For type breakdowns, only use weekly_tracking (status has no real types)
   const typedAppts = booked.filter(a => a.source === 'weekly_tracking')
 
-  // ── Appointments by Location ──
+  // ── Appointments by Location (only completed) ──
   const apptsByLocation: Record<string, number> = {}
   for (const a of booked) {
-    apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
+    apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + 1
   }
 
   // ── Appointment Types ──
   const typeMap: Record<string, { total: number; category: string; byLocation: Record<string, number> }> = {}
   for (const a of typedAppts) {
     if (!typeMap[a.type]) typeMap[a.type] = { total: 0, category: a.category, byLocation: {} }
-    typeMap[a.type].total += a.count
-    typeMap[a.type].byLocation[a.location] = (typeMap[a.type].byLocation[a.location] || 0) + a.count
+    typeMap[a.type].total += 1
+    typeMap[a.type].byLocation[a.location] = (typeMap[a.type].byLocation[a.location] || 0) + 1
   }
   const appointmentTypes = Object.entries(typeMap)
     .map(([type, info]) => ({ type, category: info.category, total: info.total, byLocation: info.byLocation }))
@@ -189,72 +216,113 @@ export default defineEventHandler(async (event) => {
   const catMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of typedAppts) {
     if (!catMap[a.category]) catMap[a.category] = { total: 0, byLocation: {} }
-    catMap[a.category].total += a.count
-    catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + a.count
+    catMap[a.category].total += 1
+    catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + 1
   }
   const serviceCategories = Object.entries(catMap)
     .map(([category, info]) => ({ category, total: info.total, byLocation: info.byLocation }))
     .sort((a, b) => b.total - a.total)
 
   // ── Day of Week ──
-  // Only use appointment_status source for day-of-week distribution because
-  // weekly_tracking rows are summary data that lack real per-appointment dates
-  // (they were imported with a single default date, skewing everything to one day).
+  // Only use appointment_status + completed for day-of-week distribution
   const datedAppts = booked.filter(a => a.source === 'appointment_status')
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const dowMap: Record<number, { total: number; byLocation: Record<string, number> }> = {}
   for (let d = 1; d <= 6; d++) dowMap[d] = { total: 0, byLocation: {} }
   for (const a of datedAppts) {
     if (a.dayOfWeek === 0) continue
-    dowMap[a.dayOfWeek].total += a.count
-    dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + a.count
+    dowMap[a.dayOfWeek].total += 1
+    dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + 1
   }
   const dayOfWeek = Object.entries(dowMap)
     .map(([idx, info]) => ({ day: dayNames[Number(idx)], index: Number(idx), total: info.total, byLocation: info.byLocation }))
     .sort((a, b) => a.index - b.index)
 
   // ── Weekly Trend ──
-  // Use only appointment_status for weekly trends (weekly_tracking has no real dates)
   const weekMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of datedAppts) {
     if (!weekMap[a.weekStart]) weekMap[a.weekStart] = { total: 0, byLocation: {} }
-    weekMap[a.weekStart].total += a.count
-    weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + a.count
+    weekMap[a.weekStart].total += 1
+    weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + 1
   }
   const weeklyTrend = Object.entries(weekMap)
     .map(([week, info]) => ({ week, total: info.total, byLocation: info.byLocation }))
     .sort((a, b) => a.week.localeCompare(b.week))
 
   // ── Monthly Appointment Trend ──
-  // Use only appointment_status for monthly trends (weekly_tracking has no real dates)
   const monthApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of datedAppts) {
     if (!monthApptMap[a.month]) monthApptMap[a.month] = { total: 0, byLocation: {} }
-    monthApptMap[a.month].total += a.count
-    monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + a.count
+    monthApptMap[a.month].total += 1
+    monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + 1
   }
 
-  // ── 4. PROCESS INVOICE REVENUE DATA ───────────────────────────────────
+  // ── 4. AGGREGATE INVOICE REVENUE (directly from invoice_lines) ────────
 
-  const revenueRows: Array<{ month: string; location: string; revenue: number; line_count: number; unique_clients: number; invoice_count: number }> = (revenueData || [])
-    .filter((r: any) => CLINIC_LOCATIONS.includes(r.location))
-
-  // Revenue by location
+  // Normalize invoice line locations (division → clinic name)
   const revenueByLocation: Record<string, number> = {}
-  const clientsByLocation: Record<string, number> = {}
-  for (const r of revenueRows) {
-    revenueByLocation[r.location] = (revenueByLocation[r.location] || 0) + Number(r.revenue || 0)
-    clientsByLocation[r.location] = (clientsByLocation[r.location] || 0) + Number(r.unique_clients || 0)
-  }
-
-  // Monthly revenue by location
+  const clientsByLocation: Record<string, Set<string>> = {}
+  const invoicesByLocation: Record<string, Set<string>> = {}
   const monthRevMap: Record<string, Record<string, number>> = {}
-  for (const r of revenueRows) {
-    if (!monthRevMap[r.month]) monthRevMap[r.month] = {}
-    monthRevMap[r.month][r.location] = Number(r.revenue || 0)
+  const pgMap: Record<string, { revenue: number; byLocation: Record<string, number> }> = {}
+  const staffMap: Record<string, { revenue: number; location: string; byLocation: Record<string, number> }> = {}
+  const allClientCodes = new Set<string>()
+
+  for (const line of invoiceLines) {
+    const loc = normLoc(line.division)
+    if (!CLINIC_LOCATIONS.includes(loc)) continue
+
+    const rev = lineRevenue(line)
+    const month = line.invoice_date?.substring(0, 7) || ''
+
+    // Revenue by location
+    revenueByLocation[loc] = (revenueByLocation[loc] || 0) + rev
+
+    // Unique clients by location (distinct client_code)
+    if (line.client_code) {
+      if (!clientsByLocation[loc]) clientsByLocation[loc] = new Set()
+      clientsByLocation[loc].add(line.client_code)
+      allClientCodes.add(line.client_code)
+    }
+
+    // Unique invoices by location
+    if (line.invoice_number) {
+      if (!invoicesByLocation[loc]) invoicesByLocation[loc] = new Set()
+      invoicesByLocation[loc].add(line.invoice_number)
+    }
+
+    // Monthly revenue by location
+    if (month) {
+      if (!monthRevMap[month]) monthRevMap[month] = {}
+      monthRevMap[month][loc] = (monthRevMap[month][loc] || 0) + rev
+    }
+
+    // Product group breakdown by location
+    const pg = line.product_group || 'Unknown'
+    if (!pgMap[pg]) pgMap[pg] = { revenue: 0, byLocation: {} }
+    pgMap[pg].revenue += rev
+    pgMap[pg].byLocation[loc] = (pgMap[pg].byLocation[loc] || 0) + rev
+
+    // Staff breakdown by location
+    if (line.staff_member) {
+      if (!staffMap[line.staff_member]) staffMap[line.staff_member] = { revenue: 0, location: loc, byLocation: {} }
+      staffMap[line.staff_member].revenue += rev
+      staffMap[line.staff_member].byLocation[loc] = (staffMap[line.staff_member].byLocation[loc] || 0) + rev
+      // Primary location = highest revenue
+      const curPrimary = staffMap[line.staff_member].location
+      if ((staffMap[line.staff_member].byLocation[loc] || 0) > (staffMap[line.staff_member].byLocation[curPrimary] || 0)) {
+        staffMap[line.staff_member].location = loc
+      }
+    }
   }
 
-  // Combine monthly trends
+  // Convert client sets to counts
+  const clientCountByLocation: Record<string, number> = {}
+  for (const [loc, s] of Object.entries(clientsByLocation)) {
+    clientCountByLocation[loc] = s.size
+  }
+
+  // Combine monthly trends (appointments + revenue)
   const allMonths = new Set([...Object.keys(monthApptMap), ...Object.keys(monthRevMap)])
   const monthLabels: Record<string, string> = {}
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -272,10 +340,10 @@ export default defineEventHandler(async (event) => {
     revenueByLocation: monthRevMap[month] || {},
   }))
 
-  // ── KPIs ──
+  // ── KPIs (cross-referenced) ──
   const totalAppointments = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
   const totalRevenue = Object.values(revenueByLocation).reduce((s, v) => s + v, 0)
-  const uniqueClients = [...new Set(revenueRows.map(r => r.unique_clients))].reduce((s, v) => s + Number(v || 0), 0)
+  const uniqueClients = allClientCodes.size
 
   // ── Revenue per Appointment cross-reference ──
   const revenuePerAppt: Record<string, { appointments: number; revenue: number; perAppt: number }> = {}
@@ -289,43 +357,25 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ── Product Groups (aggregate across locations) ──
-  const bdParsed = breakdownData as any
-  const productGroupRaw: Array<{ group: string; location: string; revenue: number; cnt: number }> = bdParsed?.productGroups || []
-  // Aggregate by group, keep location breakdown
-  const pgMap: Record<string, { revenue: number; byLocation: Record<string, number> }> = {}
-  for (const pg of productGroupRaw) {
-    if (!CLINIC_LOCATIONS.includes(pg.location)) continue
-    if (!pgMap[pg.group]) pgMap[pg.group] = { revenue: 0, byLocation: {} }
-    pgMap[pg.group].revenue += Number(pg.revenue || 0)
-    pgMap[pg.group].byLocation[pg.location] = Number(pg.revenue || 0)
-  }
+  // ── Top Product Groups ──
   const topProductGroups = Object.entries(pgMap)
     .map(([group, info]) => ({ group, revenue: info.revenue, byLocation: info.byLocation }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 15)
 
   // ── Top Staff ──
-  const staffRaw: Array<{ name: string; location: string; revenue: number; cnt: number }> = bdParsed?.topStaff || []
-  // Aggregate by staff name across locations
-  const staffMap: Record<string, { revenue: number; location: string; byLocation: Record<string, number> }> = {}
-  for (const s of staffRaw) {
-    if (!CLINIC_LOCATIONS.includes(s.location)) continue
-    if (!staffMap[s.name]) staffMap[s.name] = { revenue: 0, location: s.location, byLocation: {} }
-    staffMap[s.name].revenue += Number(s.revenue || 0)
-    staffMap[s.name].byLocation[s.location] = (staffMap[s.name].byLocation[s.location] || 0) + Number(s.revenue || 0)
-    // Primary location = highest revenue
-    if (Number(s.revenue || 0) > (staffMap[s.name].byLocation[staffMap[s.name].location] || 0)) {
-      staffMap[s.name].location = s.location
-    }
-  }
   const topStaff = Object.entries(staffMap)
     .map(([name, info]) => ({ name, revenue: info.revenue, location: info.location, byLocation: info.byLocation }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 20)
 
-  // ── Duration stats from status data ──
-  const statusAppts = normalized.filter(a => a.source === 'appointment_status' && CLINIC_LOCATIONS.includes(a.location) && a.durationMinutes > 0)
+  // ── Duration stats from completed appointments ──
+  const statusAppts = normalized.filter(a =>
+    a.source === 'appointment_status' &&
+    a.status === 'completed' &&
+    CLINIC_LOCATIONS.includes(a.location) &&
+    a.durationMinutes > 0
+  )
   const avgDuration: Record<string, { total: number; count: number }> = {}
   for (const a of statusAppts) {
     if (!avgDuration[a.location]) avgDuration[a.location] = { total: 0, count: 0 }
@@ -343,7 +393,7 @@ export default defineEventHandler(async (event) => {
 
     kpis: {
       totalAppointments,
-      totalRevenue,
+      totalRevenue: Math.round(totalRevenue * 100) / 100,
       uniqueClients,
       avgRevenuePerAppt: totalAppointments > 0 ? Math.round(totalRevenue / totalAppointments * 100) / 100 : 0,
     },
@@ -359,6 +409,19 @@ export default defineEventHandler(async (event) => {
     topProductGroups,
     topStaff,
     avgDurationByLocation,
-    clientsByLocation,
+    clientsByLocation: clientCountByLocation,
+
+    // Data summary for debugging / transparency
+    dataSummary: {
+      invoiceLinesLoaded: invoiceLines.length,
+      appointmentRowsLoaded: allAppts.length,
+      completedAppointments: totalAppointments,
+      allStatusCounts: {
+        completed: normalized.filter(a => a.status === 'completed' && a.source === 'appointment_status').length,
+        in_progress: normalized.filter(a => a.status === 'in_progress' && a.source === 'appointment_status').length,
+        confirmed: normalized.filter(a => a.status === 'confirmed' && a.source === 'appointment_status').length,
+        scheduled: normalized.filter(a => a.status === 'scheduled' && a.source === 'appointment_status').length,
+      },
+    },
   }
 })

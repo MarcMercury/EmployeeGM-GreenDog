@@ -182,21 +182,25 @@ function extractTopStaff(dashboardData: any) {
 
 // ─── Appointment Metrics ──────────────────────────────────────
 async function getAppointmentMetrics(supabase: any, startDate: string, endDate: string) {
-  // Try ezyvet_appointments first (API-synced), fallback to appointment_data (CSV)
+  // Count only COMPLETED appointments from appointment_status (CSV uploads)
+  // This ensures we don't inflate counts with scheduled/cancelled/in-progress.
+  const { count: completedCsvCount } = await supabase
+    .from('appointment_data')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'completed')
+    .gte('appointment_date', startDate)
+    .lte('appointment_date', endDate)
+
+  // Also check ezyvet_appointments (API-synced) — these don't have a status filter
   const { count: apiCount } = await supabase
     .from('ezyvet_appointments')
     .select('*', { count: 'exact', head: true })
     .gte('start_at', startDate)
     .lte('start_at', endDate + 'T23:59:59Z')
 
-  const { count: csvCount } = await supabase
-    .from('appointment_data')
-    .select('*', { count: 'exact', head: true })
-    .gte('appointment_date', startDate)
-    .lte('appointment_date', endDate)
-
-  const totalAppointments = Math.max(apiCount || 0, csvCount || 0)
-  const source = (apiCount || 0) >= (csvCount || 0) ? 'ezyvet_api' : 'csv_upload'
+  // Use whichever source has more data
+  const totalAppointments = Math.max(apiCount || 0, completedCsvCount || 0)
+  const source = (apiCount || 0) >= (completedCsvCount || 0) ? 'ezyvet_api' : 'csv_upload'
 
   // Get type breakdown
   let typeBreakdown: Record<string, number> = {}
@@ -215,6 +219,7 @@ async function getAppointmentMetrics(supabase: any, startDate: string, endDate: 
     const { data } = await supabase
       .from('appointment_data')
       .select('appointment_type')
+      .eq('status', 'completed')
       .gte('appointment_date', startDate)
       .lte('appointment_date', endDate)
 
@@ -367,6 +372,7 @@ async function getAppointmentsByType(supabase: any, startDate: string, endDate: 
     const { data } = await supabase
       .from('appointment_data')
       .select('appointment_type')
+      .eq('status', 'completed')
       .gte('appointment_date', startDate)
       .lte('appointment_date', endDate)
 
