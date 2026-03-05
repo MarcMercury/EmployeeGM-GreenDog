@@ -14,7 +14,7 @@
  * odd rows contain per-referral details (date, division, amount).
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
-import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole } from '#supabase/server'
 import XLSX from 'xlsx'
 
 // Report type detection
@@ -430,9 +430,6 @@ export default defineEventHandler(async (event) => {
     
     const userId = user.id
     
-    // Get supabase client
-    const supabase = await serverSupabaseClient(event)
-    
     logger.debug('Looking up profile', 'parse-referrals', { authUserId: userId })
     
     // Check if user has appropriate role
@@ -503,9 +500,9 @@ export default defineEventHandler(async (event) => {
     
     logger.info('Detected report type', 'parse-referrals', { reportType })
     
-    // Fetch all partners for matching
+    // Fetch all partners for matching (use admin client to bypass RLS)
     // The table uses 'name' column (aliased from hospital_name in views/queries)
-    const { data: partners } = await supabase
+    const { data: partners } = await supabaseAdmin
       .from('referral_partners')
       .select('id, name, total_referrals_all_time, total_revenue_all_time, last_contact_date, last_referral_date, referral_divisions')
     
@@ -608,15 +605,22 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // Batch upsert all matched revenue updates in one DB call
-      if (revenueUpdates.length > 0) {
-        const { error: batchError } = await supabase
+      // Update each matched partner individually (use admin client to bypass RLS)
+      let updateErrors = 0
+      for (const upd of revenueUpdates) {
+        const { id, ...fields } = upd
+        const { error: updError } = await supabaseAdmin
           .from('referral_partners')
-          .upsert(revenueUpdates, { onConflict: 'id' })
+          .update(fields)
+          .eq('id', id)
 
-        if (batchError) {
-          logger.error('Batch revenue update error', null, 'parse-referrals', { message: batchError.message })
+        if (updError) {
+          updateErrors++
+          logger.error('Partner update error', null, 'parse-referrals', { id, message: updError.message })
         }
+      }
+      if (updateErrors > 0) {
+        logger.warn(`Failed to update ${updateErrors} of ${revenueUpdates.length} partners`, 'parse-referrals')
       }
       
     } else {
@@ -678,20 +682,27 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      // Batch upsert all matched statistics updates in one DB call
-      if (statsUpdates.length > 0) {
-        const { error: batchError } = await supabase
+      // Update each matched partner individually (use admin client to bypass RLS)
+      let statsUpdateErrors = 0
+      for (const upd of statsUpdates) {
+        const { id, ...fields } = upd
+        const { error: updError } = await supabaseAdmin
           .from('referral_partners')
-          .upsert(statsUpdates, { onConflict: 'id' })
+          .update(fields)
+          .eq('id', id)
 
-        if (batchError) {
-          logger.error('Batch statistics update error', null, 'parse-referrals', { message: batchError.message })
+        if (updError) {
+          statsUpdateErrors++
+          logger.error('Partner stats update error', null, 'parse-referrals', { id, message: updError.message })
         }
+      }
+      if (statsUpdateErrors > 0) {
+        logger.warn(`Failed to update ${statsUpdateErrors} of ${statsUpdates.length} partners`, 'parse-referrals')
       }
     }
     
-    // Log sync history
-    await supabase.from('referral_sync_history').insert({
+    // Log sync history (use admin client to bypass RLS)
+    await supabaseAdmin.from('referral_sync_history').insert({
       filename: file.filename || 'referral-report.csv',
       date_range_start: null,
       date_range_end: null,
@@ -710,7 +721,7 @@ export default defineEventHandler(async (event) => {
     
     // Recalculate all partner metrics (Tier, Priority, Relationship Health, Overdue)
     logger.info('Recalculating partner metrics...', 'parse-referrals')
-    const { error: recalcError } = await supabase.rpc('recalculate_partner_metrics')
+    const { error: recalcError } = await supabaseAdmin.rpc('recalculate_partner_metrics')
     if (recalcError) {
       logger.warn('Failed to recalculate metrics', 'parse-referrals', { message: recalcError.message })
     } else {
