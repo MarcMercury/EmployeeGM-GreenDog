@@ -95,7 +95,7 @@
               <v-col cols="6" md="2">
                 <v-select
                   v-model="filterTier"
-                  :items="tierOptions"
+                  :items="REFERRAL_TIERS"
                   label="Tier"
                   variant="outlined"
                   density="compact"
@@ -117,7 +117,7 @@
               <v-col cols="6" md="2">
                 <v-select
                   v-model="filterPriority"
-                  :items="priorityOptions"
+                  :items="REFERRAL_PRIORITIES"
                   label="Priority"
                   variant="outlined"
                   density="compact"
@@ -718,22 +718,22 @@
             <v-window-item value="crm">
               <v-row dense>
                 <v-col cols="6">
-                  <v-select v-model="form.tier" :items="tierOptions" label="Tier" variant="outlined" density="compact" />
+                  <v-select v-model="form.tier" :items="REFERRAL_TIERS" label="Tier" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.priority" :items="priorityOptions" label="Priority" variant="outlined" density="compact" />
+                  <v-select v-model="form.priority" :items="REFERRAL_PRIORITIES" label="Priority" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
                   <v-select v-model="form.zone" :items="zoneOptions" label="Zone" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.clinic_type" :items="clinicTypeOptions" label="Clinic Type" variant="outlined" density="compact" />
+                  <v-select v-model="form.clinic_type" :items="CLINIC_TYPE_OPTIONS" label="Clinic Type" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.size" :items="sizeOptions" label="Size" variant="outlined" density="compact" clearable />
+                  <v-select v-model="form.size" :items="CLINIC_SIZE_OPTIONS" label="Size" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.organization_type" :items="organizationTypeOptions" label="Organization Type" variant="outlined" density="compact" clearable />
+                  <v-select v-model="form.organization_type" :items="ORGANIZATION_TYPE_OPTIONS" label="Organization Type" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
                   <v-text-field v-model.number="form.employee_count" label="Employee Count" type="number" variant="outlined" density="compact" min="0" />
@@ -747,7 +747,7 @@
                   <div class="text-subtitle-2 mb-2">Services Offered</div>
                   <div class="d-flex flex-wrap gap-1">
                     <v-checkbox
-                      v-for="svc in serviceOptions"
+                      v-for="svc in VET_SERVICE_OPTIONS"
                       :key="svc"
                       v-model="form.services"
                       :label="svc"
@@ -783,16 +783,16 @@
             <v-window-item value="targeting">
               <v-row dense>
                 <v-col cols="6">
-                  <v-select v-model="form.visit_frequency" :items="frequencyOptions" label="Visit Frequency" variant="outlined" density="compact" @update:model-value="syncVisitFrequencyDays" />
+                  <v-select v-model="form.visit_frequency" :items="VISIT_FREQUENCY_OPTIONS" label="Visit Frequency" variant="outlined" density="compact" @update:model-value="syncVisitFrequencyDays" />
                 </v-col>
                 <v-col cols="6">
                   <v-text-field v-model.number="form.expected_visit_frequency_days" label="Expected Days Between Visits" type="number" variant="outlined" density="compact" min="1" hint="Auto-set from frequency, or override manually" persistent-hint />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.preferred_visit_day" :items="dayOptions" label="Preferred Day" variant="outlined" density="compact" clearable />
+                  <v-select v-model="form.preferred_visit_day" :items="PREFERRED_DAY_OPTIONS" label="Preferred Day" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
-                  <v-select v-model="form.preferred_visit_time" :items="timeOptions" label="Preferred Time" variant="outlined" density="compact" clearable />
+                  <v-select v-model="form.preferred_visit_time" :items="PREFERRED_TIME_OPTIONS" label="Preferred Time" variant="outlined" density="compact" clearable />
                 </v-col>
                 <v-col cols="6">
                   <v-text-field v-model="form.best_contact_person" label="Best Contact Person" variant="outlined" density="compact" />
@@ -809,7 +809,7 @@
             <v-window-item value="agreements">
               <v-row dense>
                 <v-col cols="12">
-                  <v-select v-model="form.referral_agreement_type" :items="agreementOptions" label="Referral Agreement Type" variant="outlined" density="compact" />
+                  <v-select v-model="form.referral_agreement_type" :items="AGREEMENT_TYPE_OPTIONS" label="Referral Agreement Type" variant="outlined" density="compact" />
                 </v-col>
                 <v-col cols="12" class="mt-2">
                   <div class="text-subtitle-2 mb-3">Eligibility & Permissions</div>
@@ -1179,43 +1179,26 @@ const deleting = ref(false)
 
 const snackbar = reactive({ show: false, message: '', color: 'success' })
 
-// Options
-const tierOptions = ['Platinum', 'Gold', 'Silver', 'Bronze', 'Coal']
-const priorityOptions = ['Very High', 'High', 'Medium', 'Low']
-const clinicTypeOptions = ['general', 'specialty', 'emergency', 'urgent_care', 'mobile', 'shelter', 'corporate', 'independent']
-const sizeOptions = ['small', 'medium', 'large', 'enterprise']
-const organizationTypeOptions = ['independent', 'corporate', 'franchise', 'nonprofit', 'university', 'government']
-const serviceOptions = ['Dentistry', 'GP', 'Urg Care', 'Emergency', '24Hr Care', 'Internal Med', 'Cardio', 'Exotics', 'CT/Imaging', 'Derm', 'Optho', 'Accup', 'Other']
-const frequencyOptions = ['weekly', 'biweekly', 'monthly', 'quarterly', 'annually', 'as_needed']
-const dayOptions = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-const timeOptions = ['morning', 'midday', 'afternoon']
-const agreementOptions = ['none', 'informal', 'formal', 'exclusive']
-const outcomeOptions = ['successful', 'follow_up_needed', 'no_answer', 'voicemail', 'rescheduled', 'declined']
-
-// Zone definitions with descriptions
-const zoneDefinitions = [
-  { value: 'Westside & Coastal', title: 'Westside & Coastal 🌊', description: 'Santa Monica, Venice, Marina del Rey, Culver City, Beverly Hills, Westwood, Malibu, Pacific Palisades, Brentwood' },
-  { value: 'South Valley', title: 'South Valley 🎬', description: 'Studio City, Sherman Oaks, Encino, Tarzana, Woodland Hills, Burbank, Toluca Lake, Universal City' },
-  { value: 'North Valley', title: 'North Valley 🏘️', description: 'Northridge, Chatsworth, Granada Hills, Porter Ranch, Van Nuys, Reseda, Canoga Park, North Hollywood, Sun Valley, Sylmar' },
-  { value: 'Central & Eastside', title: 'Central & Eastside 🏙️', description: 'DTLA, Silver Lake, Echo Park, Hollywood, West Hollywood, Los Feliz, Eagle Rock, Boyle Heights' },
-  { value: 'South Bay', title: 'South Bay & Airport ✈️', description: 'El Segundo, Manhattan Beach, Torrance, Redondo Beach, Hawthorne, Inglewood, Gardena' },
-  { value: 'San Gabriel Valley', title: 'San Gabriel Valley 🥡', description: 'Pasadena, Glendale, Arcadia, Alhambra, Monterey Park, San Marino' }
-]
+// Options — shared constants auto-imported from ~/utils/marketingConstants.ts
+// REFERRAL_TIERS, REFERRAL_PRIORITIES, CLINIC_TYPE_OPTIONS, CLINIC_SIZE_OPTIONS,
+// ORGANIZATION_TYPE_OPTIONS, VET_SERVICE_OPTIONS, VISIT_FREQUENCY_OPTIONS,
+// PREFERRED_DAY_OPTIONS, PREFERRED_TIME_OPTIONS, AGREEMENT_TYPE_OPTIONS,
+// VISIT_OUTCOME_OPTIONS, ZONE_DEFINITIONS
 
 // Zone options for select dropdowns
-const zoneOptions = zoneDefinitions.map(z => ({ title: z.title, value: z.value }))
+const zoneOptions = ZONE_DEFINITIONS.map(z => ({ title: z.title, value: z.value }))
 
 // Get zone display name with emoji
 const getZoneDisplay = (zone: string | null) => {
   if (!zone) return 'No zone'
-  const def = zoneDefinitions.find(z => z.value === zone)
+  const def = ZONE_DEFINITIONS.find(z => z.value === zone)
   return def ? def.title : zone
 }
 
 // Get zone description
 const getZoneDescription = (zone: string | null) => {
   if (!zone) return ''
-  const def = zoneDefinitions.find(z => z.value === zone)
+  const def = ZONE_DEFINITIONS.find(z => z.value === zone)
   return def ? def.description : ''
 }
 

@@ -42,16 +42,7 @@ onMounted(() => {
   }
 })
 
-const categoryOptions = [
-  { title: 'All Categories', value: null },
-  { title: 'Apparel', value: 'apparel' },
-  { title: 'EMP Apparel', value: 'emp_apparel' },
-  { title: 'Print', value: 'print' },
-  { title: 'Prize', value: 'prize' },
-  { title: 'Product', value: 'product' },
-  { title: 'Supply', value: 'supply' },
-  { title: 'Other', value: 'other' }
-]
+// Category options from shared constants (auto-imported)
 
 // Group inventory by category
 const inventoryByCategory = computed(() => {
@@ -124,7 +115,7 @@ const stats = computed(() => ({
   total: inventory.value?.length || 0,
   lowStock: inventory.value?.filter(i => i.is_low_stock).length || 0,
   totalValue: inventory.value?.reduce((sum, i) => sum + (i.total_quantity * (i.unit_cost || 0)), 0) || 0,
-  byCategory: categoryOptions.slice(1).map(cat => ({
+  byCategory: INVENTORY_CATEGORY_EDIT_OPTIONS.map(cat => ({
     category: cat.title,
     count: inventory.value?.filter(i => i.category === cat.value).length || 0
   }))
@@ -409,7 +400,7 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
           <v-col cols="6" md="3">
             <v-select
               v-model="selectedCategory"
-              :items="categoryOptions"
+              :items="INVENTORY_CATEGORY_FILTER_OPTIONS"
               label="Category"
               variant="outlined"
               density="compact"
@@ -712,7 +703,7 @@ function getStockLevel(item: InventoryItem): { color: string; text: string } {
             <v-col cols="12" md="4">
               <v-select
                 v-model="formData.category"
-                :items="categoryOptions.filter(c => c.value !== null)"
+                :items="INVENTORY_CATEGORY_EDIT_OPTIONS"
                 label="Category *"
                 variant="outlined"
               />

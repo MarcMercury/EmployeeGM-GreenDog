@@ -36,113 +36,11 @@ const profileTab = ref('overview')
 const newNoteContent = ref('')
 const newNoteType = ref('general')
 
-// =====================================================
-// FILTER OPTIONS
-// =====================================================
-const tierOptions = [
-  { title: 'All Tiers', value: null },
-  { title: 'Nano (<10K)', value: 'nano' },
-  { title: 'Micro (10K-50K)', value: 'micro' },
-  { title: 'Macro (50K-500K)', value: 'macro' },
-  { title: 'Mega (500K+)', value: 'mega' }
-]
-
-const statusOptions = [
-  { title: 'All Statuses', value: null },
-  { title: 'Active', value: 'active' },
-  { title: 'Prospect', value: 'prospect' },
-  { title: 'Inactive', value: 'inactive' },
-  { title: 'Completed', value: 'completed' }
-]
-
-const statusEditOptions = [
-  { title: 'Active', value: 'active' },
-  { title: 'Prospect', value: 'prospect' },
-  { title: 'Inactive', value: 'inactive' },
-  { title: 'Completed', value: 'completed' }
-]
-
-const platformOptions = [
-  { title: 'All Platforms', value: null },
-  { title: 'Instagram', value: 'IG' },
-  { title: 'TikTok', value: 'TikTok' },
-  { title: 'YouTube', value: 'YouTube' },
-  { title: 'Facebook', value: 'Facebook' }
-]
-
-const priorityOptions = [
-  { title: 'All Priorities', value: null },
-  { title: 'High', value: 'high' },
-  { title: 'Medium', value: 'medium' },
-  { title: 'Low', value: 'low' }
-]
-
-const priorityEditOptions = [
-  { title: 'High', value: 'high' },
-  { title: 'Medium', value: 'medium' },
-  { title: 'Low', value: 'low' }
-]
-
-const relationshipStatusOptions = [
-  { title: 'New', value: 'new' },
-  { title: 'Outreach', value: 'outreach' },
-  { title: 'Negotiating', value: 'negotiating' },
-  { title: 'Active Partner', value: 'active_partner' },
-  { title: 'Dormant', value: 'dormant' },
-  { title: 'Past Partner', value: 'past_partner' }
-]
-
-const collaborationTypeOptions = [
-  { title: 'Gifted', value: 'gifted' },
-  { title: 'Paid', value: 'paid' },
-  { title: 'Affiliate', value: 'affiliate' },
-  { title: 'Ambassador', value: 'ambassador' },
-  { title: 'UGC Creator', value: 'ugc' },
-  { title: 'Event', value: 'event' }
-]
-
-const compensationTypeOptions = [
-  { title: 'Free Services', value: 'services' },
-  { title: 'Flat Fee', value: 'flat_fee' },
-  { title: 'Per Post', value: 'per_post' },
-  { title: 'Commission', value: 'commission' },
-  { title: 'Product/Gifts', value: 'product' },
-  { title: 'Hybrid', value: 'hybrid' }
-]
-
-const nicheOptions = [
-  { title: 'Dog Mom/Dad', value: 'dog_parent' },
-  { title: 'Cat Parent', value: 'cat_parent' },
-  { title: 'Multi-Pet', value: 'multi_pet' },
-  { title: 'Pet Lifestyle', value: 'pet_lifestyle' },
-  { title: 'Pet Health/Wellness', value: 'pet_wellness' },
-  { title: 'Pet Training', value: 'pet_training' },
-  { title: 'Pet Fashion', value: 'pet_fashion' },
-  { title: 'Pet Travel', value: 'pet_travel' },
-  { title: 'Exotic Pets', value: 'exotic' },
-  { title: 'General Lifestyle', value: 'lifestyle' },
-  { title: 'Local/Community', value: 'local' },
-  { title: 'Other', value: 'other' }
-]
-
-const noteTypeOptions = [
-  { title: 'General', value: 'general' },
-  { title: 'Outreach', value: 'outreach' },
-  { title: 'Call', value: 'call' },
-  { title: 'Email', value: 'email' },
-  { title: 'Meeting', value: 'meeting' },
-  { title: 'Content Review', value: 'content_review' },
-  { title: 'Payment', value: 'payment' },
-  { title: 'Issue', value: 'issue' }
-]
-
-const petTypeOptions = [
-  { title: 'Dog', value: 'dog' },
-  { title: 'Cat', value: 'cat' },
-  { title: 'Multiple', value: 'multiple' },
-  { title: 'Exotic', value: 'exotic' },
-  { title: 'None/Unknown', value: null }
-]
+// Filter options, color helpers, and formatters auto-imported from:
+//   ~/utils/marketingConstants.ts
+//   ~/utils/marketingColors.ts
+//   ~/utils/marketingFormatters.ts
+//   ~/utils/partnershipHelpers.ts
 
 // =====================================================
 // FORM STATE
@@ -295,12 +193,10 @@ const tierBreakdown = computed(() => {
 // =====================================================
 // HELPER FUNCTIONS
 // =====================================================
-function formatFollowers(count: number | null | undefined): string {
-  if (!count) return '0'
-  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`
-  return count.toString()
-}
+// formatCompactNumber, formatRelativeDate, formatPartnerDate, formatTypeName,
+// getInfluencerTierColor, getInfluencerStatusColor, getPlatformIcon,
+// getPlatformColor, getNoteTypeIcon, getNoteTypeColor, getRelationshipScoreColorName
+// are all auto-imported from shared utils.
 
 function getMaxFollowers(influencer: Influencer): number {
   return Math.max(
@@ -311,116 +207,19 @@ function getMaxFollowers(influencer: Influencer): number {
   )
 }
 
-function getTierColor(tier: string | null): string {
-  const colors: Record<string, string> = {
-    nano: 'grey',
-    micro: 'info',
-    macro: 'success',
-    mega: 'warning'
-  }
-  return colors[tier || ''] || 'grey'
-}
-
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    active: 'success',
-    prospect: 'info',
-    inactive: 'grey',
-    completed: 'warning'
-  }
-  return colors[status] || 'grey'
-}
-
-function getPlatformIcon(platform: string | null): string {
-  const icons: Record<string, string> = {
-    IG: 'mdi-instagram',
-    Instagram: 'mdi-instagram',
-    TikTok: 'mdi-music-note',
-    YouTube: 'mdi-youtube',
-    Facebook: 'mdi-facebook'
-  }
-  return icons[platform || ''] || 'mdi-account-star'
-}
-
-function getPlatformColor(platform: string | null): string {
-  const colors: Record<string, string> = {
-    IG: 'pink',
-    Instagram: 'pink',
-    TikTok: 'cyan',
-    YouTube: 'red',
-    Facebook: 'blue'
-  }
-  return colors[platform || ''] || 'secondary'
-}
-
-function getRelationshipScoreColor(score: number | null): string {
-  if (!score) return 'grey'
-  if (score >= 80) return 'success'
-  if (score >= 60) return 'info'
-  if (score >= 40) return 'warning'
-  return 'error'
-}
-
-function getNoteTypeIcon(type: string): string {
-  const icons: Record<string, string> = {
-    general: 'mdi-note-text',
-    outreach: 'mdi-send',
-    call: 'mdi-phone',
-    email: 'mdi-email',
-    meeting: 'mdi-account-group',
-    content_review: 'mdi-image-check',
-    payment: 'mdi-currency-usd',
-    issue: 'mdi-alert-circle'
-  }
-  return icons[type] || 'mdi-note'
-}
-
-function getNoteTypeColor(type: string): string {
-  const colors: Record<string, string> = {
-    general: 'grey',
-    outreach: 'primary',
-    call: 'info',
-    email: 'purple',
-    meeting: 'success',
-    content_review: 'warning',
-    payment: 'teal',
-    issue: 'error'
-  }
-  return colors[type] || 'grey'
-}
-
-function formatRelativeDate(date: string): string {
-  const d = new Date(date)
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`
-  if (days < 365) return `${Math.floor(days / 30)} months ago`
-  return d.toLocaleDateString()
-}
-
 function getNicheLabel(niche: string | null): string {
-  const option = nicheOptions.find(o => o.value === niche)
+  const option = NICHE_OPTIONS.find(o => o.value === niche)
   return option?.title || niche || 'Unknown'
 }
 
 function getCollaborationLabel(type: string | null): string {
-  const option = collaborationTypeOptions.find(o => o.value === type)
+  const option = COLLABORATION_TYPE_OPTIONS.find(o => o.value === type)
   return option?.title || type || 'Unknown'
 }
 
 function getCompensationLabel(type: string | null): string {
-  const option = compensationTypeOptions.find(o => o.value === type)
+  const option = COMPENSATION_TYPE_OPTIONS.find(o => o.value === type)
   return option?.title || type || 'Unknown'
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // =====================================================
@@ -772,7 +571,7 @@ async function updateInfluencerField(field: string, value: any) {
       </v-col>
       <v-col cols="6" md="2">
         <v-card variant="outlined" class="text-center pa-3">
-          <div class="text-h5 font-weight-bold text-secondary">{{ formatFollowers(summaryStats.totalReach) }}</div>
+          <div class="text-h5 font-weight-bold text-secondary">{{ formatCompactNumber(summaryStats.totalReach) }}</div>
           <div class="text-caption text-medium-emphasis">Total Reach</div>
         </v-card>
       </v-col>
@@ -851,7 +650,7 @@ async function updateInfluencerField(field: string, value: any) {
           <v-col cols="6" md="2">
             <v-select
               v-model="selectedStatus"
-              :items="statusOptions"
+              :items="INFLUENCER_STATUS_FILTER_OPTIONS"
               label="Status"
               variant="outlined"
               density="compact"
@@ -861,7 +660,7 @@ async function updateInfluencerField(field: string, value: any) {
           <v-col cols="6" md="2">
             <v-select
               v-model="selectedPlatform"
-              :items="platformOptions"
+              :items="PLATFORM_FILTER_OPTIONS"
               label="Platform"
               variant="outlined"
               density="compact"
@@ -871,7 +670,7 @@ async function updateInfluencerField(field: string, value: any) {
           <v-col cols="6" md="2">
             <v-select
               v-model="selectedPriority"
-              :items="priorityOptions"
+              :items="INFLUENCER_PRIORITY_FILTER_OPTIONS"
               label="Priority"
               variant="outlined"
               density="compact"
@@ -923,15 +722,15 @@ async function updateInfluencerField(field: string, value: any) {
               🐾 {{ influencer.pet_name }}
             </p>
             <div class="d-flex justify-center gap-1 mb-2">
-              <v-chip :color="getStatusColor(influencer.status)" size="x-small" variant="flat">
+              <v-chip :color="getInfluencerStatusColor(influencer.status)" size="x-small" variant="flat">
                 {{ influencer.status }}
               </v-chip>
-              <v-chip :color="getTierColor(influencer.tier)" size="x-small" variant="tonal">
+              <v-chip :color="getInfluencerTierColor(influencer.tier)" size="x-small" variant="tonal">
                 {{ influencer.tier || 'unknown' }}
               </v-chip>
             </div>
             <div class="text-h6 font-weight-bold text-secondary">
-              {{ formatFollowers(getMaxFollowers(influencer)) }}
+              {{ formatCompactNumber(getMaxFollowers(influencer)) }}
             </div>
             <div class="text-caption text-medium-emphasis">followers</div>
           </v-card-text>
@@ -997,11 +796,11 @@ async function updateInfluencerField(field: string, value: any) {
             
             <v-list-item-subtitle>
               <div class="d-flex align-center flex-wrap gap-2 mt-1">
-                <v-chip :color="getStatusColor(influencer.status)" size="x-small" variant="flat">
+                <v-chip :color="getInfluencerStatusColor(influencer.status)" size="x-small" variant="flat">
                   {{ influencer.status }}
                 </v-chip>
-                <v-chip :color="getTierColor(influencer.tier)" size="x-small" variant="tonal">
-                  {{ formatFollowers(getMaxFollowers(influencer)) }} • {{ influencer.tier }}
+                <v-chip :color="getInfluencerTierColor(influencer.tier)" size="x-small" variant="tonal">
+                  {{ formatCompactNumber(getMaxFollowers(influencer)) }} • {{ influencer.tier }}
                 </v-chip>
                 <span v-if="influencer.instagram_handle">
                   <v-icon size="12" color="pink">mdi-instagram</v-icon>
@@ -1075,13 +874,13 @@ async function updateInfluencerField(field: string, value: any) {
               <v-text-field v-model="formData.pet_name" label="Pet Name" variant="outlined" prepend-inner-icon="mdi-paw" />
             </v-col>
             <v-col cols="6" md="3">
-              <v-select v-model="formData.status" :items="statusEditOptions" label="Status" variant="outlined" />
+              <v-select v-model="formData.status" :items="INFLUENCER_STATUS_EDIT_OPTIONS" label="Status" variant="outlined" />
             </v-col>
             <v-col cols="6" md="3">
               <v-text-field v-model="formData.promo_code" label="Promo Code" variant="outlined" placeholder="e.g., SAWYER20" />
             </v-col>
             <v-col cols="12" md="3">
-              <v-select v-model="formData.content_niche" :items="nicheOptions" label="Content Niche" variant="outlined" />
+              <v-select v-model="formData.content_niche" :items="NICHE_OPTIONS" label="Content Niche" variant="outlined" />
             </v-col>
             <v-col cols="12" md="3">
               <v-text-field v-model="formData.location" label="Location" variant="outlined" prepend-inner-icon="mdi-map-marker" />
@@ -1138,7 +937,7 @@ async function updateInfluencerField(field: string, value: any) {
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Pet Information</div>
             </v-col>
             <v-col cols="6" md="3">
-              <v-select v-model="formData.pet_type" :items="petTypeOptions" label="Pet Type" variant="outlined" density="compact" />
+              <v-select v-model="formData.pet_type" :items="PET_TYPE_OPTIONS" label="Pet Type" variant="outlined" density="compact" />
             </v-col>
             <v-col cols="6" md="3">
               <v-text-field v-model="formData.pet_breed" label="Pet Breed" variant="outlined" density="compact" />
@@ -1156,10 +955,10 @@ async function updateInfluencerField(field: string, value: any) {
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Collaboration Details</div>
             </v-col>
             <v-col cols="6" md="3">
-              <v-select v-model="formData.collaboration_type" :items="collaborationTypeOptions" label="Collaboration Type" variant="outlined" density="compact" />
+              <v-select v-model="formData.collaboration_type" :items="COLLABORATION_TYPE_OPTIONS" label="Collaboration Type" variant="outlined" density="compact" />
             </v-col>
             <v-col cols="6" md="3">
-              <v-select v-model="formData.compensation_type" :items="compensationTypeOptions" label="Compensation Type" variant="outlined" density="compact" />
+              <v-select v-model="formData.compensation_type" :items="COMPENSATION_TYPE_OPTIONS" label="Compensation Type" variant="outlined" density="compact" />
             </v-col>
             <v-col cols="6" md="3">
               <v-text-field v-model.number="formData.compensation_rate" label="Rate ($)" variant="outlined" density="compact" type="number" prefix="$" />
@@ -1208,14 +1007,14 @@ async function updateInfluencerField(field: string, value: any) {
             <span class="text-h6">{{ selectedInfluencer.contact_name }}</span>
             <div class="text-caption text-medium-emphasis">
               {{ selectedInfluencer.pet_name ? `🐾 ${selectedInfluencer.pet_name}` : '' }}
-              {{ formatFollowers(getMaxFollowers(selectedInfluencer)) }} followers
+              {{ formatCompactNumber(getMaxFollowers(selectedInfluencer)) }} followers
             </div>
           </div>
           <v-spacer />
-          <v-chip :color="getStatusColor(selectedInfluencer.status)" size="small" class="mr-2">
+          <v-chip :color="getInfluencerStatusColor(selectedInfluencer.status)" size="small" class="mr-2">
             {{ selectedInfluencer.status }}
           </v-chip>
-          <v-chip :color="getTierColor(selectedInfluencer.tier)" size="small" variant="tonal" class="mr-2">
+          <v-chip :color="getInfluencerTierColor(selectedInfluencer.tier)" size="small" variant="tonal" class="mr-2">
             {{ selectedInfluencer.tier || 'unknown' }}
           </v-chip>
           <v-btn icon variant="text" aria-label="Close" @click="profileDialogOpen = false">
@@ -1320,11 +1119,11 @@ async function updateInfluencerField(field: string, value: any) {
                   <div class="d-flex flex-wrap gap-3">
                     <div>
                       <span class="text-caption text-medium-emphasis">Contract Start:</span>
-                      <span class="ml-1">{{ selectedInfluencer.contract_start_date ? formatDate(selectedInfluencer.contract_start_date) : 'Not set' }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.contract_start_date ? formatPartnerDate(selectedInfluencer.contract_start_date) : 'Not set' }}</span>
                     </div>
                     <div>
                       <span class="text-caption text-medium-emphasis">Contract End:</span>
-                      <span class="ml-1">{{ selectedInfluencer.contract_end_date ? formatDate(selectedInfluencer.contract_end_date) : 'Not set' }}</span>
+                      <span class="ml-1">{{ selectedInfluencer.contract_end_date ? formatPartnerDate(selectedInfluencer.contract_end_date) : 'Not set' }}</span>
                     </div>
                   </div>
                 </v-col>
@@ -1424,21 +1223,21 @@ async function updateInfluencerField(field: string, value: any) {
                           <template #prepend>
                             <v-avatar color="pink" size="32"><v-icon size="18" color="white">mdi-instagram</v-icon></v-avatar>
                           </template>
-                          <v-list-item-title>{{ formatFollowers(selectedInfluencer.instagram_followers) }} followers</v-list-item-title>
+                          <v-list-item-title>{{ formatCompactNumber(selectedInfluencer.instagram_followers) }} followers</v-list-item-title>
                           <v-list-item-subtitle v-if="selectedInfluencer.instagram_handle">@{{ selectedInfluencer.instagram_handle }}</v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="selectedInfluencer.tiktok_followers || selectedInfluencer.tiktok_handle">
                           <template #prepend>
                             <v-avatar color="cyan" size="32"><v-icon size="18" color="white">mdi-music-note</v-icon></v-avatar>
                           </template>
-                          <v-list-item-title>{{ formatFollowers(selectedInfluencer.tiktok_followers) }} followers</v-list-item-title>
+                          <v-list-item-title>{{ formatCompactNumber(selectedInfluencer.tiktok_followers) }} followers</v-list-item-title>
                           <v-list-item-subtitle v-if="selectedInfluencer.tiktok_handle">@{{ selectedInfluencer.tiktok_handle }}</v-list-item-subtitle>
                         </v-list-item>
                         <v-list-item v-if="selectedInfluencer.youtube_subscribers || selectedInfluencer.youtube_url">
                           <template #prepend>
                             <v-avatar color="red" size="32"><v-icon size="18" color="white">mdi-youtube</v-icon></v-avatar>
                           </template>
-                          <v-list-item-title>{{ formatFollowers(selectedInfluencer.youtube_subscribers) }} subscribers</v-list-item-title>
+                          <v-list-item-title>{{ formatCompactNumber(selectedInfluencer.youtube_subscribers) }} subscribers</v-list-item-title>
                           <template #append v-if="selectedInfluencer.youtube_url">
                             <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.youtube_url" target="_blank" rel="noopener noreferrer"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
@@ -1476,15 +1275,15 @@ async function updateInfluencerField(field: string, value: any) {
                       <v-row dense>
                         <v-col v-if="selectedInfluencer.avg_likes" cols="4">
                           <div class="text-caption text-medium-emphasis">Avg Likes</div>
-                          <div class="font-weight-bold">{{ formatFollowers(selectedInfluencer.avg_likes) }}</div>
+                          <div class="font-weight-bold">{{ formatCompactNumber(selectedInfluencer.avg_likes) }}</div>
                         </v-col>
                         <v-col v-if="selectedInfluencer.avg_comments" cols="4">
                           <div class="text-caption text-medium-emphasis">Avg Comments</div>
-                          <div class="font-weight-bold">{{ formatFollowers(selectedInfluencer.avg_comments) }}</div>
+                          <div class="font-weight-bold">{{ formatCompactNumber(selectedInfluencer.avg_comments) }}</div>
                         </v-col>
                         <v-col v-if="selectedInfluencer.avg_views" cols="4">
                           <div class="text-caption text-medium-emphasis">Avg Views</div>
-                          <div class="font-weight-bold">{{ formatFollowers(selectedInfluencer.avg_views) }}</div>
+                          <div class="font-weight-bold">{{ formatCompactNumber(selectedInfluencer.avg_views) }}</div>
                         </v-col>
                       </v-row>
                     </v-card-text>
@@ -1520,7 +1319,7 @@ async function updateInfluencerField(field: string, value: any) {
                 <v-card-text>
                   <v-row dense>
                     <v-col cols="12" md="3">
-                      <v-select v-model="newNoteType" :items="noteTypeOptions" label="Note Type" variant="outlined" density="compact" hide-details />
+                      <v-select v-model="newNoteType" :items="NOTE_TYPE_OPTIONS" label="Note Type" variant="outlined" density="compact" hide-details />
                     </v-col>
                     <v-col cols="12" md="7">
                       <v-textarea v-model="newNoteContent" label="Add a note..." variant="outlined" density="compact" rows="2" hide-details />
@@ -1586,7 +1385,7 @@ async function updateInfluencerField(field: string, value: any) {
                       <div class="text-subtitle-2 mb-3">Relationship Score</div>
                       <v-progress-linear
                         :model-value="selectedInfluencer.relationship_score || 50"
-                        :color="getRelationshipScoreColor(selectedInfluencer.relationship_score)"
+                        :color="getRelationshipScoreColorName(selectedInfluencer.relationship_score)"
                         height="24"
                         rounded
                       >
@@ -1605,7 +1404,7 @@ async function updateInfluencerField(field: string, value: any) {
                 <v-col cols="12" md="6">
                   <v-select
                     :model-value="selectedInfluencer.relationship_status"
-                    :items="relationshipStatusOptions"
+                    :items="RELATIONSHIP_STATUS_OPTIONS"
                     label="Relationship Status"
                     variant="outlined"
                     density="compact"
@@ -1614,7 +1413,7 @@ async function updateInfluencerField(field: string, value: any) {
                   />
                   <v-select
                     :model-value="selectedInfluencer.priority"
-                    :items="priorityEditOptions"
+                    :items="INFLUENCER_PRIORITY_EDIT_OPTIONS"
                     label="Priority"
                     variant="outlined"
                     density="compact"

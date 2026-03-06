@@ -755,7 +755,7 @@ function fmtCur(n: number | string | null) {
 }
 function formatDateTime(d: string | null): string {
   if (!d) return 'Never'
-  return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return formatPartnerDateTime(d)
 }
 function printReport() { window.print() }
 function notify(message: string, color = 'success') { snackbar.message = message; snackbar.color = color; snackbar.show = true }

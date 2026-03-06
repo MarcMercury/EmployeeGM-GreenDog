@@ -53,29 +53,6 @@ const partnerImportFields = [
   { key: 'notes', label: 'Notes' }
 ]
 
-// Area options matching referral CRM zones
-const areaOptions = [
-  { title: 'All Areas', value: null },
-  { title: 'Westside & Coastal', value: 'Westside & Coastal' },
-  { title: 'South Valley', value: 'South Valley' },
-  { title: 'North Valley', value: 'North Valley' },
-  { title: 'Central & Eastside', value: 'Central & Eastside' },
-  { title: 'South Bay', value: 'South Bay' },
-  { title: 'San Gabriel Valley', value: 'San Gabriel Valley' },
-  { title: 'Online/Remote/Out of Area', value: 'Online/Remote/Out of Area' }
-]
-
-// Area edit options (without "All Areas")
-const areaEditOptions = [
-  { title: 'Westside & Coastal', value: 'Westside & Coastal' },
-  { title: 'South Valley', value: 'South Valley' },
-  { title: 'North Valley', value: 'North Valley' },
-  { title: 'Central & Eastside', value: 'Central & Eastside' },
-  { title: 'South Bay', value: 'South Bay' },
-  { title: 'San Gabriel Valley', value: 'San Gabriel Valley' },
-  { title: 'Online/Remote/Out of Area', value: 'Online/Remote/Out of Area' }
-]
-
 // Filter state
 const searchQuery = ref('')
 const selectedType = ref<string | null>(null)
@@ -83,77 +60,6 @@ const selectedStatus = ref<string | null>(null)
 const selectedService = ref<string | null>(null)
 const selectedArea = ref<string | null>(null)
 const viewMode = ref<'list' | 'cards'>('list')
-
-// Service options for pet businesses
-const serviceOptions = [
-  { title: 'All Services', value: null },
-  { title: 'Groomer', value: 'Groomer' },
-  { title: 'Daycare', value: 'Daycare' },
-  { title: 'Retail', value: 'Retail' },
-  { title: 'Hotel', value: 'Hotel' },
-  { title: 'Rescue/Shelter', value: 'Rescue' },
-  { title: 'Trainer', value: 'Trainer' },
-  { title: 'Other', value: 'Other' }
-]
-
-// Partner type options
-const partnerTypes = [
-  { title: 'All Types', value: null },
-  { title: 'Other Pet Business', value: 'pet_business' },
-  { title: 'Exotic Shop', value: 'exotic_shop' },
-  { title: 'Rescue', value: 'rescue' },
-  { title: 'Entertainment', value: 'entertainment' },
-  { title: 'Print Vendor', value: 'print_vendor' },
-  { title: 'Chamber/Association', value: 'chamber' },
-  { title: 'Food & Beverage', value: 'food_vendor' },
-  { title: 'Media', value: 'media' },
-  { title: 'Groomer', value: 'groomer' },
-  { title: 'Daycare/Boarding', value: 'daycare_boarding' },
-  { title: 'Pet Retail', value: 'pet_retail' },
-  { title: 'Charity', value: 'charity' },
-  { title: 'Merch Vendor', value: 'merch_vendor' },
-  { title: 'Designers/Graphics', value: 'designers_graphics' },
-  { title: 'Other', value: 'other' }
-]
-
-// Partner type options for profile editing (without "All Types")
-const partnerTypeEditOptions = [
-  { title: 'Other Pet Business', value: 'pet_business' },
-  { title: 'Exotic Shop', value: 'exotic_shop' },
-  { title: 'Rescue', value: 'rescue' },
-  { title: 'Entertainment', value: 'entertainment' },
-  { title: 'Print Vendor', value: 'print_vendor' },
-  { title: 'Chamber/Association', value: 'chamber' },
-  { title: 'Food & Beverage', value: 'food_vendor' },
-  { title: 'Media', value: 'media' },
-  { title: 'Groomer', value: 'groomer' },
-  { title: 'Daycare/Boarding', value: 'daycare_boarding' },
-  { title: 'Pet Retail', value: 'pet_retail' },
-  { title: 'Charity', value: 'charity' },
-  { title: 'Merch Vendor', value: 'merch_vendor' },
-  { title: 'Designers/Graphics', value: 'designers_graphics' },
-  { title: 'Other', value: 'other' }
-]
-
-const statusOptions = [
-  { title: 'All Statuses', value: null },
-  { title: 'Active', value: 'active' },
-  { title: 'Pending', value: 'pending' },
-  { title: 'Expired', value: 'expired' },
-  { title: 'Inactive', value: 'inactive' },
-  { title: 'Prospect', value: 'prospect' },
-  { title: 'Completed', value: 'completed' }
-]
-
-// Status options for profile editing (without "All Statuses")
-const statusEditOptions = [
-  { title: 'Active', value: 'active' },
-  { title: 'Pending', value: 'pending' },
-  { title: 'Expired', value: 'expired' },
-  { title: 'Inactive', value: 'inactive' },
-  { title: 'Prospect', value: 'prospect' },
-  { title: 'Completed', value: 'completed' }
-]
 
 // Fetch partners
 const { data: partners, pending, refresh } = await useAsyncData('partners', async () => {
@@ -268,33 +174,8 @@ function getPartnerTier(score: number): string {
   return 'Coal'
 }
 
-function getPartnerTierColor(tier: string): string {
-  const colors: Record<string, string> = {
-    Platinum: '#E5E4E2', Gold: '#FFD700', Silver: '#C0C0C0', Bronze: '#CD7F32', Coal: '#36454F'
-  }
-  return colors[tier] || '#9E9E9E'
-}
-
-function getPartnerTierLabel(tier: string): string {
-  const labels: Record<string, string> = {
-    Platinum: 'P', Gold: 'G', Silver: 'S', Bronze: 'B', Coal: 'C'
-  }
-  return labels[tier] || '?'
-}
-
-function getScoreColor(score: number): string {
-  if (score >= 80) return 'success'
-  if (score >= 60) return 'info'
-  if (score >= 40) return 'warning'
-  return 'error'
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 80) return 'Excellent'
-  if (score >= 60) return 'Good'
-  if (score >= 40) return 'Needs Attention'
-  return 'At Risk'
-}
+// getTierColor, getTierLabel auto-imported from partnershipHelpers.ts
+// getRelationshipScoreColorName auto-imported from partnershipHelpers.ts
 
 // Table headers (matching Referral CRM grid style)
 const tableHeaders = [
@@ -604,111 +485,8 @@ function handleDelete(partner: Partner) {
   deletePartner(partner.id)
 }
 
-function getTypeColor(type: string): string {
-  const colors: Record<string, string> = {
-    pet_business: 'teal',
-    exotic_shop: 'lime',
-    rescue: 'pink',
-    entertainment: 'purple',
-    print_vendor: 'brown',
-    chamber: 'primary',
-    food_vendor: 'orange',
-    media: 'deep-purple',
-    groomer: 'light-blue',
-    daycare_boarding: 'amber',
-    pet_retail: 'teal-darken-2',
-    charity: 'red',
-    merch_vendor: 'blue-grey',
-    designers_graphics: 'deep-orange',
-    other: 'grey'
-  }
-  return colors[type] || 'grey'
-}
-
-function getCategoryLabel(category: string | null): string {
-  if (!category) return ''
-  const labels: Record<string, string> = {
-    pet_business: 'Other Pet Business',
-    exotic_shop: 'Exotic Shop',
-    rescue: 'Rescue',
-    influencer: 'Influencer',
-    entertainment: 'Entertainment',
-    print_vendor: 'Print Vendor',
-    chamber: 'Chamber/Association',
-    food_vendor: 'Food & Beverage',
-    media: 'Media',
-    groomer: 'Groomer',
-    daycare_boarding: 'Daycare/Boarding',
-    pet_retail: 'Pet Retail',
-    charity: 'Charity',
-    merch_vendor: 'Merch Vendor',
-    designers_graphics: 'Designers/Graphics',
-    other: 'Other'
-  }
-  return labels[category] || category
-}
-
-function getCategoryIcon(category: string | null): string {
-  if (!category) return 'mdi-tag'
-  const icons: Record<string, string> = {
-    pet_business: 'mdi-paw',
-    exotic_shop: 'mdi-snake',
-    rescue: 'mdi-heart',
-    influencer: 'mdi-account-star',
-    entertainment: 'mdi-party-popper',
-    print_vendor: 'mdi-printer',
-    chamber: 'mdi-domain',
-    food_vendor: 'mdi-food',
-    media: 'mdi-newspaper',
-    groomer: 'mdi-content-cut',
-    daycare_boarding: 'mdi-home-heart',
-    pet_retail: 'mdi-store',
-    charity: 'mdi-hand-heart',
-    merch_vendor: 'mdi-tshirt-crew',
-    designers_graphics: 'mdi-palette',
-    other: 'mdi-tag'
-  }
-  return icons[category] || 'mdi-tag'
-}
-
-function getCategoryColor(category: string | null): string {
-  if (!category) return 'grey'
-  const colors: Record<string, string> = {
-    pet_business: 'teal',
-    exotic_shop: 'lime',
-    rescue: 'pink',
-    influencer: 'secondary',
-    entertainment: 'purple',
-    print_vendor: 'brown',
-    chamber: 'primary',
-    food_vendor: 'orange',
-    media: 'deep-purple',
-    groomer: 'light-blue',
-    daycare_boarding: 'amber',
-    pet_retail: 'teal-darken-2',
-    charity: 'red',
-    merch_vendor: 'blue-grey',
-    designers_graphics: 'deep-orange',
-    other: 'grey'
-  }
-  return colors[category] || 'grey'
-}
-
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    active: 'success',
-    pending: 'warning',
-    expired: 'error',
-    inactive: 'grey',
-    prospect: 'info',
-    completed: 'blue-grey'
-  }
-  return colors[status] || 'grey'
-}
-
-function formatTypeName(type: string): string {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-}
+// getPartnerTypeColor, getPartnerCategoryLabel, getPartnerCategoryIcon,
+// getPartnerStatusColor, formatTypeName auto-imported from shared utils
 
 // =====================================================
 // PARTNER PROFILE FUNCTIONS
@@ -1118,14 +896,14 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-chip
             v-for="(count, type) in statsByType"
             :key="type"
-            :color="selectedType === type ? getTypeColor(type as string) : undefined"
+            :color="selectedType === type ? getPartnerTypeColor(type as string) : undefined"
             :variant="selectedType === type ? 'elevated' : 'outlined'"
             size="small"
             @click="selectedType = selectedType === type ? null : (type as string)"
           >
             {{ formatTypeName(type as string) }}
             <template #append>
-              <v-avatar size="18" class="ml-1" :color="getTypeColor(type as string)">
+              <v-avatar size="18" class="ml-1" :color="getPartnerTypeColor(type as string)">
                 <span class="text-caption">{{ count }}</span>
               </v-avatar>
             </template>
@@ -1148,7 +926,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-col cols="4" md="3">
             <v-select
               v-model="selectedType"
-              :items="partnerTypes"
+              :items="PARTNER_TYPE_FILTER_OPTIONS"
               label="Type"
               variant="outlined"
               density="compact"
@@ -1158,7 +936,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-col cols="4" md="2">
             <v-select
               v-model="selectedStatus"
-              :items="statusOptions"
+              :items="PARTNER_STATUS_FILTER_OPTIONS"
               label="Status"
               variant="outlined"
               density="compact"
@@ -1168,7 +946,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-col cols="4" md="3">
             <v-select
               v-model="selectedArea"
-              :items="areaOptions"
+              :items="AREA_FILTER_OPTIONS"
               label="Area"
               variant="outlined"
               density="compact"
@@ -1180,7 +958,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-col cols="12" md="4">
             <v-select
               v-model="selectedService"
-              :items="serviceOptions"
+              :items="PARTNER_SERVICE_FILTER_OPTIONS"
               label="Filter by Service"
               variant="outlined"
               density="compact"
@@ -1215,8 +993,8 @@ function getPriorityColor(priority: string | null | undefined): string {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center py-2">
-            <v-avatar :color="getPartnerTierColor(item.computed_tier)" size="36" class="mr-3">
-              <span class="text-white text-caption font-weight-bold">{{ getPartnerTierLabel(item.computed_tier) }}</span>
+            <v-avatar :color="getTierColor(item.computed_tier)" size="36" class="mr-3">
+              <span class="text-white text-caption font-weight-bold">{{ getTierLabel(item.computed_tier) }}</span>
             </v-avatar>
             <div>
               <div class="font-weight-medium">{{ item.name }}</div>
@@ -1261,7 +1039,7 @@ function getPriorityColor(priority: string | null | undefined): string {
           <div class="d-flex align-center" style="min-width: 80px;">
             <v-progress-linear
               :model-value="item.computed_score"
-              :color="getScoreColor(item.computed_score)"
+              :color="getRelationshipScoreColorName(item.computed_score)"
               height="8"
               rounded
               style="width: 60px;"
@@ -1323,7 +1101,7 @@ function getPriorityColor(priority: string | null | undefined): string {
             <v-col cols="6">
               <v-select
                 v-model="formData.partner_type"
-                :items="partnerTypes.filter(t => t.value !== null)"
+                :items="PARTNER_TYPE_EDIT_OPTIONS"
                 label="Category *"
                 variant="outlined"
               />
@@ -1331,7 +1109,7 @@ function getPriorityColor(priority: string | null | undefined): string {
             <v-col cols="6">
               <v-select
                 v-model="formData.status"
-                :items="statusOptions.filter(s => s.value !== null)"
+                :items="PARTNER_STATUS_EDIT_OPTIONS"
                 label="Status *"
                 variant="outlined"
               />
@@ -1416,7 +1194,7 @@ function getPriorityColor(priority: string | null | undefined): string {
             <v-col cols="12" md="6">
               <v-select
                 v-model="formData.area"
-                :items="areaEditOptions"
+                :items="AREA_EDIT_OPTIONS"
                 label="Area"
                 variant="outlined"
                 density="compact"
@@ -1542,7 +1320,7 @@ function getPriorityColor(priority: string | null | undefined): string {
     <v-dialog v-model="profileDialogOpen" max-width="900" scrollable>
       <v-card v-if="selectedPartner">
         <v-card-title class="d-flex align-center">
-          <v-avatar :color="getTypeColor(selectedPartner.partner_type)" size="40" class="mr-3">
+          <v-avatar :color="getPartnerTypeColor(selectedPartner.partner_type)" size="40" class="mr-3">
             <v-icon color="white">mdi-handshake</v-icon>
           </v-avatar>
           <div>
@@ -1552,7 +1330,7 @@ function getPriorityColor(priority: string | null | undefined): string {
             </div>
           </div>
           <v-spacer />
-          <v-chip :color="getStatusColor(selectedPartner.status)" size="small" class="mr-2">
+          <v-chip :color="getPartnerStatusColor(selectedPartner.status)" size="small" class="mr-2">
             {{ selectedPartner.status }}
           </v-chip>
           <v-btn icon variant="text" aria-label="Close" @click="profileDialogOpen = false">
@@ -1599,9 +1377,9 @@ function getPriorityColor(priority: string | null | undefined): string {
                 <!-- Category & Status Display (read-only - edit via Edit Partner button) -->
                 <v-col cols="12">
                   <div class="d-flex flex-wrap gap-2 mb-4">
-                    <v-chip :color="getCategoryColor(selectedPartner.partner_type)" variant="elevated" size="small">
-                      <v-icon start size="16">{{ getCategoryIcon(selectedPartner.partner_type) }}</v-icon>
-                      {{ getCategoryLabel(selectedPartner.partner_type) || 'Other' }}
+                    <v-chip :color="getPartnerTypeColor(selectedPartner.partner_type)" variant="elevated" size="small">
+                      <v-icon start size="16">{{ getPartnerCategoryIcon(selectedPartner.partner_type) }}</v-icon>
+                      {{ getPartnerCategoryLabel(selectedPartner.partner_type) || 'Other' }}
                     </v-chip>
                     <v-chip :color="selectedPartner.status === 'active' ? 'success' : selectedPartner.status === 'inactive' ? 'grey' : 'warning'" variant="tonal" size="small">
                       {{ selectedPartner.status || 'Unknown' }}
@@ -1875,8 +1653,8 @@ function getPriorityColor(priority: string | null | undefined): string {
                     <v-list-item-title>
                       {{ contact.name }}
                       <v-chip v-if="contact.is_primary" size="x-small" color="success" class="ml-2">Primary</v-chip>
-                      <v-chip v-if="contact.category" size="x-small" :color="getTypeColor(contact.category)" class="ml-2">
-                        {{ getCategoryLabel(contact.category) }}
+                      <v-chip v-if="contact.category" size="x-small" :color="getPartnerTypeColor(contact.category)" class="ml-2">
+                        {{ getPartnerCategoryLabel(contact.category) }}
                       </v-chip>
                     </v-list-item-title>
 
@@ -1914,7 +1692,7 @@ function getPriorityColor(priority: string | null | undefined): string {
                       <div class="d-flex align-center justify-space-between mb-3">
                         <div class="text-subtitle-2">Computed Relationship Score</div>
                         <v-chip
-                          :color="getPartnerTierColor(getPartnerTier(computeRelationshipScore(selectedPartner)))"
+                          :color="getTierColor(getPartnerTier(computeRelationshipScore(selectedPartner)))"
                           variant="elevated"
                           size="small"
                           class="font-weight-bold"
@@ -1925,7 +1703,7 @@ function getPriorityColor(priority: string | null | undefined): string {
                       <div class="d-flex align-center">
                         <v-progress-linear
                           :model-value="computeRelationshipScore(selectedPartner)"
-                          :color="getScoreColor(computeRelationshipScore(selectedPartner))"
+                          :color="getRelationshipScoreColorName(computeRelationshipScore(selectedPartner))"
                           height="24"
                           rounded
                         >

@@ -148,47 +148,8 @@ function goBack() {
   router.push('/marketing/partners')
 }
 
-// Helper functions
-function getTypeColor(type: string): string {
-  const colors: Record<string, string> = {
-    pet_business: 'teal',
-    exotic_shop: 'lime',
-    rescue: 'pink',
-    influencer: 'secondary',
-    entertainment: 'purple',
-    print_vendor: 'brown',
-    chamber: 'primary',
-    food_vendor: 'orange',
-    association: 'indigo',
-    spay_neuter: 'cyan',
-    other: 'grey'
-  }
-  return colors[type] || 'grey'
-}
-
-function getStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    active: 'success',
-    pending: 'warning',
-    expired: 'error',
-    inactive: 'grey',
-    prospect: 'info'
-  }
-  return colors[status] || 'grey'
-}
-
-function formatTypeName(type: string): string {
-  return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-}
-
-function formatDate(date: string | null): string {
-  if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
+// getPartnerTypeColor, getPartnerStatusColor, formatTypeName auto-imported from shared utils
+// formatPartnerDate auto-imported from partnershipHelpers.ts
 </script>
 
 <template>
@@ -203,10 +164,10 @@ function formatDate(date: string | null): string {
           <h1 class="text-h4 font-weight-bold">
             {{ partner?.name || 'Partner Details' }}
           </h1>
-          <v-chip v-if="partner" :color="getTypeColor(partner.partner_type)" size="small">
+          <v-chip v-if="partner" :color="getPartnerTypeColor(partner.partner_type)" size="small">
             {{ formatTypeName(partner.partner_type) }}
           </v-chip>
-          <v-chip v-if="partner" :color="getStatusColor(partner.status)" size="small" variant="tonal">
+          <v-chip v-if="partner" :color="getPartnerStatusColor(partner.status)" size="small" variant="tonal">
             {{ partner.status }}
           </v-chip>
         </div>
@@ -266,7 +227,7 @@ function formatDate(date: string | null): string {
                 </v-col>
                 <v-col cols="12" md="6">
                   <div class="text-subtitle-2 text-medium-emphasis mb-1">Status</div>
-                  <v-chip :color="getStatusColor(partner.status)" size="small">
+                  <v-chip :color="getPartnerStatusColor(partner.status)" size="small">
                     {{ partner.status }}
                   </v-chip>
                 </v-col>
@@ -284,11 +245,11 @@ function formatDate(date: string | null): string {
                 </v-col>
                 <v-col cols="12" md="6">
                   <div class="text-subtitle-2 text-medium-emphasis mb-1">Last Contact</div>
-                  <div class="text-body-1">{{ formatDate(partner.last_contact_date) }}</div>
+                  <div class="text-body-1">{{ formatPartnerDate(partner.last_contact_date) || 'N/A' }}</div>
                 </v-col>
                 <v-col cols="12" md="6">
                   <div class="text-subtitle-2 text-medium-emphasis mb-1">Created</div>
-                  <div class="text-body-1">{{ formatDate(partner.created_at) }}</div>
+                  <div class="text-body-1">{{ formatPartnerDate(partner.created_at) || 'N/A' }}</div>
                 </v-col>
               </v-row>
             </v-window-item>
@@ -382,7 +343,7 @@ function formatDate(date: string | null): string {
                       :color="new Date(partner.membership_end) < new Date() ? 'error' : 'success'"
                       size="small"
                     >
-                      {{ formatDate(partner.membership_end) }}
+                      {{ formatPartnerDate(partner.membership_end) }}
                     </v-chip>
                     <span v-else>N/A</span>
                   </div>
