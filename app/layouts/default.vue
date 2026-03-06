@@ -657,7 +657,7 @@ const closeMobileMenu = () => {
 
         <!-- Mobile top padding to account for header, desktop has no extra padding -->
         <div class="pt-14 pb-20 lg:pt-0 lg:pb-0">
-          <div class="p-4 lg:p-6 xl:p-8">
+          <div class="px-4 pt-2 pb-4 lg:px-6 lg:pt-3 lg:pb-6 xl:px-8 xl:pt-4 xl:pb-8">
             <slot />
           </div>
         </div>

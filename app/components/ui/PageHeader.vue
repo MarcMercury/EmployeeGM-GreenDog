@@ -81,7 +81,7 @@ const slots = useSlots()
 
 <style scoped>
 .page-header-wrapper {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .page-breadcrumbs {
