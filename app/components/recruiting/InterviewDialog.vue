@@ -241,6 +241,42 @@
             density="compact"
             class="mt-4"
           />
+
+          <!-- Revisit Eligible -->
+          <v-card variant="tonal" color="amber" class="mt-4 pa-3" rounded="lg">
+            <div class="d-flex align-center gap-3">
+              <v-switch
+                v-model="interviewForm.revisit_eligible"
+                color="amber-darken-2"
+                density="compact"
+                hide-details
+                inset
+              />
+              <div class="flex-grow-1">
+                <div class="text-subtitle-2 font-weight-medium">
+                  <v-icon size="small" class="mr-1">mdi-account-reactivate</v-icon>
+                  Worth Revisiting?
+                </div>
+                <div class="text-caption text-grey-darken-1">
+                  Flag this candidate for future consideration even if not hired now
+                </div>
+              </div>
+            </div>
+            <v-expand-transition>
+              <div v-if="interviewForm.revisit_eligible">
+                <v-textarea
+                  v-model="interviewForm.revisit_reason"
+                  label="Why revisit this candidate?"
+                  placeholder="e.g., Great cultural fit but no current opening for their specialty..."
+                  variant="outlined"
+                  rows="2"
+                  density="compact"
+                  class="mt-3"
+                  bg-color="white"
+                />
+              </div>
+            </v-expand-transition>
+          </v-card>
         </div>
       </v-card-text>
 
@@ -367,7 +403,9 @@ const interviewForm = reactive<InterviewForm>({
   strengths: '',
   concerns: '',
   recommendation: 'neutral',
-  status: 'completed'
+  status: 'completed',
+  revisit_eligible: false,
+  revisit_reason: ''
 })
 
 const interviewTypeOptions = [
@@ -429,7 +467,9 @@ function resetForm() {
     strengths: '',
     concerns: '',
     recommendation: 'neutral',
-    status: 'completed'
+    status: 'completed',
+    revisit_eligible: false,
+    revisit_reason: ''
   })
   forwardTo.value = null
   forwardNotes.value = ''
@@ -477,7 +517,9 @@ async function saveInterview() {
         recommendation: interviewForm.recommendation,
         status: interviewForm.status,
         round_number: roundNumber,
-        completed_at: interviewForm.status === 'completed' ? new Date().toISOString() : null
+        completed_at: interviewForm.status === 'completed' ? new Date().toISOString() : null,
+        revisit_eligible: interviewForm.revisit_eligible || false,
+        revisit_reason: interviewForm.revisit_eligible ? (interviewForm.revisit_reason || null) : null
       })
       .select()
       .single()
@@ -545,7 +587,9 @@ async function saveAndForward() {
         recommendation: interviewForm.recommendation,
         status: interviewForm.status,
         round_number: roundNumber,
-        completed_at: interviewForm.status === 'completed' ? new Date().toISOString() : null
+        completed_at: interviewForm.status === 'completed' ? new Date().toISOString() : null,
+        revisit_eligible: interviewForm.revisit_eligible || false,
+        revisit_reason: interviewForm.revisit_eligible ? (interviewForm.revisit_reason || null) : null
       })
       .select()
       .single()

@@ -961,6 +961,8 @@ export type Database = {
           notes: string | null
           overall_score: number | null
           recommendation: string | null
+          revisit_eligible: boolean
+          revisit_reason: string | null
           round_number: number
           scheduled_at: string | null
           status: string
@@ -984,6 +986,8 @@ export type Database = {
           notes?: string | null
           overall_score?: number | null
           recommendation?: string | null
+          revisit_eligible?: boolean
+          revisit_reason?: string | null
           round_number?: number
           scheduled_at?: string | null
           status?: string
@@ -1007,6 +1011,8 @@ export type Database = {
           notes?: string | null
           overall_score?: number | null
           recommendation?: string | null
+          revisit_eligible?: boolean
+          revisit_reason?: string | null
           round_number?: number
           scheduled_at?: string | null
           status?: string

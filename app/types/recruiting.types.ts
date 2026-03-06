@@ -75,6 +75,10 @@ export interface CandidateInterviewView {
   status: string
   round_number: number
   created_at: string
+  /** Whether interviewer flagged this candidate as worth revisiting */
+  revisit_eligible?: boolean
+  /** Reason given for revisit recommendation */
+  revisit_reason?: string | null
 }
 
 /**
@@ -133,6 +137,52 @@ export interface InterviewForm {
   concerns: string
   recommendation: string
   status: string
+  /** Flag to mark candidate as worth revisiting for future openings */
+  revisit_eligible: boolean
+  /** Reason why candidate should be revisited */
+  revisit_reason: string
+}
+
+// ---------------------------------------------------------------------------
+// Candidate Revisit types
+// ---------------------------------------------------------------------------
+
+/**
+ * A candidate enriched with interview and skill data for the Revisit list.
+ */
+export interface RevisitCandidate extends Candidate {
+  /** Best overall score across all interviews */
+  best_overall_score: number
+  /** Best recommendation across all interviews */
+  best_recommendation: string | null
+  /** Total number of interview rounds completed */
+  interview_rounds: number
+  /** Highest interview stage reached */
+  furthest_stage: string | null
+  /** Whether explicitly flagged as revisit-eligible by an interviewer */
+  flagged_revisit: boolean
+  /** Reason given for revisit eligibility */
+  revisit_reason: string | null
+  /** Computed revisit score (0-100) */
+  revisit_score: number
+  /** Skills this candidate has that match org skill gaps */
+  matching_gap_skills: SkillGapMatch[]
+  /** Last interview date */
+  last_interview_at: string | null
+}
+
+/**
+ * A match between a candidate's skill and an organizational skill gap.
+ */
+export interface SkillGapMatch {
+  skill_id: string
+  skill_name: string
+  category: string
+  candidate_rating: number
+  /** Number of employees with a gap in this skill */
+  org_gap_count: number
+  /** Average gap size across employees */
+  avg_gap_size: number
 }
 
 // ---------------------------------------------------------------------------

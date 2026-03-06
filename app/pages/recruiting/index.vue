@@ -34,6 +34,9 @@
       <v-tab value="pipeline" prepend-icon="mdi-filter-variant">
         Recruiting Pipeline
       </v-tab>
+      <v-tab value="revisit" prepend-icon="mdi-account-reactivate">
+        Candidate Revisit
+      </v-tab>
     </v-tabs>
 
     <v-tabs-window v-model="activeTab">
@@ -258,6 +261,11 @@
           </v-card>
         </template>
       </v-tabs-window-item>
+
+      <!-- ==================== REVISIT TAB ==================== -->
+      <v-tabs-window-item value="revisit">
+        <RecruitingRevisitList ref="revisitListRef" />
+      </v-tabs-window-item>
     </v-tabs-window>
   </div>
 </template>
@@ -275,6 +283,7 @@ const toast = useToast()
 
 // Tab state - calendar is default
 const activeTab = ref('calendar')
+const revisitListRef = ref<{ refresh: () => void } | null>(null)
 
 // State
 const candidates = ref<Candidate[]>([])

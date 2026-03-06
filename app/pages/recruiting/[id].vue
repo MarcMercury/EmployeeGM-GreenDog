@@ -514,6 +514,23 @@
                               >
                                 {{ formatRecommendation(interview.recommendation) }}
                               </v-chip>
+                              <v-chip
+                                v-if="interview.revisit_eligible"
+                                size="small"
+                                color="amber"
+                                variant="flat"
+                                class="ml-2"
+                                prepend-icon="mdi-account-reactivate"
+                              >
+                                Revisit
+                              </v-chip>
+                            </div>
+                            <div v-if="interview.revisit_eligible && interview.revisit_reason" class="mb-2 pa-2 bg-amber-lighten-5 rounded">
+                              <div class="text-caption font-weight-medium text-amber-darken-3">
+                                <v-icon size="small" class="mr-1">mdi-flag</v-icon>
+                                Revisit Reason
+                              </div>
+                              <div class="text-body-2">{{ interview.revisit_reason }}</div>
                             </div>
                             <div v-if="interview.notes" class="text-body-2 text-grey mb-3">
                               {{ interview.notes }}
