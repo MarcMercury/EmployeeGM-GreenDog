@@ -370,12 +370,13 @@
                           <v-icon>mdi-close</v-icon>
                         </v-btn>
                       </template>
-                      <template v-if="proposal.status === 'auto_approved' || proposal.status === 'approved'">
+                      <template v-if="proposal.status === 'auto_approved' || proposal.status === 'approved' || proposal.status === 'pending'">
                         <v-btn
                           size="x-small"
                           color="teal"
                           variant="tonal"
-                          @click="openReviewDialog(proposal, 'resolve')"
+                          :loading="resolvingId === proposal.id"
+                          @click="directResolve(proposal)"
                         >
                           <v-icon start size="14">mdi-check-circle</v-icon>
                           Resolve
@@ -749,10 +750,11 @@
             Reject
           </v-btn>
           <v-btn
-            v-if="selectedProposal.status === 'auto_approved' || selectedProposal.status === 'approved'"
+            v-if="selectedProposal.status === 'auto_approved' || selectedProposal.status === 'approved' || selectedProposal.status === 'pending'"
             color="teal"
             variant="tonal"
-            @click="openReviewDialog(selectedProposal, 'resolve'); showDetailDialog = false"
+            :loading="resolvingId === selectedProposal.id"
+            @click="directResolve(selectedProposal); showDetailDialog = false"
           >
             <v-icon start>mdi-check-circle</v-icon>
             Resolve
@@ -856,6 +858,7 @@ const reviewTargetProposal = ref<AgentProposalRow | null>(null)
 const isReviewing = ref(false)
 const isRunningAll = ref(false)
 const bulkResolving = ref(false)
+const resolvingId = ref<string | null>(null)
 
 // Computed — resolvable proposals count
 const resolvableCount = computed(() =>
@@ -1068,6 +1071,20 @@ function cancelReview() {
   showReviewDialog.value = false
   reviewTargetProposal.value = null
   reviewNotes.value = ''
+}
+
+async function directResolve(proposal: AgentProposalRow) {
+  resolvingId.value = proposal.id
+  try {
+    await store.reviewProposal(proposal.id, 'resolve')
+    showSnack('Proposal resolved successfully')
+    await store.fetchProposals()
+    await store.fetchAgents()
+  } catch (err: any) {
+    showSnack(err?.message || 'Resolve failed', 'error')
+  } finally {
+    resolvingId.value = null
+  }
 }
 
 async function submitReview() {

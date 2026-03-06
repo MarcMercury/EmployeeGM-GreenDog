@@ -355,9 +355,42 @@ applierMap.set('system_health_report', async (_proposal, _supabase) => {
 
 // ─── Access & Security ────────────────────────────────────────────
 
-applierMap.set('access_review', async (_proposal, _supabase) => {
-  // Access review findings are informational — admin reviews and applies fixes manually.
-  // Missing pages can be added to page_definitions via the admin UI.
+applierMap.set('access_review', async (proposal, supabase) => {
+  const d = proposal.detail as any
+
+  // Handle missing pages — insert them into page_definitions
+  if (d.finding_type === 'missing_pages' && Array.isArray(d.missing_pages)) {
+    for (const page of d.missing_pages) {
+      if (!page.path || !page.name) continue
+
+      // Check if the page already exists (may have been added since proposal was created)
+      const { data: existing } = await supabase
+        .from('page_definitions')
+        .select('id')
+        .eq('path', page.path)
+        .maybeSingle()
+
+      if (existing) continue
+
+      const { error } = await supabase
+        .from('page_definitions')
+        .insert({
+          path: page.path,
+          name: page.name,
+          section: page.section || 'Uncategorized',
+          is_active: true,
+        })
+
+      if (error) {
+        logger.warn('[Applier] Failed to insert page_definition', 'agent', {
+          path: page.path,
+          error: error.message,
+        })
+      }
+    }
+  }
+
+  // Other access_review subtypes (over_permissive, rls_gaps) remain informational
 })
 
 // ─── Main Entry Point ─────────────────────────────────────────────
@@ -373,7 +406,7 @@ export async function applyProposal(proposalId: string): Promise<boolean> {
     return false
   }
 
-  if (proposal.status !== 'approved' && proposal.status !== 'auto_approved') {
+  if (!['approved', 'auto_approved', 'pending'].includes(proposal.status)) {
     logger.warn('[Applier] Proposal not in approvable state', 'agent', {
       proposalId,
       status: proposal.status,
