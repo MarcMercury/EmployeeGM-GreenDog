@@ -611,7 +611,7 @@ async function loadFiles() {
     dbFiles.value = data || []
   } catch (err: any) {
     console.error('Error loading files:', err)
-    // Show empty state rather than crashing
+    showError('Failed to load files')
     dbFiles.value = []
   } finally {
     loadingFiles.value = false
@@ -619,9 +619,8 @@ async function loadFiles() {
 }
 
 // Load on mount
-onMounted(() => {
-  loadFolders()
-  loadFiles()
+onMounted(async () => {
+  await Promise.all([loadFolders(), loadFiles()])
 })
 
 // Watch for archived toggle
@@ -947,7 +946,7 @@ async function createFolder() {
   
   try {
     const parentPath = newFolderParent.value || ''
-    const folderPath = parentPath ? `${parentPath}/${newFolderName.value.toLowerCase().replace(/\s+/g, '-')}` : newFolderName.value.toLowerCase().replace(/\s+/g, '-')
+    const sanitizedName = newFolderName.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')\n    const folderPath = parentPath ? `${parentPath}/${sanitizedName}` : sanitizedName
     
     // Find parent folder ID if nested
     let parentId = null

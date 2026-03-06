@@ -8,6 +8,7 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const route = useRoute()
+const { showSuccess, showError } = useToast()
 
 // Filter state
 const searchQuery = ref('')
@@ -217,29 +218,42 @@ async function saveItem() {
     notes: formData.value.notes || null
   }
   
-  if (editingItem.value) {
-    await supabase
-      .from('marketing_inventory')
-      .update(payload)
-      .eq('id', editingItem.value.id)
-  } else {
-    await supabase
-      .from('marketing_inventory')
-      .insert(payload)
+  try {
+    if (editingItem.value) {
+      const { error } = await supabase
+        .from('marketing_inventory')
+        .update(payload)
+        .eq('id', editingItem.value.id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase
+        .from('marketing_inventory')
+        .insert(payload)
+      if (error) throw error
+    }
+    
+    dialogOpen.value = false
+    showSuccess(editingItem.value ? 'Item updated' : 'Item added')
+    await refresh()
+  } catch (err: any) {
+    showError('Failed to save item: ' + (err.message || 'Unknown error'))
   }
-  
-  dialogOpen.value = false
-  refresh()
 }
 
 async function deleteItem(id: string) {
   if (!confirm('Are you sure you want to delete this item?')) return
   
-  await supabase
+  const { error } = await supabase
     .from('marketing_inventory')
     .delete()
     .eq('id', id)
   
+  if (error) {
+    showError('Failed to delete item')
+    return
+  }
+  
+  showSuccess('Item deleted')
   refresh()
 }
 
@@ -249,10 +263,15 @@ async function updateQuantity(item: InventoryItem, location: 'venice' | 'sherman
   const currentValue = item[field] as number
   const newValue = Math.max(0, currentValue + delta)
   
-  await supabase
+  const { error } = await supabase
     .from('marketing_inventory')
     .update({ [field]: newValue })
     .eq('id', item.id)
+  
+  if (error) {
+    showError('Failed to update quantity')
+    return
+  }
   
   refresh()
 }

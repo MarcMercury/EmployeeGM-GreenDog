@@ -168,7 +168,7 @@ const { data: partners, pending, refresh } = await useAsyncData('partners', asyn
 
 // Partner list (no longer includes influencers - they have their own page)
 const combinedList = computed(() => {
-  return (partners.value || []).map(p => ({ ...p, _isInfluencer: false }))
+  return partners.value || []
 })
 
 // Filtered partners (now uses combined list)
@@ -580,11 +580,17 @@ async function savePartner() {
 async function deletePartner(id: string) {
   if (!confirm('Are you sure you want to delete this partner?')) return
   
-  await supabase
+  const { error } = await supabase
     .from('marketing_partners')
     .delete()
     .eq('id', id)
   
+  if (error) {
+    showError('Failed to delete partner')
+    return
+  }
+  
+  showSuccess('Partner deleted')
   refresh()
 }
 
@@ -865,14 +871,7 @@ function openEditContactDialog(contact: PartnerContact) {
 
 // Save new or update existing contact
 async function saveContact() {
-  console.log('[Partners] saveContact called', { 
-    selectedPartner: selectedPartner.value?.id, 
-    contactName: contactForm.value.name,
-    editingContactId: editingContactId.value 
-  })
-  
   if (!selectedPartner.value || !contactForm.value.name.trim()) {
-    console.log('[Partners] saveContact early return - missing selectedPartner or name')
     return
   }
   
@@ -886,8 +885,6 @@ async function saveContact() {
     category: contactForm.value.category || null
   }
   
-  console.log('[Partners] Saving contact data:', contactData)
-  
   let error
   let count = 0
   
@@ -900,7 +897,6 @@ async function saveContact() {
       .select()
     error = result.error
     count = result.data?.length || 0
-    console.log('[Partners] Update result:', { error, count, data: result.data })
   } else {
     // Insert new contact
     const result = await supabase
@@ -913,7 +909,6 @@ async function saveContact() {
       .select()
     error = result.error
     count = result.data?.length || 0
-    console.log('[Partners] Insert result:', { error, count, data: result.data })
   }
   
   if (error) {
@@ -957,19 +952,14 @@ async function deleteContact(contactId: string) {
 // Update relationship fields
 async function updatePartnerRelationship(field: string, value: any) {
   if (!selectedPartner.value) {
-    console.error('[Partners] No selectedPartner for update')
     return
   }
-  
-  console.log('[Partners] Updating field:', field, 'to value:', value, 'for partner:', selectedPartner.value.id)
   
   const { data, error } = await supabase
     .from('marketing_partners')
     .update({ [field]: value })
     .eq('id', selectedPartner.value.id)
     .select()
-  
-  console.log('[Partners] Update result - data:', data, 'error:', error)
   
   if (error) {
     console.error('[Partners] Update failed:', error)
@@ -1667,7 +1657,7 @@ function getPriorityColor(priority: string | null | undefined): string {
                         <v-icon size="small">mdi-web</v-icon>
                       </template>
                       <v-list-item-title>
-                        <a :href="selectedPartner.website" target="_blank">{{ selectedPartner.website }}</a>
+                        <a :href="selectedPartner.website" target="_blank" rel="noopener noreferrer">{{ selectedPartner.website }}</a>
                       </v-list-item-title>
                     </v-list-item>
                     <v-list-item v-if="selectedPartner.instagram_handle">
@@ -1681,7 +1671,7 @@ function getPriorityColor(priority: string | null | undefined): string {
                         <v-icon size="small">mdi-facebook</v-icon>
                       </template>
                       <v-list-item-title>
-                        <a :href="selectedPartner.facebook_url" target="_blank">{{ selectedPartner.facebook_url }}</a>
+                        <a :href="selectedPartner.facebook_url" target="_blank" rel="noopener noreferrer">{{ selectedPartner.facebook_url }}</a>
                       </v-list-item-title>
                     </v-list-item>
                     <v-list-item v-if="selectedPartner.tiktok_handle">

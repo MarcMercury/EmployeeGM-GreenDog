@@ -27,7 +27,7 @@ const { data: partner, pending, refresh } = await useAsyncData(`partner-${partne
     return null
   }
   return data
-})
+}, { watch: [partnerId] })
 
 // Form state
 const isEditing = ref(false)
@@ -321,7 +321,7 @@ function formatDate(date: string | null): string {
                 <v-col cols="12" md="6">
                   <div class="text-subtitle-2 text-medium-emphasis mb-1">Website</div>
                   <div class="text-body-1">
-                    <a v-if="partner.website" :href="partner.website" target="_blank" rel="noopener">
+                    <a v-if="partner.website" :href="partner.website" target="_blank" rel="noopener noreferrer">
                       {{ partner.website }}
                     </a>
                     <span v-else>N/A</span>
@@ -346,7 +346,7 @@ function formatDate(date: string | null): string {
                     <v-icon size="small" class="mr-1">mdi-facebook</v-icon>Facebook
                   </div>
                   <div class="text-body-1">
-                    <a v-if="partner.facebook_url" :href="partner.facebook_url" target="_blank" rel="noopener">
+                    <a v-if="partner.facebook_url" :href="partner.facebook_url" target="_blank" rel="noopener noreferrer">
                       View Profile
                     </a>
                     <span v-else>N/A</span>

@@ -418,6 +418,11 @@ function getCompensationLabel(type: string | null): string {
   return option?.title || type || 'Unknown'
 }
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 // =====================================================
 // CRUD OPERATIONS
 // =====================================================
@@ -637,9 +642,12 @@ async function loadInfluencerNotes(influencerId: string) {
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
   
-  if (!error) {
-    influencerNotes.value = data as InfluencerNote[]
+  if (error) {
+    console.error('Error loading influencer notes:', error)
+    showError('Failed to load notes')
+    return
   }
+  influencerNotes.value = data as InfluencerNote[]
 }
 
 async function loadInfluencerCampaigns(influencerId: string) {
@@ -649,9 +657,12 @@ async function loadInfluencerCampaigns(influencerId: string) {
     .eq('influencer_id', influencerId)
     .order('created_at', { ascending: false })
   
-  if (!error) {
-    influencerCampaigns.value = data as Campaign[]
+  if (error) {
+    console.error('Error loading influencer campaigns:', error)
+    showError('Failed to load campaigns')
+    return
   }
+  influencerCampaigns.value = data as Campaign[]
 }
 
 async function addNote() {
@@ -1365,7 +1376,7 @@ async function updateInfluencerField(field: string, value: any) {
                   <div class="d-flex flex-wrap align-center gap-3">
                     <div>
                       <span class="text-caption text-medium-emphasis mr-2">Media Kit:</span>
-                      <v-btn v-if="selectedInfluencer.media_kit_url" variant="tonal" size="small" :href="selectedInfluencer.media_kit_url" target="_blank" prepend-icon="mdi-file-document">
+                      <v-btn v-if="selectedInfluencer.media_kit_url" variant="tonal" size="small" :href="selectedInfluencer.media_kit_url" target="_blank" rel="noopener noreferrer" prepend-icon="mdi-file-document">
                         View Media Kit
                       </v-btn>
                       <span v-else class="text-body-2 text-medium-emphasis">Not set</span>
@@ -1429,7 +1440,7 @@ async function updateInfluencerField(field: string, value: any) {
                           </template>
                           <v-list-item-title>{{ formatFollowers(selectedInfluencer.youtube_subscribers) }} subscribers</v-list-item-title>
                           <template #append v-if="selectedInfluencer.youtube_url">
-                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.youtube_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.youtube_url" target="_blank" rel="noopener noreferrer"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
                         </v-list-item>
                         <v-list-item v-if="selectedInfluencer.facebook_url">
@@ -1438,7 +1449,7 @@ async function updateInfluencerField(field: string, value: any) {
                           </template>
                           <v-list-item-title>Facebook</v-list-item-title>
                           <template #append>
-                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.facebook_url" target="_blank"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
+                            <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.facebook_url" target="_blank" rel="noopener noreferrer"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
                         </v-list-item>
                       </v-list>
@@ -1446,9 +1457,9 @@ async function updateInfluencerField(field: string, value: any) {
                       <div v-if="selectedInfluencer.instagram_url || selectedInfluencer.youtube_url || selectedInfluencer.facebook_url" class="mt-3">
                         <div class="text-caption text-medium-emphasis mb-2">Profile Links</div>
                         <div class="d-flex flex-wrap gap-2">
-                          <v-btn v-if="selectedInfluencer.instagram_url" size="small" variant="tonal" color="pink" :href="selectedInfluencer.instagram_url" target="_blank" prepend-icon="mdi-instagram">Instagram</v-btn>
-                          <v-btn v-if="selectedInfluencer.youtube_url" size="small" variant="tonal" color="red" :href="selectedInfluencer.youtube_url" target="_blank" prepend-icon="mdi-youtube">YouTube</v-btn>
-                          <v-btn v-if="selectedInfluencer.facebook_url" size="small" variant="tonal" color="blue" :href="selectedInfluencer.facebook_url" target="_blank" prepend-icon="mdi-facebook">Facebook</v-btn>
+                          <v-btn v-if="selectedInfluencer.instagram_url" size="small" variant="tonal" color="pink" :href="selectedInfluencer.instagram_url" target="_blank" rel="noopener noreferrer" prepend-icon="mdi-instagram">Instagram</v-btn>
+                          <v-btn v-if="selectedInfluencer.youtube_url" size="small" variant="tonal" color="red" :href="selectedInfluencer.youtube_url" target="_blank" rel="noopener noreferrer" prepend-icon="mdi-youtube">YouTube</v-btn>
+                          <v-btn v-if="selectedInfluencer.facebook_url" size="small" variant="tonal" color="blue" :href="selectedInfluencer.facebook_url" target="_blank" rel="noopener noreferrer" prepend-icon="mdi-facebook">Facebook</v-btn>
                         </div>
                       </div>
                     </v-card-text>

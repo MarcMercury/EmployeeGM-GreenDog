@@ -584,6 +584,7 @@
                 :key="idx"
                 :href="link.url"
                 target="_blank"
+                rel="noopener noreferrer"
                 color="primary"
                 variant="tonal"
                 size="small"
@@ -603,6 +604,7 @@
             <v-btn
               :href="selectedEvent.registration_link"
               target="_blank"
+              rel="noopener noreferrer"
               color="success"
               variant="tonal"
               size="small"
@@ -625,6 +627,7 @@
                 :key="idx"
                 :href="att.url"
                 target="_blank"
+                rel="noopener noreferrer"
                 color="secondary"
                 variant="tonal"
                 size="small"
@@ -786,6 +789,7 @@ interface CalendarDay {
 
 const router = useRouter()
 const client = useSupabaseClient()
+const { showSuccess, showError } = useToast()
 
 // State
 const loading = ref(true)
@@ -1115,13 +1119,13 @@ const deleteEvent = async () => {
       // Refresh events
       await fetchEvents()
       
-      // Show success message (if using a notification system)
-      console.log(`Event deleted. ${data.inventory_items_restored} inventory items restored.`)
+      showSuccess(`Event deleted. ${data.inventory_items_restored || 0} inventory items restored.`)
     } else {
-      console.error('Delete failed:', data?.error || 'Unknown error')
+      showError(data?.error || 'Failed to delete event')
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error deleting event:', err)
+    showError(err.message || 'Failed to delete event')
   } finally {
     deletingEvent.value = false
   }
@@ -1200,8 +1204,10 @@ const saveNote = async () => {
     
     noteDialog.value = false
     await fetchNotes()
-  } catch (err) {
+    showSuccess(editingNote.value ? 'Note updated' : 'Note created')
+  } catch (err: any) {
     console.error('Error saving note:', err)
+    showError(err.message || 'Failed to save note')
   } finally {
     savingNote.value = false
   }
@@ -1222,8 +1228,10 @@ const deleteNote = async () => {
     
     noteDialog.value = false
     await fetchNotes()
-  } catch (err) {
+    showSuccess('Note deleted')
+  } catch (err: any) {
     console.error('Error deleting note:', err)
+    showError(err.message || 'Failed to delete note')
   } finally {
     savingNote.value = false
   }

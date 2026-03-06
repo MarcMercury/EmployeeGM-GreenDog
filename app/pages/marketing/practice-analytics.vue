@@ -1198,6 +1198,12 @@ async function syncAll() {
 // ── Upload Functions ─────────────────────────────────────────────────────
 
 const uploadProgress = reactive({ total: 0, sent: 0, pct: 0, status: '' })
+let _uploadProgressTimer: ReturnType<typeof setTimeout> | null = null
+
+function scheduleProgressReset() {
+  if (_uploadProgressTimer) clearTimeout(_uploadProgressTimer)
+  _uploadProgressTimer = setTimeout(() => { uploadProgress.total = 0 }, 3000)
+}
 
 /** Read file as ArrayBuffer for client-side XLSX parsing */
 function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
@@ -1305,7 +1311,7 @@ async function uploadInvoice() {
     notify('Upload failed: ' + (err.data?.message || err.message), 'error')
   } finally {
     uploadingInvoice.value = false
-    setTimeout(() => { uploadProgress.total = 0 }, 3000)
+    scheduleProgressReset()
   }
 }
 
@@ -1332,7 +1338,7 @@ async function uploadStatus() {
   } catch (err: any) { notify('Upload failed: ' + (err.data?.message || err.message), 'error') }
   finally {
     uploadingStatus.value = false
-    setTimeout(() => { uploadProgress.total = 0 }, 3000)
+    scheduleProgressReset()
   }
 }
 
@@ -1398,6 +1404,11 @@ async function runTrackingBatch() {
 // ── Init ─────────────────────────────────────────────────────────────────
 
 onMounted(() => { loadAll() })
+
+onBeforeUnmount(() => {
+  if (_debounce) clearTimeout(_debounce)
+  if (_uploadProgressTimer) clearTimeout(_uploadProgressTimer)
+})
 </script>
 
 <style scoped>

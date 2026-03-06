@@ -907,6 +907,7 @@ function generateObservations() {
 // ═══════════════════════════════════════════
 
 async function refreshAll() {
+  if (loading.value) return
   loading.value = true
   try {
     await fetchAllData()

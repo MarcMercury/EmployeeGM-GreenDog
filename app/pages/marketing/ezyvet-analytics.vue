@@ -783,7 +783,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { evaluateRetention, CLIENT_BENCHMARKS } from '~/utils/vetBenchmarks'
 
 definePageMeta({
@@ -1477,6 +1477,10 @@ function getRecencyLabel(dateStr: string): string {
 // Initialize
 onMounted(() => {
   loadAnalytics()
+})
+
+onBeforeUnmount(() => {
+  if (_filterDebounce) clearTimeout(_filterDebounce)
 })
 </script>
 

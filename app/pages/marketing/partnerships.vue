@@ -483,7 +483,7 @@
                       href="#"
                       class="text-success text-decoration-none"
                       style="cursor: pointer;"
-                      @click.prevent="openPartnerDetail(partners.find(p => p.id === log.partner_id) || { id: log.partner_id, name: log.clinic_name })"
+                      @click.prevent="openPartnerDetail(partners.find(p => p.id === log.partner_id) || { id: log.partner_id, name: log.clinic_name, tier: 'Bronze', zone: '', status: 'active' })"
                     >{{ log.clinic_name }}</a>
                     <span v-else>{{ log.clinic_name }}</span>
                   </div>
@@ -1736,16 +1736,14 @@ async function deletePartner() {
 }
 
 // Handlers for child component events — reload both partners and activity
-function onVisitSaved() {
-  loadPartners()
-  loadRecentActivity()
+async function onVisitSaved() {
+  await Promise.all([loadPartners(), loadRecentActivity()])
   // Refresh the detail dialog so the new visit notes appear immediately
   detailDialogRef.value?.refresh()
 }
 
-function onPartnerUpdated() {
-  loadPartners()
-  loadRecentActivity()
+async function onPartnerUpdated() {
+  await Promise.all([loadPartners(), loadRecentActivity()])
 }
 
 function exportPartners() {
@@ -2106,10 +2104,12 @@ async function markAsLogged(entry: any) {
 }
 
 // Init
-onMounted(() => {
-  loadPartners()
-  loadRecentActivity()
-  loadUploadLog() // Load upload log on mount
+onMounted(async () => {
+  await Promise.all([
+    loadPartners(),
+    loadRecentActivity(),
+    loadUploadLog()
+  ])
 })
 </script>
 
