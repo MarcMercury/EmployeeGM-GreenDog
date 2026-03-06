@@ -4,6 +4,8 @@
  * Uses the service-role client so RLS on referral_revenue_line_items
  * (admin-only) doesn't block marketing-admin users.
  *
+ * Line items are filtered server-side by transaction_date (ISO TEXT, supports gte/lte).
+ *
  * Query params:
  *   from  — ISO date string (inclusive start)
  *   to    — ISO date string (inclusive end)
@@ -23,8 +25,8 @@ export default defineEventHandler(async (event) => {
 
     const db = await serverSupabaseServiceRole(event)
 
-    // Fetch ALL line items — remove default 1000-row limit
-    // (transaction_date is TEXT, so we filter client-side)
+    // Fetch line items filtered by date range server-side
+    // transaction_date is stored as ISO TEXT (YYYY-MM-DD), so text comparison works correctly
     let allLineItems: any[] = []
     let lineError: any = null
     const PAGE_SIZE = 1000
@@ -34,7 +36,10 @@ export default defineEventHandler(async (event) => {
     while (keepFetching) {
       const { data, error } = await db
         .from('referral_revenue_line_items')
-        .select('partner_id, transaction_date, amount')
+        .select('partner_id, transaction_date, amount, csv_clinic_name, division')
+        .gte('transaction_date', from)
+        .lte('transaction_date', to)
+        .not('partner_id', 'is', null)
         .range(offset, offset + PAGE_SIZE - 1)
 
       if (error) {
@@ -51,7 +56,6 @@ export default defineEventHandler(async (event) => {
     }
 
     if (lineError) {
-      // If the table doesn't exist yet (migration not applied), return empty data
       if (lineError.code === 'PGRST205' || lineError.message?.includes('Could not find')) {
         console.warn('[referral-report-data] referral_revenue_line_items table not found, returning empty line items')
       } else {
@@ -73,10 +77,10 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, message: visitError.message })
     }
 
-    // Fetch partner-level referral/revenue stats for fallback
+    // Fetch partner metadata for joining (name, zone, tier)
     const { data: partnerStats, error: psError } = await db
       .from('referral_partners')
-      .select('id, hospital_name, name, zone, tier, status, total_referrals, total_referrals_all_time, total_revenue_all_time, last_referral_date, revenue_ytd, revenue_last_year, created_at')
+      .select('id, hospital_name, name, zone, tier, status, total_referrals_all_time, total_revenue_all_time, last_referral_date, created_at')
 
     if (psError) {
       console.error('[referral-report-data] partnerStats query error:', psError)
@@ -89,7 +93,6 @@ export default defineEventHandler(async (event) => {
       lineItemCount: allLineItems.length,
     }
   } catch (err: any) {
-    // Re-throw H3 errors (401, 400, etc.) as-is
     if (err.statusCode) throw err
     console.error('[referral-report-data] Unexpected error:', err)
     throw createError({ statusCode: 500, message: err.message || 'Internal server error' })

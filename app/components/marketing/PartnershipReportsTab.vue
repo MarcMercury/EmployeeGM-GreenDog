@@ -55,19 +55,6 @@
 
     <!-- Report Content -->
     <div v-else-if="hasData">
-      <!-- Fallback data notice -->
-      <v-alert
-        v-if="reportData.usingFallback"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-4"
-        closable
-      >
-        <strong>Note:</strong> No detailed referral CSV data has been uploaded yet. Showing partner-level totals filtered by last referral date.
-        Upload a referral revenue CSV for precise date-range reporting.
-      </v-alert>
-
       <!-- Summary Stats -->
       <v-row class="mb-4">
         <v-col cols="6" md="3">
@@ -254,7 +241,6 @@ interface ReportData {
   partnersByTier: { tier: string; count: number; referrals: number; revenue: number }[]
   zoneBreakdown: { zone: string; count: number; referrals: number; revenue: number; visits: number }[]
   visitsList: any[]
-  usingFallback: boolean
 }
 
 const reportData = reactive<ReportData>({
@@ -267,8 +253,7 @@ const reportData = reactive<ReportData>({
   topClinics: [],
   partnersByTier: [],
   zoneBreakdown: [],
-  visitsList: [],
-  usingFallback: false
+  visitsList: []
 })
 
 function applyPreset(value: string) {
@@ -300,21 +285,6 @@ function applyPreset(value: string) {
   }
 }
 
-/** Parse a transaction_date TEXT value (various CSV formats) into an ISO date string or null */
-function parseTransactionDate(raw: string): string | null {
-  if (!raw) return null
-  const d = new Date(raw)
-  if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
-  // Try MM-DD-YYYY or MM/DD/YYYY
-  const parts = raw.split(/[-\/]/)
-  if (parts.length === 3) {
-    const [m, day, y] = parts
-    const d2 = new Date(`${y}-${m.padStart(2, '0')}-${day.padStart(2, '0')}`)
-    if (!isNaN(d2.getTime())) return d2.toISOString().split('T')[0]
-  }
-  return null
-}
-
 async function generateReport() {
   if (!dateFrom.value || !dateTo.value) {
     applyPreset(preset.value)
@@ -331,96 +301,34 @@ async function generateReport() {
     const from = dateFrom.value
     const to = dateTo.value
 
-    // ── 1. Fetch line items + visits + partner stats via server API (bypasses RLS) ──
-    const { lineItems: rawLineItems, visits: visitData, partnerStats } = await $fetch<{
+    // ── 1. Fetch line items + visits + partner metadata via server API ──
+    // Line items are already filtered by date range server-side
+    const { lineItems, visits: visitData, partnerStats } = await $fetch<{
       lineItems: { partner_id: string; transaction_date: string; amount: number }[]
       visits: any[]
       partnerStats: any[]
       lineItemCount: number
     }>('/api/marketing/referral-report-data', { params: { from, to } })
 
-    // Parse dates and filter to the selected range
-    const lineItems = (rawLineItems || [])
-      .map(li => ({ ...li, isoDate: parseTransactionDate(li.transaction_date) }))
-      .filter(li => li.isoDate && li.isoDate >= from && li.isoDate <= to)
-
     const visitsList = visitData || []
 
-    // Build a stats map from server-side partner data (has revenue/referral totals + last_referral_date)
-    const statsMap = new Map<string, any>()
-    for (const ps of (partnerStats || [])) {
-      statsMap.set(ps.id, ps)
-    }
-
-    // Also merge into partnerMap for name/zone/tier lookup
+    // Merge partner metadata into lookup map
     for (const ps of (partnerStats || [])) {
       if (!partnerMap.has(ps.id)) partnerMap.set(ps.id, ps)
     }
 
-    const hasLineItems = lineItems.length > 0
-
-    // ── 2. Aggregate referral data per partner ──
+    // ── 2. Aggregate line items per partner ──
     const partnerAgg = new Map<string, { referrals: number; revenue: number }>()
 
-    if (hasLineItems) {
-      // Use granular line-item data — properly date-filtered
-      for (const li of lineItems) {
-        if (!li.partner_id) continue
-        const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
-        agg.referrals++
-        agg.revenue += Number(li.amount) || 0
-        partnerAgg.set(li.partner_id, agg)
-      }
-      reportData.usingFallback = false
-    } else {
-      // Fallback: use partner-level totals, filtered by last_referral_date when available
-      reportData.usingFallback = true
-      for (const ps of (partnerStats || [])) {
-        const referrals = Number(ps.total_referrals_all_time) || Number(ps.total_referrals) || 0
-        const revenue = Number(ps.total_revenue_all_time) || 0
-        if (referrals <= 0 && revenue <= 0) continue
-
-        // If the partner has a last_referral_date, use it to check if they were active in the period
-        const lastRefDate = ps.last_referral_date ? String(ps.last_referral_date).slice(0, 10) : null
-
-        // For "All Time" queries (from 2020-01-01), include all partners with data
-        // For date-filtered queries, only include partners whose last referral falls within range
-        // or whose created_at is within range (new partners)
-        if (from <= '2020-01-01') {
-          // All time — include everyone
-          partnerAgg.set(ps.id, { referrals, revenue })
-        } else if (lastRefDate && lastRefDate >= from && lastRefDate <= to) {
-          // Last referral is within the selected period
-          partnerAgg.set(ps.id, { referrals, revenue })
-        } else if (!lastRefDate) {
-          // No last_referral_date — check if partner was created in this period
-          const createdAt = ps.created_at ? String(ps.created_at).slice(0, 10) : null
-          if (createdAt && createdAt >= from && createdAt <= to) {
-            partnerAgg.set(ps.id, { referrals, revenue })
-          }
-          // Also include if the partner has data and we're looking at a wide range (6+ months)
-          const fromDate = new Date(from)
-          const toDate = new Date(to)
-          const rangeDays = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)
-          if (rangeDays >= 180) {
-            partnerAgg.set(ps.id, { referrals, revenue })
-          }
-        }
-      }
-
-      // Also check the props.partners as a secondary source
-      if (partnerAgg.size === 0) {
-        for (const p of allPartners) {
-          const referrals = Number(p.total_referrals_all_time) || Number(p.total_referrals) || 0
-          const revenue = Number(p.total_revenue_all_time) || 0
-          if (referrals > 0 || revenue > 0) {
-            partnerAgg.set(p.id, { referrals, revenue })
-          }
-        }
-      }
+    for (const li of (lineItems || [])) {
+      if (!li.partner_id) continue
+      const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
+      agg.referrals++
+      agg.revenue += Number(li.amount) || 0
+      partnerAgg.set(li.partner_id, agg)
     }
 
-    // ── 4. Compute summary metrics ──
+    // ── 3. Compute summary metrics ──
     let totalReferrals = 0
     let totalRevenue = 0
     for (const agg of partnerAgg.values()) {
@@ -436,7 +344,7 @@ async function generateReport() {
     reportData.avgRevenuePerReferral = totalReferrals > 0 ? totalRevenue / totalReferrals : 0
     reportData.avgReferralsPerPartner = activePartnerIds.size > 0 ? totalReferrals / activePartnerIds.size : 0
 
-    // ── 5. Top clinics by referrals in period ──
+    // ── 4. Top clinics by referrals in period ──
     reportData.topClinics = Array.from(partnerAgg.entries())
       .map(([pid, agg]) => {
         const p = partnerMap.get(pid)
@@ -451,7 +359,7 @@ async function generateReport() {
       .sort((a, b) => b.referrals - a.referrals)
       .slice(0, 10)
 
-    // ── 6. Group by tier ──
+    // ── 5. Group by tier ──
     const tierMap = new Map<string, { count: number; referrals: number; revenue: number }>()
     for (const [pid, agg] of partnerAgg) {
       const p = partnerMap.get(pid)
@@ -467,7 +375,7 @@ async function generateReport() {
       .filter(t => tierMap.has(t))
       .map(t => ({ tier: t, ...tierMap.get(t)! }))
 
-    // ── 7. Group by zone — referral data + visit counts ──
+    // ── 6. Group by zone — referral data + visit counts ──
     const zoneMap = new Map<string, { count: number; referrals: number; revenue: number; visits: number }>()
     for (const [pid, agg] of partnerAgg) {
       const p = partnerMap.get(pid)
@@ -489,7 +397,7 @@ async function generateReport() {
       .map(([zone, data]) => ({ zone, ...data }))
       .sort((a, b) => b.revenue - a.revenue)
 
-    // ── 8. Visit list ──
+    // ── 7. Visit list ──
     reportData.visitsList = visitsList
 
     hasData.value = true

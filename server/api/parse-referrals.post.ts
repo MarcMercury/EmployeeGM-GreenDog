@@ -22,6 +22,9 @@ type ReportType = 'revenue' | 'statistics'
 
 interface ParsedRevenueEntry {
   clinicName: string
+  referringVet: string
+  clientName: string
+  animalName: string
   amount: number
   date: string
   division: string
@@ -118,6 +121,9 @@ function parseRevenueCSV(csvText: string): ParsedRevenueEntry[] {
     
     const dateTime = fields[0].trim()
     const clinicName = fields[1].trim()
+    const referringVet = fields[2]?.trim() || ''
+    const clientName = fields[3]?.trim() || ''
+    const animalName = fields[4]?.trim() || ''
     const division = fields[5]?.trim() || ''
     const amountStr = fields[6].trim()
     
@@ -138,6 +144,9 @@ function parseRevenueCSV(csvText: string): ParsedRevenueEntry[] {
     
     entries.push({
       clinicName,
+      referringVet,
+      clientName,
+      animalName,
       amount,
       date: dateTime,
       division
@@ -165,6 +174,9 @@ function parseRevenueXLS(buffer: Buffer): ParsedRevenueEntry[] {
     
     const dateTime = row[0]
     const clinicName = (row[1] || '').toString().trim()
+    const referringVet = (row[2] || '').toString().trim()
+    const clientName = (row[3] || '').toString().trim()
+    const animalName = (row[4] || '').toString().trim()
     const division = (row[5] || '').toString().trim()
     const rawAmount = row[6]
     
@@ -184,6 +196,9 @@ function parseRevenueXLS(buffer: Buffer): ParsedRevenueEntry[] {
     
     entries.push({
       clinicName,
+      referringVet,
+      clientName,
+      animalName,
       amount,
       date: dateStr,
       division
@@ -622,6 +637,59 @@ export default defineEventHandler(async (event) => {
       if (updateErrors > 0) {
         logger.warn(`Failed to update ${updateErrors} of ${revenueUpdates.length} partners`, 'parse-referrals')
       }
+
+      // ── Insert individual line items into referral_revenue_line_items ──
+      // Build a lookup: clinicName → partner_id
+      const clinicToPartner = new Map<string, string>()
+      for (const agg of aggregated) {
+        const match = findBestMatch(agg.clinicName, partners)
+        if (match) clinicToPartner.set(agg.clinicName, match.id)
+      }
+
+      const { createHash } = await import('crypto')
+      const lineItemRows: any[] = []
+      for (const entry of entries) {
+        const partnerId = clinicToPartner.get(entry.clinicName) || null
+        const parsedDate = parseEzyVetDate(entry.date)
+        const hashInput = [
+          parsedDate || entry.date,
+          entry.clinicName,
+          entry.referringVet,
+          entry.clientName,
+          entry.animalName,
+          entry.amount.toFixed(2),
+        ].join('|')
+        const dedupHash = createHash('sha256').update(hashInput).digest('hex').slice(0, 40)
+
+        lineItemRows.push({
+          partner_id: partnerId,
+          transaction_date: parsedDate || entry.date,
+          csv_clinic_name: entry.clinicName,
+          referring_vet: entry.referringVet || null,
+          client_name: entry.clientName || null,
+          animal_name: entry.animalName || null,
+          division: entry.division || null,
+          amount: Math.round(entry.amount * 100) / 100,
+          dedup_hash: dedupHash,
+        })
+      }
+
+      // Upsert in batches of 500
+      let lineItemInserted = 0
+      let lineItemErrors = 0
+      for (let i = 0; i < lineItemRows.length; i += 500) {
+        const batch = lineItemRows.slice(i, i + 500)
+        const { error: upsertErr } = await supabaseAdmin
+          .from('referral_revenue_line_items')
+          .upsert(batch, { onConflict: 'dedup_hash' })
+        if (upsertErr) {
+          lineItemErrors++
+          logger.error('Line item upsert error', null, 'parse-referrals', { batch: i, message: upsertErr.message })
+        } else {
+          lineItemInserted += batch.length
+        }
+      }
+      logger.info('Line items upserted', 'parse-referrals', { inserted: lineItemInserted, errors: lineItemErrors })
       
     } else {
       // ========================================
