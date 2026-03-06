@@ -946,7 +946,8 @@ async function createFolder() {
   
   try {
     const parentPath = newFolderParent.value || ''
-    const sanitizedName = newFolderName.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')\n    const folderPath = parentPath ? `${parentPath}/${sanitizedName}` : sanitizedName
+    const sanitizedName = newFolderName.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+    const folderPath = parentPath ? `${parentPath}/${sanitizedName}` : sanitizedName
     
     // Find parent folder ID if nested
     let parentId = null
