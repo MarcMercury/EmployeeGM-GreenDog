@@ -545,7 +545,7 @@ const executeFallbackFinalize = async (candidate: Candidate) => {
     const employeeSkills = candidateSkills.map(cs => ({
       employee_id: newEmployee.id,
       skill_id: cs.skill_id,
-      rating: cs.rating,
+      level: cs.rating || 0,
       is_goal: false
     }))
 

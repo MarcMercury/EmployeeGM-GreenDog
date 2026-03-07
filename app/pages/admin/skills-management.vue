@@ -1342,6 +1342,7 @@ const fetchSkills = async () => {
     const { data: skillStats } = await client
       .from('employee_skills')
       .select('skill_id, level')
+      .gt('level', 0)
     
     const statsMap: Record<string, { count: number; total: number }> = {}
     skillStats?.forEach((stat: any) => {
@@ -1601,15 +1602,41 @@ const exportReport = () => {
 // =================== Data Fetching ===================
 const fetchAnalyticsData = async () => {
   try {
-    const [empRes, skillRes, esRes] = await Promise.all([
+    const [empRes, skillRes] = await Promise.all([
       client.from('employees').select('id, first_name, last_name'),
-      client.from('skill_library').select('id, name, category, description, level_descriptions'),
-      client.from('employee_skills').select('employee_id, skill_id, level')
+      client.from('skill_library').select('id, name, category, description, level_descriptions')
     ])
-    
+
+    if (empRes.error) console.error('Error fetching employees:', empRes.error)
+    if (skillRes.error) console.error('Error fetching skill library:', skillRes.error)
+
     employees.value = empRes.data || []
     skillLibrary.value = skillRes.data || []
-    employeeSkills.value = esRes.data || []
+
+    // Try fetching with rating column (some code paths write to rating instead of level)
+    // Filter server-side to exclude untrained (level=0) and avoid Supabase row limit issues
+    let esRes = await client.from('employee_skills')
+      .select('employee_id, skill_id, level, rating')
+      .or('level.gt.0,rating.gt.0')
+    if (esRes.error) {
+      // Fallback: rating column may not exist
+      console.warn('Retrying employee_skills without rating column:', esRes.error.message)
+      esRes = await client.from('employee_skills')
+        .select('employee_id, skill_id, level')
+        .gt('level', 0)
+    }
+
+    if (esRes.error) console.error('Error fetching employee skills:', esRes.error)
+
+    // Normalize: use the higher of level or rating
+    // Filter out level=0 records ("Untrained" / bulk-inserted defaults that aren't real assessments)
+    const rawSkills = esRes.data || []
+    employeeSkills.value = rawSkills
+      .map((es: any) => ({
+        ...es,
+        level: Math.max(es.level || 0, es.rating || 0)
+      }))
+      .filter((es: any) => es.level > 0)
   } catch (error) {
     console.error('Error fetching analytics data:', error)
     toast.error('Failed to load data')
