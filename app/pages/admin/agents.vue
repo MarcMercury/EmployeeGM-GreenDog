@@ -413,7 +413,7 @@
               <v-pagination
                 :length="Math.ceil(store.proposalsTotal / store.proposalFilter.limit)"
                 :model-value="Math.floor(store.proposalFilter.offset / store.proposalFilter.limit) + 1"
-                @update:model-value="(p: number) => { store.proposalFilter.offset = (p - 1) * store.proposalFilter.limit; loadProposals() }"
+                @update:model-value="(p: number) => { store.proposalFilter.offset = (p - 1) * store.proposalFilter.limit; store.fetchProposals() }"
                 density="compact"
                 rounded
               />
