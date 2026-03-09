@@ -1297,7 +1297,7 @@ const filteredPartners = computed(() => {
 })
 
 // Helper to navigate to list tab with specific filter
-function navigateToFilteredList(options: { status?: string, followup?: 'all' | 'followup' | 'overdue' } = {}) {
+async function navigateToFilteredList(options: { status?: string, followup?: 'all' | 'followup' | 'overdue' } = {}) {
   // Clear all filters first
   filterTier.value = null
   filterZone.value = null
@@ -1310,6 +1310,9 @@ function navigateToFilteredList(options: { status?: string, followup?: 'all' | '
   if (options.status) filterStatus.value = options.status
   if (options.followup) filterFollowup.value = options.followup
 
+  // Wait for Vue to process the state changes before switching tabs
+  await nextTick()
+  
   // Switch to list tab
   mainTab.value = 'list'
 }
