@@ -758,7 +758,7 @@
       </v-dialog>
 
       <!-- Partner Detail Dialog -->
-      <v-dialog v-model="showPartnerDetailDialog" max-width="700" scrollable>
+      <v-dialog v-model="showPartnerDetailDialog" max-width="800" scrollable>
         <v-card v-if="selectedPartner" rounded="lg">
           <v-card-title class="d-flex align-center justify-space-between pa-4">
             <div class="d-flex align-center gap-3">
@@ -775,174 +775,228 @@
             <v-btn icon="mdi-close" variant="text" aria-label="Close" @click="showPartnerDetailDialog = false" />
           </v-card-title>
 
-          <v-divider />
+          <v-tabs v-model="partnerDetailTab" bg-color="grey-lighten-4" density="compact">
+            <v-tab value="overview">
+              <v-icon start size="18">mdi-information-outline</v-icon>
+              Overview
+            </v-tab>
+            <v-tab value="contact">
+              <v-icon start size="18">mdi-card-account-details</v-icon>
+              Contact
+            </v-tab>
+            <v-tab value="account">
+              <v-icon start size="18">mdi-clipboard-text</v-icon>
+              Account &amp; Access
+            </v-tab>
+            <v-tab value="operations">
+              <v-icon start size="18">mdi-cog-outline</v-icon>
+              Operations
+            </v-tab>
+            <v-tab value="notes">
+              <v-icon start size="18">mdi-note-text</v-icon>
+              Notes
+            </v-tab>
+          </v-tabs>
 
-          <v-card-text class="pa-4">
-            <!-- Description -->
-            <div v-if="selectedPartner.description" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">Description</div>
-              <p class="text-body-1" style="white-space: pre-wrap;">{{ selectedPartner.description }}</p>
-            </div>
+          <v-card-text style="max-height: 500px; overflow-y: auto;" class="pa-4">
+            <v-window v-model="partnerDetailTab">
+              <!-- Overview Tab -->
+              <v-window-item value="overview">
+                <v-card variant="outlined" class="pa-3 mb-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-text</v-icon>
+                    Description
+                  </h4>
+                  <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.description || 'No description provided' }}</p>
+                </v-card>
 
-            <!-- Contact Information -->
-            <div class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-2">
-                <v-icon size="16" class="mr-1">mdi-card-account-details</v-icon>
-                Contact Information
-              </div>
-              <v-row dense>
-                <v-col cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Contact Name</div>
-                  <div class="text-body-2">{{ selectedPartner.contact_name || 'N/A' }}</div>
-                </v-col>
-                <v-col cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Phone</div>
-                  <div class="text-body-2">
-                    <a v-if="selectedPartner.contact_phone" :href="'tel:' + selectedPartner.contact_phone" class="text-decoration-none">
-                      <v-icon size="14" class="mr-1">mdi-phone</v-icon>{{ selectedPartner.contact_phone }}
-                    </a>
-                    <span v-else>N/A</span>
+                <v-card variant="outlined" class="pa-3 mb-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-tag</v-icon>
+                    Category
+                  </h4>
+                  <v-chip variant="tonal" color="indigo">{{ selectedPartner.category || 'Other' }}</v-chip>
+                </v-card>
+
+                <v-card variant="outlined" class="pa-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-package-variant</v-icon>
+                    Products
+                  </h4>
+                  <div v-if="selectedPartner.products?.length" class="d-flex flex-wrap gap-2">
+                    <v-chip v-for="product in selectedPartner.products" :key="product" size="small" variant="tonal" color="indigo">
+                      {{ product }}
+                    </v-chip>
                   </div>
-                </v-col>
-                <v-col cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Email</div>
-                  <div class="text-body-2">
-                    <a v-if="selectedPartner.contact_email" :href="'mailto:' + selectedPartner.contact_email" class="text-decoration-none">
-                      <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>{{ selectedPartner.contact_email }}
-                    </a>
-                    <span v-else>N/A</span>
-                  </div>
-                </v-col>
-                <v-col cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Website</div>
-                  <div class="text-body-2">
-                    <a v-if="selectedPartner.website" :href="selectedPartner.website" target="_blank" class="text-decoration-none">
-                      <v-icon size="14" class="mr-1">mdi-web</v-icon>{{ selectedPartner.website }}
-                    </a>
-                    <span v-else>N/A</span>
-                  </div>
-                </v-col>
-              </v-row>
-            </div>
+                  <span v-else class="text-body-2 text-medium-emphasis">No products listed</span>
+                </v-card>
+              </v-window-item>
 
-            <!-- Account & Ordering -->
-            <div v-if="selectedPartner.account_number || selectedPartner.order_method || selectedPartner.payment_method" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-2">
-                <v-icon size="16" class="mr-1">mdi-clipboard-text</v-icon>
-                Account &amp; Ordering
-              </div>
-              <v-row dense>
-                <v-col v-if="selectedPartner.account_number" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Account Number</div>
-                  <div class="text-body-2 font-weight-medium">{{ selectedPartner.account_number }}</div>
-                </v-col>
-                <v-col v-if="selectedPartner.order_method" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Order Method</div>
-                  <div class="text-body-2">{{ selectedPartner.order_method }}</div>
-                </v-col>
-                <v-col v-if="selectedPartner.payment_method" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Payment Method</div>
-                  <div class="text-body-2">{{ selectedPartner.payment_method }}</div>
-                </v-col>
-              </v-row>
-            </div>
+              <!-- Contact Tab -->
+              <v-window-item value="contact">
+                <v-card variant="outlined" class="pa-3">
+                  <h4 class="text-subtitle-2 mb-3 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-card-account-details</v-icon>
+                    Contact Information
+                  </h4>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Contact Name</div>
+                      <div class="text-body-2">{{ selectedPartner.contact_name || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Phone</div>
+                      <div class="text-body-2">
+                        <a v-if="selectedPartner.contact_phone" :href="'tel:' + selectedPartner.contact_phone" class="text-decoration-none">
+                          <v-icon size="14" class="mr-1">mdi-phone</v-icon>{{ selectedPartner.contact_phone }}
+                        </a>
+                        <span v-else>N/A</span>
+                      </div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Email</div>
+                      <div class="text-body-2">
+                        <a v-if="selectedPartner.contact_email" :href="'mailto:' + selectedPartner.contact_email" class="text-decoration-none">
+                          <v-icon size="14" class="mr-1">mdi-email-outline</v-icon>{{ selectedPartner.contact_email }}
+                        </a>
+                        <span v-else>N/A</span>
+                      </div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Website</div>
+                      <div class="text-body-2">
+                        <a v-if="selectedPartner.website" :href="selectedPartner.website" target="_blank" class="text-decoration-none">
+                          <v-icon size="14" class="mr-1">mdi-web</v-icon>{{ selectedPartner.website }}
+                        </a>
+                        <span v-else>N/A</span>
+                      </div>
+                    </v-col>
+                  </v-row>
+                </v-card>
+              </v-window-item>
 
-            <!-- Portal Credentials (role-restricted) -->
-            <div v-if="selectedPartner.portal_username || selectedPartner.portal_password" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-2">
-                <v-icon size="16" class="mr-1">mdi-shield-lock</v-icon>
-                Login Credentials
-                <v-btn
-                  v-if="canRevealCredentials"
-                  size="x-small"
-                  variant="text"
-                  :color="isCredentialRevealed(selectedPartner.id) ? 'deep-purple' : 'grey'"
-                  class="ml-2"
-                  @click="toggleCredential(selectedPartner.id)"
-                >
-                  <v-icon size="16" class="mr-1">{{ isCredentialRevealed(selectedPartner.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
-                  {{ isCredentialRevealed(selectedPartner.id) ? 'Hide' : 'Reveal' }}
-                </v-btn>
-              </div>
-              <v-row v-if="canRevealCredentials" dense>
-                <v-col v-if="selectedPartner.portal_username" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">User ID</div>
-                  <div class="text-body-2">
-                    <span v-if="isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_username }}</span>
-                    <span v-else class="credential-hidden">••••••••</span>
-                  </div>
-                </v-col>
-                <v-col v-if="selectedPartner.portal_password" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Password</div>
-                  <div class="text-body-2">
-                    <span v-if="isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_password }}</span>
-                    <span v-else class="credential-hidden">••••••••</span>
-                  </div>
-                </v-col>
-              </v-row>
-              <v-alert v-else type="warning" variant="tonal" density="compact" class="mt-1">
-                <v-icon start size="14">mdi-lock</v-icon>
-                Credentials restricted to Admin, Supervisor, and Manager roles.
-              </v-alert>
-            </div>
+              <!-- Account & Access Tab -->
+              <v-window-item value="account">
+                <v-card variant="outlined" class="pa-3 mb-3">
+                  <h4 class="text-subtitle-2 mb-3 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-clipboard-text</v-icon>
+                    Account &amp; Ordering
+                  </h4>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Account Number</div>
+                      <div class="text-body-2 font-weight-medium">{{ selectedPartner.account_number || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Order Method</div>
+                      <div class="text-body-2">{{ selectedPartner.order_method || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Payment Method</div>
+                      <div class="text-body-2">{{ selectedPartner.payment_method || 'N/A' }}</div>
+                    </v-col>
+                  </v-row>
+                </v-card>
 
-            <!-- Location & Department -->
-            <div v-if="selectedPartner.location_code || selectedPartner.department" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-2">
-                <v-icon size="16" class="mr-1">mdi-map-marker</v-icon>
-                Location &amp; Department
-              </div>
-              <v-row dense>
-                <v-col v-if="selectedPartner.location_code" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Location</div>
-                  <div class="text-body-2">{{ selectedPartner.location_code }}</div>
-                </v-col>
-                <v-col v-if="selectedPartner.department" cols="12" sm="6">
-                  <div class="text-caption text-medium-emphasis">Department</div>
-                  <div class="text-body-2">{{ selectedPartner.department }}</div>
-                </v-col>
-              </v-row>
-            </div>
+                <v-card variant="outlined" class="pa-3 mb-3">
+                  <h4 class="text-subtitle-2 mb-3 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-shield-lock</v-icon>
+                    Login Credentials
+                    <v-btn
+                      v-if="canRevealCredentials"
+                      size="x-small"
+                      variant="text"
+                      :color="isCredentialRevealed(selectedPartner.id) ? 'deep-purple' : 'grey'"
+                      class="ml-2"
+                      @click="toggleCredential(selectedPartner.id)"
+                    >
+                      <v-icon size="16" class="mr-1">{{ isCredentialRevealed(selectedPartner.id) ? 'mdi-eye-off' : 'mdi-eye' }}</v-icon>
+                      {{ isCredentialRevealed(selectedPartner.id) ? 'Hide' : 'Reveal' }}
+                    </v-btn>
+                  </h4>
+                  <template v-if="canRevealCredentials">
+                    <v-row dense>
+                      <v-col cols="12" sm="6">
+                        <div class="text-caption text-medium-emphasis">Portal URL</div>
+                        <div class="text-body-2">
+                          <a v-if="selectedPartner.portal_url" :href="selectedPartner.portal_url" target="_blank" class="text-decoration-none">
+                            <v-icon size="14" class="mr-1">mdi-login</v-icon>{{ selectedPartner.portal_url }}
+                          </a>
+                          <span v-else>N/A</span>
+                        </div>
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <div class="text-caption text-medium-emphasis">User ID</div>
+                        <div class="text-body-2">
+                          <span v-if="selectedPartner.portal_username && isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_username }}</span>
+                          <span v-else-if="selectedPartner.portal_username" class="credential-hidden">••••••••</span>
+                          <span v-else>N/A</span>
+                        </div>
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <div class="text-caption text-medium-emphasis">Password</div>
+                        <div class="text-body-2">
+                          <span v-if="selectedPartner.portal_password && isCredentialRevealed(selectedPartner.id)" class="credential-revealed">{{ selectedPartner.portal_password }}</span>
+                          <span v-else-if="selectedPartner.portal_password" class="credential-hidden">••••••••</span>
+                          <span v-else>N/A</span>
+                        </div>
+                      </v-col>
+                    </v-row>
+                  </template>
+                  <v-alert v-else type="warning" variant="tonal" density="compact">
+                    <v-icon start size="14">mdi-lock</v-icon>
+                    Credentials restricted to Admin, Supervisor, and Manager roles.
+                  </v-alert>
+                </v-card>
 
-            <!-- Products -->
-            <div v-if="selectedPartner.products?.length" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-2">
-                <v-icon size="16" class="mr-1">mdi-package-variant</v-icon>
-                Products
-              </div>
-              <div class="d-flex flex-wrap gap-2">
-                <v-chip v-for="product in selectedPartner.products" :key="product" size="small" variant="tonal" color="indigo">
-                  {{ product }}
-                </v-chip>
-              </div>
-            </div>
+                <v-card variant="outlined" class="pa-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-web</v-icon>
+                    Browser Preference
+                  </h4>
+                  <div class="text-body-2">{{ selectedPartner.browser_preference || 'N/A' }}</div>
+                </v-card>
+              </v-window-item>
 
-            <!-- Browser Preference -->
-            <div v-if="selectedPartner.browser_preference" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">
-                <v-icon size="16" class="mr-1">mdi-web</v-icon>
-                Browser Preference
-              </div>
-              <div class="text-body-2">{{ selectedPartner.browser_preference }}</div>
-            </div>
+              <!-- Operations Tab -->
+              <v-window-item value="operations">
+                <v-card variant="outlined" class="pa-3">
+                  <h4 class="text-subtitle-2 mb-3 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-map-marker</v-icon>
+                    Location &amp; Department
+                  </h4>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Location</div>
+                      <div class="text-body-2">{{ selectedPartner.location_code || 'N/A' }}</div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis">Department</div>
+                      <div class="text-body-2">{{ selectedPartner.department || 'N/A' }}</div>
+                    </v-col>
+                  </v-row>
+                </v-card>
+              </v-window-item>
 
-            <!-- Notes -->
-            <div v-if="selectedPartner.notes" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">
-                <v-icon size="16" class="mr-1">mdi-note-text</v-icon>
-                Notes
-              </div>
-              <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.notes }}</p>
-            </div>
+              <!-- Notes Tab -->
+              <v-window-item value="notes">
+                <v-card variant="outlined" class="pa-3 mb-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-note-text</v-icon>
+                    Notes
+                  </h4>
+                  <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.notes || 'No notes' }}</p>
+                </v-card>
 
-            <!-- Vendor Info -->
-            <div v-if="selectedPartner.vendor_info" class="mb-4">
-              <div class="text-subtitle-2 text-medium-emphasis mb-1">
-                <v-icon size="16" class="mr-1">mdi-information</v-icon>
-                Additional Info
-              </div>
-              <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.vendor_info }}</p>
-            </div>
+                <v-card variant="outlined" class="pa-3">
+                  <h4 class="text-subtitle-2 mb-2 d-flex align-center">
+                    <v-icon size="18" class="mr-2">mdi-information</v-icon>
+                    Additional Vendor Info
+                  </h4>
+                  <p class="text-body-2" style="white-space: pre-wrap;">{{ selectedPartner.vendor_info || 'No additional info' }}</p>
+                </v-card>
+              </v-window-item>
+            </v-window>
           </v-card-text>
 
           <v-divider />
@@ -1594,6 +1648,7 @@ const showAddPartnerDialog = ref(false)
 const addPartnerSaving = ref(false)
 const selectedPartner = ref<any>(null)
 const showPartnerDetailDialog = ref(false)
+const partnerDetailTab = ref('overview')
 const showEditPartnerDialog = ref(false)
 const editPartnerSaving = ref(false)
 const showEditPassword = ref(false)
@@ -2193,6 +2248,7 @@ function resetNewPartner() {
 
 function openPartnerDetail(partner: any) {
   selectedPartner.value = partner
+  partnerDetailTab.value = 'overview'
   showPartnerDetailDialog.value = true
 }
 
