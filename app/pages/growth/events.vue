@@ -199,12 +199,15 @@ definePageMeta({
 
 const client = useSupabaseClient()
 
+// Shared store for events (syncs with calendar page)
+const marketingEventsStore = useMarketingEventsStore()
+const events = computed(() => marketingEventsStore.events)
+
 // Component refs
 const eventProfileRef = ref<{ open: (event: MarketingEvent) => void } | null>(null)
 const eventFormRef = ref<{ openCreate: () => void; openEdit: (event: MarketingEvent) => void } | null>(null)
 
 // State
-const events = ref<MarketingEvent[]>([])
 const leads = ref<Lead[]>([])
 const loading = ref(true)
 
@@ -401,12 +404,11 @@ const openEditEvent = (event: MarketingEvent) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [eventsRes, leadsRes] = await Promise.all([
-      client.from('marketing_events').select('*').order('event_date'),
+    const [, leadsRes] = await Promise.all([
+      marketingEventsStore.refresh(),
       client.from('marketing_leads').select('*')
     ])
 
-    events.value = eventsRes.data || []
     leads.value = leadsRes.data || []
   } catch (error) {
     console.error('Error fetching data:', error)

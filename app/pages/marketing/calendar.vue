@@ -642,9 +642,12 @@ const router = useRouter()
 const client = useSupabaseClient()
 const { showSuccess, showError } = useToast()
 
+// Shared store for events (syncs with events list page)
+const marketingEventsStore = useMarketingEventsStore()
+const events = computed(() => marketingEventsStore.events)
+
 // State
 const loading = ref(true)
-const events = ref<MarketingEvent[]>([])
 const notes = ref<CalendarNote[]>([])
 const currentDate = ref(new Date())
 const drawer = ref(false)
@@ -935,27 +938,14 @@ const deleteEvent = async () => {
   
   deletingEvent.value = true
   try {
-    // Call the database function that handles inventory restoration
-    const { data, error } = await client.rpc('delete_marketing_event', {
-      p_event_id: selectedEvent.value.id
-    })
+    const data = await marketingEventsStore.deleteEvent(selectedEvent.value.id)
     
-    if (error) throw error
+    // Close dialogs
+    deleteDialog.value = false
+    drawer.value = false
+    selectedEvent.value = null
     
-    // Check the result
-    if (data && data.success) {
-      // Close dialogs
-      deleteDialog.value = false
-      drawer.value = false
-      selectedEvent.value = null
-      
-      // Refresh events
-      await fetchEvents()
-      
-      showSuccess(`Event deleted. ${data.inventory_items_restored || 0} inventory items restored.`)
-    } else {
-      showError(data?.error || 'Failed to delete event')
-    }
+    showSuccess(`Event deleted. ${data.inventory_items_restored || 0} inventory items restored.`)
   } catch (err: any) {
     console.error('Error deleting event:', err)
     showError(err.message || 'Failed to delete event')
@@ -1087,17 +1077,11 @@ const fetchNotes = async () => {
   }
 }
 
-// Fetch events
+// Fetch events via shared store
 const fetchEvents = async () => {
   loading.value = true
   try {
-    const { data, error } = await client
-      .from('marketing_events')
-      .select('*')
-      .order('event_date', { ascending: true })
-
-    if (error) throw error
-    events.value = data || []
+    await marketingEventsStore.refresh()
   } catch (err) {
     console.error('Error fetching events:', err)
   } finally {
