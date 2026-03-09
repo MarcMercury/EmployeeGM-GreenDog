@@ -15,21 +15,21 @@ const searchQuery = ref('')
 const selectedCategory = ref<string | null>(null)
 const showLowStockOnly = ref(false)
 
-// Track collapsed category sections
-const collapsedCategories = ref<Set<string>>(new Set())
+// Track expanded category sections — all start collapsed
+const expandedCategories = ref<Set<string>>(new Set())
 
 function toggleCategory(category: string) {
-  const newSet = new Set(collapsedCategories.value)
+  const newSet = new Set(expandedCategories.value)
   if (newSet.has(category)) {
     newSet.delete(category)
   } else {
     newSet.add(category)
   }
-  collapsedCategories.value = newSet
+  expandedCategories.value = newSet
 }
 
 function isCategoryCollapsed(category: string): boolean {
-  return collapsedCategories.value.has(category)
+  return !expandedCategories.value.has(category)
 }
 
 // Check URL for filter
