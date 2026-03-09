@@ -283,7 +283,7 @@
           <v-card-text class="pt-0">
             <v-expansion-panels v-model="expandedZones" multiple variant="accordion">
               <v-expansion-panel
-                v-for="zoneDef in zoneDefinitions"
+                v-for="zoneDef in ZONE_DEFINITIONS"
                 :key="zoneDef.value"
                 :value="zoneDef.value"
               >
@@ -1278,7 +1278,7 @@ const totalReferrals = computed(() => filteredPartners.value.reduce((sum, p) => 
 const totalRevenue = computed(() => filteredPartners.value.reduce((sum, p) => sum + (Number(p.total_revenue_all_time) || 0), 0))
 
 const uniqueZones = computed(() => {
-  return zoneDefinitions.map(z => z.value)
+  return ZONE_DEFINITIONS.map(z => z.value)
 })
 
 const filteredPartners = computed(() => {
@@ -1388,7 +1388,7 @@ const expandedOverdueZones = ref<string[]>([])
 
 // Zone definitions including Unassigned for overdue grouping
 const overdueZoneDefinitions = computed(() => {
-  const defs = [...zoneDefinitions]
+  const defs = [...ZONE_DEFINITIONS]
   if (overduePartners.value.some(p => !p.zone)) {
     defs.push({ value: 'Unassigned', title: 'Unassigned Region', description: 'Partners without an assigned region' })
   }
@@ -1400,7 +1400,7 @@ function getOverduePartnersByZone(zone: string): any[] {
 }
 
 function expandAllZones() {
-  expandedZones.value = zoneDefinitions.map(z => z.value)
+  expandedZones.value = ZONE_DEFINITIONS.map(z => z.value)
   if (partners.value.some(p => !p.zone)) {
     expandedZones.value.push('Unassigned')
   }
