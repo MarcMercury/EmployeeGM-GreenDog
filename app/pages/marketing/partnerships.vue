@@ -125,12 +125,23 @@
                   clearable
                 />
               </v-col>
-              <v-col cols="6" md="3">
-                <v-btn-toggle v-model="filterFollowup" density="compact" variant="outlined">
-                  <v-btn value="all" size="small">All</v-btn>
-                  <v-btn value="followup" size="small" color="warning">Follow-up</v-btn>
-                  <v-btn value="overdue" size="small" color="error">Overdue</v-btn>
-                </v-btn-toggle>
+              <v-col cols="12" md="4">
+                <div class="d-flex gap-2 align-center flex-wrap">
+                  <v-btn-toggle v-model="filterFollowup" density="compact" variant="outlined">
+                    <v-btn value="all" size="small" @click="filterStatus = null">All</v-btn>
+                    <v-btn value="followup" size="small" color="warning" @click="filterStatus = null">Follow-up</v-btn>
+                    <v-btn value="overdue" size="small" color="error" @click="filterStatus = null">Overdue</v-btn>
+                  </v-btn-toggle>
+                  <v-chip
+                    v-if="filterStatus === 'active'"
+                    closable
+                    color="success"
+                    size="small"
+                    @click:close="filterStatus = null"
+                  >
+                    Active Only
+                  </v-chip>
+                </div>
               </v-col>
             </v-row>
           </v-card-text>
@@ -247,10 +258,10 @@
         <!-- Summary Stats Row -->
         <UiStatsRow
           :stats="[
-            { value: partners.filter(p => p.status === 'active').length, label: 'Active Partners', color: 'primary' },
-            { value: weeklyTargets.length, label: 'This Week\'s Targets', color: 'info' },
-            { value: overduePartners.length, label: 'Overdue Visits', color: 'error' },
-            { value: partners.filter(p => p.needs_followup).length, label: 'Follow-ups', color: 'warning' }
+            { value: partners.filter(p => p.status === 'active').length, label: 'Active Partners', color: 'primary', onClick: () => navigateToFilteredList({ status: 'active' }) },
+            { value: weeklyTargets.length, label: 'This Week\'s Targets', color: 'info', onClick: () => navigateToFilteredList({ followup: 'followup' }) },
+            { value: overduePartners.length, label: 'Overdue Visits', color: 'error', onClick: () => navigateToFilteredList({ followup: 'overdue' }) },
+            { value: partners.filter(p => p.needs_followup).length, label: 'Follow-ups', color: 'warning', onClick: () => navigateToFilteredList({ followup: 'followup' }) }
           ]"
           layout="4-col"
           class="mb-4"
@@ -1126,6 +1137,7 @@ const filterTier = ref<string | null>(null)
 const filterZone = ref<string | null>(null)
 const filterPriority = ref<string | null>(null)
 const filterFollowup = ref('all')
+const filterStatus = ref<string | null>(null)
 
 // Upload EzyVet Report state
 const showUploadDialog = ref(false)
@@ -1278,10 +1290,29 @@ const filteredPartners = computed(() => {
   if (filterTier.value) result = result.filter(p => p.tier === filterTier.value)
   if (filterZone.value) result = result.filter(p => p.zone === filterZone.value)
   if (filterPriority.value) result = result.filter(p => p.priority === filterPriority.value)
+  if (filterStatus.value) result = result.filter(p => p.status === filterStatus.value)
   if (filterFollowup.value === 'followup') result = result.filter(p => p.needs_followup)
   if (filterFollowup.value === 'overdue') result = result.filter(p => p.visit_overdue)
   return result
 })
+
+// Helper to navigate to list tab with specific filter
+function navigateToFilteredList(options: { status?: string, followup?: 'all' | 'followup' | 'overdue' } = {}) {
+  // Clear all filters first
+  filterTier.value = null
+  filterZone.value = null
+  filterPriority.value = null
+  filterStatus.value = null
+  filterFollowup.value = 'all'
+  search.value = ''
+
+  // Apply requested filters
+  if (options.status) filterStatus.value = options.status
+  if (options.followup) filterFollowup.value = options.followup
+
+  // Switch to list tab
+  mainTab.value = 'list'
+}
 
 const overduePartners = computed(() => {
   return partners.value
