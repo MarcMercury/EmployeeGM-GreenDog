@@ -80,9 +80,21 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
         role: 'system' as const,
         content: `You are a local events researcher for a veterinary practice in ${location}. 
 Your task is to identify upcoming events that would be relevant for pet and animal-related marketing.
-Focus on community events, street fairs, festivals, pet expos, adoption events, and similar gatherings.
+Focus on: street fairs, pet events, adoption events, community festivals, farmers markets, holiday markets, dog-friendly gatherings, pet expos, and similar events.
 
-Return realistic, plausible event data based on typical events in the area and seasonality.`,
+You MUST check these specific local event sources (and are not limited to only these):
+- Venice Chamber of Commerce: https://business.venicechamber.net/events/
+- Santa Monica Chamber: https://members.smchamber.com/events
+- Sherman Oaks Encino Chamber: https://members.shermanoaksencinochamber.org/events/calendar
+- Dog People Co (Santa Monica): https://dogppl.co/locations/santamonica#events
+- Venice Street Art (VSA LA): https://www.vsa.la/events
+- Venice Paparazzi News: https://www.venicepaparazzi.com/venice-information/news/
+- The Venice Fest: https://www.thevenicefest.com/
+- Venice Heritage Museum: https://www.veniceheritagemuseum.org/upcoming-events.html
+- Main Street Santa Monica: https://www.mainstreetsm.com/calendar/
+
+Also search broadly across local news, EventBrite, Facebook Events, Nextdoor, and other community event sources in the area.
+Return real, verifiable upcoming events with accurate dates. Include the source URL for each event.`,
       },
     ]
 
@@ -94,7 +106,7 @@ Return realistic, plausible event data based on typical events in the area and s
 
     searchMessages.push({
       role: 'user' as const,
-      content: `Find upcoming local events that match this description for ${location}. Look for pet-related, animal-related, community, and festival events:\n${queryDescriptions}\n\nReturn 10-15 events as a JSON array with: name, date (YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), location, description, hostedBy, contact (name, email, phone), attendance estimate, cost, and source.`,
+      content: `Find upcoming local events that match this description for ${location}. Look for pet-related, animal-related, community, street fair, adoption, and festival events:\n${queryDescriptions}\n\nCheck the specific source websites listed in your instructions plus any other local event sources you can find. Return 10-15 events as a JSON array with: name, date (YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), location, description, hostedBy, contact (name, email, phone), attendance estimate, cost, source (name of source), and url (source URL where the event was found).`,
     })
 
     const chatResult = await agentChat({

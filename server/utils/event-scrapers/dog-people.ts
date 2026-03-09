@@ -1,13 +1,13 @@
 // =============================================================================
 // Dog People Co Event Scraper
-// https://www.dogppl.co/calendar
+// https://dogppl.co/locations/santamonica#events
 // =============================================================================
 
 import { EventScraper } from './base'
 
 export class DogPeopleScraper extends EventScraper {
   name = 'Dog People Co'
-  url = 'https://www.dogppl.co/calendar'
+  url = 'https://dogppl.co/locations/santamonica#events'
 
   async scrape() {
     const html = await this.fetchHTML()

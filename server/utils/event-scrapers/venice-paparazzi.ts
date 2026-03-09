@@ -1,13 +1,13 @@
 // =============================================================================
-// Venice Paparazzi Event Scraper (Recent Events Covered)
-// https://www.venicepaparazzi.com/recent-events-covered/sunsoutvenice/
+// Venice Paparazzi Event Scraper (Venice News & Events)
+// https://www.venicepaparazzi.com/venice-information/news/
 // =============================================================================
 
 import { EventScraper } from './base'
 
 export class VenicePararazziScraper extends EventScraper {
   name = 'Venice Paparazzi'
-  url = 'https://www.venicepaparazzi.com/recent-events-covered/sunsoutvenice/'
+  url = 'https://www.venicepaparazzi.com/venice-information/news/'
 
   async scrape() {
     const html = await this.fetchHTML()
@@ -49,12 +49,12 @@ export class VenicePararazziScraper extends EventScraper {
             location: this.sanitizeText(locationText),
             external_links: [
               {
-                title: 'Suns Out Venice Event Coverage',
+                title: 'Venice Paparazzi News',
                 url: detailsUrl,
               },
             ],
             event_type: 'community_outreach',
-            hosted_by: 'Venice Paparazzi / Suns Out Venice',
+            hosted_by: 'Venice Paparazzi',
             source_url: this.url,
           })
         }

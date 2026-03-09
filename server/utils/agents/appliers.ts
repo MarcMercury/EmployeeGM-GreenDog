@@ -306,6 +306,11 @@ applierMap.set('engagement_report', async (_proposal, _supabase) => {
 
 applierMap.set('event_discovery', async (proposal, supabase) => {
   const d = proposal.detail as any
+  const sourceName = d.source_name || 'Web Search'
+  const confidencePct = d.confidence_score ? (d.confidence_score * 100).toFixed(0) : '?'
+
+  // 1. Insert the event into marketing_events
+  //    (this also fires the DB trigger that notifies admins about the new event)
   const { error } = await supabase
     .from('marketing_events')
     .insert({
@@ -325,12 +330,81 @@ applierMap.set('event_discovery', async (proposal, supabase) => {
       event_cost: d.event_cost,
       expectations: d.expectations,
       physical_setup: d.physical_setup,
+      source_url: d.source_url,
+      source_name: sourceName,
+      is_auto_scraped: true,
       status: 'proposed',
       staffing_status: 'planned',
-      notes: d.notes || `Discovered event from web search. Source: ${d.source_name}. Confidence: ${(d.confidence_score * 100).toFixed(0)}%`,
+      notes: d.notes || `Discovered event from web search. Source: ${sourceName}. Confidence: ${confidencePct}%`,
     })
 
   if (error) throw new Error(`Failed to insert marketing event: ${error.message}`)
+
+  // 2. Create a calendar note on the event date so it's visible on the Marketing Calendar
+  if (d.event_date) {
+    const noteTitle = `🔍 ${d.event_name}`
+    const noteContent = [
+      `Source: ${sourceName}`,
+      d.location ? `Location: ${d.location}` : null,
+      d.source_url ? `Link: ${d.source_url}` : null,
+      `Confidence: ${confidencePct}%`,
+      `Discovered by Marketing Events Scout on ${new Date().toLocaleDateString()}`,
+    ].filter(Boolean).join('\n')
+
+    const { error: noteError } = await supabase
+      .from('marketing_calendar_notes')
+      .insert({
+        note_date: d.event_date,
+        title: noteTitle,
+        content: noteContent,
+        color: 'purple',
+      })
+
+    if (noteError) {
+      logger.warn('[Applier] Failed to create calendar note for event discovery', 'agent', {
+        eventName: d.event_name,
+        error: noteError.message,
+      })
+    }
+  }
+
+  // 3. Send in-app notifications to marketing_admin and admin users
+  const { data: adminProfiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('role', ['super_admin', 'admin', 'marketing_admin', 'sup_admin'])
+
+  if (adminProfiles?.length) {
+    const notificationRows = adminProfiles.map((p: any) => ({
+      profile_id: p.id,
+      type: 'scout_event_discovered',
+      category: 'marketing',
+      title: `🔍 Scout Found Event: ${d.event_name}`,
+      body: `The Marketing Events Scout discovered "${d.event_name}" on ${d.event_date}. Source: ${sourceName}. A note has been added to the Marketing Calendar.`,
+      data: {
+        event_name: d.event_name,
+        event_date: d.event_date,
+        source_name: sourceName,
+        source_url: d.source_url || null,
+        confidence: confidencePct,
+        proposal_id: proposal.id,
+        url: '/marketing/calendar',
+        action_label: 'View Calendar',
+      },
+      is_read: false,
+      requires_action: false,
+    }))
+
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert(notificationRows)
+
+    if (notifError) {
+      logger.warn('[Applier] Failed to send scout event notifications', 'agent', {
+        error: notifError.message,
+      })
+    }
+  }
 })
 
 // ─── Referral Intelligence ────────────────────────────────────────

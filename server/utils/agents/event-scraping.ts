@@ -106,7 +106,20 @@ export async function searchEventsViaAI(
     const response = await aiChat([
       {
         role: 'system',
-        content: `You are a local events researcher. Your task is to identify upcoming events in the specified location and timeframe that would be relevant for a veterinary practice. Focus on pet-related, animal-related, community, festival, and street fair events.
+        content: `You are a local events researcher. Your task is to identify upcoming events in the specified location and timeframe that would be relevant for a veterinary practice. Focus on pet-related, animal-related, community, festival, street fair, adoption, and farmers market events.
+
+You MUST check these specific local event sources (and are not limited to only these):
+- Venice Chamber of Commerce: https://business.venicechamber.net/events/
+- Santa Monica Chamber: https://members.smchamber.com/events
+- Sherman Oaks Encino Chamber: https://members.shermanoaksencinochamber.org/events/calendar
+- Dog People Co (Santa Monica): https://dogppl.co/locations/santamonica#events
+- Venice Street Art (VSA LA): https://www.vsa.la/events
+- Venice Paparazzi News: https://www.venicepaparazzi.com/venice-information/news/
+- The Venice Fest: https://www.thevenicefest.com/
+- Venice Heritage Museum: https://www.veniceheritagemuseum.org/upcoming-events.html
+- Main Street Santa Monica: https://www.mainstreetsm.com/calendar/
+
+Also search broadly across local news, EventBrite, Facebook Events, and other community sources.
 
 Return a JSON array of events with this structure:
 [
@@ -117,8 +130,8 @@ Return a JSON array of events with this structure:
     "endTime": "HH:MM" or null,
     "location": "Full address or area",
     "description": "2-3 sentence description",
-    "url": "website URL or null",
-    "source": "EventBrite|Google|Facebook|LocalNews|etc",
+    "url": "website URL where event was found or null",
+    "source": "Source name (e.g. Venice Chamber, EventBrite, etc.)",
     "hostedBy": "Organizer name or null",
     "contact": {
       "name": "Contact person or null",
@@ -131,8 +144,7 @@ Return a JSON array of events with this structure:
   }
 ]
 
-Be realistic and base suggestions on actual events patterns and schedules.
-Focus on events that would have good foot traffic for a veterinary practice.`,
+Return real, verifiable upcoming events with accurate dates. Include the source URL for each event.`,
       },
       {
         role: 'user',

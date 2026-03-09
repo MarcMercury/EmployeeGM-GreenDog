@@ -74,6 +74,73 @@ export default defineEventHandler(async (event) => {
       insertionResults = await insertionService.insertFromSources(scraperResults)
     }
 
+    // Create calendar notes and notify admins for newly created events
+    if (insert && insertionResults?.created > 0) {
+      const createdEvents: Array<{ name: string; date: string; source: string }> = []
+
+      for (const [sourceName, sourceData] of Object.entries(insertionResults.by_source)) {
+        const sd = sourceData as any
+        if (sd.success && sd.results) {
+          for (const r of sd.results) {
+            if (r.status === 'created') {
+              const sourceResult = scraperResults.find((sr: any) => sr.source === sourceName)
+              const originalEvent = sourceResult?.events?.find((e: any) => e.name === r.name)
+              if (originalEvent?.event_date) {
+                createdEvents.push({
+                  name: r.name,
+                  date: originalEvent.event_date,
+                  source: sourceName,
+                })
+              }
+            }
+          }
+        }
+      }
+
+      // Insert calendar notes
+      for (const evt of createdEvents) {
+        await supabase
+          .from('marketing_calendar_notes')
+          .insert({
+            note_date: evt.date,
+            title: `🔍 ${evt.name}`,
+            content: `Source: ${evt.source}\nManually triggered scrape on ${new Date().toLocaleDateString()}`,
+            color: 'teal',
+          })
+      }
+
+      // Notify admins
+      if (createdEvents.length > 0) {
+        const { data: adminProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .in('role', ['super_admin', 'admin', 'marketing_admin', 'sup_admin'])
+
+        if (adminProfiles?.length) {
+          const eventNames = createdEvents.map(e => e.name).slice(0, 5)
+          const moreCount = createdEvents.length > 5 ? ` and ${createdEvents.length - 5} more` : ''
+
+          const notificationRows = adminProfiles.map((p: any) => ({
+            profile_id: p.id,
+            type: 'scraped_events_added',
+            category: 'marketing',
+            title: `📅 ${createdEvents.length} New Event${createdEvents.length === 1 ? '' : 's'} Scraped`,
+            body: `Event scraping found ${createdEvents.length} new event${createdEvents.length === 1 ? '' : 's'}: ${eventNames.join(', ')}${moreCount}. Notes have been added to the Marketing Calendar.`,
+            data: {
+              events_created: createdEvents.length,
+              event_names: eventNames,
+              url: '/marketing/calendar',
+              action_label: 'View Calendar',
+            },
+            is_read: false,
+            requires_action: false,
+          }))
+
+          await supabase.from('notifications').insert(notificationRows)
+        }
+      }
+    }
+
     return {
       success: true,
       timestamp: new Date().toISOString(),
