@@ -26,6 +26,7 @@ const exportColumns = [
   { key: 'visit_status', title: 'Status' },
   { key: 'coordinator', title: 'Coordinator' },
   { key: 'mentor', title: 'Mentor' },
+  { key: 'ce_events_list', title: 'CE Events Attended' },
   { key: 'lead_source', title: 'Lead Source' },
   { key: 'notes', title: 'Notes' }
 ]
@@ -153,7 +154,8 @@ const filteredVisitors = computed(() => {
       v.school_of_origin?.toLowerCase().includes(query) ||
       v.coordinator?.toLowerCase().includes(query) ||
       v.mentor?.toLowerCase().includes(query) ||
-      v.program_name?.toLowerCase().includes(query)
+      v.program_name?.toLowerCase().includes(query) ||
+      v.ce_events_attended?.some(e => e.event_title.toLowerCase().includes(query))
     )
   }
   
@@ -551,7 +553,14 @@ async function postVisitorToSlack() {
 }
 
 // --- CE Attendee Duplicate Detection & Merge ---
-const isCEView = computed(() => selectedType.value === 'ce_attendee')
+
+// Export data with flattened CE events column
+const exportData = computed(() => {
+  return filteredVisitors.value.map(v => ({
+    ...v,
+    ce_events_list: v.ce_events_attended?.map(e => e.event_title).join('; ') || ''
+  }))
+})
 
 async function scanForDuplicates() {
   scanningDuplicates.value = true
@@ -619,13 +628,6 @@ async function mergeAllDuplicates() {
   } finally {
     merging.value = false
   }
-}
-
-function getCEEventsLabel(visitor: Visitor): string {
-  if (!visitor.ce_events_attended || visitor.ce_events_attended.length === 0) {
-    return 'None'
-  }
-  return visitor.ce_events_attended.map(e => e.event_title).join(', ')
 }
 </script>
 
@@ -761,13 +763,10 @@ function getCEEventsLabel(visitor: Visitor): string {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Program</th>
-            <th v-if="!isCEView">Visit Dates</th>
+            <th>Organization</th>
+            <th>Dates / CE Events</th>
             <th>Status</th>
-            <th v-if="!isCEView">Coordinator</th>
-            <th v-if="isCEView">CE Events Attended</th>
-            <th v-if="!isCEView">Mentor</th>
-            <th v-if="!isCEView">Location</th>
+            <th>Assignment / Details</th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
@@ -778,6 +777,7 @@ function getCEEventsLabel(visitor: Visitor): string {
             style="cursor: pointer;"
             @click="openEditDialog(visitor)"
           >
+            <!-- Name (always) -->
             <td>
               <div class="d-flex align-center py-1">
                 <v-avatar :color="getTypeColor(visitor.visitor_type)" size="32" class="mr-2">
@@ -786,29 +786,59 @@ function getCEEventsLabel(visitor: Visitor): string {
                 <div>
                   <div class="font-weight-medium text-body-2">{{ visitor.first_name }} {{ visitor.last_name }}</div>
                   <div class="text-caption text-medium-emphasis">
-                    {{ visitor.visitor_type.replace('_', ' ') }}
+                    {{ getTypeLabel(visitor.visitor_type) }}
                   </div>
                 </div>
               </div>
             </td>
-            
+
+            <!-- Organization / Program -->
             <td>
-              <div v-if="visitor.program_name">
-                <div class="font-weight-medium">{{ visitor.program_name }}</div>
+              <div v-if="visitor.organization_name || visitor.program_name">
+                <div v-if="visitor.organization_name" class="font-weight-medium text-body-2">{{ visitor.organization_name }}</div>
+                <div v-if="visitor.program_name" class="text-caption text-medium-emphasis">{{ visitor.program_name }}</div>
               </div>
               <span v-else class="text-medium-emphasis">—</span>
             </td>
-            
-            <td v-if="!isCEView">
-              <div v-if="visitor.visit_start_date">
-                <div>{{ new Date(visitor.visit_start_date).toLocaleDateString() }}</div>
-                <div class="text-caption text-medium-emphasis" v-if="visitor.visit_end_date">
-                  to {{ new Date(visitor.visit_end_date).toLocaleDateString() }}
+
+            <!-- Dates / CE Events — per-row rendering -->
+            <td>
+              <!-- CE Attendees: show CE events attended -->
+              <div v-if="visitor.visitor_type === 'ce_attendee'">
+                <div v-if="visitor.ce_events_attended && visitor.ce_events_attended.length > 0">
+                  <v-chip
+                    v-for="ev in visitor.ce_events_attended"
+                    :key="ev.event_id"
+                    size="small"
+                    color="amber"
+                    variant="tonal"
+                    class="mr-1 mb-1"
+                  >
+                    <v-icon start size="x-small">mdi-certificate</v-icon>
+                    {{ ev.event_title }}
+                    <v-icon v-if="ev.checked_in" end size="x-small" color="success">mdi-check-circle</v-icon>
+                    <v-tooltip activator="parent" location="top">
+                      {{ new Date(ev.event_date_start).toLocaleDateString() }}
+                      {{ ev.checked_in ? '• Checked In' : '' }}
+                      {{ ev.certificate_issued ? '• Certificate Issued' : '' }}
+                    </v-tooltip>
+                  </v-chip>
                 </div>
+                <span v-else class="text-medium-emphasis">No events</span>
               </div>
-              <span v-else class="text-medium-emphasis">—</span>
+              <!-- Other types: show visit dates -->
+              <div v-else>
+                <div v-if="visitor.visit_start_date">
+                  <div>{{ new Date(visitor.visit_start_date).toLocaleDateString() }}</div>
+                  <div class="text-caption text-medium-emphasis" v-if="visitor.visit_end_date">
+                    to {{ new Date(visitor.visit_end_date).toLocaleDateString() }}
+                  </div>
+                </div>
+                <span v-else class="text-medium-emphasis">—</span>
+              </div>
             </td>
-            
+
+            <!-- Status (always) -->
             <td>
               <v-chip
                 size="small"
@@ -818,40 +848,29 @@ function getCEEventsLabel(visitor: Visitor): string {
                 {{ getStatusLabel(visitor.visit_status) }}
               </v-chip>
             </td>
-            
-            <td v-if="!isCEView">
-              {{ visitor.coordinator || '—' }}
-            </td>
-            
-            <td v-if="isCEView">
-              <div v-if="visitor.ce_events_attended && visitor.ce_events_attended.length > 0">
-                <v-chip
-                  v-for="ev in visitor.ce_events_attended"
-                  :key="ev.event_id"
-                  size="small"
-                  color="amber"
-                  variant="tonal"
-                  class="mr-1 mb-1"
-                >
-                  <v-icon start size="x-small">mdi-certificate</v-icon>
-                  {{ ev.event_title }}
-                  <v-icon v-if="ev.checked_in" end size="x-small" color="success">mdi-check-circle</v-icon>
-                  <v-tooltip activator="parent" location="top">
-                    {{ new Date(ev.event_date_start).toLocaleDateString() }}
-                    {{ ev.checked_in ? '• Checked In' : '' }}
-                    {{ ev.certificate_issued ? '• Certificate Issued' : '' }}
-                  </v-tooltip>
+
+            <!-- Assignment / Details — per-row rendering -->
+            <td>
+              <!-- CE Attendees: show event count summary -->
+              <div v-if="visitor.visitor_type === 'ce_attendee'">
+                <v-chip size="small" color="amber" variant="tonal">
+                  <v-icon start size="x-small">mdi-calendar-check</v-icon>
+                  {{ visitor.ce_events_attended?.length || 0 }} event{{ (visitor.ce_events_attended?.length || 0) !== 1 ? 's' : '' }}
                 </v-chip>
               </div>
-              <span v-else class="text-medium-emphasis">No events</span>
-            </td>
-            
-            <td v-if="!isCEView">
-              {{ visitor.mentor || '—' }}
-            </td>
-            
-            <td v-if="!isCEView">
-              {{ visitor.location || '—' }}
+              <!-- Other types: show coordinator / mentor / location -->
+              <div v-else>
+                <div v-if="visitor.coordinator" class="text-body-2">
+                  <v-icon size="x-small" class="mr-1">mdi-account-tie</v-icon>{{ visitor.coordinator }}
+                </div>
+                <div v-if="visitor.mentor" class="text-body-2">
+                  <v-icon size="x-small" class="mr-1">mdi-account-school</v-icon>{{ visitor.mentor }}
+                </div>
+                <div v-if="visitor.location" class="text-caption text-medium-emphasis">
+                  <v-icon size="x-small" class="mr-1">mdi-map-marker</v-icon>{{ visitor.location }}
+                </div>
+                <span v-if="!visitor.coordinator && !visitor.mentor && !visitor.location" class="text-medium-emphasis">—</span>
+              </div>
             </td>
             
             <td class="text-right" style="white-space: nowrap;">
@@ -1006,12 +1025,14 @@ function getCEEventsLabel(visitor: Visitor): string {
               />
             </v-col>
             
+            <!-- Visit Details (non-CE attendees only) -->
+            <template v-if="formData.visitor_type !== 'ce_attendee'">
             <v-col cols="12">
               <v-divider class="my-2" />
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Visit Details</div>
             </v-col>
             
-            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-text-field
                 v-model="formData.visit_start_date"
                 label="Visit Start Date"
@@ -1019,7 +1040,7 @@ function getCEEventsLabel(visitor: Visitor): string {
                 type="date"
               />
             </v-col>
-            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-text-field
                 v-model="formData.visit_end_date"
                 label="Visit End Date"
@@ -1028,7 +1049,7 @@ function getCEEventsLabel(visitor: Visitor): string {
               />
             </v-col>
             
-            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-select
                 v-model="formData.visit_status"
                 :items="statusOptions.filter(s => s.value !== null)"
@@ -1036,7 +1057,7 @@ function getCEEventsLabel(visitor: Visitor): string {
                 variant="outlined"
               />
             </v-col>
-            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
+            <v-col cols="12" md="6">
               <v-select
                 v-model="formData.location"
                 :items="locationOptions.filter(l => l.value !== null)"
@@ -1045,11 +1066,13 @@ function getCEEventsLabel(visitor: Visitor): string {
                 clearable
               />
             </v-col>
+            </template>
             
             <!-- CE Events Attended (shown for CE attendees when editing) -->
-            <v-col v-if="formData.visitor_type === 'ce_attendee' && editingVisitor" cols="12">
+            <v-col v-if="formData.visitor_type === 'ce_attendee'" cols="12">
+              <v-divider class="my-2" />
               <div class="text-subtitle-2 text-medium-emphasis mb-2">CE Events Attended</div>
-              <div v-if="editingVisitor.ce_events_attended && editingVisitor.ce_events_attended.length > 0">
+              <div v-if="editingVisitor && editingVisitor.ce_events_attended && editingVisitor.ce_events_attended.length > 0">
                 <v-chip
                   v-for="ev in editingVisitor.ce_events_attended"
                   :key="ev.event_id"
@@ -1098,6 +1121,8 @@ function getCEEventsLabel(visitor: Visitor): string {
             </v-col>
             </template>
             
+            <!-- Recruitment & Source (hidden for CE attendees) -->
+            <template v-if="formData.visitor_type !== 'ce_attendee'">
             <v-col cols="12">
               <v-divider class="my-2" />
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Recruitment & Source</div>
@@ -1143,6 +1168,7 @@ function getCEEventsLabel(visitor: Visitor): string {
                 placeholder="e.g., Shadowing for career exploration, externship requirement, etc."
               />
             </v-col>
+            </template>
             
             <v-col cols="12">
               <v-textarea
@@ -1228,7 +1254,7 @@ function getCEEventsLabel(visitor: Visitor): string {
     <!-- Export Dialog -->
     <UiExportDialog
       v-model="showExportDialog"
-      :data="filteredVisitors"
+      :data="exportData"
       :columns="exportColumns"
       default-file-name="ce-visitors-export"
       title="CE Course Contacts Export"
