@@ -109,6 +109,32 @@
           </v-card-text>
         </v-card>
 
+        <!-- Marketing Tools (Top Level) -->
+        <div v-if="currentPath === '' && isAdmin" class="mb-6">
+          <h3 class="text-subtitle-2 text-grey mb-3">Marketing Tools</h3>
+          <v-row>
+            <v-col cols="6" sm="4" md="2">
+              <v-card 
+                rounded="lg" 
+                class="folder-card h-100"
+                to="/marketing/inventory"
+              >
+                <v-card-text class="text-center py-3">
+                  <v-avatar size="36" color="amber" class="mb-2">
+                    <v-icon size="20" color="white">mdi-package-variant</v-icon>
+                  </v-avatar>
+                  <h3 class="text-body-2 font-weight-bold text-truncate">Inventory</h3>
+                  <p class="text-caption text-grey mb-1 text-truncate">Manage marketing inventory</p>
+                  <v-chip size="x-small" color="amber" variant="tonal">
+                    <v-icon start size="x-small">mdi-arrow-right</v-icon>
+                    View
+                  </v-chip>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
+
         <!-- External Resources (Top Level) - Dynamic from Database -->
         <div v-if="currentPath === '' && externalResources.length > 0" class="mb-6">
           <div class="d-flex align-center justify-space-between mb-3">

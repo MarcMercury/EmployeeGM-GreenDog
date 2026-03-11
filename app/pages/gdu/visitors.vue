@@ -34,7 +34,7 @@ const exportColumns = [
 const saving = ref(false)
 const deleting = ref<string | null>(null)
 
-import type { Visitor } from '~/types/gdu.types'
+import type { Visitor, CEEventAttended } from '~/types/gdu.types'
 
 // Filter state
 const searchQuery = ref('')
@@ -83,6 +83,12 @@ const leadSourceOptions = [
   'Other'
 ]
 
+// Duplicate merge state
+const showMergeDialog = ref(false)
+const duplicateGroups = ref<Array<{ email: string; last_name: string; duplicate_count: number; visitor_ids: string[] }>>([])
+const merging = ref(false)
+const scanningDuplicates = ref(false)
+
 // Fetch visitors
 const { data: visitors, pending, refresh } = await useAsyncData('visitors', async () => {
   const { data, error } = await supabase
@@ -91,7 +97,39 @@ const { data: visitors, pending, refresh } = await useAsyncData('visitors', asyn
     .order('created_at', { ascending: false })
   
   if (error) throw error
-  return data as Visitor[]
+  const visitorList = data as Visitor[]
+  
+  // Enrich CE attendees with their events via the join table
+  const ceAttendees = visitorList.filter(v => v.visitor_type === 'ce_attendee')
+  if (ceAttendees.length > 0) {
+    const ceIds = ceAttendees.map(v => v.id)
+    const { data: attendeeEvents } = await supabase
+      .from('ce_event_attendees')
+      .select('visitor_id, ce_event_id, checked_in, certificate_issued, ce_events(id, title, event_date_start)')
+      .in('visitor_id', ceIds)
+    
+    if (attendeeEvents) {
+      const eventMap = new Map<string, CEEventAttended[]>()
+      for (const row of attendeeEvents as any[]) {
+        const vid = row.visitor_id as string
+        if (!eventMap.has(vid)) eventMap.set(vid, [])
+        if (row.ce_events) {
+          eventMap.get(vid)!.push({
+            event_id: row.ce_events.id,
+            event_title: row.ce_events.title,
+            event_date_start: row.ce_events.event_date_start,
+            checked_in: row.checked_in,
+            certificate_issued: row.certificate_issued
+          })
+        }
+      }
+      for (const v of ceAttendees) {
+        v.ce_events_attended = eventMap.get(v.id) || []
+      }
+    }
+  }
+  
+  return visitorList
 })
 
 // Filtered visitors
@@ -511,6 +549,84 @@ async function postVisitorToSlack() {
     postingToSlack.value = false
   }
 }
+
+// --- CE Attendee Duplicate Detection & Merge ---
+const isCEView = computed(() => selectedType.value === 'ce_attendee')
+
+async function scanForDuplicates() {
+  scanningDuplicates.value = true
+  try {
+    const { data, error } = await supabase.rpc('find_ce_attendee_duplicates')
+    if (error) throw error
+    duplicateGroups.value = (data || []) as any[]
+    if (duplicateGroups.value.length === 0) {
+      showSuccess('No duplicate CE attendees found!')
+    } else {
+      showMergeDialog.value = true
+    }
+  } catch (error: any) {
+    console.error('Error scanning for duplicates:', error)
+    showError(error.message || 'Failed to scan for duplicates')
+  } finally {
+    scanningDuplicates.value = false
+  }
+}
+
+async function mergeGroup(group: { email: string; visitor_ids: string[] }) {
+  merging.value = true
+  try {
+    const { data, error } = await supabase.rpc('merge_ce_attendee_duplicates', {
+      p_visitor_ids: group.visitor_ids
+    })
+    if (error) throw error
+    showSuccess(`Merged ${(data as any)?.merged_count || 0} duplicate records for ${group.email}`)
+    // Remove from list
+    duplicateGroups.value = duplicateGroups.value.filter(g => g.email !== group.email)
+    if (duplicateGroups.value.length === 0) {
+      showMergeDialog.value = false
+    }
+    refresh()
+  } catch (error: any) {
+    console.error('Error merging duplicates:', error)
+    showError(error.message || 'Failed to merge duplicates')
+  } finally {
+    merging.value = false
+  }
+}
+
+async function mergeAllDuplicates() {
+  if (!confirm(`Merge all ${duplicateGroups.value.length} duplicate groups? This cannot be undone.`)) return
+  merging.value = true
+  try {
+    let totalMerged = 0
+    for (const group of duplicateGroups.value) {
+      const { data, error } = await supabase.rpc('merge_ce_attendee_duplicates', {
+        p_visitor_ids: group.visitor_ids
+      })
+      if (error) {
+        console.error(`Error merging ${group.email}:`, error)
+        continue
+      }
+      totalMerged += (data as any)?.merged_count || 0
+    }
+    showSuccess(`Merged ${totalMerged} total duplicate records`)
+    duplicateGroups.value = []
+    showMergeDialog.value = false
+    refresh()
+  } catch (error: any) {
+    console.error('Error merging all duplicates:', error)
+    showError(error.message || 'Failed to merge all duplicates')
+  } finally {
+    merging.value = false
+  }
+}
+
+function getCEEventsLabel(visitor: Visitor): string {
+  if (!visitor.ce_events_attended || visitor.ce_events_attended.length === 0) {
+    return 'None'
+  }
+  return visitor.ce_events_attended.map(e => e.event_title).join(', ')
+}
 </script>
 
 <template>
@@ -534,6 +650,15 @@ async function postVisitorToSlack() {
         @click="showUploadWizard = true"
       >
         Import
+      </v-btn>
+      <v-btn
+        variant="outlined"
+        prepend-icon="mdi-merge"
+        class="mr-2"
+        :loading="scanningDuplicates"
+        @click="scanForDuplicates"
+      >
+        Find Duplicates
       </v-btn>
       <v-btn
         variant="outlined"
@@ -637,11 +762,12 @@ async function postVisitorToSlack() {
           <tr>
             <th>Name</th>
             <th>Program</th>
-            <th>Visit Dates</th>
+            <th v-if="!isCEView">Visit Dates</th>
             <th>Status</th>
-            <th>Coordinator</th>
-            <th>Mentor</th>
-            <th>Location</th>
+            <th v-if="!isCEView">Coordinator</th>
+            <th v-if="isCEView">CE Events Attended</th>
+            <th v-if="!isCEView">Mentor</th>
+            <th v-if="!isCEView">Location</th>
             <th class="text-right">Actions</th>
           </tr>
         </thead>
@@ -673,7 +799,7 @@ async function postVisitorToSlack() {
               <span v-else class="text-medium-emphasis">—</span>
             </td>
             
-            <td>
+            <td v-if="!isCEView">
               <div v-if="visitor.visit_start_date">
                 <div>{{ new Date(visitor.visit_start_date).toLocaleDateString() }}</div>
                 <div class="text-caption text-medium-emphasis" v-if="visitor.visit_end_date">
@@ -693,15 +819,38 @@ async function postVisitorToSlack() {
               </v-chip>
             </td>
             
-            <td>
+            <td v-if="!isCEView">
               {{ visitor.coordinator || '—' }}
             </td>
             
-            <td>
+            <td v-if="isCEView">
+              <div v-if="visitor.ce_events_attended && visitor.ce_events_attended.length > 0">
+                <v-chip
+                  v-for="ev in visitor.ce_events_attended"
+                  :key="ev.event_id"
+                  size="small"
+                  color="amber"
+                  variant="tonal"
+                  class="mr-1 mb-1"
+                >
+                  <v-icon start size="x-small">mdi-certificate</v-icon>
+                  {{ ev.event_title }}
+                  <v-icon v-if="ev.checked_in" end size="x-small" color="success">mdi-check-circle</v-icon>
+                  <v-tooltip activator="parent" location="top">
+                    {{ new Date(ev.event_date_start).toLocaleDateString() }}
+                    {{ ev.checked_in ? '• Checked In' : '' }}
+                    {{ ev.certificate_issued ? '• Certificate Issued' : '' }}
+                  </v-tooltip>
+                </v-chip>
+              </div>
+              <span v-else class="text-medium-emphasis">No events</span>
+            </td>
+            
+            <td v-if="!isCEView">
               {{ visitor.mentor || '—' }}
             </td>
             
-            <td>
+            <td v-if="!isCEView">
               {{ visitor.location || '—' }}
             </td>
             
@@ -862,7 +1011,7 @@ async function postVisitorToSlack() {
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Visit Details</div>
             </v-col>
             
-            <v-col cols="12" md="6">
+            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
               <v-text-field
                 v-model="formData.visit_start_date"
                 label="Visit Start Date"
@@ -870,7 +1019,7 @@ async function postVisitorToSlack() {
                 type="date"
               />
             </v-col>
-            <v-col cols="12" md="6">
+            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
               <v-text-field
                 v-model="formData.visit_end_date"
                 label="Visit End Date"
@@ -879,7 +1028,7 @@ async function postVisitorToSlack() {
               />
             </v-col>
             
-            <v-col cols="12" md="6">
+            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
               <v-select
                 v-model="formData.visit_status"
                 :items="statusOptions.filter(s => s.value !== null)"
@@ -887,7 +1036,7 @@ async function postVisitorToSlack() {
                 variant="outlined"
               />
             </v-col>
-            <v-col cols="12" md="6">
+            <v-col v-if="formData.visitor_type !== 'ce_attendee'" cols="12" md="6">
               <v-select
                 v-model="formData.location"
                 :items="locationOptions.filter(l => l.value !== null)"
@@ -897,6 +1046,30 @@ async function postVisitorToSlack() {
               />
             </v-col>
             
+            <!-- CE Events Attended (shown for CE attendees when editing) -->
+            <v-col v-if="formData.visitor_type === 'ce_attendee' && editingVisitor" cols="12">
+              <div class="text-subtitle-2 text-medium-emphasis mb-2">CE Events Attended</div>
+              <div v-if="editingVisitor.ce_events_attended && editingVisitor.ce_events_attended.length > 0">
+                <v-chip
+                  v-for="ev in editingVisitor.ce_events_attended"
+                  :key="ev.event_id"
+                  color="amber"
+                  variant="tonal"
+                  class="mr-2 mb-2"
+                >
+                  <v-icon start size="small">mdi-certificate</v-icon>
+                  {{ ev.event_title }}
+                  <span class="ml-1 text-caption">({{ new Date(ev.event_date_start).toLocaleDateString() }})</span>
+                  <v-icon v-if="ev.checked_in" end size="x-small" color="success">mdi-check-circle</v-icon>
+                </v-chip>
+              </div>
+              <div v-else class="text-body-2 text-medium-emphasis">
+                No CE events linked yet. Events are linked when attendees register via the CE event sign-up form.
+              </div>
+            </v-col>
+            
+            <!-- Staff Assignments (hidden for CE attendees) -->
+            <template v-if="formData.visitor_type !== 'ce_attendee'">
             <v-col cols="12">
               <v-divider class="my-2" />
               <div class="text-subtitle-2 text-medium-emphasis mb-2">Staff Assignments</div>
@@ -923,6 +1096,7 @@ async function postVisitorToSlack() {
                 variant="outlined"
               />
             </v-col>
+            </template>
             
             <v-col cols="12">
               <v-divider class="my-2" />
@@ -1065,5 +1239,88 @@ async function postVisitorToSlack() {
       v-model="showUploadWizard"
       @uploaded="refresh"
     />
+
+    <!-- Merge Duplicates Dialog -->
+    <v-dialog v-model="showMergeDialog" max-width="750" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon color="warning" class="mr-2">mdi-merge</v-icon>
+          Duplicate CE Attendees Found
+          <v-spacer />
+          <v-btn icon variant="text" aria-label="Close" @click="showMergeDialog = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        
+        <v-divider />
+        
+        <v-card-text v-if="duplicateGroups.length > 0">
+          <v-alert type="info" variant="tonal" class="mb-4" density="compact">
+            <div class="font-weight-medium">{{ duplicateGroups.length }} duplicate group(s) found</div>
+            <div class="text-body-2">
+              These contacts have the same email and appear multiple times. Merging will keep the oldest record 
+              and consolidate all CE event attendance into a single profile.
+            </div>
+          </v-alert>
+          
+          <v-list>
+            <v-list-item
+              v-for="group in duplicateGroups"
+              :key="group.email"
+              class="mb-2"
+            >
+              <template #prepend>
+                <v-avatar color="warning" size="40">
+                  <v-icon color="white">mdi-account-multiple</v-icon>
+                </v-avatar>
+              </template>
+              
+              <v-list-item-title class="font-weight-medium">
+                {{ group.email }}
+              </v-list-item-title>
+              <v-list-item-subtitle>
+                {{ group.duplicate_count }} records (Last name: {{ group.last_name }})
+              </v-list-item-subtitle>
+              
+              <template #append>
+                <v-btn
+                  color="warning"
+                  variant="tonal"
+                  size="small"
+                  :loading="merging"
+                  @click="mergeGroup(group)"
+                >
+                  <v-icon start>mdi-merge</v-icon>
+                  Merge
+                </v-btn>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        
+        <v-card-text v-else>
+          <div class="text-center py-4">
+            <v-icon size="48" color="success">mdi-check-circle</v-icon>
+            <div class="text-h6 mt-2">No duplicates found!</div>
+          </div>
+        </v-card-text>
+        
+        <v-divider />
+        
+        <v-card-actions>
+          <v-btn variant="text" @click="showMergeDialog = false">Close</v-btn>
+          <v-spacer />
+          <v-btn
+            v-if="duplicateGroups.length > 0"
+            color="warning"
+            :loading="merging"
+            @click="mergeAllDuplicates"
+          >
+            <v-icon start>mdi-merge</v-icon>
+            Merge All ({{ duplicateGroups.length }} groups)
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>

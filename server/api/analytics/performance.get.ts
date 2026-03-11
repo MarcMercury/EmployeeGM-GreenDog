@@ -155,6 +155,7 @@ export default defineEventHandler(async (event) => {
     dayOfWeek: number
     month: string
     weekStart: string
+    count: number
   }
 
   const normalized: NormalizedAppt[] = allAppts.map(a => {
@@ -178,6 +179,7 @@ export default defineEventHandler(async (event) => {
       dayOfWeek: dow,
       month: a.appointment_date?.substring(0, 7) || '',
       weekStart: mon.toISOString().split('T')[0],
+      count: (a.source === 'weekly_tracking' && a.raw_data?.count) ? Number(a.raw_data.count) : 1,
     }
   })
 
@@ -200,15 +202,15 @@ export default defineEventHandler(async (event) => {
   // ── Appointments by Location (only completed) ──
   const apptsByLocation: Record<string, number> = {}
   for (const a of booked) {
-    apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + 1
+    apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
   }
 
   // ── Appointment Types ──
   const typeMap: Record<string, { total: number; category: string; byLocation: Record<string, number> }> = {}
   for (const a of typedAppts) {
     if (!typeMap[a.type]) typeMap[a.type] = { total: 0, category: a.category, byLocation: {} }
-    typeMap[a.type].total += 1
-    typeMap[a.type].byLocation[a.location] = (typeMap[a.type].byLocation[a.location] || 0) + 1
+    typeMap[a.type].total += a.count
+    typeMap[a.type].byLocation[a.location] = (typeMap[a.type].byLocation[a.location] || 0) + a.count
   }
   const appointmentTypes = Object.entries(typeMap)
     .map(([type, info]) => ({ type, category: info.category, total: info.total, byLocation: info.byLocation }))
@@ -218,8 +220,8 @@ export default defineEventHandler(async (event) => {
   const catMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of typedAppts) {
     if (!catMap[a.category]) catMap[a.category] = { total: 0, byLocation: {} }
-    catMap[a.category].total += 1
-    catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + 1
+    catMap[a.category].total += a.count
+    catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + a.count
   }
   const serviceCategories = Object.entries(catMap)
     .map(([category, info]) => ({ category, total: info.total, byLocation: info.byLocation }))
@@ -233,8 +235,8 @@ export default defineEventHandler(async (event) => {
   for (let d = 1; d <= 6; d++) dowMap[d] = { total: 0, byLocation: {} }
   for (const a of datedAppts) {
     if (a.dayOfWeek === 0) continue
-    dowMap[a.dayOfWeek].total += 1
-    dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + 1
+    dowMap[a.dayOfWeek].total += a.count
+    dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + a.count
   }
   const dayOfWeek = Object.entries(dowMap)
     .map(([idx, info]) => ({ day: dayNames[Number(idx)], index: Number(idx), total: info.total, byLocation: info.byLocation }))
@@ -244,8 +246,8 @@ export default defineEventHandler(async (event) => {
   const weekMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of datedAppts) {
     if (!weekMap[a.weekStart]) weekMap[a.weekStart] = { total: 0, byLocation: {} }
-    weekMap[a.weekStart].total += 1
-    weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + 1
+    weekMap[a.weekStart].total += a.count
+    weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + a.count
   }
   const weeklyTrend = Object.entries(weekMap)
     .map(([week, info]) => ({ week, total: info.total, byLocation: info.byLocation }))
@@ -255,8 +257,8 @@ export default defineEventHandler(async (event) => {
   const monthApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
   for (const a of datedAppts) {
     if (!monthApptMap[a.month]) monthApptMap[a.month] = { total: 0, byLocation: {} }
-    monthApptMap[a.month].total += 1
-    monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + 1
+    monthApptMap[a.month].total += a.count
+    monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + a.count
   }
 
   // ── 4. AGGREGATE INVOICE REVENUE (directly from invoice_lines) ────────

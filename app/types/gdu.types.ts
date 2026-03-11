@@ -119,6 +119,14 @@ export interface ParsedStudent {
 /** @section Visitors */
 /* ------------------------------------------------------------------ */
 
+export interface CEEventAttended {
+  event_id: string
+  event_title: string
+  event_date_start: string
+  checked_in: boolean
+  certificate_issued: boolean
+}
+
 export interface Visitor {
   id: string
   first_name: string
@@ -146,6 +154,8 @@ export interface Visitor {
   recruitment_channel: string | null
   file_link: string | null
   reason_for_visit: string | null
+  // Client-side enrichment for CE attendees
+  ce_events_attended?: CEEventAttended[]
 }
 
 export interface VisitorInsert {

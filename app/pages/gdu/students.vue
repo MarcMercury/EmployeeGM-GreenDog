@@ -6,6 +6,7 @@ definePageMeta({
 
 const supabase = useSupabaseClient()
 const { showSuccess, showError } = useToast()
+const { can } = usePermissions()
 
 // Export dialog
 const showExportDialog = ref(false)
@@ -386,6 +387,10 @@ const editForm = ref({
 })
 const savingEdit = ref(false)
 
+// Delete student
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+
 // Convert to candidate
 const showConvertDialog = ref(false)
 const converting = ref(false)
@@ -624,6 +629,32 @@ async function saveStudentEdit() {
     showError(error.message || 'Failed to save changes')
   } finally {
     savingEdit.value = false
+  }
+}
+
+async function deleteStudent() {
+  if (!selectedStudent.value) return
+
+  deleting.value = true
+  try {
+    // Delete program data first (child record)
+    const { error: programError } = await supabase
+      .from('person_program_data')
+      .delete()
+      .eq('id', selectedStudent.value.enrollment_id)
+
+    if (programError) throw programError
+
+    showSuccess(`${selectedStudent.value.display_name} has been deleted`)
+    showDeleteConfirm.value = false
+    showEditDialog.value = false
+    showStudentDialog.value = false
+    await fetchStudents()
+  } catch (error: any) {
+    console.error('Error deleting student:', error)
+    showError(error.message || 'Failed to delete student')
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -1883,11 +1914,41 @@ function formatStatus(status: string): string {
         </v-card-text>
         <v-divider />
         <v-card-actions class="pa-4">
+          <v-btn
+            v-if="can('delete:gdu-student')"
+            variant="text"
+            color="error"
+            @click="showDeleteConfirm = true"
+          >
+            <v-icon start>mdi-delete</v-icon>
+            Delete
+          </v-btn>
           <v-btn variant="text" @click="showEditDialog = false">Cancel</v-btn>
           <v-spacer />
           <v-btn color="primary" :loading="savingEdit" @click="saveStudentEdit">
             <v-icon start>mdi-content-save</v-icon>
             Save Changes
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <v-dialog v-model="showDeleteConfirm" max-width="450">
+      <v-card>
+        <v-card-title class="text-error">
+          <v-icon start color="error">mdi-alert</v-icon>
+          Delete Student Record
+        </v-card-title>
+        <v-card-text>
+          <p>Are you sure you want to permanently delete <strong>{{ selectedStudent?.display_name }}</strong>'s enrollment record?</p>
+          <p class="text-caption text-grey mt-2">This action cannot be undone.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showDeleteConfirm = false">Cancel</v-btn>
+          <v-btn color="error" variant="flat" :loading="deleting" @click="deleteStudent">
+            Delete
           </v-btn>
         </v-card-actions>
       </v-card>

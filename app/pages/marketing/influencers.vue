@@ -350,7 +350,7 @@ async function saveInfluencer() {
     pet_type: formData.value.pet_type,
     pet_breed: formData.value.pet_breed || null,
     pet_age: formData.value.pet_age || null,
-    pet_instagram: formData.value.pet_instagram || null,
+    pet_instagram: formData.value.pet_instagram || (formData.value.pet_name && formData.value.instagram_handle ? formData.value.instagram_handle : null),
     audience_age_range: formData.value.audience_age_range || null,
     audience_location: formData.value.audience_location || null,
     collaboration_type: formData.value.collaboration_type || null,
@@ -1071,6 +1071,11 @@ async function updateInfluencerField(field: string, value: any) {
                       <v-list-item-subtitle>Content Niche</v-list-item-subtitle>
                     </v-list-item>
                     <v-list-item>
+                      <template #prepend><v-icon size="small" color="pink">mdi-instagram</v-icon></template>
+                      <v-list-item-title>{{ selectedInfluencer.instagram_handle ? '@' + selectedInfluencer.instagram_handle : 'Not set' }}</v-list-item-title>
+                      <v-list-item-subtitle>Instagram</v-list-item-subtitle>
+                    </v-list-item>
+                    <v-list-item>
                       <template #prepend><v-icon size="small">mdi-account-search</v-icon></template>
                       <v-list-item-title>{{ selectedInfluencer.source || 'Not set' }}</v-list-item-title>
                       <v-list-item-subtitle>Source/How Found</v-list-item-subtitle>
@@ -1089,7 +1094,7 @@ async function updateInfluencerField(field: string, value: any) {
                     </v-list-item>
                     <v-list-item>
                       <template #prepend><v-icon size="small" color="pink">mdi-instagram</v-icon></template>
-                      <v-list-item-title>{{ selectedInfluencer.pet_instagram ? '@' + selectedInfluencer.pet_instagram : 'Not set' }}</v-list-item-title>
+                      <v-list-item-title>{{ selectedInfluencer.pet_instagram ? '@' + selectedInfluencer.pet_instagram : (selectedInfluencer.instagram_handle ? '@' + selectedInfluencer.instagram_handle : 'Not set') }}</v-list-item-title>
                       <v-list-item-subtitle>Pet's Instagram</v-list-item-subtitle>
                     </v-list-item>
                   </v-list>
@@ -1250,6 +1255,13 @@ async function updateInfluencerField(field: string, value: any) {
                           <template #append>
                             <v-btn icon size="x-small" variant="text" aria-label="Open in new tab" :href="selectedInfluencer.facebook_url" target="_blank" rel="noopener noreferrer"><v-icon size="16">mdi-open-in-new</v-icon></v-btn>
                           </template>
+                        </v-list-item>
+                        <v-list-item v-if="selectedInfluencer.pet_instagram && selectedInfluencer.pet_instagram !== selectedInfluencer.instagram_handle">
+                          <template #prepend>
+                            <v-avatar color="pink-lighten-2" size="32"><v-icon size="18" color="white">mdi-paw</v-icon></v-avatar>
+                          </template>
+                          <v-list-item-title>@{{ selectedInfluencer.pet_instagram }}</v-list-item-title>
+                          <v-list-item-subtitle>Pet's Instagram</v-list-item-subtitle>
                         </v-list-item>
                       </v-list>
                       <!-- Social Profile Links -->

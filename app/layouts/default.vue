@@ -433,10 +433,6 @@ const closeMobileMenu = () => {
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">🎪</div>
                   Events
                 </NuxtLink>
-                <NuxtLink to="/growth/leads" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-orange-500/20">🔥</div>
-                  Event Leads
-                </NuxtLink>
                 <NuxtLink to="/marketing/partners" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-teal-500/20">🤝</div>
                   Partners
@@ -444,10 +440,6 @@ const closeMobileMenu = () => {
                 <NuxtLink to="/marketing/influencers" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-pink-500/20">⭐</div>
                   Influencers
-                </NuxtLink>
-                <NuxtLink to="/marketing/inventory" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-amber-500/20">📦</div>
-                  Inventory
                 </NuxtLink>
               </template>
               

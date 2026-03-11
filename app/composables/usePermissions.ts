@@ -46,6 +46,7 @@ const PERMISSION_ROLES: Record<string, UserRole[]> = {
   'manage:marketing': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   'view:gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
   'manage:gdu': ['super_admin', 'admin', 'manager', 'hr_admin', 'sup_admin', 'marketing_admin'],
+  'delete:gdu-student': ['super_admin', 'admin', 'manager'],
   'view:leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   'manage:leads': ['super_admin', 'admin', 'manager', 'marketing_admin'],
   'view:partners': ['super_admin', 'admin', 'manager', 'marketing_admin'],

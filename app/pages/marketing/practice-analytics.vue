@@ -259,6 +259,7 @@
                 <v-card-title class="text-subtitle-1 font-weight-bold pb-0">
                   <v-icon start size="18" class="mr-1">mdi-calendar-week</v-icon>
                   Demand by Day of Week
+                  <v-chip class="ml-2" size="x-small" color="deep-purple" variant="outlined">Completed Appointments</v-chip>
                 </v-card-title>
                 <v-card-text>
                   <ClientOnly>
@@ -315,6 +316,7 @@
             <v-card-title class="text-subtitle-1 font-weight-bold pb-0 d-flex align-center">
               <v-icon start size="18" class="mr-1">mdi-calendar-week</v-icon>
               Demand by Day of Week
+              <v-chip class="ml-2" size="x-small" color="deep-purple" variant="outlined">Completed Appointments</v-chip>
               <v-spacer />
               <v-select
                 v-model="dowLocationFilter"

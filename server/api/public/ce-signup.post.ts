@@ -119,6 +119,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check for duplicate registration (same email + same event)
+  // Check directly in ce_event_attendees (covers both email and visitor_id linkage)
   const { data: existingAttendee } = await supabase
     .from('ce_event_attendees')
     .select('id')
@@ -126,35 +127,36 @@ export default defineEventHandler(async (event) => {
     .eq('email', body.email.toLowerCase())
     .maybeSingle()
 
-  if (!existingAttendee) {
-    // Also check via visitor_id linkage
-    const { data: existingVisitor } = await supabase
-      .from('education_visitors')
-      .select('id')
-      .eq('email', body.email.toLowerCase())
-      .eq('ce_event_id', body.event_id)
-      .maybeSingle()
-
-    if (existingVisitor) {
-      const { data: linkedAttendee } = await supabase
-        .from('ce_event_attendees')
-        .select('id')
-        .eq('ce_event_id', body.event_id)
-        .eq('visitor_id', existingVisitor.id)
-        .maybeSingle()
-
-      if (linkedAttendee) {
-        throw createError({
-          statusCode: 409,
-          message: 'You are already registered for this event.'
-        })
-      }
-    }
-  } else {
+  if (existingAttendee) {
     throw createError({
       statusCode: 409,
       message: 'You are already registered for this event.'
     })
+  }
+
+  // Also check via visitor_id linkage (for records that may not have email on attendee row)
+  const { data: existingVisitorForEvent } = await supabase
+    .from('education_visitors')
+    .select('id')
+    .eq('email', body.email.toLowerCase())
+    .eq('visitor_type', 'ce_attendee')
+    .limit(1)
+    .maybeSingle()
+
+  if (existingVisitorForEvent) {
+    const { data: linkedAttendee } = await supabase
+      .from('ce_event_attendees')
+      .select('id')
+      .eq('ce_event_id', body.event_id)
+      .eq('visitor_id', existingVisitorForEvent.id)
+      .maybeSingle()
+
+    if (linkedAttendee) {
+      throw createError({
+        statusCode: 409,
+        message: 'You are already registered for this event.'
+      })
+    }
   }
 
   // Build notes from special fields
@@ -164,40 +166,78 @@ export default defineEventHandler(async (event) => {
   if (body.special_accommodations) noteParts.push(`Accommodations: ${body.special_accommodations}`)
   const combinedNotes = noteParts.length > 0 ? noteParts.join(' | ') : null
 
-  // Step 1: Create education_visitors record (CE CRM entry)
-  const { data: visitor, error: visitorError } = await supabase
+  // Step 1: Find or create education_visitors record (single record per person)
+  // Look for an existing CE attendee with the same email
+  const { data: existingVisitor } = await supabase
     .from('education_visitors')
-    .insert({
-      first_name: body.first_name.trim(),
-      last_name: body.last_name.trim(),
-      email: body.email.toLowerCase().trim(),
-      phone: body.phone || null,
-      visitor_type: 'ce_attendee',
-      organization_name: body.organization_name || null,
-      ce_event_id: body.event_id,
-      lead_source: body.lead_source || 'CE Event Signup',
-      notes: combinedNotes,
-      is_active: true,
-      visit_status: 'upcoming',
-      reason_for_visit: `CE Event Registration: ${ceEvent.title}`
-    })
     .select('id')
-    .single()
+    .eq('email', body.email.toLowerCase().trim())
+    .eq('visitor_type', 'ce_attendee')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
 
-  if (visitorError) {
-    console.error('Failed to create visitor record:', visitorError)
-    throw createError({
-      statusCode: 500,
-      message: 'Failed to complete registration. Please try again.'
-    })
+  let visitorId: string
+
+  if (existingVisitor) {
+    // Reuse existing visitor record — update with latest info if needed
+    visitorId = existingVisitor.id
+    const updatePayload: Record<string, any> = {}
+    if (body.phone) updatePayload.phone = body.phone
+    if (body.organization_name) updatePayload.organization_name = body.organization_name
+    if (combinedNotes) {
+      // Append new notes
+      const { data: currentVisitor } = await supabase
+        .from('education_visitors')
+        .select('notes')
+        .eq('id', visitorId)
+        .single()
+      const existingNotes = currentVisitor?.notes || ''
+      const eventNote = `[${ceEvent.title}] ${combinedNotes}`
+      updatePayload.notes = existingNotes ? `${existingNotes}\n${eventNote}` : eventNote
+    }
+    if (Object.keys(updatePayload).length > 0) {
+      await supabase
+        .from('education_visitors')
+        .update(updatePayload)
+        .eq('id', visitorId)
+    }
+  } else {
+    // Create new visitor record (no ce_event_id — events tracked via join table)
+    const { data: visitor, error: visitorError } = await supabase
+      .from('education_visitors')
+      .insert({
+        first_name: body.first_name.trim(),
+        last_name: body.last_name.trim(),
+        email: body.email.toLowerCase().trim(),
+        phone: body.phone || null,
+        visitor_type: 'ce_attendee',
+        organization_name: body.organization_name || null,
+        lead_source: body.lead_source || 'CE Event Signup',
+        notes: combinedNotes,
+        is_active: true,
+        visit_status: 'upcoming',
+        reason_for_visit: `CE Event Registration: ${ceEvent.title}`
+      })
+      .select('id')
+      .single()
+
+    if (visitorError) {
+      console.error('Failed to create visitor record:', visitorError)
+      throw createError({
+        statusCode: 500,
+        message: 'Failed to complete registration. Please try again.'
+      })
+    }
+    visitorId = visitor.id
   }
 
-  // Step 2: Create ce_event_attendees record
+  // Step 2: Create ce_event_attendees record (linked to the single visitor)
   const { error: attendeeError } = await supabase
     .from('ce_event_attendees')
     .insert({
       ce_event_id: body.event_id,
-      visitor_id: visitor.id,
+      visitor_id: visitorId,
       first_name: body.first_name.trim(),
       last_name: body.last_name.trim(),
       email: body.email.toLowerCase().trim(),
@@ -210,8 +250,10 @@ export default defineEventHandler(async (event) => {
 
   if (attendeeError) {
     console.error('Failed to create attendee record:', attendeeError)
-    // Attempt to clean up the visitor record
-    await supabase.from('education_visitors').delete().eq('id', visitor.id)
+    // Only clean up if we just created the visitor
+    if (!existingVisitor) {
+      await supabase.from('education_visitors').delete().eq('id', visitorId)
+    }
     throw createError({
       statusCode: 500,
       message: 'Failed to complete registration. Please try again.'

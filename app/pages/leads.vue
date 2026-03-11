@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Redirect to new Growth module location
 definePageMeta({
-  middleware: [(to, from) => navigateTo('/growth/leads', { replace: true })]
+  middleware: [(to, from) => navigateTo('/growth/events?tab=leads', { replace: true })]
 })
 </script>
 
