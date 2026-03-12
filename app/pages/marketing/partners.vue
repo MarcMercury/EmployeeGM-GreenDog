@@ -1011,7 +1011,7 @@ async function loadRecentActivity() {
   try {
     const { data, error } = await supabase
       .from('marketing_partner_visits')
-      .select('*, profiles(full_name)')
+      .select('*, profiles(first_name, last_name)')
       .order('visit_date', { ascending: false })
       .limit(30)
 
@@ -1509,8 +1509,8 @@ function handleVisitSaved() {
                   <v-icon size="14">mdi-chat</v-icon> Discussed: {{ log.items_discussed.join(', ') }}
                 </div>
                 <div v-if="log.visit_notes" class="text-body-2 mt-1">{{ log.visit_notes }}</div>
-                <div v-if="log.profiles?.full_name" class="text-caption text-medium-emphasis mt-1">
-                  — {{ log.profiles.full_name }}
+                <div v-if="log.profiles?.first_name" class="text-caption text-medium-emphasis mt-1">
+                  — {{ log.profiles.first_name }} {{ log.profiles.last_name }}
                 </div>
               </div>
             </v-timeline-item>
