@@ -227,6 +227,66 @@ export interface Partner {
   payment_amount?: number | null
   payment_date?: string | null
   _isInfluencer?: boolean
+  // Enhanced CRM tracking (migration 20260312000001)
+  expected_visit_frequency_days?: number | null
+  days_since_last_visit?: number | null
+  visit_overdue?: boolean
+  drop_off_materials?: boolean
+  accepted_materials?: string[] | null
+  last_drop_off_date?: string | null
+  tags?: string[] | null
+}
+
+/**
+ * Marketing Partner Visit Log
+ * Used by: partner visit tracking in the Partners CRM
+ * Based on: marketing_partner_visits table (migration 20260312000001)
+ */
+export interface MarketingPartnerVisit {
+  id: string
+  created_at: string
+  updated_at: string
+  user_id: string
+  profile_id: string | null
+  partner_id: string
+  partner_name: string
+  visit_date: string
+  spoke_to: string | null
+  visit_type: 'in_person' | 'drop_off' | 'phone' | 'email' | 'event' | 'other'
+  items_dropped_off: string[] | null
+  items_discussed: string[] | null
+  next_visit_date: string | null
+  visit_notes: string | null
+  outcome: string | null
+  next_steps: string | null
+  logged_via: 'web' | 'mobile' | 'api'
+  is_archived: boolean
+}
+
+/**
+ * Event-Marketing Partner junction record
+ * Used by: partner event participation tracking
+ * Based on: event_marketing_partners table (migration 20250205000002)
+ */
+export interface EventMarketingPartner {
+  id: string
+  event_id: string
+  partner_id: string
+  role: string
+  booth_info: string | null
+  notes: string | null
+  is_confirmed: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // Joined from marketing_events
+  marketing_events?: {
+    name: string
+    event_date: string
+    event_type: string | null
+    location: string | null
+    status: string
+  } | null
 }
 
 /**

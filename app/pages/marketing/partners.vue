@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Partner, PartnerNote, PartnerContact } from '~/types/marketing.types'
+import type { Partner, PartnerNote, PartnerContact, MarketingPartnerVisit, EventMarketingPartner } from '~/types/marketing.types'
 
 definePageMeta({
   layout: 'default',
@@ -475,9 +475,9 @@ async function deletePartner(id: string) {
   refresh()
 }
 
-// Handle clicking on list item — navigate to full profile page
+// Handle clicking on list item — open profile dialog with visits/events
 function handleItemClick(partner: Partner) {
-  navigateTo(`/marketing/partner/${partner.id}`)
+  openPartnerProfileEnhanced(partner)
 }
 
 // Handle delete
@@ -826,6 +826,295 @@ function getPriorityColor(priority: string | null | undefined): string {
   }
   return colors[priority || ''] || 'grey'
 }
+
+// =====================================================
+// VISIT TRACKING
+// =====================================================
+const showQuickVisitDialog = ref(false)
+const quickVisitPartner = ref<Partner | null>(null)
+const partnerVisits = ref<any[]>([])
+const loadingVisits = ref(false)
+
+// Page-level tab: 'list' | 'targeting' | 'activity'
+const pageTab = ref('list')
+
+function openQuickVisit(partner?: Partner) {
+  quickVisitPartner.value = partner || null
+  showQuickVisitDialog.value = true
+}
+
+async function loadPartnerVisits(partnerId: string) {
+  loadingVisits.value = true
+  try {
+    const { data, error } = await supabase
+      .from('marketing_partner_visits')
+      .select('*')
+      .eq('partner_id', partnerId)
+      .order('visit_date', { ascending: false })
+      .limit(50)
+
+    if (error) throw error
+    partnerVisits.value = data || []
+  } catch (err) {
+    console.error('[Partners] Error loading visits:', err)
+    partnerVisits.value = []
+  } finally {
+    loadingVisits.value = false
+  }
+}
+
+// =====================================================
+// EVENT PARTICIPATION
+// =====================================================
+const partnerEvents = ref<any[]>([])
+const loadingEvents = ref(false)
+const showAddEventDialog = ref(false)
+const eventForm = ref({
+  event_id: null as string | null,
+  role: 'vendor' as string,
+  booth_info: '',
+  notes: '',
+  is_confirmed: false
+})
+const availableEvents = ref<any[]>([])
+
+async function loadPartnerEventParticipation(partnerId: string) {
+  loadingEvents.value = true
+  try {
+    const { data, error } = await supabase
+      .from('event_marketing_partners')
+      .select('*, marketing_events(id, name, event_date, event_type, location, status)')
+      .eq('partner_id', partnerId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    partnerEvents.value = data || []
+  } catch (err) {
+    console.error('[Partners] Error loading events:', err)
+    partnerEvents.value = []
+  } finally {
+    loadingEvents.value = false
+  }
+}
+
+async function loadAvailableEvents() {
+  const { data } = await supabase
+    .from('marketing_events')
+    .select('id, name, event_date, event_type, location, status')
+    .gte('event_date', new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0])
+    .order('event_date', { ascending: true })
+
+  availableEvents.value = data || []
+}
+
+const eventRoleOptions = [
+  { title: 'Vendor', value: 'vendor' },
+  { title: 'Sponsor', value: 'sponsor' },
+  { title: 'Rescue Partner', value: 'rescue' },
+  { title: 'Food Vendor', value: 'food_vendor' },
+  { title: 'Entertainment', value: 'entertainment' },
+  { title: 'Donor', value: 'donor' },
+  { title: 'Volunteer', value: 'volunteer' },
+  { title: 'Host', value: 'host' },
+  { title: 'Speaker', value: 'speaker' },
+  { title: 'Exhibitor', value: 'exhibitor' },
+  { title: 'Chamber', value: 'chamber' },
+  { title: 'Other', value: 'other' }
+]
+
+async function openAddEventDialog() {
+  if (!selectedPartner.value) return
+  await loadAvailableEvents()
+  eventForm.value = { event_id: null, role: 'vendor', booth_info: '', notes: '', is_confirmed: false }
+  showAddEventDialog.value = true
+}
+
+async function saveEventParticipation() {
+  if (!selectedPartner.value || !eventForm.value.event_id) return
+
+  try {
+    const { error } = await supabase
+      .from('event_marketing_partners')
+      .insert({
+        event_id: eventForm.value.event_id,
+        partner_id: selectedPartner.value.id,
+        role: eventForm.value.role,
+        booth_info: eventForm.value.booth_info || null,
+        notes: eventForm.value.notes || null,
+        is_confirmed: eventForm.value.is_confirmed
+      })
+
+    if (error) throw error
+    showSuccess('Event participation added')
+    showAddEventDialog.value = false
+    await loadPartnerEventParticipation(selectedPartner.value.id)
+  } catch (err: any) {
+    if (err.code === '23505') {
+      showError('This partner is already linked to that event')
+    } else {
+      showError(err.message || 'Failed to add event participation')
+    }
+  }
+}
+
+async function removeEventParticipation(eventPartnerId: string) {
+  if (!confirm('Remove this event participation?')) return
+
+  const { error } = await supabase
+    .from('event_marketing_partners')
+    .delete()
+    .eq('id', eventPartnerId)
+
+  if (error) {
+    showError('Failed to remove')
+    return
+  }
+  showSuccess('Removed')
+  if (selectedPartner.value) {
+    await loadPartnerEventParticipation(selectedPartner.value.id)
+  }
+}
+
+function getEventRoleColor(role: string): string {
+  const colors: Record<string, string> = {
+    vendor: 'teal', sponsor: 'amber', rescue: 'pink', food_vendor: 'orange',
+    entertainment: 'purple', donor: 'green', volunteer: 'blue',
+    host: 'indigo', speaker: 'cyan', exhibitor: 'lime', chamber: 'brown'
+  }
+  return colors[role] || 'grey'
+}
+
+// =====================================================
+// TARGETING LIST
+// =====================================================
+const targetingPartners = computed(() => {
+  const all = (scoredPartners.value || []).filter(p => p.status === 'active' || p.status === 'prospect')
+  // Sort by: overdue first, then lowest score, then longest since visit
+  return [...all].sort((a, b) => {
+    // Overdue first
+    const aOverdue = a.visit_overdue || computeVisitScore(a.last_visit_date) === 0
+    const bOverdue = b.visit_overdue || computeVisitScore(b.last_visit_date) === 0
+    if (aOverdue && !bOverdue) return -1
+    if (!aOverdue && bOverdue) return 1
+    // Then by score ascending (lowest = needs most attention)
+    if (a.computed_score !== b.computed_score) return a.computed_score - b.computed_score
+    // Then by days since visit descending
+    const aDays = a.last_visit_date ? Math.floor((Date.now() - new Date(a.last_visit_date).getTime()) / 86400000) : 9999
+    const bDays = b.last_visit_date ? Math.floor((Date.now() - new Date(b.last_visit_date).getTime()) / 86400000) : 9999
+    return bDays - aDays
+  })
+})
+
+function getDaysSinceVisit(date: string | null | undefined): string {
+  if (!date) return 'Never visited'
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
+  if (days === 0) return 'Today'
+  if (days === 1) return '1 day ago'
+  if (days < 30) return `${days} days ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)}+ years ago`
+}
+
+// =====================================================
+// RECENT ACTIVITY LOG (all partner visits)
+// =====================================================
+const recentActivity = ref<any[]>([])
+const loadingActivity = ref(false)
+
+async function loadRecentActivity() {
+  loadingActivity.value = true
+  try {
+    const { data, error } = await supabase
+      .from('marketing_partner_visits')
+      .select('*, profiles(full_name)')
+      .order('visit_date', { ascending: false })
+      .limit(30)
+
+    if (error) throw error
+    recentActivity.value = data || []
+  } catch (err) {
+    console.error('[Partners] Error loading activity:', err)
+  } finally {
+    loadingActivity.value = false
+  }
+}
+
+// Load activity when switching to that tab
+watch(pageTab, (tab) => {
+  if (tab === 'activity' && recentActivity.value.length === 0) {
+    loadRecentActivity()
+  }
+})
+
+// =====================================================
+// ENHANCED PROFILE DIALOG - load visits + events
+// =====================================================
+async function openPartnerProfileEnhanced(partner: Partner) {
+  selectedPartner.value = partner
+  profileTab.value = 'overview'
+  profileDialogOpen.value = true
+  loadingProfile.value = true
+
+  try {
+    await Promise.all([
+      loadPartnerNotes(partner.id),
+      loadPartnerContacts(partner.id),
+      loadPartnerVisits(partner.id),
+      loadPartnerEventParticipation(partner.id)
+    ])
+  } catch (error) {
+    console.error('Error loading partner profile:', error)
+    showError('Failed to load partner details')
+  } finally {
+    loadingProfile.value = false
+  }
+}
+
+function getVisitTypeIcon(type: string): string {
+  const icons: Record<string, string> = {
+    in_person: 'mdi-walk',
+    drop_off: 'mdi-package-variant',
+    phone: 'mdi-phone',
+    email: 'mdi-email',
+    event: 'mdi-calendar-star',
+    other: 'mdi-dots-horizontal'
+  }
+  return icons[type] || 'mdi-map-marker'
+}
+
+function getVisitTypeColor(type: string): string {
+  const colors: Record<string, string> = {
+    in_person: 'success',
+    drop_off: 'teal',
+    phone: 'info',
+    email: 'primary',
+    event: 'purple',
+    other: 'grey'
+  }
+  return colors[type] || 'success'
+}
+
+function formatVisitType(type: string): string {
+  const labels: Record<string, string> = {
+    in_person: 'In Person',
+    drop_off: 'Drop-off',
+    phone: 'Phone Call',
+    email: 'Email',
+    event: 'At Event',
+    other: 'Other'
+  }
+  return labels[type] || type
+}
+
+function handleVisitSaved() {
+  refresh()
+  if (selectedPartner.value) {
+    loadPartnerVisits(selectedPartner.value.id)
+  }
+  if (pageTab.value === 'activity') {
+    loadRecentActivity()
+  }
+}
 </script>
 
 <template>
@@ -839,6 +1128,14 @@ function getPriorityColor(priority: string | null | undefined): string {
         </p>
       </div>
       <div class="d-flex gap-2">
+        <v-btn
+          color="teal"
+          prepend-icon="mdi-map-marker-plus"
+          size="small"
+          @click="openQuickVisit()"
+        >
+          Log Visit
+        </v-btn>
         <v-btn
           variant="outlined"
           prepend-icon="mdi-file-import-outline"
@@ -887,6 +1184,26 @@ function getPriorityColor(priority: string | null | undefined): string {
       ]"
       layout="5-col"
     />
+
+    <!-- Page Tabs -->
+    <v-tabs v-model="pageTab" class="mb-4" color="teal">
+      <v-tab value="list">
+        <v-icon start>mdi-format-list-bulleted</v-icon>
+        Partners
+      </v-tab>
+      <v-tab value="targeting">
+        <v-icon start>mdi-target</v-icon>
+        Targeting
+      </v-tab>
+      <v-tab value="activity">
+        <v-icon start>mdi-history</v-icon>
+        Activity
+      </v-tab>
+    </v-tabs>
+
+    <v-tabs-window v-model="pageTab">
+      <!-- LIST TAB -->
+      <v-tabs-window-item value="list">
 
     <!-- Filters -->
     <v-card class="mb-4" variant="outlined">
@@ -1073,6 +1390,163 @@ function getPriorityColor(priority: string | null | undefined): string {
         </template>
       </v-data-table-virtual>
     </v-card>
+
+      </v-tabs-window-item>
+
+      <!-- TARGETING TAB -->
+      <v-tabs-window-item value="targeting">
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-target</v-icon>
+            Visit Targeting List
+            <v-spacer />
+            <v-chip color="teal" size="small" variant="tonal">
+              {{ targetingPartners.length }} partners
+            </v-chip>
+          </v-card-title>
+          <v-card-subtitle class="pb-3">
+            Sorted by priority: overdue visits first, then lowest relationship score, then longest since last visit.
+          </v-card-subtitle>
+          <v-divider />
+          <v-list lines="three" class="pa-0">
+            <template v-for="(tp, idx) in targetingPartners" :key="tp.id">
+              <v-list-item @click="handleItemClick(tp)">
+                <template #prepend>
+                  <div class="text-center mr-3" style="min-width: 40px;">
+                    <div class="text-h6 font-weight-bold" :class="idx < 3 ? 'text-error' : idx < 10 ? 'text-warning' : 'text-grey'">
+                      #{{ idx + 1 }}
+                    </div>
+                  </div>
+                  <v-avatar :color="getTierColor(tp.computed_tier)" size="40" class="mr-3">
+                    <span class="text-white text-caption font-weight-bold">{{ getTierLabel(tp.computed_tier) }}</span>
+                  </v-avatar>
+                </template>
+
+                <v-list-item-title class="d-flex align-center gap-2">
+                  <span class="font-weight-medium">{{ tp.name }}</span>
+                  <v-chip :color="getPriorityColor(tp.priority)" size="x-small" variant="flat">
+                    {{ tp.priority || 'medium' }}
+                  </v-chip>
+                  <v-chip v-if="tp.visit_overdue || computeVisitScore(tp.last_visit_date) === 0" color="error" size="x-small" variant="flat">
+                    <v-icon start size="10">mdi-alert</v-icon> Overdue
+                  </v-chip>
+                </v-list-item-title>
+
+                <v-list-item-subtitle>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <span>
+                      <v-icon size="14">mdi-calendar</v-icon>
+                      Last visit: <strong>{{ getDaysSinceVisit(tp.last_visit_date) }}</strong>
+                    </span>
+                    <span v-if="tp.visit_frequency">
+                      <v-icon size="14">mdi-clock-outline</v-icon>
+                      Freq: {{ tp.visit_frequency }}
+                    </span>
+                    <span v-if="tp.area">
+                      <v-icon size="14">mdi-map-marker</v-icon>
+                      {{ tp.area }}
+                    </span>
+                    <span>
+                      Score: {{ tp.computed_score }}%
+                    </span>
+                  </div>
+                  <div v-if="tp.next_followup_date" class="mt-1">
+                    <v-icon size="14" color="info">mdi-calendar-clock</v-icon>
+                    Next follow-up: {{ new Date(tp.next_followup_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }}
+                  </div>
+                </v-list-item-subtitle>
+
+                <template #append>
+                  <v-btn
+                    color="teal"
+                    variant="tonal"
+                    size="small"
+                    prepend-icon="mdi-map-marker-plus"
+                    @click.stop="openQuickVisit(tp)"
+                  >
+                    Log Visit
+                  </v-btn>
+                </template>
+              </v-list-item>
+              <v-divider v-if="idx < targetingPartners.length - 1" />
+            </template>
+
+            <v-list-item v-if="!targetingPartners.length">
+              <div class="text-center py-8 text-medium-emphasis">
+                <v-icon size="48" color="grey-lighten-1">mdi-check-circle</v-icon>
+                <div class="mt-2">All partners are up to date! No visits overdue.</div>
+              </div>
+            </v-list-item>
+          </v-list>
+        </v-card>
+      </v-tabs-window-item>
+
+      <!-- ACTIVITY TAB -->
+      <v-tabs-window-item value="activity">
+        <v-card variant="outlined">
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-history</v-icon>
+            Recent Visit Activity
+            <v-spacer />
+            <v-btn size="small" variant="text" prepend-icon="mdi-refresh" @click="loadRecentActivity">
+              Refresh
+            </v-btn>
+          </v-card-title>
+          <v-divider />
+          <v-progress-linear v-if="loadingActivity" indeterminate color="teal" />
+
+          <v-timeline v-if="recentActivity.length" density="compact" side="end" class="pa-4">
+            <v-timeline-item
+              v-for="log in recentActivity"
+              :key="log.id"
+              :dot-color="getVisitTypeColor(log.visit_type)"
+              size="small"
+            >
+              <div>
+                <div class="d-flex justify-space-between align-center flex-wrap">
+                  <div>
+                    <strong>{{ log.partner_name }}</strong>
+                    <v-chip size="x-small" :color="getVisitTypeColor(log.visit_type)" class="ml-2" variant="tonal">
+                      {{ formatVisitType(log.visit_type) }}
+                    </v-chip>
+                  </div>
+                  <span class="text-caption text-medium-emphasis">
+                    {{ new Date(log.visit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                  </span>
+                </div>
+                <div v-if="log.spoke_to" class="text-body-2 mt-1">
+                  <v-icon size="14">mdi-account</v-icon> Spoke with: {{ log.spoke_to }}
+                </div>
+                <div v-if="log.items_dropped_off?.length" class="text-body-2">
+                  <v-icon size="14">mdi-package-variant</v-icon> Dropped off: {{ log.items_dropped_off.join(', ') }}
+                </div>
+                <div v-if="log.items_discussed?.length" class="text-body-2">
+                  <v-icon size="14">mdi-chat</v-icon> Discussed: {{ log.items_discussed.join(', ') }}
+                </div>
+                <div v-if="log.visit_notes" class="text-body-2 mt-1">{{ log.visit_notes }}</div>
+                <div v-if="log.outcome" class="text-caption mt-1">
+                  <strong>Outcome:</strong> {{ log.outcome }}
+                </div>
+                <div v-if="log.next_steps" class="text-caption text-primary">
+                  <strong>Next:</strong> {{ log.next_steps }}
+                </div>
+                <div v-if="log.profiles?.full_name" class="text-caption text-medium-emphasis mt-1">
+                  — {{ log.profiles.full_name }}
+                </div>
+              </div>
+            </v-timeline-item>
+          </v-timeline>
+
+          <div v-else-if="!loadingActivity" class="text-center py-12">
+            <v-icon size="48" color="grey-lighten-1">mdi-history</v-icon>
+            <div class="text-body-2 text-medium-emphasis mt-2">No visits logged yet</div>
+            <v-btn color="teal" class="mt-4" size="small" prepend-icon="mdi-map-marker-plus" @click="openQuickVisit()">
+              Log First Visit
+            </v-btn>
+          </div>
+        </v-card>
+      </v-tabs-window-item>
+    </v-tabs-window>
 
     <!-- Add/Edit Dialog -->
     <v-dialog v-model="dialogOpen" max-width="700" scrollable>
@@ -1354,6 +1828,26 @@ function getPriorityColor(priority: string | null | undefined): string {
               class="ml-1"
             />
           </v-tab>
+          <v-tab value="visits">
+            Visits
+            <v-badge
+              v-if="partnerVisits.length"
+              :content="partnerVisits.length"
+              color="teal"
+              inline
+              class="ml-1"
+            />
+          </v-tab>
+          <v-tab value="events">
+            Events
+            <v-badge
+              v-if="partnerEvents.length"
+              :content="partnerEvents.length"
+              color="purple"
+              inline
+              class="ml-1"
+            />
+          </v-tab>
           <v-tab value="contacts">
             Contacts
             <v-badge
@@ -1628,6 +2122,136 @@ function getPriorityColor(priority: string | null | undefined): string {
               </v-list>
             </v-tabs-window-item>
 
+            <!-- Visits Tab -->
+            <v-tabs-window-item value="visits">
+              <div class="d-flex justify-end mb-3">
+                <v-btn color="teal" size="small" variant="tonal" prepend-icon="mdi-map-marker-plus" @click="openQuickVisit(selectedPartner || undefined)">
+                  Log Visit
+                </v-btn>
+              </div>
+
+              <v-progress-linear v-if="loadingVisits" indeterminate color="teal" class="mb-3" />
+
+              <v-timeline v-if="partnerVisits.length" density="compact" side="end">
+                <v-timeline-item
+                  v-for="visit in partnerVisits"
+                  :key="visit.id"
+                  :dot-color="getVisitTypeColor(visit.visit_type)"
+                  size="small"
+                >
+                  <div>
+                    <div class="d-flex justify-space-between align-center flex-wrap">
+                      <div>
+                        <v-chip size="x-small" :color="getVisitTypeColor(visit.visit_type)" variant="tonal">
+                          <v-icon start size="12">{{ getVisitTypeIcon(visit.visit_type) }}</v-icon>
+                          {{ formatVisitType(visit.visit_type) }}
+                        </v-chip>
+                      </div>
+                      <span class="text-caption text-medium-emphasis">
+                        {{ new Date(visit.visit_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) }}
+                      </span>
+                    </div>
+                    <div v-if="visit.spoke_to" class="text-body-2 mt-1">
+                      <v-icon size="14">mdi-account</v-icon> Spoke with: <strong>{{ visit.spoke_to }}</strong>
+                    </div>
+                    <div v-if="visit.items_dropped_off?.length" class="mt-1">
+                      <v-icon size="14" color="teal">mdi-package-variant</v-icon>
+                      <span class="text-body-2"> Dropped off: </span>
+                      <v-chip v-for="item in visit.items_dropped_off" :key="item" size="x-small" color="teal" variant="tonal" class="mr-1">
+                        {{ item.replace(/_/g, ' ') }}
+                      </v-chip>
+                    </div>
+                    <div v-if="visit.items_discussed?.length" class="mt-1">
+                      <v-icon size="14" color="primary">mdi-chat</v-icon>
+                      <span class="text-body-2"> Discussed: </span>
+                      <v-chip v-for="item in visit.items_discussed" :key="item" size="x-small" color="primary" variant="tonal" class="mr-1">
+                        {{ item.replace(/_/g, ' ') }}
+                      </v-chip>
+                    </div>
+                    <div v-if="visit.visit_notes" class="text-body-2 mt-1" style="white-space: pre-wrap;">{{ visit.visit_notes }}</div>
+                    <div v-if="visit.outcome" class="text-caption mt-1"><strong>Outcome:</strong> {{ visit.outcome }}</div>
+                    <div v-if="visit.next_steps" class="text-caption text-primary"><strong>Next:</strong> {{ visit.next_steps }}</div>
+                    <div v-if="visit.next_visit_date" class="text-caption text-info mt-1">
+                      <v-icon size="12">mdi-calendar-clock</v-icon>
+                      Next visit: {{ new Date(visit.next_visit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
+                    </div>
+                  </div>
+                </v-timeline-item>
+              </v-timeline>
+
+              <div v-else-if="!loadingVisits" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-map-marker-outline</v-icon>
+                <div class="text-body-2 text-medium-emphasis mt-2">No visits logged yet</div>
+                <v-btn color="teal" class="mt-3" size="small" variant="tonal" @click="openQuickVisit(selectedPartner || undefined)">
+                  Log First Visit
+                </v-btn>
+              </div>
+            </v-tabs-window-item>
+
+            <!-- Events Tab -->
+            <v-tabs-window-item value="events">
+              <div class="d-flex justify-end mb-3">
+                <v-btn color="purple" size="small" variant="tonal" prepend-icon="mdi-calendar-plus" @click="openAddEventDialog">
+                  Link to Event
+                </v-btn>
+              </div>
+
+              <v-progress-linear v-if="loadingEvents" indeterminate color="purple" class="mb-3" />
+
+              <div v-if="partnerEvents.length">
+                <v-card
+                  v-for="ep in partnerEvents"
+                  :key="ep.id"
+                  variant="outlined"
+                  class="mb-3"
+                >
+                  <v-card-text class="d-flex align-center">
+                    <v-avatar color="purple" size="40" class="mr-3" variant="tonal">
+                      <v-icon>mdi-calendar-star</v-icon>
+                    </v-avatar>
+                    <div class="flex-grow-1">
+                      <div class="font-weight-medium">
+                        {{ ep.marketing_events?.name || 'Unknown Event' }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis">
+                        {{ ep.marketing_events?.event_date ? new Date(ep.marketing_events.event_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '' }}
+                        <span v-if="ep.marketing_events?.location"> — {{ ep.marketing_events.location }}</span>
+                      </div>
+                      <div class="d-flex gap-2 mt-1">
+                        <v-chip :color="getEventRoleColor(ep.role)" size="x-small" variant="flat">
+                          {{ ep.role }}
+                        </v-chip>
+                        <v-chip v-if="ep.is_confirmed" color="success" size="x-small" variant="tonal">
+                          <v-icon start size="10">mdi-check</v-icon> Confirmed
+                        </v-chip>
+                        <v-chip v-else color="warning" size="x-small" variant="tonal">
+                          Pending
+                        </v-chip>
+                        <v-chip v-if="ep.marketing_events?.event_type" size="x-small" variant="outlined">
+                          {{ ep.marketing_events.event_type.replace(/_/g, ' ') }}
+                        </v-chip>
+                      </div>
+                      <div v-if="ep.booth_info" class="text-caption mt-1">
+                        <v-icon size="12">mdi-tent</v-icon> {{ ep.booth_info }}
+                      </div>
+                      <div v-if="ep.notes" class="text-caption mt-1">{{ ep.notes }}</div>
+                    </div>
+                    <v-btn icon variant="text" size="small" color="error" @click="removeEventParticipation(ep.id)">
+                      <v-icon size="small">mdi-delete</v-icon>
+                    </v-btn>
+                  </v-card-text>
+                </v-card>
+              </div>
+
+              <div v-else-if="!loadingEvents" class="text-center py-8">
+                <v-icon size="48" color="grey-lighten-1">mdi-calendar-outline</v-icon>
+                <div class="text-body-2 text-medium-emphasis mt-2">No event participation recorded</div>
+                <v-btn color="purple" class="mt-3" size="small" variant="tonal" @click="openAddEventDialog">
+                  Link to Event
+                </v-btn>
+              </div>
+            </v-tabs-window-item>
+
             <!-- Contacts Tab -->
             <v-tabs-window-item value="contacts">
               <div class="d-flex justify-end mb-3">
@@ -1866,6 +2490,9 @@ function getPriorityColor(priority: string | null | undefined): string {
           <v-btn variant="text" prepend-icon="mdi-pencil" @click="profileDialogOpen = false; openEditDialog(selectedPartner)">
             Edit Partner
           </v-btn>
+          <v-btn variant="text" prepend-icon="mdi-open-in-new" :to="`/marketing/partner/${selectedPartner?.id}`">
+            Full Page
+          </v-btn>
           <v-spacer />
           <v-btn variant="text" @click="profileDialogOpen = false">Close</v-btn>
         </v-card-actions>
@@ -1955,6 +2582,89 @@ function getPriorityColor(priority: string | null | undefined): string {
       :columns="exportColumns"
       filename="partners_export"
     />
+
+    <!-- Quick Visit Dialog -->
+    <MarketingPartnerQuickVisitDialog
+      v-model="showQuickVisitDialog"
+      :partners="partners || []"
+      :preselected-partner="quickVisitPartner"
+      @saved="handleVisitSaved"
+      @notify="({ message, color }) => color === 'success' ? showSuccess(message) : showError(message)"
+    />
+
+    <!-- Add Event Participation Dialog -->
+    <v-dialog v-model="showAddEventDialog" max-width="500">
+      <v-card>
+        <v-card-title>
+          <v-icon class="mr-2">mdi-calendar-plus</v-icon>
+          Link Partner to Event
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <v-autocomplete
+            v-model="eventForm.event_id"
+            :items="availableEvents"
+            item-title="name"
+            item-value="id"
+            label="Select Event *"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          >
+            <template #item="{ props: itemProps, item }">
+              <v-list-item v-bind="itemProps">
+                <template #subtitle>
+                  {{ item.raw.event_date ? new Date(item.raw.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' }}
+                  {{ item.raw.location ? ` — ${item.raw.location}` : '' }}
+                </template>
+              </v-list-item>
+            </template>
+          </v-autocomplete>
+
+          <v-select
+            v-model="eventForm.role"
+            :items="eventRoleOptions"
+            label="Participation Role"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+
+          <v-text-field
+            v-model="eventForm.booth_info"
+            label="Booth / Setup Info"
+            variant="outlined"
+            density="compact"
+            placeholder="e.g., 10x10 tent, Table #5"
+            class="mb-3"
+          />
+
+          <v-textarea
+            v-model="eventForm.notes"
+            label="Notes"
+            variant="outlined"
+            density="compact"
+            rows="2"
+            class="mb-3"
+          />
+
+          <v-switch
+            v-model="eventForm.is_confirmed"
+            label="Confirmed?"
+            color="success"
+            hide-details
+          />
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showAddEventDialog = false">Cancel</v-btn>
+          <v-btn color="purple" :disabled="!eventForm.event_id" @click="saveEventParticipation">
+            Add Participation
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
