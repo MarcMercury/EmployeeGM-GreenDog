@@ -553,8 +553,6 @@ function handleVisitSaved() {
                       </v-chip>
                     </div>
                     <div v-if="visit.visit_notes" class="text-body-2 mt-1" style="white-space: pre-wrap;">{{ visit.visit_notes }}</div>
-                    <div v-if="visit.outcome" class="text-caption mt-1"><strong>Outcome:</strong> {{ visit.outcome }}</div>
-                    <div v-if="visit.next_steps" class="text-caption text-primary"><strong>Next:</strong> {{ visit.next_steps }}</div>
                     <div v-if="visit.next_visit_date" class="text-caption text-info mt-1">
                       <v-icon size="12">mdi-calendar-clock</v-icon>
                       Next visit: {{ new Date(visit.next_visit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}

@@ -157,24 +157,29 @@ function computeVisitScore(lastVisitDate: string | null | undefined): number {
 
 function computePriorityScore(priority: string | null | undefined): number {
   const scores: Record<string, number> = {
-    critical: 50, high: 38, medium: 25, low: 12
+    high: 50, medium: 25, low: 10
   }
-  return scores[priority || ''] || 15
+  return scores[priority || ''] || 25
 }
 
-function computeRelationshipScore(partner: Partner): number {
+function computeOverallScore(partner: Partner): number {
   return computeVisitScore(partner.last_visit_date) + computePriorityScore(partner.priority)
 }
 
-function getPartnerTier(score: number): string {
-  if (score >= 80) return 'Platinum'
-  if (score >= 60) return 'Gold'
-  if (score >= 40) return 'Silver'
-  if (score >= 20) return 'Bronze'
-  return 'Coal'
+function getScoreLabel(score: number): string {
+  if (score >= 75) return 'Great'
+  if (score >= 50) return 'Good'
+  if (score >= 25) return 'Needs Visit'
+  return 'Overdue'
 }
 
-// getTierColor, getTierLabel auto-imported from partnershipHelpers.ts
+function getScoreChipColor(score: number): string {
+  if (score >= 75) return 'success'
+  if (score >= 50) return 'info'
+  if (score >= 25) return 'warning'
+  return 'error'
+}
+
 // getRelationshipScoreColorName auto-imported from partnershipHelpers.ts
 
 // Table headers (matching Referral CRM grid style)
@@ -193,11 +198,11 @@ const tableHeaders = [
 // Scored and filtered partners for the data table
 const scoredPartners = computed(() => {
   return (filteredPartners.value || []).map(p => {
-    const score = computeRelationshipScore(p)
+    const score = computeOverallScore(p)
     return {
       ...p,
       computed_score: score,
-      computed_tier: getPartnerTier(score)
+      computed_label: getScoreLabel(score)
     }
   })
 })
@@ -255,16 +260,6 @@ const noteTypeOptions = [
   { title: 'Opportunity', value: 'opportunity' }
 ]
 
-// Relationship status options
-const relationshipStatusOptions = [
-  { title: 'Prospect', value: 'prospect' },
-  { title: 'Developing', value: 'developing' },
-  { title: 'Active', value: 'active' },
-  { title: 'Strong', value: 'strong' },
-  { title: 'At Risk', value: 'at_risk' },
-  { title: 'Dormant', value: 'dormant' }
-]
-
 // Visit frequency options
 const visitFrequencyOptions = [
   { title: 'Weekly', value: 'weekly' },
@@ -276,21 +271,11 @@ const visitFrequencyOptions = [
   { title: 'As Needed', value: 'as-needed' }
 ]
 
-// Priority options
+// Priority options (3 levels)
 const priorityOptions = [
-  { title: 'Critical', value: 'critical' },
   { title: 'High', value: 'high' },
   { title: 'Medium', value: 'medium' },
   { title: 'Low', value: 'low' }
-]
-
-// Partnership value options
-const partnershipValueOptions = [
-  { title: 'Strategic', value: 'strategic' },
-  { title: 'High', value: 'high' },
-  { title: 'Medium', value: 'medium' },
-  { title: 'Low', value: 'low' },
-  { title: 'Potential', value: 'potential' }
 ]
 
 // Contact form state
@@ -1310,8 +1295,8 @@ function handleVisitSaved() {
 
         <template #item.name="{ item }">
           <div class="d-flex align-center py-2">
-            <v-avatar :color="getTierColor(item.computed_tier)" size="36" class="mr-3">
-              <span class="text-white text-caption font-weight-bold">{{ getTierLabel(item.computed_tier) }}</span>
+            <v-avatar :color="getScoreChipColor(item.computed_score)" size="36" class="mr-3">
+              <span class="text-white text-caption font-weight-bold">{{ item.computed_score }}</span>
             </v-avatar>
             <div>
               <div class="font-weight-medium">{{ item.name }}</div>
@@ -1356,7 +1341,7 @@ function handleVisitSaved() {
           <div class="d-flex align-center" style="min-width: 80px;">
             <v-progress-linear
               :model-value="item.computed_score"
-              :color="getRelationshipScoreColorName(item.computed_score)"
+              :color="getScoreChipColor(item.computed_score)"
               height="8"
               rounded
               style="width: 60px;"
@@ -1405,7 +1390,7 @@ function handleVisitSaved() {
             </v-chip>
           </v-card-title>
           <v-card-subtitle class="pb-3">
-            Sorted by priority: overdue visits first, then lowest relationship score, then longest since last visit.
+            Sorted by priority: overdue visits first, then lowest overall score, then longest since last visit.
           </v-card-subtitle>
           <v-divider />
           <v-list lines="three" class="pa-0">
@@ -1417,8 +1402,8 @@ function handleVisitSaved() {
                       #{{ idx + 1 }}
                     </div>
                   </div>
-                  <v-avatar :color="getTierColor(tp.computed_tier)" size="40" class="mr-3">
-                    <span class="text-white text-caption font-weight-bold">{{ getTierLabel(tp.computed_tier) }}</span>
+                  <v-avatar :color="getScoreChipColor(tp.computed_score)" size="40" class="mr-3">
+                    <span class="text-white text-caption font-weight-bold">{{ tp.computed_score }}</span>
                   </v-avatar>
                 </template>
 
@@ -1524,12 +1509,6 @@ function handleVisitSaved() {
                   <v-icon size="14">mdi-chat</v-icon> Discussed: {{ log.items_discussed.join(', ') }}
                 </div>
                 <div v-if="log.visit_notes" class="text-body-2 mt-1">{{ log.visit_notes }}</div>
-                <div v-if="log.outcome" class="text-caption mt-1">
-                  <strong>Outcome:</strong> {{ log.outcome }}
-                </div>
-                <div v-if="log.next_steps" class="text-caption text-primary">
-                  <strong>Next:</strong> {{ log.next_steps }}
-                </div>
                 <div v-if="log.profiles?.full_name" class="text-caption text-medium-emphasis mt-1">
                   — {{ log.profiles.full_name }}
                 </div>
@@ -2169,8 +2148,6 @@ function handleVisitSaved() {
                       </v-chip>
                     </div>
                     <div v-if="visit.visit_notes" class="text-body-2 mt-1" style="white-space: pre-wrap;">{{ visit.visit_notes }}</div>
-                    <div v-if="visit.outcome" class="text-caption mt-1"><strong>Outcome:</strong> {{ visit.outcome }}</div>
-                    <div v-if="visit.next_steps" class="text-caption text-primary"><strong>Next:</strong> {{ visit.next_steps }}</div>
                     <div v-if="visit.next_visit_date" class="text-caption text-info mt-1">
                       <v-icon size="12">mdi-calendar-clock</v-icon>
                       Next visit: {{ new Date(visit.next_visit_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}
@@ -2309,88 +2286,40 @@ function handleVisitSaved() {
             <!-- Relationship Tab -->
             <v-tabs-window-item value="relationship">
               <v-row>
-                <!-- Computed Score & Tier -->
+                <!-- Overall Score -->
                 <v-col cols="12">
                   <v-card variant="outlined" class="mb-4">
                     <v-card-text>
                       <div class="d-flex align-center justify-space-between mb-3">
-                        <div class="text-subtitle-2">Computed Relationship Score</div>
+                        <div class="text-subtitle-2">Overall Score</div>
                         <v-chip
-                          :color="getTierColor(getPartnerTier(computeRelationshipScore(selectedPartner)))"
+                          :color="getScoreChipColor(computeOverallScore(selectedPartner))"
                           variant="elevated"
                           size="small"
                           class="font-weight-bold"
                         >
-                          {{ getPartnerTier(computeRelationshipScore(selectedPartner)) }} Tier
+                          {{ getScoreLabel(computeOverallScore(selectedPartner)) }}
                         </v-chip>
                       </div>
-                      <div class="d-flex align-center">
-                        <v-progress-linear
-                          :model-value="computeRelationshipScore(selectedPartner)"
-                          :color="getRelationshipScoreColorName(computeRelationshipScore(selectedPartner))"
-                          height="24"
-                          rounded
-                        >
-                          <template #default>
-                            <strong>{{ computeRelationshipScore(selectedPartner) }}%</strong>
-                          </template>
-                        </v-progress-linear>
-                      </div>
-                      <div class="d-flex gap-4 mt-3 text-caption text-medium-emphasis">
-                        <div>
-                          <v-icon size="12">mdi-flag</v-icon>
-                          Priority Score: {{ computePriorityScore(selectedPartner.priority) }}/50
-                        </div>
-                        <div>
-                          <v-icon size="12">mdi-calendar</v-icon>
-                          Visit Score: {{ computeVisitScore(selectedPartner.last_visit_date) }}/50
-                          <span class="ml-1">(4mo / 8mo / 12mo thresholds)</span>
-                        </div>
+                      <v-progress-linear
+                        :model-value="computeOverallScore(selectedPartner)"
+                        :color="getScoreChipColor(computeOverallScore(selectedPartner))"
+                        height="24"
+                        rounded
+                      >
+                        <template #default>
+                          <strong>{{ computeOverallScore(selectedPartner) }}%</strong>
+                        </template>
+                      </v-progress-linear>
+                      <div class="text-caption text-medium-emphasis mt-2">
+                        Based on priority level and time since last visit.
                       </div>
                     </v-card-text>
                   </v-card>
                 </v-col>
 
+                <!-- Priority -->
                 <v-col cols="12" md="6">
-                  <v-card variant="outlined" class="mb-4">
-                    <v-card-text>
-                      <div class="text-subtitle-2 mb-3">Manual Relationship Score Override</div>
-                      <div class="d-flex align-center">
-                        <v-progress-linear
-                          :model-value="selectedPartner.relationship_score || 50"
-                          :color="getRelationshipScoreColor(selectedPartner.relationship_score)"
-                          height="24"
-                          rounded
-                        >
-                          <template #default>
-                            <strong>{{ selectedPartner.relationship_score || 50 }}%</strong>
-                          </template>
-                        </v-progress-linear>
-                      </div>
-                      <v-slider
-                        :model-value="selectedPartner.relationship_score || 50"
-                        min="0"
-                        max="100"
-                        step="5"
-                        class="mt-4"
-                        hide-details
-                        @update:model-value="updatePartnerRelationship('relationship_score', $event)"
-                      />
-                    </v-card-text>
-                  </v-card>
-                </v-col>
-
-                <v-col cols="12" md="6">
-                  <v-select
-                    :model-value="selectedPartner.relationship_status"
-                    :items="relationshipStatusOptions"
-                    label="Relationship Status"
-                    variant="outlined"
-                    density="compact"
-                    class="mb-4"
-                    @update:model-value="updatePartnerRelationship('relationship_status', $event)"
-                  />
-
                   <v-select
                     :model-value="selectedPartner.priority"
                     :items="priorityOptions"
@@ -2400,14 +2329,17 @@ function handleVisitSaved() {
                     class="mb-4"
                     @update:model-value="updatePartnerRelationship('priority', $event)"
                   />
+                </v-col>
 
+                <v-col cols="12" md="6">
                   <v-select
-                    :model-value="selectedPartner.partnership_value"
-                    :items="partnershipValueOptions"
-                    label="Partnership Value"
+                    :model-value="selectedPartner.visit_frequency"
+                    :items="visitFrequencyOptions"
+                    label="Visit Frequency"
                     variant="outlined"
                     density="compact"
-                    @update:model-value="updatePartnerRelationship('partnership_value', $event)"
+                    class="mb-4"
+                    @update:model-value="updatePartnerRelationship('visit_frequency', $event)"
                   />
                 </v-col>
 
@@ -2439,17 +2371,6 @@ function handleVisitSaved() {
                 </v-col>
 
                 <v-col cols="12" md="4">
-                  <v-select
-                    :model-value="selectedPartner.visit_frequency"
-                    :items="visitFrequencyOptions"
-                    label="Visit Frequency"
-                    variant="outlined"
-                    density="compact"
-                    @update:model-value="updatePartnerRelationship('visit_frequency', $event)"
-                  />
-                </v-col>
-
-                <v-col cols="12" md="6">
                   <v-text-field
                     :model-value="selectedPartner.preferred_visit_day"
                     label="Preferred Visit Day"
@@ -2470,7 +2391,7 @@ function handleVisitSaved() {
                   />
                 </v-col>
 
-                <v-col cols="12">
+                <v-col cols="12" md="6">
                   <v-switch
                     :model-value="selectedPartner.needs_followup"
                     label="Needs Follow-up"

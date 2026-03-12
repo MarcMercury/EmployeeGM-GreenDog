@@ -121,28 +121,6 @@
           </v-chip>
         </div>
 
-        <!-- Outcome -->
-        <v-text-field
-          v-model="form.outcome"
-          label="Outcome"
-          variant="outlined"
-          density="compact"
-          placeholder="Quick summary of the result"
-          class="mb-3"
-          hide-details
-        />
-
-        <!-- Next Steps -->
-        <v-text-field
-          v-model="form.next_steps"
-          label="Next Steps"
-          variant="outlined"
-          density="compact"
-          placeholder="Action items or follow-up needed"
-          class="mb-3"
-          hide-details
-        />
-
         <!-- Next Visit Date -->
         <v-text-field
           v-model="form.next_visit_date"
@@ -210,9 +188,7 @@ const form = reactive({
   items_dropped_off: [] as string[],
   items_discussed: [] as string[],
   next_visit_date: null as string | null,
-  visit_notes: '',
-  outcome: '',
-  next_steps: ''
+  visit_notes: ''
 })
 
 const visitTypeOptions = [
@@ -290,8 +266,6 @@ watch(visible, (v) => {
     form.items_discussed = []
     form.next_visit_date = null
     form.visit_notes = ''
-    form.outcome = ''
-    form.next_steps = ''
     if (props.preselectedPartner) {
       form.partner_id = props.preselectedPartner.id
       form.partner_name = props.preselectedPartner.name
@@ -337,8 +311,6 @@ async function save() {
       items_discussed: form.items_discussed.length ? form.items_discussed : null,
       next_visit_date: form.next_visit_date || null,
       visit_notes: form.visit_notes || null,
-      outcome: form.outcome || null,
-      next_steps: form.next_steps || null,
       logged_via: 'web'
     })
 
