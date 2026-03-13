@@ -2,25 +2,19 @@
  * Safety Log Types
  *
  * Type definitions for the Workplace Safety & Digital Logging module.
- * Supports 12 log types for Cal/OSHA (Title 8), AVMA, and AAHA compliance.
+ * Supports core log types for Cal/OSHA (Title 8), AVMA, and AAHA compliance.
  */
 
 // ── Enums ──────────────────────────────────────────────
 
 export type SafetyLogType =
   | 'training_attendance'
-  | 'injury_illness'
-  | 'incident_near_miss'
-  | 'hazard_assessment'
+  | 'injury_incident_bite'
   | 'safety_inspection'
   | 'fire_emergency_drill'
-  | 'sharps_injury'
-  | 'zoonotic_bite_report'
   | 'radiation_dosimetry'
   | 'equipment_maintenance'
   | 'safety_meeting'
-  | 'emergency_contacts'
-  | 'hazcom_chemical'
   | 'ppe_assessment'
   | 'employee_acknowledgment'
   | string // custom types
@@ -96,12 +90,15 @@ export interface SafetyFormField {
   cols?: number // Vuetify grid cols (default 12)
 }
 
+export type SafetyLogCategory = 'inspections' | 'group_training' | 'individual_reporting'
+
 export interface SafetyLogTypeConfig {
   key: SafetyLogType
   label: string
   icon: string
   color: string
   description: string
+  category: SafetyLogCategory
   fields: SafetyFormField[]
   hasOshaToggle?: boolean
   complianceStandards?: string[]
@@ -135,8 +132,14 @@ export const SAFETY_STATUSES: { value: SafetyLogStatus; label: string; color: st
   { value: 'flagged', label: 'Flagged', color: 'error', icon: 'mdi-flag' },
 ]
 
+export const SAFETY_LOG_CATEGORIES: { value: SafetyLogCategory; label: string; icon: string; color: string }[] = [
+  { value: 'inspections', label: 'Inspections', icon: 'mdi-clipboard-check', color: 'teal' },
+  { value: 'group_training', label: 'Group Training', icon: 'mdi-account-group', color: 'blue' },
+  { value: 'individual_reporting', label: 'Individual Reporting', icon: 'mdi-account-alert', color: 'red' },
+]
+
 /**
- * Master config for all 12 safety log types.
+ * Master config for safety log types.
  * Drives the dynamic form renderer, navigation tiles, and QR routing.
  */
 export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
@@ -145,6 +148,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Training Attendance',
     icon: 'mdi-school',
     color: 'blue',
+    category: 'group_training',
     description: 'Record employee safety training attendance (IIPP, Fire, Hazcomm, etc.)',
     complianceStandards: ['Cal/OSHA Title 8 §3203'],
     fields: [
@@ -158,48 +162,30 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     ],
   },
   {
-    key: 'injury_illness',
-    label: 'Injury & Illness (OSHA 300)',
+    key: 'injury_incident_bite',
+    label: 'Injury, Incident, Bite',
     icon: 'mdi-hospital-box',
     color: 'red',
-    description: 'Log workplace injuries and illnesses per OSHA 300 Log requirements.',
+    category: 'individual_reporting',
+    description: 'Report injuries, illnesses, incidents, near-misses, animal bites/scratches, and sharps injuries.',
     hasOshaToggle: true,
-    complianceStandards: ['Cal/OSHA Title 8 §14300', 'OSHA 300 Log'],
+    complianceStandards: ['Cal/OSHA Title 8 §14300', 'OSHA 300 Log', 'Cal/OSHA Title 8 §5193', 'AVMA Zoonotic Disease Guidelines'],
     fields: [
+      { key: 'incident_category', label: 'Incident Category', type: 'select', required: true, cols: 6, options: ['Injury / Illness', 'Incident / Near Miss', 'Zoonotic / Bite', 'Sharps Injury'] },
       { key: 'incident_date', label: 'Incident Date', type: 'date', required: true, cols: 6 },
-      { key: 'incident_location', label: 'Incident Location', type: 'text', required: true, cols: 6, placeholder: 'e.g., Surgery Suite, X-Ray Room' },
-      { key: 'description', label: 'Description of Injury/Illness', type: 'textarea', required: true, cols: 12 },
-      { key: 'treatment', label: 'Treatment Provided', type: 'textarea', cols: 12 },
-      { key: 'root_cause_analysis', label: 'Root Cause Analysis', type: 'textarea', cols: 12, hint: 'What contributed to this incident?' },
-    ],
-  },
-  {
-    key: 'incident_near_miss',
-    label: 'Incident & Near Miss',
-    icon: 'mdi-alert-circle',
-    color: 'orange',
-    description: 'Report incidents or near-miss events for safety trend analysis.',
-    complianceStandards: ['Cal/OSHA Title 8 §3203'],
-    fields: [
+      { key: 'incident_location', label: 'Incident Location', type: 'text', cols: 6, placeholder: 'e.g., Surgery Suite, X-Ray Room' },
       { key: 'description', label: 'Description', type: 'textarea', required: true, cols: 12 },
-      { key: 'potential_cause', label: 'Potential Cause', type: 'textarea', cols: 12 },
+      { key: 'body_part_affected', label: 'Body Part Affected', type: 'text', cols: 6 },
       { key: 'animal_involved', label: 'Animal Involved?', type: 'boolean', cols: 6 },
+      { key: 'animal_id', label: 'Animal ID / Name', type: 'text', cols: 6, hint: 'If animal involved' },
+      { key: 'exposure_type', label: 'Exposure Type', type: 'select', cols: 6, options: ['Bite', 'Scratch', 'Splash/Spray', 'Needlestick', 'Scalpel/Sharps', 'Other Contact', 'N/A'] },
+      { key: 'device_type', label: 'Device Type (if sharps)', type: 'select', cols: 6, options: ['Hypodermic Needle', 'Suture Needle', 'Scalpel', 'Lancet', 'Glass', 'N/A', 'Other'] },
+      { key: 'safety_mechanism_used', label: 'Safety Mechanism Used?', type: 'boolean', cols: 6 },
+      { key: 'post_exposure_protocol_followed', label: 'Post-Exposure Protocol Followed?', type: 'boolean', cols: 6 },
+      { key: 'treatment', label: 'Treatment Provided', type: 'textarea', cols: 12 },
+      { key: 'potential_cause', label: 'Potential Cause / Root Cause', type: 'textarea', cols: 12, hint: 'What contributed to this incident?' },
       { key: 'corrective_action', label: 'Corrective Action Taken', type: 'textarea', cols: 12 },
-    ],
-  },
-  {
-    key: 'hazard_assessment',
-    label: 'Hazard Assessment',
-    icon: 'mdi-shield-alert',
-    color: 'amber',
-    description: 'Document workplace hazard assessments and mitigation plans.',
-    complianceStandards: ['Cal/OSHA Title 8 §3203', 'AAHA Safety Standards'],
-    fields: [
-      { key: 'assessor', label: 'Assessor Name', type: 'text', required: true, cols: 6 },
-      { key: 'area', label: 'Area Assessed', type: 'text', required: true, cols: 6 },
-      { key: 'hazard_type', label: 'Hazard Type', type: 'select', cols: 6, options: ['Chemical', 'Biological', 'Physical', 'Ergonomic', 'Radiation', 'Electrical', 'Fire', 'Animal Handling', 'Zoonotic Disease', 'Sharps / Needlestick', 'Anesthetic Gas Exposure', 'Other'] },
-      { key: 'risk_level', label: 'Risk Level', type: 'select', cols: 6, options: ['Low', 'Medium', 'High'] },
-      { key: 'mitigation_plan', label: 'Mitigation Plan', type: 'textarea', cols: 12 },
+      { key: 'notes', label: 'Additional Notes', type: 'textarea', cols: 12 },
     ],
   },
   {
@@ -207,6 +193,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Safety Inspection',
     icon: 'mdi-clipboard-check',
     color: 'teal',
+    category: 'inspections',
     description: 'Complete periodic safety inspections (Fire, PPE, Eye Wash, etc.).',
     complianceStandards: ['Cal/OSHA Title 8 §3203', 'AAHA Facility Standards'],
     fields: [
@@ -221,6 +208,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Fire & Emergency Drill',
     icon: 'mdi-fire',
     color: 'deep-orange',
+    category: 'group_training',
     description: 'Log fire, earthquake, and active threat drills.',
     complianceStandards: ['Cal/OSHA Title 8 §3220', 'AAHA Emergency Preparedness'],
     fields: [
@@ -232,39 +220,11 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     ],
   },
   {
-    key: 'sharps_injury',
-    label: 'Sharps Injury',
-    icon: 'mdi-needle',
-    color: 'red-darken-2',
-    description: 'Report needlestick and sharps injuries.',
-    complianceStandards: ['Cal/OSHA Title 8 §5193', 'OSHA Bloodborne Pathogens Standard'],
-    fields: [
-      { key: 'device_type', label: 'Device Type', type: 'select', required: true, cols: 6, options: ['Hypodermic Needle', 'Suture Needle', 'Scalpel', 'Lancet', 'Glass', 'Other'] },
-      { key: 'procedure', label: 'Procedure Being Performed', type: 'text', cols: 6 },
-      { key: 'safety_mechanism_used', label: 'Safety Mechanism Used?', type: 'boolean', cols: 6 },
-      { key: 'explanation', label: 'Explanation / Details', type: 'textarea', cols: 12, hint: 'Include circumstances and follow-up actions' },
-    ],
-  },
-  {
-    key: 'zoonotic_bite_report',
-    label: 'Zoonotic / Bite Report',
-    icon: 'mdi-paw',
-    color: 'purple',
-    description: 'Report animal bites, scratches, and zoonotic exposure incidents.',
-    complianceStandards: ['AVMA Zoonotic Disease Guidelines', 'Cal/OSHA Title 8 §5199'],
-    fields: [
-      { key: 'animal_id', label: 'Animal ID / Name', type: 'text', required: true, cols: 6 },
-      { key: 'exposure_type', label: 'Exposure Type', type: 'select', required: true, cols: 6, options: ['Bite', 'Scratch', 'Splash/Spray', 'Other Contact'] },
-      { key: 'body_part_affected', label: 'Body Part Affected', type: 'text', cols: 6 },
-      { key: 'post_exposure_protocol_followed', label: 'Post-Exposure Protocol Followed?', type: 'boolean', cols: 6 },
-      { key: 'notes', label: 'Additional Details', type: 'textarea', cols: 12 },
-    ],
-  },
-  {
     key: 'radiation_dosimetry',
     label: 'Radiation Dosimetry',
     icon: 'mdi-radioactive',
     color: 'yellow-darken-3',
+    category: 'inspections',
     description: 'Track radiation badge readings and PPE inspection results.',
     complianceStandards: ['Cal/OSHA Title 8 §5100', 'AVMA Radiation Safety'],
     fields: [
@@ -280,6 +240,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Equipment Maintenance',
     icon: 'mdi-wrench',
     color: 'blue-grey',
+    category: 'inspections',
     description: 'Log equipment maintenance, oxygen storage checks, and anesthetic leak tests.',
     complianceStandards: ['AAHA Equipment Standards', 'Cal/OSHA Title 8 §5142'],
     fields: [
@@ -296,6 +257,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Safety Meeting',
     icon: 'mdi-account-group',
     color: 'indigo',
+    category: 'group_training',
     description: 'Record safety committee meetings, attendees, and action items.',
     complianceStandards: ['Cal/OSHA Title 8 §3203(a)(4)'],
     fields: [
@@ -305,48 +267,11 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     ],
   },
   {
-    key: 'emergency_contacts',
-    label: 'Emergency Contacts & Shutoffs',
-    icon: 'mdi-phone-alert',
-    color: 'red-darken-1',
-    description: 'Log emergency contacts, utility shutoff locations, and assembly points.',
-    complianceStandards: ['Cal/OSHA Title 8 §3220'],
-    fields: [
-      { key: 'contact_type', label: 'Contact Type', type: 'select', required: true, cols: 6, options: ['Fire Department', 'Police', 'Poison Control', 'Hospital / ER', 'Animal Control', 'Utility Company', 'Building Management', 'Insurance', 'Regulatory Agency', 'Other'] },
-      { key: 'name', label: 'Contact Name / Org', type: 'text', required: true, cols: 6 },
-      { key: 'phone', label: 'Phone Number', type: 'text', required: true, cols: 6 },
-      { key: 'address', label: 'Address', type: 'text', cols: 6 },
-      { key: 'shutoff_type', label: 'Utility Shutoff Type', type: 'select', cols: 6, options: ['Gas', 'Water', 'Electrical', 'HVAC', 'Oxygen Supply', 'N/A'] },
-      { key: 'shutoff_location', label: 'Shutoff Location', type: 'text', cols: 6, placeholder: 'e.g., Rear of building, utility closet' },
-      { key: 'assembly_point', label: 'Designated Assembly Point', type: 'text', cols: 12, hint: 'Where staff should gather after evacuation' },
-      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
-    ],
-  },
-  // ── New Built-in Types (Workplace Safety Program §6, §7, §11) ───
-  {
-    key: 'hazcom_chemical',
-    label: 'HazCom / Chemical Inventory',
-    icon: 'mdi-flask',
-    color: 'lime-darken-2',
-    description: 'Log hazardous chemical inventory, SDS availability, and safe handling per HazCom Program.',
-    complianceStandards: ['Cal/OSHA Title 8 §5194', 'GHS / HazCom'],
-    fields: [
-      { key: 'chemical_name', label: 'Chemical / Product Name', type: 'text', required: true, cols: 6 },
-      { key: 'manufacturer', label: 'Manufacturer', type: 'text', cols: 6 },
-      { key: 'sds_available', label: 'SDS Available & Accessible?', type: 'boolean', cols: 6 },
-      { key: 'properly_labeled', label: 'Container Properly Labeled?', type: 'boolean', cols: 6 },
-      { key: 'storage_location', label: 'Storage Location', type: 'text', cols: 6 },
-      { key: 'hazard_category', label: 'Hazard Category', type: 'select', cols: 6, options: ['Health Hazard', 'Physical Hazard', 'Environmental Hazard', 'Corrosive', 'Flammable', 'Oxidizer', 'Toxic', 'Irritant'] },
-      { key: 'ppe_required', label: 'PPE Required', type: 'multiselect', cols: 6, options: ['Gloves', 'Goggles', 'Mask / Respirator', 'Gown', 'Face Shield', 'Apron', 'None'] },
-      { key: 'spill_procedure', label: 'Spill / Exposure Response', type: 'textarea', cols: 12, hint: 'Reference SDS Section 6 for spill guidance' },
-      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
-    ],
-  },
-  {
     key: 'ppe_assessment',
     label: 'PPE Assessment / Inspection',
     icon: 'mdi-shield-account',
     color: 'cyan-darken-1',
+    category: 'inspections',
     description: 'Document PPE hazard assessments, inspections, and deficiency tracking per Cal/OSHA.',
     complianceStandards: ['Cal/OSHA Title 8 §3380-3387', 'OSHA PPE Standard'],
     fields: [
@@ -364,6 +289,7 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
     label: 'Safety Program Acknowledgment',
     icon: 'mdi-file-sign',
     color: 'green-darken-2',
+    category: 'individual_reporting',
     description: 'Record employee acknowledgment of receipt and understanding of workplace safety policies.',
     complianceStandards: ['Cal/OSHA Title 8 §3203', 'IIPP Acknowledgment'],
     fields: [

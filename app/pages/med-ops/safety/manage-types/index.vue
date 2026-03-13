@@ -28,25 +28,30 @@
       </v-card-text>
     </v-card>
 
-    <!-- All Log Types -->
-    <h3 class="text-h6 font-weight-bold mb-3">
-      All Log Types ({{ allTypes.length }})
-    </h3>
-
+    <!-- All Log Types, grouped by category -->
     <div v-if="ctLoading" class="d-flex justify-center pa-6">
       <v-progress-circular indeterminate color="primary" />
     </div>
 
-    <v-row v-else dense class="mb-6">
-      <v-col
-        v-for="cfg in allTypes"
-        :key="cfg.key"
-        cols="12"
-        sm="6"
-        md="4"
-      >
+    <template v-else>
+      <div v-for="cat in SAFETY_LOG_CATEGORIES" :key="cat.value" class="mb-6">
+        <div class="d-flex align-center gap-2 mb-3">
+          <v-icon :color="cat.color" size="20">{{ cat.icon }}</v-icon>
+          <h3 class="text-h6 font-weight-bold">{{ cat.label }}</h3>
+          <v-chip size="x-small" variant="tonal" :color="cat.color">
+            {{ typesByCategory(cat.value).length }}
+          </v-chip>
+        </div>
+        <v-row dense class="mb-2">
+          <v-col
+            v-for="cfg in typesByCategory(cat.value)"
+            :key="cfg.key"
+            cols="12"
+            sm="6"
+            md="4"
+          >
         <NuxtLink 
-          :to="`/med-ops/safety/manage-types/${cfg.key.replace(/_/g, '-')}`"
+          :to="`/med-ops/safety/manage-types/${safetyKeyToSlug(cfg.key)}`"
           style="text-decoration: none; color: inherit; display: block;"
         >
           <v-card
@@ -86,8 +91,10 @@
           </div>
         </v-card>
         </NuxtLink>
-      </v-col>
-    </v-row>
+          </v-col>
+        </v-row>
+      </div>
+    </template>
 
     <!-- Empty custom types hint -->
     <v-card v-if="!ctLoading && customTypes.length === 0" variant="outlined" rounded="lg" class="text-center pa-8 mb-6">
@@ -303,6 +310,7 @@
 import { ref, computed, onMounted } from 'vue'
 import {
   SAFETY_LOG_TYPE_CONFIGS,
+  SAFETY_LOG_CATEGORIES,
   type SafetyLogTypeConfig,
   type SafetyFormField,
   safetyKeyToSlug,
@@ -320,6 +328,10 @@ const { customTypes, allTypes, loading: ctLoading, fetchCustomTypes, createCusto
 
 const canManage = computed(() => can('manage:safety-logs'))
 
+function typesByCategory(category: string) {
+  return allTypes.value.filter(t => t.category === category)
+}
+
 // Redirect base users who shouldn't access this page
 onMounted(() => {
   if (!canManage.value) {
@@ -329,7 +341,7 @@ onMounted(() => {
 })
 
 function navigateToType(key: string) {
-  const slug = key.replace(/_/g, '-')
+  const slug = safetyKeyToSlug(key)
   const targetPath = `/med-ops/safety/manage-types/${slug}`
   console.log('[navigateToType] Attempting navigation to:', targetPath)
   

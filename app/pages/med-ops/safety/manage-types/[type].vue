@@ -528,7 +528,7 @@ const typeKey = computed<SafetyLogType>(() => {
     return key
   } catch (error) {
     console.error('[Detail Page] Error in typeKey computed:', error)
-    return 'injury_illness' as SafetyLogType
+    return 'training_attendance' as SafetyLogType
   }
 })
 
@@ -550,7 +550,7 @@ const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employee-
 
 // ── QR Code helpers ────────────────────────────────────
 function getQrUrl(location: string): string {
-  const slug = typeKey.value.replace(/_/g, '-')
+  const slug = safetyKeyToSlug(typeKey.value)
   return `${baseUrl.value}/med-ops/safety/${slug}?location=${location}`
 }
 

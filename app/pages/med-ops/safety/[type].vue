@@ -164,7 +164,7 @@ onMounted(async () => {
   if (!ctLoaded.value) await fetchCustomTypes()
 })
 
-async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
+async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean; employee_ids?: { id: string; role: string }[] }) {
   store.submitting = true
   submitError.value = null
   try {
@@ -176,6 +176,7 @@ async function handleSubmit(payload: { location: SafetyLogLocation; form_data: R
         form_data: payload.form_data,
         osha_recordable: payload.osha_recordable,
         status: 'submitted',
+        ...(payload.employee_ids?.length ? { employee_ids: payload.employee_ids } : {}),
       },
     })
     showSuccess.value = true

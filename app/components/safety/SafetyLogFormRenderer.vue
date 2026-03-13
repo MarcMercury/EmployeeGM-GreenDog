@@ -49,6 +49,39 @@
       </v-col>
     </v-row>
 
+    <!-- Employee Picker (for employee-specific log types) -->
+    <v-row v-if="showEmployeePicker" dense class="mb-4">
+      <v-col cols="12">
+        <v-card variant="outlined" rounded="lg" class="pa-3">
+          <div class="text-subtitle-2 font-weight-medium mb-2">
+            <v-icon start size="18" color="primary">mdi-account-link</v-icon>
+            {{ employeePickerLabel }}
+          </div>
+          <div class="text-caption text-grey mb-2">
+            {{ isMultiEmployee
+              ? 'Select all employees involved in or attending this event.'
+              : 'Select the employee this log entry is about.'
+            }}
+          </div>
+          <v-autocomplete
+            v-model="selectedEmployeeIds"
+            :items="employeeItems"
+            :label="isMultiEmployee ? 'Select employees' : 'Select employee'"
+            :multiple="isMultiEmployee"
+            :chips="isMultiEmployee"
+            :closable-chips="isMultiEmployee"
+            variant="outlined"
+            density="comfortable"
+            item-title="title"
+            item-value="value"
+            prepend-inner-icon="mdi-account-search"
+            clearable
+            :no-data-text="allEmployees.length === 0 ? 'Loading employees…' : 'No matching employees'"
+          />
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Dynamic Form Fields -->
     <v-row dense>
       <v-col
@@ -232,7 +265,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<{
-  submit: [payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }]
+  submit: [payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean; employee_ids?: { id: string; role: string }[] }]
   cancel: []
 }>()
 
@@ -242,6 +275,58 @@ const formRef = ref()
 const config = computed<SafetyLogTypeConfig | undefined>(() =>
   getSafetyLogTypeConfig(props.logType) || findType(props.logType)
 )
+
+// ── Employee picker state ──────────────────────────────
+const supabase = useSupabaseClient()
+const allEmployees = ref<{ id: string; first_name: string; last_name: string; preferred_name: string | null }[]>([])
+const selectedEmployeeIds = ref<string[]>([])
+const employeeSearchText = ref('')
+
+/** Log types that should link to specific employees */
+const SINGLE_EMPLOYEE_TYPES: SafetyLogType[] = [
+  'training_attendance', 'injury_incident_bite',
+  'radiation_dosimetry', 'employee_acknowledgment',
+]
+const MULTI_EMPLOYEE_TYPES: SafetyLogType[] = [
+  'safety_meeting', 'fire_emergency_drill',
+]
+
+const showEmployeePicker = computed(() =>
+  SINGLE_EMPLOYEE_TYPES.includes(props.logType) || MULTI_EMPLOYEE_TYPES.includes(props.logType)
+)
+const isMultiEmployee = computed(() =>
+  MULTI_EMPLOYEE_TYPES.includes(props.logType)
+)
+const employeePickerLabel = computed(() =>
+  isMultiEmployee.value ? 'Link Employees (Attendees/Involved)' : 'Link Employee (Subject)'
+)
+
+/** Formatted employee items for the autocomplete */
+const employeeItems = computed(() =>
+  allEmployees.value.map(e => ({
+    value: e.id,
+    title: `${e.preferred_name || e.first_name} ${e.last_name}`,
+  }))
+)
+
+/** Load employees list (lightweight) */
+async function loadEmployees() {
+  try {
+    const { data } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name, preferred_name')
+      .eq('employment_status', 'active')
+      .order('last_name')
+    allEmployees.value = data || []
+  } catch (err) {
+    console.warn('[SafetyLogFormRenderer] Failed to load employees:', err)
+  }
+}
+
+// Load employees when picker is needed
+watch(showEmployeePicker, (show) => {
+  if (show && allEmployees.value.length === 0) loadEmployees()
+}, { immediate: true })
 
 // Form state
 const formLocation = ref<SafetyLogLocation | null>(props.initialLocation)
@@ -291,10 +376,17 @@ async function handleSubmit() {
     osha_recordable: oshaRecordable.value,
   })
 
+  // Build employee links
+  const employeeLinks = selectedEmployeeIds.value.map(id => ({
+    id,
+    role: isMultiEmployee.value ? 'attendee' : 'subject',
+  }))
+
   emit('submit', {
     location: formLocation.value,
     form_data: { ...formData },
     osha_recordable: oshaRecordable.value,
+    ...(employeeLinks.length > 0 ? { employee_ids: employeeLinks } : {}),
   })
 }
 </script>

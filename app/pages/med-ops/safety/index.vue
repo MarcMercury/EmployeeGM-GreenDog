@@ -40,40 +40,48 @@
         Manage Types
       </v-btn>
     </div>
-    <v-row dense class="mb-6">
-      <v-col
-        v-for="cfg in allTypes"
-        :key="cfg.key"
-        cols="6"
-        sm="4"
-        md="3"
-        lg="2"
-      >
-        <v-card
-          variant="outlined"
-          rounded="lg"
-          class="text-center pa-3 cursor-pointer hover-elevate log-type-tile"
-          @click="navigateToEntries(cfg.key)"
+
+    <div v-for="cat in SAFETY_LOG_CATEGORIES" :key="cat.value" class="mb-5">
+      <div class="d-flex align-center gap-2 mb-2">
+        <v-icon :color="cat.color" size="20">{{ cat.icon }}</v-icon>
+        <span class="text-subtitle-1 font-weight-bold">{{ cat.label }}</span>
+        <v-chip size="x-small" variant="tonal" :color="cat.color">
+          {{ typesByCategory(cat.value).length }}
+        </v-chip>
+      </div>
+      <v-row dense>
+        <v-col
+          v-for="cfg in typesByCategory(cat.value)"
+          :key="cfg.key"
+          cols="6"
+          sm="4"
+          md="3"
+          lg="2"
         >
-          <!-- Red dot indicator for overdue logs -->
-          <div v-if="overdueLogTypes.has(cfg.key)" class="overdue-indicator"></div>
-          
-          <v-avatar :color="cfg.color" size="44" variant="tonal" class="mb-2">
-            <v-icon size="24">{{ cfg.icon }}</v-icon>
-          </v-avatar>
-          <div class="text-caption font-weight-medium">{{ cfg.label }}</div>
-          <v-chip
-            v-if="store.stats.byType[cfg.key]"
-            size="x-small"
-            variant="tonal"
-            color="grey"
-            class="mt-1"
+          <v-card
+            variant="outlined"
+            rounded="lg"
+            class="text-center pa-3 cursor-pointer hover-elevate log-type-tile"
+            @click="navigateToEntries(cfg.key)"
           >
-            {{ store.stats.byType[cfg.key] }}
-          </v-chip>
-        </v-card>
-      </v-col>
-    </v-row>
+            <div v-if="overdueLogTypes.has(cfg.key)" class="overdue-indicator"></div>
+            <v-avatar :color="cfg.color" size="44" variant="tonal" class="mb-2">
+              <v-icon size="24">{{ cfg.icon }}</v-icon>
+            </v-avatar>
+            <div class="text-caption font-weight-medium">{{ cfg.label }}</div>
+            <v-chip
+              v-if="store.stats.byType[cfg.key]"
+              size="x-small"
+              variant="tonal"
+              color="grey"
+              class="mt-1"
+            >
+              {{ store.stats.byType[cfg.key] }}
+            </v-chip>
+          </v-card>
+        </v-col>
+      </v-row>
+    </div>
 
     <!-- Filters -->
     <v-card variant="outlined" rounded="lg" class="mb-4">
@@ -210,26 +218,32 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
-          <v-row dense>
-            <v-col
-              v-for="cfg in submittableTypes"
-              :key="cfg.key"
-              cols="6"
-              sm="4"
-            >
-              <v-card
-                variant="outlined"
-                rounded="lg"
-                class="text-center pa-4 cursor-pointer hover-elevate"
-                @click="navigateToLogForm(cfg.key)"
+          <div v-for="cat in SAFETY_LOG_CATEGORIES" :key="cat.value" class="mb-4">
+            <div class="d-flex align-center gap-2 mb-2">
+              <v-icon :color="cat.color" size="18">{{ cat.icon }}</v-icon>
+              <span class="text-subtitle-2 font-weight-bold">{{ cat.label }}</span>
+            </div>
+            <v-row dense>
+              <v-col
+                v-for="cfg in submittableByCategory(cat.value)"
+                :key="cfg.key"
+                cols="6"
+                sm="4"
               >
-                <v-avatar :color="cfg.color" size="48" variant="tonal" class="mb-2">
-                  <v-icon size="28">{{ cfg.icon }}</v-icon>
-                </v-avatar>
-                <div class="text-body-2 font-weight-medium">{{ cfg.label }}</div>
-              </v-card>
-            </v-col>
-          </v-row>
+                <v-card
+                  variant="outlined"
+                  rounded="lg"
+                  class="text-center pa-4 cursor-pointer hover-elevate"
+                  @click="navigateToLogForm(cfg.key)"
+                >
+                  <v-avatar :color="cfg.color" size="48" variant="tonal" class="mb-2">
+                    <v-icon size="28">{{ cfg.icon }}</v-icon>
+                  </v-avatar>
+                  <div class="text-body-2 font-weight-medium">{{ cfg.label }}</div>
+                </v-card>
+              </v-col>
+            </v-row>
+          </div>
         </v-card-text>
       </v-card>
     </v-bottom-sheet>
@@ -246,6 +260,7 @@ import {
   SAFETY_LOG_TYPE_CONFIGS,
   SAFETY_LOCATIONS,
   SAFETY_STATUSES,
+  SAFETY_LOG_CATEGORIES,
   safetyKeyToSlug,
 } from '~/types/safety-log.types'
 import { useSafetyLogStore } from '~/stores/safetyLog'
@@ -267,6 +282,14 @@ const showNewLogSheet = ref(false)
 
 // Submittable types (everything with at least 1 field — built-in + custom)
 const submittableTypes = computed(() => mergedSubmittable.value)
+
+// Group types by category
+function typesByCategory(category: string) {
+  return allTypes.value.filter(t => t.category === category)
+}
+function submittableByCategory(category: string) {
+  return submittableTypes.value.filter(t => t.category === category)
+}
 
 // ── Overdue Schedules ──
 interface SafetySchedule {
@@ -352,12 +375,12 @@ function resetFilters() {
 
 function navigateToLogForm(logType: SafetyLogType) {
   showNewLogSheet.value = false
-  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
+  const slug = safetyKeyToSlug(logType)
   router.push(`/med-ops/safety/${slug}`)
 }
 
 function navigateToEntries(logType: SafetyLogType) {
-  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
+  const slug = safetyKeyToSlug(logType)
   router.push(`/med-ops/safety/entries/${slug}`)
 }
 

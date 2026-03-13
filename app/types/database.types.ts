@@ -5004,6 +5004,45 @@ export type Database = {
           },
         ]
       }
+      safety_log_employees: {
+        Row: {
+          id: string
+          safety_log_id: string
+          employee_id: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          safety_log_id: string
+          employee_id: string
+          role?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          safety_log_id?: string
+          employee_id?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "safety_log_employees_safety_log_id_fkey"
+            columns: ["safety_log_id"]
+            isOneToOne: false
+            referencedRelation: "safety_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "safety_log_employees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       safety_logs: {
         Row: {
           id: string

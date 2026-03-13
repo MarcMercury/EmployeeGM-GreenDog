@@ -44,6 +44,27 @@
         </span>
       </div>
 
+      <!-- Linked Employees -->
+      <div v-if="linkedEmployees.length > 0" class="mb-4">
+        <div class="text-caption text-grey text-uppercase mb-2">
+          <v-icon size="14" class="mr-1">mdi-account-link</v-icon>
+          Linked Employees
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <v-chip
+            v-for="emp in linkedEmployees"
+            :key="emp.id + emp.role"
+            size="small"
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-account"
+          >
+            {{ emp.name }}
+            <span class="text-caption ml-1">({{ emp.role }})</span>
+          </v-chip>
+        </div>
+      </div>
+
       <!-- Form Data Fields -->
       <v-row dense>
         <v-col
@@ -148,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { format, parseISO } from 'date-fns'
 import type { SafetyLog } from '~/types/safety-log.types'
 import {
@@ -172,7 +193,44 @@ defineEmits<{
 }>()
 
 const { findType } = useCustomSafetyLogTypes()
+const supabase = useSupabaseClient()
 const reviewNotes = ref('')
+
+// ── Linked employees ────────────────────────────────
+const linkedEmployees = ref<{ id: string; name: string; role: string }[]>([])
+
+async function loadLinkedEmployees() {
+  try {
+    const { data: links } = await supabase
+      .from('safety_log_employees')
+      .select('employee_id, role')
+      .eq('safety_log_id', props.log.id)
+
+    if (!links || links.length === 0) return
+
+    const empIds = [...new Set(links.map(l => l.employee_id))]
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name, preferred_name')
+      .in('id', empIds)
+
+    if (!employees) return
+
+    const empMap = new Map(employees.map(e => [e.id, e]))
+    linkedEmployees.value = links.map(l => {
+      const emp = empMap.get(l.employee_id)
+      return {
+        id: l.employee_id,
+        name: emp ? `${emp.preferred_name || emp.first_name} ${emp.last_name}` : 'Unknown',
+        role: l.role,
+      }
+    })
+  } catch (err) {
+    console.warn('[SafetyLogDetail] Failed to load linked employees:', err)
+  }
+}
+
+onMounted(() => loadLinkedEmployees())
 
 // Look up built-in first, then custom types
 const typeConfig = computed(() => getSafetyLogTypeConfig(props.log.log_type) || findType(props.log.log_type))

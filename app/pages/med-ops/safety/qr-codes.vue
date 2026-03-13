@@ -102,16 +102,22 @@
       <v-progress-circular indeterminate color="primary" />
     </div>
 
-    <!-- QR Grid for active location -->
-    <v-row v-else>
-      <v-col
-        v-for="cfg in printableTypes"
-        :key="`${activeTab}-${cfg.key}`"
-        cols="12"
-        sm="6"
-        md="4"
-        lg="3"
-      >
+    <!-- QR Grid for active location, grouped by category -->
+    <template v-if="!loadingSchedules">
+      <div v-for="cat in SAFETY_LOG_CATEGORIES" :key="cat.value" class="mb-6">
+        <div class="d-flex align-center gap-2 mb-3">
+          <v-icon :color="cat.color" size="20">{{ cat.icon }}</v-icon>
+          <span class="text-subtitle-1 font-weight-bold">{{ cat.label }}</span>
+        </div>
+        <v-row>
+          <v-col
+            v-for="cfg in typesByCategory(cat.value)"
+            :key="`${activeTab}-${cfg.key}`"
+            cols="12"
+            sm="6"
+            md="4"
+            lg="3"
+          >
         <v-card
           variant="outlined"
           rounded="lg"
@@ -191,8 +197,10 @@
             </v-chip>
           </div>
         </v-card>
-      </v-col>
-    </v-row>
+          </v-col>
+        </v-row>
+      </div>
+    </template>
 
     <!-- Placement Tips -->
     <v-card variant="outlined" rounded="lg" class="mt-6">
@@ -206,8 +214,8 @@
           <li>Print on <strong>laminated/weather-resistant</strong> paper for wet areas</li>
           <li>Set a <strong>cadence</strong> (monthly, quarterly, bi-annual, annual) to receive automatic overdue reminders</li>
           <li>Notifications go to <strong>managers, supervisors, HR, and admins</strong> via in-app + Slack</li>
-          <li>Place <strong>Sharps Injury</strong> near sharps stations, <strong>Radiation Dosimetry</strong> by X-ray suites</li>
-          <li>Post <strong>Emergency Contacts</strong> at entrances and break rooms</li>
+          <li>Place <strong>Injury, Incident, Bite</strong> near treatment areas, sharps stations, and kennels</li>
+          <li>Post <strong>Safety Inspection</strong> and <strong>Equipment Maintenance</strong> QR codes in utility areas</li>
         </ul>
       </v-card-text>
     </v-card>
@@ -220,6 +228,7 @@ import QrcodeVue from 'qrcode.vue'
 import {
   SAFETY_LOG_TYPE_CONFIGS,
   SAFETY_LOCATIONS,
+  SAFETY_LOG_CATEGORIES,
   type SafetyLogType,
   type SafetyLogLocation,
   safetyKeyToSlug,
@@ -242,6 +251,10 @@ const baseUrl = computed(() => runtimeConfig.public.appUrl || 'https://employee-
 const activeTab = ref<SafetyLogLocation>('venice')
 
 const printableTypes = computed(() => allTypes.value)
+
+function typesByCategory(category: string) {
+  return allTypes.value.filter(t => t.category === category)
+}
 
 // ── Cadence options ────────────────────────────────────
 const CADENCE_OPTIONS = [
@@ -368,7 +381,7 @@ async function saveSchedules() {
 
 // ── QR URL helpers ─────────────────────────────────────
 function getQrUrl(logType: SafetyLogType): string {
-  const slug = typeof logType === 'string' ? logType.replace(/_/g, '-') : safetyKeyToSlug(logType)
+  const slug = safetyKeyToSlug(logType)
   return `${baseUrl.value}/med-ops/safety/${slug}?location=${activeTab.value}`
 }
 

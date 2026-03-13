@@ -1,7 +1,7 @@
 /**
  * Safety Log Zod Validation Schemas
  *
- * Server-side and client-side validation for all 12 safety log types.
+ * Server-side and client-side validation for all safety log types.
  * Each log type has a specific form-data schema; the base schema wraps
  * shared fields (location, log_type, submitted_by).
  */
@@ -12,18 +12,12 @@ import { z } from 'zod'
 
 const SafetyLogTypeEnum = z.enum([
   'training_attendance',
-  'injury_illness',
-  'incident_near_miss',
-  'hazard_assessment',
+  'injury_incident_bite',
   'safety_inspection',
   'fire_emergency_drill',
-  'sharps_injury',
-  'zoonotic_bite_report',
   'radiation_dosimetry',
   'equipment_maintenance',
   'safety_meeting',
-  'emergency_contacts',
-  'hazcom_chemical',
   'ppe_assessment',
   'employee_acknowledgment',
 ])
@@ -37,38 +31,36 @@ const SafetyStatusEnum = z.enum(['draft', 'submitted', 'reviewed', 'flagged'])
 const TrainingAttendanceSchema = z.object({
   employee_name: z.string().min(1, 'Employee name is required').transform(s => s.trim()),
   topic: z.string().min(1, 'Training topic is required'),
+  training_trigger: z.string().optional().default(''),
   training_date: z.string().min(1, 'Training date is required'),
   trainer: z.string().optional().default(''),
+  duration_minutes: z.number().optional().nullable(),
   notes: z.string().optional().default(''),
 })
 
-const InjuryIllnessSchema = z.object({
+const InjuryIncidentBiteSchema = z.object({
+  incident_category: z.string().min(1, 'Incident category is required'),
   incident_date: z.string().min(1, 'Incident date is required'),
-  incident_location: z.string().min(1, 'Incident location is required').transform(s => s.trim()),
+  incident_location: z.string().optional().default(''),
   description: z.string().min(1, 'Description is required').transform(s => s.trim()),
-  treatment: z.string().optional().default(''),
-  root_cause_analysis: z.string().optional().default(''),
-})
-
-const IncidentNearMissSchema = z.object({
-  description: z.string().min(1, 'Description is required').transform(s => s.trim()),
-  potential_cause: z.string().optional().default(''),
+  body_part_affected: z.string().optional().default(''),
   animal_involved: z.boolean().default(false),
+  animal_id: z.string().optional().default(''),
+  exposure_type: z.string().optional().default(''),
+  device_type: z.string().optional().default(''),
+  safety_mechanism_used: z.boolean().default(false),
+  post_exposure_protocol_followed: z.boolean().default(false),
+  treatment: z.string().optional().default(''),
+  potential_cause: z.string().optional().default(''),
   corrective_action: z.string().optional().default(''),
-})
-
-const HazardAssessmentSchema = z.object({
-  assessor: z.string().min(1, 'Assessor name is required').transform(s => s.trim()),
-  area: z.string().min(1, 'Area is required').transform(s => s.trim()),
-  hazard_type: z.string().optional().default(''),
-  risk_level: z.string().optional().default(''),
-  mitigation_plan: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
 })
 
 const SafetyInspectionSchema = z.object({
   inspector: z.string().min(1, 'Inspector name is required').transform(s => s.trim()),
   checklist_items: z.array(z.string()).default([]),
   findings: z.string().optional().default(''),
+  photos: z.array(z.string()).optional().default([]),
 })
 
 const FireEmergencyDrillSchema = z.object({
@@ -76,21 +68,6 @@ const FireEmergencyDrillSchema = z.object({
   evacuation_time: z.number().optional().nullable(),
   animal_safety_protocol_followed: z.boolean().default(false),
   participants_count: z.number().optional().nullable(),
-  notes: z.string().optional().default(''),
-})
-
-const SharpsInjurySchema = z.object({
-  device_type: z.string().min(1, 'Device type is required'),
-  procedure: z.string().optional().default(''),
-  safety_mechanism_used: z.boolean().default(false),
-  explanation: z.string().optional().default(''),
-})
-
-const ZoonoticBiteReportSchema = z.object({
-  animal_id: z.string().min(1, 'Animal ID is required').transform(s => s.trim()),
-  exposure_type: z.string().min(1, 'Exposure type is required'),
-  body_part_affected: z.string().optional().default(''),
-  post_exposure_protocol_followed: z.boolean().default(false),
   notes: z.string().optional().default(''),
 })
 
@@ -117,29 +94,6 @@ const SafetyMeetingSchema = z.object({
   action_items: z.string().optional().default(''),
 })
 
-const EmergencyContactsSchema = z.object({
-  contact_type: z.string().min(1, 'Contact type is required'),
-  name: z.string().min(1, 'Contact name is required').transform(s => s.trim()),
-  phone: z.string().min(1, 'Phone number is required').transform(s => s.trim()),
-  address: z.string().optional().default(''),
-  shutoff_type: z.string().optional().default(''),
-  shutoff_location: z.string().optional().default(''),
-  assembly_point: z.string().optional().default(''),
-  notes: z.string().optional().default(''),
-})
-
-const HazcomChemicalSchema = z.object({
-  chemical_name: z.string().min(1, 'Chemical name is required').transform(s => s.trim()),
-  manufacturer: z.string().optional().default(''),
-  sds_available: z.boolean().default(false),
-  properly_labeled: z.boolean().default(false),
-  storage_location: z.string().optional().default(''),
-  hazard_category: z.string().optional().default(''),
-  ppe_required: z.array(z.string()).default([]),
-  spill_procedure: z.string().optional().default(''),
-  notes: z.string().optional().default(''),
-})
-
 const PpeAssessmentSchema = z.object({
   assessment_type: z.string().min(1, 'Assessment type is required'),
   area_assessed: z.string().min(1, 'Area is required').transform(s => s.trim()),
@@ -162,18 +116,12 @@ const EmployeeAcknowledgmentSchema = z.object({
 // Map of log_type → form_data schema
 const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   training_attendance: TrainingAttendanceSchema,
-  injury_illness: InjuryIllnessSchema,
-  incident_near_miss: IncidentNearMissSchema,
-  hazard_assessment: HazardAssessmentSchema,
+  injury_incident_bite: InjuryIncidentBiteSchema,
   safety_inspection: SafetyInspectionSchema,
   fire_emergency_drill: FireEmergencyDrillSchema,
-  sharps_injury: SharpsInjurySchema,
-  zoonotic_bite_report: ZoonoticBiteReportSchema,
   radiation_dosimetry: RadiationDosimetrySchema,
   equipment_maintenance: EquipmentMaintenanceSchema,
   safety_meeting: SafetyMeetingSchema,
-  emergency_contacts: EmergencyContactsSchema,
-  hazcom_chemical: HazcomChemicalSchema,
   ppe_assessment: PpeAssessmentSchema,
   employee_acknowledgment: EmployeeAcknowledgmentSchema,
 }

@@ -13,6 +13,7 @@ import {
   SAFETY_LOG_TYPE_CONFIGS,
   type SafetyLogTypeConfig,
   type SafetyFormField,
+  type SafetyLogCategory,
 } from '~/types/safety-log.types'
 
 // Module-level cache so multiple components share the same data
@@ -33,6 +34,7 @@ export function useCustomSafetyLogTypes() {
         label: row.label,
         icon: row.icon || 'mdi-clipboard-text',
         color: row.color || 'grey',
+        category: (row.category || 'individual_reporting') as SafetyLogCategory,
         description: row.description || '',
         fields: (row.fields || []) as SafetyFormField[],
         hasOshaToggle: row.has_osha_toggle || false,

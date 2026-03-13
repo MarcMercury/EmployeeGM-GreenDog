@@ -394,7 +394,7 @@ function openNewEntry() {
   showNewEntryDialog.value = true
 }
 
-async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean }) {
+async function handleSubmit(payload: { location: SafetyLogLocation; form_data: Record<string, unknown>; osha_recordable: boolean; employee_ids?: { id: string; role: string }[] }) {
   submitting.value = true
   console.log('[Entries Submit Handler] Processing submission:', {
     logType: typeKey.value,
@@ -412,6 +412,7 @@ async function handleSubmit(payload: { location: SafetyLogLocation; form_data: R
         form_data: payload.form_data,
         osha_recordable: payload.osha_recordable,
         status: 'submitted',
+        ...(payload.employee_ids?.length ? { employee_ids: payload.employee_ids } : {}),
       },
     })
 

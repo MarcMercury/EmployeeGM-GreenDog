@@ -110,6 +110,38 @@ export default defineEventHandler(async (event) => {
       })
     }
 
+    // ── Link employees to this safety log ──────────────────
+    // Accepts employee_ids (array of {id, role}) or a flat array of UUIDs (defaults to 'subject')
+    step = 'link-employees'
+    if (data && body.employee_ids && Array.isArray(body.employee_ids) && body.employee_ids.length > 0) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      const validRoles = ['subject', 'attendee', 'reporter', 'reviewer', 'witness']
+
+      const links = body.employee_ids
+        .map((entry: any) => {
+          if (typeof entry === 'string' && uuidRegex.test(entry)) {
+            return { safety_log_id: data.id, employee_id: entry, role: 'subject' }
+          }
+          if (entry && typeof entry === 'object' && uuidRegex.test(entry.id)) {
+            const role = validRoles.includes(entry.role) ? entry.role : 'subject'
+            return { safety_log_id: data.id, employee_id: entry.id, role }
+          }
+          return null
+        })
+        .filter(Boolean)
+
+      if (links.length > 0) {
+        const { error: linkError } = await supabase
+          .from('safety_log_employees')
+          .insert(links)
+
+        if (linkError) {
+          // Non-fatal — log but don't fail the whole request
+          console.warn('[safety-log POST] Employee link insert warning:', linkError.message)
+        }
+      }
+    }
+
     return { data }
   } catch (err: any) {
     // If it's already a createError, re-throw
