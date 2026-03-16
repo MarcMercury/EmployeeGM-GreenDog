@@ -269,19 +269,14 @@ const quickStats = computed(() => {
 
   return [
     {
+      label: 'Applications This Month',
+      value: thisMonthEvents.filter(e => e.type === 'applied').length,
+      color: '#78909C'
+    },
+    {
       label: 'Interviews This Month',
       value: thisMonthEvents.filter(e => e.type === 'interview_scheduled' || e.type === 'interview_completed').length,
       color: '#FB8C00'
-    },
-    {
-      label: 'Offers This Month',
-      value: thisMonthEvents.filter(e => e.type === 'offer').length,
-      color: '#7E57C2'
-    },
-    {
-      label: 'Hires This Month',
-      value: thisMonthEvents.filter(e => e.type === 'hired').length,
-      color: '#1E88E5'
     },
     {
       label: 'Starting This Month',
@@ -297,10 +292,10 @@ async function fetchCalendarData() {
   try {
     const events: CalendarEvent[] = []
 
-    // 1) Fetch candidates with applied_at, status dates
+    // 1) Fetch candidates with applied_at, status
     const { data: candidates, error: candError } = await client
       .from('candidates')
-      .select('id, first_name, last_name, status, applied_at, hired_at, start_date, offer_date')
+      .select('id, first_name, last_name, status, applied_at')
       .order('applied_at', { ascending: false })
 
     if (candError) throw candError
@@ -318,45 +313,6 @@ async function fetchCalendarData() {
           icon: '📩',
           color: '#78909C',
           chipColor: 'grey',
-        })
-      }
-
-      if (c.offer_date) {
-        events.push({
-          id: `offer-${c.id}`,
-          date: c.offer_date.substring(0, 10),
-          type: 'offer',
-          candidateName: name,
-          label: 'Offer',
-          icon: '🤝',
-          color: '#7E57C2',
-          chipColor: 'purple',
-        })
-      }
-
-      if (c.hired_at) {
-        events.push({
-          id: `hired-${c.id}`,
-          date: c.hired_at.substring(0, 10),
-          type: 'hired',
-          candidateName: name,
-          label: 'Hired',
-          icon: '✅',
-          color: '#1E88E5',
-          chipColor: 'primary',
-        })
-      }
-
-      if (c.start_date) {
-        events.push({
-          id: `start-${c.id}`,
-          date: c.start_date.substring(0, 10),
-          type: 'start_date',
-          candidateName: name,
-          label: 'Start Date',
-          icon: '🚀',
-          color: '#00897B',
-          chipColor: 'teal',
         })
       }
     }

@@ -427,6 +427,19 @@ export function useListParser() {
     pendingMappings.value = []
   }
 
+  /** Skip mapping — apply suggested defaults and mark file as ready */
+  function skipMappings() {
+    if (currentMappingFile.value) {
+      pendingMappings.value.forEach(mapping => {
+        currentMappingFile.value!.mappedHeaders[mapping.original] = mapping.suggested
+      })
+      currentMappingFile.value.isMapping = false
+    }
+    showMappingDialog.value = false
+    currentMappingFile.value = null
+    pendingMappings.value = []
+  }
+
   /** Remove a file from the list */
   function removeFile(fileId: string, zone: 'target' | 'suppression') {
     const targetList = zone === 'target' ? targetFiles : suppressionFiles
@@ -485,6 +498,7 @@ export function useListParser() {
     handleFileDrop,
     handleFileInput,
     confirmMappings,
+    skipMappings,
     removeFile,
     handleDragEnter,
     handleDragLeave,

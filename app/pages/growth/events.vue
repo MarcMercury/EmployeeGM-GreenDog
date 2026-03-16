@@ -981,8 +981,7 @@ const fetchData = async () => {
       marketingEventsStore.refresh(),
       client.from('marketing_leads').select(`
         *,
-        source_event:source_event_id(id, name),
-        prize_item:prize_inventory_item_id(id, name)
+        source_event:source_event_id(id, name)
       `).order('created_at', { ascending: false }),
       client.from('marketing_events').select('id, name').order('name')
     ])

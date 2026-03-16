@@ -55,17 +55,19 @@ export function useCRMImport() {
     importError.value = null
 
     try {
-      const leads = processedData.map(row => ({
-        lead_name: [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || 'Unknown',
-        first_name: row.first_name || null,
-        last_name: row.last_name || null,
-        email: row.email || null,
-        phone: row.phone || null,
-        company: row.company || null,
-        notes: row.notes || null,
-        source: sourceTag.value.trim(),
-        status: 'new',
-      }))
+      const leads = processedData
+        .filter(row => row.email || row.phone) // Skip records with no identifier
+        .map(row => ({
+          lead_name: [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || row.phone || 'Unknown',
+          first_name: row.first_name || null,
+          last_name: row.last_name || null,
+          email: row.email || null,
+          phone: row.phone || null,
+          company: row.company || null,
+          notes: row.notes || null,
+          source: sourceTag.value.trim(),
+          status: 'new',
+        }))
 
       const batchSize = 100
       let imported = 0
@@ -75,7 +77,7 @@ export function useCRMImport() {
 
         const { error } = await supabase
           .from('marketing_leads')
-          .upsert(batch, { onConflict: 'email', ignoreDuplicates: true })
+          .insert(batch)
 
         if (error) {
           throw new Error(`Import failed at batch ${i / batchSize + 1}: ${error.message}`)

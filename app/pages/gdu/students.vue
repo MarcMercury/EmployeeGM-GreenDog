@@ -109,7 +109,7 @@ async function fetchEmployees() {
   const { data } = await supabase
     .from('employees')
     .select('id, first_name, last_name')
-    .eq('is_active', true)
+    .eq('employment_status', 'active')
     .order('first_name')
   employees.value = data || []
 }
@@ -425,7 +425,6 @@ async function fetchJobPositions() {
   const { data } = await supabase
     .from('job_positions')
     .select('id, title')
-    .eq('is_active', true)
     .order('title')
   jobPositions.value = data || []
 }

@@ -929,11 +929,15 @@ async function addNote() {
   if (!partner.value || !newNote.value.trim()) return
   saving.value = true
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('auth_user_id', user.value?.id)
-      .single()
+    let profile: { first_name: string | null; last_name: string | null } | null = null
+    if (user.value?.id) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('auth_user_id', user.value.id)
+        .single()
+      profile = data
+    }
 
     const initials = profile
       ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')
@@ -981,11 +985,15 @@ function openEditNote(note: any) {
 async function saveEditedNote(note: any) {
   if (!editNoteContent.value.trim()) return
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('auth_user_id', user.value?.id)
-      .single()
+    let profile: { first_name: string | null; last_name: string | null } | null = null
+    if (user.value?.id) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('auth_user_id', user.value.id)
+        .single()
+      profile = data
+    }
 
     const initials = profile
       ? (profile.first_name?.charAt(0) || '') + (profile.last_name?.charAt(0) || '')

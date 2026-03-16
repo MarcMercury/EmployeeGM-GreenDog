@@ -35,6 +35,7 @@ const {
   handleFileDrop,
   handleFileInput,
   confirmMappings,
+  skipMappings,
   removeFile,
   handleDragEnter,
   handleDragLeave,
@@ -101,6 +102,8 @@ function handleConfirmImport() {
 function handleClearAll() {
   clearAllFiles()
   processedData.value = []
+  removedRecords.value = []
+  processingStats.value = { totalRows: 0, duplicatesRemoved: 0, finalCount: 0, multiEmailSplit: 0 }
 }
 </script>
 
@@ -576,7 +579,7 @@ function handleClearAll() {
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showMappingDialog = false">Skip</v-btn>
+          <v-btn variant="text" @click="skipMappings">Skip</v-btn>
           <v-btn color="primary" @click="confirmMappings">Confirm</v-btn>
         </v-card-actions>
       </v-card>

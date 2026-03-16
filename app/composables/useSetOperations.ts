@@ -445,7 +445,7 @@ export function useSetOperations() {
         headers
           .map(h => {
             const value = row[h] || ''
-            if (String(value).includes(',') || String(value).includes('"')) {
+            if (String(value).includes(',') || String(value).includes('"') || String(value).includes('\n') || String(value).includes('\r')) {
               return `"${String(value).replace(/"/g, '""')}"`
             }
             return value

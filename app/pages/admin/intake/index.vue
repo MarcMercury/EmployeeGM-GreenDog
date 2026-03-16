@@ -563,7 +563,6 @@ async function loadPositions() {
   const { data } = await supabase
     .from('job_positions')
     .select('id, title')
-    .eq('is_active', true)
     .order('title')
   positions.value = data || []
 }
