@@ -17,6 +17,7 @@ export type SafetyLogType =
   | 'safety_meeting'
   | 'ppe_assessment'
   | 'employee_acknowledgment'
+  | 'kennel_inspection'
   | string // custom types
 
 export type SafetyLogLocation = 'venice' | 'sherman_oaks' | 'van_nuys'
@@ -281,6 +282,25 @@ export const SAFETY_LOG_TYPE_CONFIGS: SafetyLogTypeConfig[] = [
       { key: 'condition', label: 'Overall Condition', type: 'select', cols: 6, options: ['Good — No Issues', 'Fair — Minor Wear', 'Replace Needed', 'Out of Stock'] },
       { key: 'deficiencies_found', label: 'Deficiencies Found', type: 'textarea', cols: 12 },
       { key: 'corrective_action', label: 'Corrective Action', type: 'textarea', cols: 12 },
+      { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
+    ],
+  },
+  {
+    key: 'kennel_inspection',
+    label: 'Kennel Inspection',
+    icon: 'mdi-dog-side',
+    color: 'brown',
+    category: 'inspections',
+    description: 'Inspect kennel areas for cleanliness, safety, ventilation, and animal welfare compliance.',
+    complianceStandards: ['AAHA Facility Standards', 'AVMA Animal Welfare Guidelines'],
+    fields: [
+      { key: 'inspector', label: 'Inspector Name', type: 'text', required: true, cols: 6 },
+      { key: 'kennel_area', label: 'Kennel Area', type: 'select', required: true, cols: 6, options: ['Main Kennel', 'Isolation Kennel', 'Recovery Kennel', 'Outdoor Run', 'Boarding Area', 'Other'] },
+      { key: 'checklist_items', label: 'Checklist Items', type: 'multiselect', cols: 12, options: ['Cleanliness', 'Ventilation', 'Temperature Control', 'Lighting', 'Drainage', 'Secure Latches', 'No Sharp Edges', 'Bedding Condition', 'Water Access', 'Food Storage', 'Odor Control', 'Pest Control', 'Noise Levels', 'Sanitation Supplies'] },
+      { key: 'pass', label: 'Inspection Passed?', type: 'boolean', cols: 6 },
+      { key: 'findings', label: 'Findings', type: 'textarea', cols: 12 },
+      { key: 'corrective_action', label: 'Corrective Action', type: 'textarea', cols: 12 },
+      { key: 'photos', label: 'Photo Upload', type: 'file', cols: 12, hint: 'Upload inspection photos' },
       { key: 'notes', label: 'Notes', type: 'textarea', cols: 12 },
     ],
   },

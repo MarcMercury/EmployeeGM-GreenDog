@@ -20,6 +20,7 @@ const SafetyLogTypeEnum = z.enum([
   'safety_meeting',
   'ppe_assessment',
   'employee_acknowledgment',
+  'kennel_inspection',
 ])
 
 const SafetyLocationEnum = z.enum(['venice', 'sherman_oaks', 'van_nuys'])
@@ -113,6 +114,17 @@ const EmployeeAcknowledgmentSchema = z.object({
   notes: z.string().optional().default(''),
 })
 
+const KennelInspectionSchema = z.object({
+  inspector: z.string().min(1, 'Inspector name is required').transform(s => s.trim()),
+  kennel_area: z.string().min(1, 'Kennel area is required'),
+  checklist_items: z.array(z.string()).default([]),
+  pass: z.boolean().default(false),
+  findings: z.string().optional().default(''),
+  corrective_action: z.string().optional().default(''),
+  photos: z.array(z.string()).optional().default([]),
+  notes: z.string().optional().default(''),
+})
+
 // Map of log_type → form_data schema
 const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   training_attendance: TrainingAttendanceSchema,
@@ -124,6 +136,7 @@ const FORM_DATA_SCHEMAS: Record<string, z.ZodType> = {
   safety_meeting: SafetyMeetingSchema,
   ppe_assessment: PpeAssessmentSchema,
   employee_acknowledgment: EmployeeAcknowledgmentSchema,
+  kennel_inspection: KennelInspectionSchema,
 }
 
 /**
