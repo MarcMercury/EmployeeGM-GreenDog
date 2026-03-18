@@ -11,7 +11,10 @@
 
 import { serverSupabaseServiceRole } from '#supabase/server'
 
-export default defineEventHandler(async (event) => {\n  verifyCronAuth(event)\n\n  try {
+export default defineEventHandler(async (event) => {
+  verifyCronAuth(event)
+
+  try {
     const supabase = await serverSupabaseServiceRole(event)
 
     // 1. Refresh error trends from last 24 hours
