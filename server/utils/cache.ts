@@ -15,6 +15,7 @@ interface CacheEntry<T> {
 // Simple in-memory cache (per-server instance)
 // For distributed caching, use Redis or Vercel KV
 const cache = new Map<string, CacheEntry<any>>()
+const MAX_CACHE_SIZE = 500
 
 // Default TTL values (in seconds)
 export const CACHE_TTL = {
@@ -45,6 +46,19 @@ export async function getCached<T>(
   // Fetch fresh data
   logger.debug('[Cache] Miss', { key })
   const data = await fetcher()
+
+  // Evict oldest entries if at capacity
+  if (cache.size >= MAX_CACHE_SIZE) {
+    let oldestKey: string | null = null
+    let oldestTime = Infinity
+    for (const [k, entry] of cache.entries()) {
+      if (entry.createdAt < oldestTime) {
+        oldestTime = entry.createdAt
+        oldestKey = k
+      }
+    }
+    if (oldestKey) cache.delete(oldestKey)
+  }
 
   // Store in cache
   cache.set(key, {
@@ -209,5 +223,5 @@ if (typeof setInterval !== 'undefined') {
     if (expired > 0) {
       logger.debug('[Cache] Cleanup', { expiredEntries: expired, remainingEntries: cache.size })
     }
-  }, 5 * 60 * 1000)
+  }, 2 * 60 * 1000)
 }

@@ -7,20 +7,7 @@
 import { eventScraperAggregator } from '../../utils/event-scrapers'
 import { EventInsertionService } from '../../utils/event-insertion.service'
 
-export default defineEventHandler(async (event) => {
-  // Verify this is a legitimate cron request
-  const secret = useRuntimeConfig().cronSecret
-  const authHeader = getHeader(event, 'authorization')
-
-  if (!secret || authHeader !== `Bearer ${secret}`) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Unauthorized cron request',
-    })
-  }
-
-  try {
-    console.log('📅 Starting external event calendar scraper...')
+export default defineEventHandler(async (event) => {\n  verifyCronAuth(event)\n\n  try {\n    console.log('📅 Starting external event calendar scraper...')
 
     // Initialize Supabase client
     const supabase = serverSupabaseClient(event)

@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const status = query.status as string | undefined
   const linkType = query.linkType as string | undefined
-  const limit = parseInt(query.limit as string) || 50
+  const limit = Math.min(parseInt(query.limit as string) || 50, 100)
   const offset = parseInt(query.offset as string) || 0
 
   const adminClient = createAdminClient()

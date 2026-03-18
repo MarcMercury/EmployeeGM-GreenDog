@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
   // Pagination parameters
   const query = getQuery(event)
   const page = parseInt(query.page as string) || 1
-  const perPageProfiles = parseInt(query.perPage as string) || 100
+  const perPageProfiles = Math.min(parseInt(query.perPage as string) || 100, 200)
   const from = (page - 1) * perPageProfiles
   const to = from + perPageProfiles - 1
 

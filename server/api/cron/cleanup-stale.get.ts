@@ -18,26 +18,7 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 export default defineEventHandler(async (event) => {
   const startTime = Date.now()
   
-  // Verify cron secret for security
-  const authHeader = getHeader(event, 'authorization')
-  const config = useRuntimeConfig()
-  const cronSecret = config.cronSecret
-  
-  if (!cronSecret) {
-    logger.error('[CleanupCron] CRON_SECRET not configured - rejecting request')
-    throw createError({
-      statusCode: 500,
-      message: 'Server configuration error'
-    })
-  }
-  
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    logger.warn('[CleanupCron] Unauthorized cron attempt')
-    throw createError({
-      statusCode: 401,
-      message: 'Unauthorized'
-    })
-  }
+  verifyCronAuth(event)
 
   logger.cron('cleanup-stale', 'started', { timestamp: new Date().toISOString() })
 

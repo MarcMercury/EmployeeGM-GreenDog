@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const employeeId = query.employeeId as string | undefined
-  const limit = parseInt(query.limit as string) || 50
+  const limit = Math.min(parseInt(query.limit as string) || 50, 100)
 
   // Get user's profile and check admin status
   const { data: profile } = await client
@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Profile not found' })
   }
 
-  const isAdmin = ['admin', 'super_admin', 'hr_admin'].includes(profile.role)
+  const isAdmin = hasRole(profile.role, MARKETPLACE_ADMIN_ROLES)
 
   let targetEmployeeId = employeeId
 

@@ -41,3 +41,7 @@ public/*.xlsx
 public/Appointments/
 scripts/archive/*.csv
 scripts/archive/*.json
+
+# Data directory — business data, appointment exports, confidential files
+data/
+!data/confidential/.gitignore

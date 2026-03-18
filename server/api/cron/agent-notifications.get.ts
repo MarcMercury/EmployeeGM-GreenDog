@@ -9,18 +9,7 @@
  */
 
 export default defineEventHandler(async (event) => {
-  // Verify cron secret
-  const authHeader = getHeader(event, 'authorization')
-  const config = useRuntimeConfig()
-  const cronSecret = config.cronSecret
-
-  if (!cronSecret) {
-    throw createError({ statusCode: 500, message: 'CRON_SECRET not configured' })
-  }
-
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  verifyCronAuth(event)
 
   logger.cron('agent-notifications', 'started', { timestamp: new Date().toISOString() })
 

@@ -10,23 +10,8 @@ import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  // Verify this is a cron request
-  const cronSecret = config.cronSecret
-  const authHeader = getHeader(event, 'authorization')
   
-  if (!cronSecret) {
-    throw createError({
-      statusCode: 500,
-      message: 'CRON_SECRET not configured'
-    })
-  }
-  
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    throw createError({
-      statusCode: 401,
-      message: 'Unauthorized'
-    })
-  }
+  verifyCronAuth(event)
 
   const supabaseUrl = config.public.supabaseUrl
   const supabaseServiceKey = config.supabaseServiceRoleKey

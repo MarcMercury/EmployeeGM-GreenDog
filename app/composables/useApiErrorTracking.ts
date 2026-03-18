@@ -123,12 +123,15 @@ function setupErrorTracking() {
   }
 
   // Report errors on page unload
-  if (process.client) {
-    globalThis.addEventListener('beforeunload', () => {
+  if (process.client && !globalThis._apiErrorTracking_unloadRegistered) {
+    globalThis._apiErrorTracking_unloadRegistered = true
+
+    const onBeforeUnload = () => {
       if (trackedErrors.value.length > 0) {
         reportErrorsToServer(trackedErrors.value)
       }
-    })
+    }
+    globalThis.addEventListener('beforeunload', onBeforeUnload)
 
     // Also report periodically (every 5 minutes)
     setInterval(() => {

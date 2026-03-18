@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Profile not found' })
   }
 
-  const isAdmin = ['admin', 'super_admin', 'hr_admin'].includes(profile.role)
+  const isAdmin = hasRole(profile.role, MARKETPLACE_ADMIN_ROLES)
 
   let queryBuilder = client
     .from('marketplace_redemptions')

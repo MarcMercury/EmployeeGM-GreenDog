@@ -11,19 +11,7 @@
 
 import { serverSupabaseServiceRole } from '#supabase/server'
 
-export default defineEventHandler(async (event) => {
-  const cronSecret = useRuntimeConfig().cronSecret
-  const authHeader = getHeader(event, 'authorization')
-  const isCronAuth = cronSecret && authHeader === `Bearer ${cronSecret}`
-
-  // Also allow x-cron-secret header for backward compatibility
-  const isCronSecretHeader = cronSecret && getHeader(event, 'x-cron-secret') === cronSecret
-
-  if (!isCronAuth && !isCronSecretHeader) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized: valid cron secret required' })
-  }
-
-  try {
+export default defineEventHandler(async (event) => {\n  verifyCronAuth(event)\n\n  try {
     const supabase = await serverSupabaseServiceRole(event)
 
     // 1. Refresh error trends from last 24 hours

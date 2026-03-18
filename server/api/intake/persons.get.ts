@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const stage = query.stage as string | undefined
   const search = query.search as string | undefined
-  const limit = parseInt(query.limit as string) || 50
+  const limit = Math.min(parseInt(query.limit as string) || 50, 100)
   const offset = parseInt(query.offset as string) || 0
   const includeInactive = query.includeInactive === 'true'
 

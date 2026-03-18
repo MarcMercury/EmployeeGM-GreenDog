@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const category = query.category as string | undefined
   const includeCompleted = query.includeCompleted === 'true'
   const page = parseInt(query.page as string) || 1
-  const perPage = parseInt(query.perPage as string) || 50
+  const perPage = Math.min(parseInt(query.perPage as string) || 50, 100)
   const from = (page - 1) * perPage
   const to = from + perPage - 1
 

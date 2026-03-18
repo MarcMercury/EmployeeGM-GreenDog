@@ -35,19 +35,7 @@ export default defineEventHandler(async (event) => {
   const startTime = Date.now()
   const config = useRuntimeConfig()
 
-  // ── Auth: same pattern as every other Vercel cron ──
-  const authHeader = getHeader(event, 'authorization')
-  const cronSecret = config.cronSecret
-
-  if (!cronSecret) {
-    logger.error('[SlackSyncCron] CRON_SECRET not configured', null, 'SlackSyncCron')
-    throw createError({ statusCode: 500, message: 'Server configuration error' })
-  }
-
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    logger.warn('[SlackSyncCron] Unauthorized cron attempt')
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  verifyCronAuth(event)
 
   const SLACK_BOT_TOKEN = config.slackBotToken
   if (!SLACK_BOT_TOKEN) {

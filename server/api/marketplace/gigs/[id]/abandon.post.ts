@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     .eq('profile_id', profile.id)
     .single()
 
-  const isAdmin = ['admin', 'super_admin', 'hr_admin'].includes(profile.role)
+  const isAdmin = hasRole(profile.role, MARKETPLACE_ADMIN_ROLES)
 
   // Get gig
   const { data: gig, error: gigError } = await client

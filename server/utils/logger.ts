@@ -17,7 +17,12 @@ function getMinLevel(): number {
   return process.env.NODE_ENV === 'development' ? LOG_LEVEL_ORDER.debug : LOG_LEVEL_ORDER.info
 }
 
-const SENSITIVE_KEYS = new Set(['email', 'password', 'token', 'cookie', 'secret', 'authorization', 'access_token', 'refresh_token'])
+const SENSITIVE_KEYS = new Set([
+  'email', 'password', 'token', 'cookie', 'secret',
+  'authorization', 'access_token', 'refresh_token',
+  'api_key', 'apikey', 'bearer', 'phone', 'address',
+  'salary', 'ssn', 'dob', 'date_of_birth',
+])
 
 function redactValue(key: string, value: unknown): unknown {
   if (typeof key === 'string' && SENSITIVE_KEYS.has(key.toLowerCase())) {

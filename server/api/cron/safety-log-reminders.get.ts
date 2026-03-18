@@ -37,12 +37,7 @@ const LOCATION_LABELS: Record<string, string> = {
 }
 
 export default defineEventHandler(async (event) => {
-  // Auth
-  const authHeader = getHeader(event, 'authorization')
-  const config = useRuntimeConfig()
-  if (!config.cronSecret || authHeader !== `Bearer ${config.cronSecret}`) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
-  }
+  verifyCronAuth(event)
 
   const supabase = createAdminClient() as any
   const now = new Date()

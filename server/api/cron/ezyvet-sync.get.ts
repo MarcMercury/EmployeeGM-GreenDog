@@ -16,13 +16,7 @@ import { syncAllAnalytics } from '../../utils/ezyvet/sync-analytics'
 import type { EzyVetClinic } from '../../utils/ezyvet/types'
 
 export default defineEventHandler(async (event) => {
-  // Verify cron secret
-  const config = useRuntimeConfig()
-  const authHeader = getHeader(event, 'authorization')
-
-  if (!config.cronSecret || authHeader !== `Bearer ${config.cronSecret}`) {
-    throw createError({ statusCode: 401, message: 'Invalid or missing cron secret' })
-  }
+  verifyCronAuth(event)
 
   const supabase = await serverSupabaseServiceRole(event)
 

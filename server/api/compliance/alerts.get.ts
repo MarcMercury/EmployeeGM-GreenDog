@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   // Get query parameters
   const query = getQuery(event)
   const severity = query.severity as string | undefined
-  const limit = parseInt(query.limit as string) || 50
+  const limit = Math.min(parseInt(query.limit as string) || 50, 200)
   const offset = parseInt(query.offset as string) || 0
   
   // First, generate any new alerts
