@@ -7,7 +7,11 @@
 import { eventScraperAggregator } from '../../utils/event-scrapers'
 import { EventInsertionService } from '../../utils/event-insertion.service'
 
-export default defineEventHandler(async (event) => {\n  verifyCronAuth(event)\n\n  try {\n    console.log('📅 Starting external event calendar scraper...')
+export default defineEventHandler(async (event) => {
+  verifyCronAuth(event)
+
+  try {
+    console.log('Starting external event calendar scraper...')
 
     // Initialize Supabase client
     const supabase = serverSupabaseClient(event)
