@@ -70,11 +70,15 @@
               <div class="flex-grow-1">
                 <h4 class="text-subtitle-1 font-weight-bold mb-1">{{ result.title }}</h4>
                 <p class="text-body-2 text-grey mb-2 text-truncate-2">{{ result.excerpt }}</p>
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap align-center">
                   <v-chip size="x-small" variant="tonal" :color="getSourceColor(result.source)">
-                    {{ getSourceLabel(result.source) }}
+                    {{ getSourceLabel(result.source, result.category) }}
                   </v-chip>
                   <v-chip size="x-small" variant="outlined">{{ result.category }}</v-chip>
+                  <v-chip v-if="result.source === 'system_data'" size="x-small" variant="flat" color="primary" class="ml-auto">
+                    <v-icon start size="12">mdi-open-in-new</v-icon>
+                    View Record
+                  </v-chip>
                 </div>
               </div>
             </v-card-text>
@@ -1855,11 +1859,14 @@ function getSourceIcon(source: string): string {
   }
 }
 
-function getSourceLabel(source: string): string {
+function getSourceLabel(source: string, category?: string): string {
   switch (source) {
     case 'policy_document': return 'GDD Policy'
     case 'wiki_article': return 'Wiki Article'
-    case 'system_data': return 'System'
+    case 'system_data':
+      if (category === 'Facility Resources') return 'Facility Vendor'
+      if (category === 'Medical Partners') return 'Med Partner'
+      return 'System'
     default: return 'Document'
   }
 }
@@ -1954,9 +1961,31 @@ function clearResults() {
 }
 
 
-function openResult(result: any) {
+async function openResult(result: any) {
   if (result.source === 'policy_document' && result.url) {
     window.open(result.url, '_blank')
+  } else if (result.source === 'system_data' && result.category === 'Facility Resources') {
+    // Fetch the full facility resource record and open detail dialog
+    try {
+      if (!facilityResources.value.length) await loadFacilityResources()
+      const resource = facilityResources.value.find((r: any) => r.id === result.id)
+      if (resource) {
+        openResourceDetail(resource)
+      }
+    } catch (err) {
+      console.error('[Wiki] Failed to open facility resource:', err)
+    }
+  } else if (result.source === 'system_data' && result.category === 'Medical Partners') {
+    // Fetch the full medical partner record and open detail dialog
+    try {
+      if (!medPartners.value.length) await loadMedPartners()
+      const partner = medPartners.value.find((p: any) => p.id === result.id)
+      if (partner) {
+        openPartnerDetail(partner)
+      }
+    } catch (err) {
+      console.error('[Wiki] Failed to open medical partner:', err)
+    }
   } else if (result.content) {
     selectedArticle.value = result
     articleDialog.value = true
