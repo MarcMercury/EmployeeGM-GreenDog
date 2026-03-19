@@ -517,7 +517,7 @@ import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'marketing-admin']
+  middleware: ['auth']
 })
 
 const { isAdmin: appIsAdmin } = useAppData()

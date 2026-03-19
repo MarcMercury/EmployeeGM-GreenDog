@@ -62,7 +62,7 @@
             md="6" 
             lg="4"
           >
-            <CourseCard 
+            <AcademyCourseCard 
               :enrollment="enrollment"
               @continue="openCourse(enrollment)"
             />
@@ -84,7 +84,7 @@
             md="6" 
             lg="4"
           >
-            <CourseCard 
+            <AcademyCourseCard 
               :enrollment="enrollment"
               required
               @start="openCourse(enrollment)"
@@ -107,7 +107,7 @@
             md="6" 
             lg="4"
           >
-            <CourseCard 
+            <AcademyCourseCard 
               :enrollment="enrollment"
               completed
               @view-certificate="viewCertificate(enrollment)"

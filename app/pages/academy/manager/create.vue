@@ -1171,7 +1171,7 @@ const finishCourse = async () => {
     
     // Navigate back to academy
     setTimeout(() => {
-      navigateTo('/academy')
+      navigateTo('/academy/course-manager')
     }, 1500)
   } catch (err) {
     console.error('Error finishing course:', err)

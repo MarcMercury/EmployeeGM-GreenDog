@@ -413,7 +413,7 @@
           {{ leadEditMode ? 'Edit Lead' : 'Add Lead' }}
         </v-card-title>
         <v-card-text class="pt-6">
-          <v-form ref="leadForm" v-model="leadFormValid">
+          <v-form v-model="leadFormValid">
             <v-text-field
               v-model="leadFormData.lead_name"
               label="Name *"

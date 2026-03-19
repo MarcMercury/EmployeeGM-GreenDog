@@ -497,7 +497,7 @@
           <div v-if="isAdmin" class="d-flex flex-column gap-2">
             <v-btn 
               color="primary" 
-              :to="`/growth/events/${selectedEvent.id}`"
+              to="/growth/events"
               prepend-icon="mdi-arrow-right"
               block
             >
@@ -622,7 +622,7 @@ import type { ExternalLink, EventAttachment, MarketingEvent, CalendarNote } from
 
 definePageMeta({
   layout: 'default',
-  middleware: ['auth', 'marketing-admin']
+  middleware: ['auth']
 })
 
 // Get admin status

@@ -193,7 +193,7 @@ async function resolveAlert(alertId: string) {
     <!-- View All Link -->
     <div v-if="data?.total && data.total > maxItems" class="px-4 py-2 border-t border-slate-100 bg-slate-50">
       <NuxtLink 
-        to="/admin/compliance" 
+        to="/admin/system-health?tab=audit" 
         class="text-xs text-green-600 hover:text-green-700 font-medium"
       >
         View all {{ data.total }} alerts →
