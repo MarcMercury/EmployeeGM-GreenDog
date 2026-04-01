@@ -413,7 +413,13 @@ async function previewPayroll() {
   try {
     // Use payroll store data if available, otherwise fallback to simulated
     if (payrollStore.employees.length > 0) {
-      previewData.value = payrollStore.employees.map((emp) => ({
+      // Apply department filter
+      const filtered = exportConfig.departments.length > 0
+        ? payrollStore.employees.filter((emp) =>
+            exportConfig.departments.includes(emp.department_name || ''))
+        : payrollStore.employees
+
+      previewData.value = filtered.map((emp) => ({
         employee_id: emp.employee_id.substring(0, 8),
         name: emp.employee_name,
         department: emp.department_name || 'Unassigned',
@@ -457,8 +463,14 @@ async function exportPayroll() {
     let rows: (string | number)[][]
     
     if (payrollStore.employees.length > 0) {
+      // Apply department filter
+      const filtered = exportConfig.departments.length > 0
+        ? payrollStore.employees.filter((emp) =>
+            exportConfig.departments.includes(emp.department_name || ''))
+        : payrollStore.employees
+
       // Use real payroll data
-      rows = payrollStore.employees.map((emp) => [
+      rows = filtered.map((emp) => [
         emp.employee_id.substring(0, 8),
         emp.employee_name,
         '', // Email would need to be fetched separately

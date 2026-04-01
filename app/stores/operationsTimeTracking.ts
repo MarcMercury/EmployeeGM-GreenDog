@@ -116,6 +116,11 @@ export const useOperationsTimeTrackingStore = defineStore('operations-time-track
 
       try {
         this.error = null
+
+        // Prevent double clock-in: must be clocked out (or have no punches) to clock in
+        if (this.currentPunchStatus === 'in') {
+          throw new Error('Already clocked in. Please clock out before clocking in again.')
+        }
         // Server-side geofence check — prevents client bypass
         let geofenceResult: { geofence_id: string | null; within_geofence: boolean | null; violation_reason: string | null } = {
           geofence_id: null,
@@ -172,6 +177,11 @@ export const useOperationsTimeTrackingStore = defineStore('operations-time-track
 
       try {
         this.error = null
+
+        // Prevent double clock-out: must be clocked in to clock out
+        if (this.currentPunchStatus === 'out') {
+          throw new Error('Not currently clocked in. Please clock in first.')
+        }
         // Server-side geofence check — prevents client bypass
         let geofenceResult: { geofence_id: string | null; within_geofence: boolean | null; violation_reason: string | null } = {
           geofence_id: null,
@@ -306,62 +316,139 @@ export const useOperationsTimeTrackingStore = defineStore('operations-time-track
         await shiftsStore.fetchShifts(today, today)
       }
 
-      // Find matching shift for today - prefer one that overlaps with current time
-      let todayShift = shiftsStore.shifts.find(s =>
+      // Collect all published shifts for this employee today (supports multi-shift days)
+      const todayShifts = shiftsStore.shifts.filter(s =>
         s.employee_id === employeeId &&
         s.start_at.startsWith(today) &&
-        s.status === 'published' &&
-        new Date(s.start_at) <= now &&
-        new Date(s.end_at) >= now
+        s.status === 'published'
       )
-      
-      // Fallback: any published shift for today
-      if (!todayShift) {
-        todayShift = shiftsStore.shifts.find(s =>
-          s.employee_id === employeeId &&
-          s.start_at.startsWith(today) &&
-          s.status === 'published'
-        )
+
+      // Sort punches chronologically
+      const sortedPunches = [...this.todayPunches].sort(
+        (a, b) => new Date(a.punched_at).getTime() - new Date(b.punched_at).getTime()
+      )
+
+      // Build paired sessions from alternating in/out punches
+      const sessions: { clockIn: string; clockOut: string; totalHours: number }[] = []
+      for (let i = 0; i < sortedPunches.length; i++) {
+        if (sortedPunches[i].punch_type === 'in') {
+          // Find next out punch
+          const outPunch = sortedPunches.slice(i + 1).find(p => p.punch_type === 'out')
+          if (outPunch) {
+            const hours = (new Date(outPunch.punched_at).getTime() - new Date(sortedPunches[i].punched_at).getTime()) / (1000 * 60 * 60)
+            sessions.push({
+              clockIn: sortedPunches[i].punched_at,
+              clockOut: outPunch.punched_at,
+              totalHours: Math.round(hours * 100) / 100
+            })
+          }
+        }
       }
 
-      // Get first clock in and last clock out
-      const clockIn = this.todayPunches.find(p => p.punch_type === 'in')
-      const clockOut = [...this.todayPunches].reverse().find(p => p.punch_type === 'out')
-
-      if (!clockIn || !clockOut) return
-
-      const totalHours = (new Date(clockOut.punched_at).getTime() - new Date(clockIn.punched_at).getTime()) / (1000 * 60 * 60)
+      if (sessions.length === 0) return
 
       try {
-        // Check if entry already exists for today
-        const { data: existing } = await supabase
-          .from('time_entries')
-          .select('id')
-          .eq('employee_id', employeeId)
-          .gte('clock_in_at', `${today}T00:00:00`)
-          .limit(1)
+        if (todayShifts.length > 0) {
+          // Match sessions to shifts by time overlap; create one time_entry per shift
+          for (const shift of todayShifts) {
+            const shiftStart = new Date(shift.start_at).getTime()
+            const shiftEnd = new Date(shift.end_at).getTime()
 
-        if (existing && existing.length > 0) {
-          // Update existing
-          await supabase
-            .from('time_entries')
-            .update({
-              clock_out_at: clockOut.punched_at,
-              total_hours: Math.round(totalHours * 100) / 100,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existing[0].id)
+            // Find the best-matching session that overlaps this shift
+            const matchingSession = sessions.find(s => {
+              const sIn = new Date(s.clockIn).getTime()
+              const sOut = new Date(s.clockOut).getTime()
+              return sIn < shiftEnd && sOut > shiftStart
+            }) || sessions[0] // fallback to first session
+
+            const { data: existing } = await supabase
+              .from('time_entries')
+              .select('id')
+              .eq('employee_id', employeeId)
+              .eq('shift_id', shift.id)
+              .limit(1)
+
+            if (existing && existing.length > 0) {
+              await supabase
+                .from('time_entries')
+                .update({
+                  clock_out_at: matchingSession.clockOut,
+                  total_hours: matchingSession.totalHours,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', existing[0].id)
+            } else {
+              await supabase
+                .from('time_entries')
+                .insert({
+                  employee_id: employeeId,
+                  shift_id: shift.id,
+                  clock_in_at: matchingSession.clockIn,
+                  clock_out_at: matchingSession.clockOut,
+                  total_hours: matchingSession.totalHours
+                })
+            }
+          }
         } else {
-          // Create new
-          await supabase
+          // No shift assigned — still create a time_entry so payroll captures the hours.
+          // Use the overall first-in/last-out for the day.
+          const firstIn = sessions[0].clockIn
+          const lastOut = sessions[sessions.length - 1].clockOut
+          const totalHours = sessions.reduce((sum, s) => sum + s.totalHours, 0)
+
+          const { data: existing } = await supabase
             .from('time_entries')
-            .insert({
-              employee_id: employeeId,
-              shift_id: todayShift?.id || null,
-              clock_in_at: clockIn.punched_at,
-              clock_out_at: clockOut.punched_at,
-              total_hours: Math.round(totalHours * 100) / 100
-            })
+            .select('id')
+            .eq('employee_id', employeeId)
+            .is('shift_id', null)
+            .gte('clock_in_at', `${today}T00:00:00`)
+            .limit(1)
+
+          if (existing && existing.length > 0) {
+            await supabase
+              .from('time_entries')
+              .update({
+                clock_out_at: lastOut,
+                total_hours: Math.round(totalHours * 100) / 100,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing[0].id)
+          } else {
+            await supabase
+              .from('time_entries')
+              .insert({
+                employee_id: employeeId,
+                shift_id: null,
+                clock_in_at: firstIn,
+                clock_out_at: lastOut,
+                total_hours: Math.round(totalHours * 100) / 100
+              })
+          }
+
+          // For schedule-less punches, create an attendance record directly
+          // since the DB trigger (populate_attendance_from_shift) requires a shift.
+          try {
+            await supabase
+              .from('attendance')
+              .upsert({
+                employee_id: employeeId,
+                shift_id: null,
+                shift_date: today,
+                scheduled_start: null,
+                actual_start: firstIn,
+                status: 'present',
+                minutes_late: 0,
+                penalty_weight: 0,
+                notes: 'Auto-created from schedule-less clock in/out'
+              }, {
+                onConflict: 'employee_id,shift_id',
+                ignoreDuplicates: true
+              })
+          } catch (attErr) {
+            // attendance insert may fail due to unique constraint without shift_id;
+            // that's acceptable — the time_entry still exists for payroll.
+            console.warn('Schedule-less attendance upsert skipped:', attErr)
+          }
         }
       } catch (err) {
         console.error('createTimeEntry error:', err)

@@ -1373,7 +1373,11 @@ onUnmounted(() => {
           </v-col>
 
           <!-- Proceed Button -->
-          <v-col cols="12" class="text-right">
+          <v-col cols="12" class="d-flex align-center justify-end gap-3">
+            <span v-if="!canProceedToStep2" class="text-caption text-grey">
+              <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
+              Select a location and at least one service on one day to continue
+            </span>
             <v-btn
               color="primary"
               size="large"
@@ -1438,39 +1442,59 @@ onUnmounted(() => {
           <v-card-text class="d-flex align-center gap-2 py-2">
             <span class="text-body-2 text-grey mr-2">Quick Actions:</span>
             
-            <v-btn
-              variant="tonal"
-              color="secondary"
-              size="small"
-              :loading="isCopyingWeek"
-              @click="copyPreviousWeek"
-            >
-              <v-icon start>mdi-content-copy</v-icon>
-              Copy Previous Week
-            </v-btn>
+            <v-tooltip text="Copy last week's employee assignments to this draft" location="bottom">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  variant="tonal"
+                  color="secondary"
+                  size="small"
+                  :loading="isCopyingWeek"
+                  @click="copyPreviousWeek"
+                >
+                  <v-icon start>mdi-content-copy</v-icon>
+                  Copy Previous Week
+                </v-btn>
+              </template>
+            </v-tooltip>
             
-            <v-btn
-              variant="tonal"
-              color="primary"
-              size="small"
-              :loading="isAutoFilling"
-              @click="aiAutoFill"
-            >
-              <v-icon start>mdi-auto-fix</v-icon>
-              AI Auto-Fill
-            </v-btn>
+            <v-tooltip text="Let AI automatically assign employees based on availability, hours balance, and skills" location="bottom">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  variant="tonal"
+                  color="primary"
+                  size="small"
+                  :loading="isAutoFilling"
+                  @click="aiAutoFill"
+                >
+                  <v-icon start>mdi-auto-fix</v-icon>
+                  AI Auto-Fill
+                </v-btn>
+              </template>
+            </v-tooltip>
             
-            <v-btn
-              variant="tonal"
-              color="secondary"
-              size="small"
-              @click="templatesManagerRef?.openSave()"
-            >
-              <v-icon start>mdi-content-save-outline</v-icon>
-              Save Template
-            </v-btn>
+            <v-tooltip text="Save the current staffing pattern as a reusable template" location="bottom">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  variant="tonal"
+                  color="secondary"
+                  size="small"
+                  @click="templatesManagerRef?.openSave()"
+                >
+                  <v-icon start>mdi-content-save-outline</v-icon>
+                  Save Template
+                </v-btn>
+              </template>
+            </v-tooltip>
             
             <v-spacer />
+            
+            <v-chip v-if="draftSlots.some(s => s.employee_id)" size="small" variant="tonal" color="success" class="mr-2">
+              <v-icon start size="14">mdi-cloud-check</v-icon>
+              Auto-saved
+            </v-chip>
             
             <v-btn
               variant="text"
@@ -1483,6 +1507,20 @@ onUnmounted(() => {
             </v-btn>
           </v-card-text>
         </v-card>
+
+        <!-- Onboarding hint for Step 2 (first time) -->
+        <v-alert 
+          v-if="draftSlots.length > 0 && !draftSlots.some(s => s.employee_id)"
+          type="info" 
+          variant="tonal" 
+          density="compact"
+          closable
+          class="mb-4"
+          icon="mdi-lightbulb-outline"
+        >
+          <strong>Tip:</strong> Click any slot card below to assign an employee. Red slots are required roles. 
+          Use <strong>AI Auto-Fill</strong> or <strong>Copy Previous Week</strong> above to populate quickly.
+        </v-alert>
 
         <!-- Staffing Matrix Grid -->
         <div class="staffing-matrix">

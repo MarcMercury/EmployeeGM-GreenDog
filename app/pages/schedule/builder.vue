@@ -13,6 +13,8 @@
  */
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 import { useSchedulePrint } from '~/composables/useSchedulePrint'
+import { useScheduleKeyboardShortcuts } from '~/composables/useScheduleKeyboardShortcuts'
+import { useScheduleUndoRedo } from '~/composables/useScheduleUndoRedo'
 import type { Service, StaffingRequirement, ShiftRow, ScheduleTimeOffRequest, ScheduleWeek } from '~/types/schedule.types'
 
 definePageMeta({
@@ -31,6 +33,8 @@ const {
   showValidationToast 
 } = useScheduleValidation()
 const { printSchedule } = useSchedulePrint()
+const { shortcuts, isHelpVisible, registerShortcuts, getComboLabel } = useScheduleKeyboardShortcuts()
+const { canUndo, canRedo, lastActionLabel, pushAction, undo, redo, clearHistory } = useScheduleUndoRedo()
 
 // Template refs for child components
 const aiSuggestRef = ref<InstanceType<typeof ScheduleAISuggestDialog> | null>(null)
@@ -97,6 +101,12 @@ const defaultShiftTimes: Record<string, { start: string, end: string, display: s
   Admin: { start: '09:30', end: '18:00', display: '9:30-6' },
   Float: { start: '10:00', end: '18:30', display: '10-6:30' }
 }
+
+// Context menu state
+const contextMenu = ref({ show: false, x: 0, y: 0, shift: null as any, row: null as ShiftRow | null, date: null as Date | null, locId: '' })
+
+// Copy day source tracking
+const copiedDay = ref<{ date: Date, locId: string } | null>(null)
 
 // Week days
 const weekDays = computed(() => {
@@ -528,6 +538,9 @@ async function onDrop(row: ShiftRow, date: Date, locId: string, e: DragEvent) {
 }
 
 async function removeAssignment(shiftId: string) {
+  // Save for undo
+  const removedShift = shifts.value.find(s => s.id === shiftId)
+  
   try {
     const { error } = await supabase.from('shifts').delete().eq('id', shiftId)
     if (error) throw error
@@ -535,9 +548,129 @@ async function removeAssignment(shiftId: string) {
     
     // Recalculate hours after removal
     recalculateEmployeeHours()
+    
+    // Push undo action
+    if (removedShift) {
+      const empName = removedShift.employees?.first_name || 'Employee'
+      pushAction({
+        type: 'remove',
+        description: `Remove ${empName}`,
+        data: removedShift,
+        undo: async () => {
+          const { employee_id, location_id, start_at, end_at, role_required, service_id, staffing_requirement_id, status } = removedShift
+          const { data, error } = await supabase
+            .from('shifts')
+            .insert({ employee_id, location_id, start_at, end_at, role_required, service_id, staffing_requirement_id, status })
+            .select(`*, employees:employee_id(first_name, last_name)`)
+            .single()
+          if (error) throw error
+          shifts.value.push(data)
+          recalculateEmployeeHours()
+        },
+        redo: async () => {
+          await removeAssignment(shiftId)
+        }
+      })
+    }
   } catch (err) {
     toast.error('Failed to remove')
   }
+}
+
+// Context menu for cells
+function openContextMenu(e: MouseEvent, row: ShiftRow, date: Date, locId: string) {
+  e.preventDefault()
+  const shift = getCellAssignment(row, date, locId)
+  contextMenu.value = { show: true, x: e.clientX, y: e.clientY, shift, row, date, locId }
+}
+
+function closeContextMenu() {
+  contextMenu.value = { show: false, x: 0, y: 0, shift: null, row: null, date: null, locId: '' }
+}
+
+// Copy all assignments from a specific day+location
+function copyDay(date: Date, locId: string) {
+  copiedDay.value = { date, locId }
+  toast.info(`Copied ${format(date, 'EEE MMM d')} assignments`)
+  closeContextMenu()
+}
+
+// Paste copied day's assignments to a target day+location
+async function pasteDay(targetDate: Date, targetLocId: string) {
+  if (!copiedDay.value) {
+    toast.warning('No day copied. Right-click a day header to copy first.')
+    return
+  }
+  
+  const sourceDateStr = format(copiedDay.value.date, 'yyyy-MM-dd')
+  const targetDateStr = format(targetDate, 'yyyy-MM-dd')
+  const sourceShifts = shifts.value.filter(s => 
+    s.location_id === copiedDay.value!.locId && s.start_at?.startsWith(sourceDateStr)
+  )
+  
+  if (sourceShifts.length === 0) {
+    toast.warning('No shifts to paste from copied day')
+    return
+  }
+  
+  let pastedCount = 0
+  for (const source of sourceShifts) {
+    const startAt = source.start_at.replace(sourceDateStr, targetDateStr)
+    const endAt = source.end_at.replace(sourceDateStr, targetDateStr)
+    
+    try {
+      const { data, error } = await supabase
+        .from('shifts')
+        .insert({
+          employee_id: source.employee_id,
+          location_id: targetLocId,
+          start_at: startAt,
+          end_at: endAt,
+          role_required: source.role_required,
+          service_id: source.service_id,
+          staffing_requirement_id: source.staffing_requirement_id,
+          status: 'draft'
+        })
+        .select(`*, employees:employee_id(first_name, last_name)`)
+        .single()
+      
+      if (!error && data) {
+        shifts.value.push(data)
+        pastedCount++
+      }
+    } catch (err) {
+      // Skip individual paste failures
+    }
+  }
+  
+  recalculateEmployeeHours()
+  toast.success(`Pasted ${pastedCount} shift(s) to ${format(targetDate, 'EEE MMM d')}`)
+  closeContextMenu()
+}
+
+// Clear all shifts for a day+location
+async function clearDay(date: Date, locId: string) {
+  const dateStr = format(date, 'yyyy-MM-dd')
+  const dayShifts = shifts.value.filter(s => 
+    s.location_id === locId && s.start_at?.startsWith(dateStr)
+  )
+  
+  if (dayShifts.length === 0) return
+  
+  if (!confirm(`Clear all ${dayShifts.length} shift(s) on ${format(date, 'EEE MMM d')}?`)) return
+  
+  for (const shift of dayShifts) {
+    try {
+      await supabase.from('shifts').delete().eq('id', shift.id)
+      shifts.value = shifts.value.filter(s => s.id !== shift.id)
+    } catch (err) {
+      // continue
+    }
+  }
+  
+  recalculateEmployeeHours()
+  toast.info(`Cleared ${dayShifts.length} shifts`)
+  closeContextMenu()
 }
 
 // Navigation
@@ -633,10 +766,22 @@ function buildShiftRows() {
 watch(currentWeekStart, () => {
   loadShifts()
   loadTimeOffRequests()
+  clearHistory()
 })
 onMounted(async () => {
   await loadServicesAndRequirements()
   await Promise.all([loadShifts(), loadTimeOffRequests()])
+  
+  // Register keyboard shortcuts
+  registerShortcuts([
+    { key: 'z', ctrl: true, description: 'Undo last action', action: undo, category: 'editing' },
+    { key: 'z', ctrl: true, shift: true, description: 'Redo last action', action: redo, category: 'editing' },
+    { key: 'ArrowLeft', alt: true, description: 'Previous week', action: prevWeek, category: 'navigation' },
+    { key: 'ArrowRight', alt: true, description: 'Next week', action: nextWeek, category: 'navigation' },
+    { key: 't', alt: true, description: 'Go to today', action: goToday, category: 'navigation' },
+    { key: 'p', ctrl: true, description: 'Print schedule', action: handlePrint, category: 'actions' },
+    { key: 's', ctrl: true, description: 'Publish week', action: () => publishDialogRef.value?.open(), category: 'actions' },
+  ])
 })
 </script>
 
@@ -665,6 +810,24 @@ onMounted(async () => {
         </v-chip>
       </div>
       <div class="header-actions">
+        <!-- Undo/Redo -->
+        <v-tooltip text="Undo (Ctrl+Z)" location="bottom">
+          <template #activator="{ props }">
+            <v-btn v-bind="props" icon size="small" variant="text" :disabled="!canUndo" @click="undo">
+              <v-icon>mdi-undo</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
+        <v-tooltip text="Redo (Ctrl+Shift+Z)" location="bottom">
+          <template #activator="{ props }">
+            <v-btn v-bind="props" icon size="small" variant="text" :disabled="!canRedo" @click="redo">
+              <v-icon>mdi-redo</v-icon>
+            </v-btn>
+          </template>
+        </v-tooltip>
+        
+        <v-divider vertical class="mx-1" />
+        
         <!-- Print/Export Button -->
         <v-btn 
           size="small" 
@@ -776,44 +939,65 @@ onMounted(async () => {
       <!-- LEFT: Roster Sidebar -->
       <aside class="roster">
         <div class="roster-header">
-          <div class="roster-title">TEAM ROSTER</div>
+          <div class="roster-title">
+            TEAM ROSTER
+            <span class="roster-count">({{ rosterEmployees.length }})</span>
+          </div>
           <v-select
             v-model="rosterPositionFilter"
             :items="positionOptions"
             density="compact"
             variant="outlined"
             hide-details
+            clearable
+            placeholder="All Positions"
             class="roster-filter"
           />
         </div>
         <div class="roster-list">
-          <div
+          <div class="roster-drag-hint" v-if="rosterEmployees.length > 0 && shifts.length === 0">
+            <v-icon size="14" class="mr-1">mdi-cursor-move</v-icon>
+            Drag employees to the grid
+          </div>
+          <v-tooltip 
             v-for="emp in rosterEmployees"
             :key="emp.id"
-            class="roster-item"
-            :class="{ 
-              'overtime': getEmployeeWeekHours(emp.id) > 40,
-              'near-overtime': getEmployeeWeekHours(emp.id) > 35 && getEmployeeWeekHours(emp.id) <= 40
-            }"
-            draggable="true"
-            @dragstart="onDragStart(emp, $event)"
-            @dragend="onDragEnd"
+            :text="`${emp.first_name} ${emp.last_name} — ${getEmployeeWeekHours(emp.id).toFixed(1)}h / ${getWeekShiftCount(emp.id)} shifts this week`"
+            location="end"
           >
-            <v-avatar size="24" :color="emp.avatar_url ? undefined : 'primary'">
-              <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
-              <span v-else class="text-white text-caption">{{ emp.initials }}</span>
-            </v-avatar>
-            <div class="roster-info">
-              <span class="roster-name">{{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.</span>
-              <span v-if="getEmployeeWeekHours(emp.id) > 0" class="roster-hours" :class="getHoursColor(getEmployeeWeekHours(emp.id))">
-                {{ getEmployeeWeekHours(emp.id).toFixed(1) }}h
-              </span>
-            </div>
-            <v-chip size="x-small" :color="getHoursColor(getEmployeeWeekHours(emp.id))" variant="flat">
-              {{ getWeekShiftCount(emp.id) }}
-            </v-chip>
+            <template #activator="{ props }">
+              <div
+                v-bind="props"
+                class="roster-item"
+                :class="{ 
+                  'overtime': getEmployeeWeekHours(emp.id) > 40,
+                  'near-overtime': getEmployeeWeekHours(emp.id) > 35 && getEmployeeWeekHours(emp.id) <= 40
+                }"
+                draggable="true"
+                @dragstart="onDragStart(emp, $event)"
+                @dragend="onDragEnd"
+              >
+                <v-avatar size="24" :color="emp.avatar_url ? undefined : 'primary'">
+                  <v-img v-if="emp.avatar_url" :src="emp.avatar_url" />
+                  <span v-else class="text-white text-caption">{{ emp.initials }}</span>
+                </v-avatar>
+                <div class="roster-info">
+                  <span class="roster-name">{{ emp.first_name }} {{ emp.last_name?.charAt(0) }}.</span>
+                  <span v-if="getEmployeeWeekHours(emp.id) > 0" class="roster-hours" :class="getHoursColor(getEmployeeWeekHours(emp.id))">
+                    {{ getEmployeeWeekHours(emp.id).toFixed(1) }}h
+                  </span>
+                </div>
+                <v-chip size="x-small" :color="getHoursColor(getEmployeeWeekHours(emp.id))" variant="flat">
+                  {{ getWeekShiftCount(emp.id) }}
+                </v-chip>
+              </div>
+            </template>
+          </v-tooltip>
+          <div v-if="rosterEmployees.length === 0" class="roster-empty">
+            <v-icon size="24" color="grey-lighten-1" class="mb-1">mdi-account-search</v-icon>
+            <span>No employees match filter</span>
+            <v-btn v-if="rosterPositionFilter" size="x-small" variant="text" @click="rosterPositionFilter = null">Clear Filter</v-btn>
           </div>
-          <div v-if="rosterEmployees.length === 0" class="roster-empty">No employees</div>
         </div>
       </aside>
 
@@ -895,6 +1079,7 @@ onMounted(async () => {
                       @dragover="onDragOver(getCellKey(row.id, day, loc.id), $event)"
                       @dragleave="onDragLeave"
                       @drop="onDrop(row, day, loc.id, $event)"
+                      @contextmenu="openContextMenu($event, row, day, loc.id)"
                     >
                       <template v-if="getCellAssignment(row, day, loc.id)">
                         <div class="cell-emp" :class="{ 'has-warning': hasTimeOffOnDate(getCellAssignment(row, day, loc.id)!.employee_id, day) }">
@@ -1005,6 +1190,99 @@ onMounted(async () => {
       @applied="loadShifts()"
       @notify="showNotification($event.message, $event.color)"
     />
+
+    <!-- Context Menu -->
+    <v-menu
+      v-model="contextMenu.show"
+      :style="{ position: 'fixed', left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      :target="[contextMenu.x, contextMenu.y]"
+      location="end"
+    >
+      <v-list density="compact" class="context-menu-list">
+        <v-list-item
+          v-if="contextMenu.shift"
+          prepend-icon="mdi-close-circle"
+          @click="removeAssignment(contextMenu.shift.id); closeContextMenu()"
+        >
+          <v-list-item-title>Remove Assignment</v-list-item-title>
+        </v-list-item>
+        <v-list-item
+          v-if="contextMenu.date"
+          prepend-icon="mdi-content-copy"
+          @click="copyDay(contextMenu.date!, contextMenu.locId)"
+        >
+          <v-list-item-title>Copy Day's Shifts</v-list-item-title>
+        </v-list-item>
+        <v-list-item
+          v-if="copiedDay && contextMenu.date"
+          prepend-icon="mdi-content-paste"
+          @click="pasteDay(contextMenu.date!, contextMenu.locId)"
+        >
+          <v-list-item-title>Paste Shifts Here</v-list-item-title>
+          <v-list-item-subtitle>From {{ format(copiedDay.date, 'EEE MMM d') }}</v-list-item-subtitle>
+        </v-list-item>
+        <v-divider v-if="contextMenu.date" />
+        <v-list-item
+          v-if="contextMenu.date"
+          prepend-icon="mdi-eraser"
+          class="text-error"
+          @click="clearDay(contextMenu.date!, contextMenu.locId)"
+        >
+          <v-list-item-title>Clear Entire Day</v-list-item-title>
+        </v-list-item>
+      </v-list>
+    </v-menu>
+
+    <!-- Undo/Redo Status Bar -->
+    <Transition name="slide-up">
+      <div v-if="lastActionLabel" class="undo-bar">
+        <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
+        {{ lastActionLabel }}
+        <v-btn v-if="canUndo" variant="text" size="x-small" class="ml-2" @click="undo">Undo</v-btn>
+      </div>
+    </Transition>
+
+    <!-- Keyboard Shortcuts Help (press ?) -->
+    <v-dialog v-model="isHelpVisible" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-keyboard</v-icon>
+          Keyboard Shortcuts
+        </v-card-title>
+        <v-card-text>
+          <div v-for="cat in ['navigation', 'editing', 'actions']" :key="cat" class="mb-4">
+            <div class="text-overline text-grey mb-1">{{ cat }}</div>
+            <div
+              v-for="s in shortcuts.filter(sh => sh.category === cat)"
+              :key="getComboLabel(s)"
+              class="d-flex align-center justify-space-between py-1"
+            >
+              <span class="text-body-2">{{ s.description }}</span>
+              <kbd class="shortcut-kbd">{{ getComboLabel(s) }}</kbd>
+            </div>
+          </div>
+          <v-divider class="my-2" />
+          <div class="d-flex align-center justify-space-between py-1">
+            <span class="text-body-2">Show this help</span>
+            <kbd class="shortcut-kbd">?</kbd>
+          </div>
+          <div class="d-flex align-center justify-space-between py-1">
+            <span class="text-body-2">Right-click cell for context menu</span>
+            <kbd class="shortcut-kbd">Right Click</kbd>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="isHelpVisible = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Keyboard Hint (bottom-right) -->
+    <div class="keyboard-hint" @click="isHelpVisible = true">
+      <v-icon size="14" class="mr-1">mdi-keyboard</v-icon>
+      Press <kbd>?</kbd> for shortcuts
+    </div>
   </div>
 </template>
 
@@ -1180,6 +1458,24 @@ onMounted(async () => {
   text-align: center;
   color: #999;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.roster-count {
+  font-weight: 400;
+  color: #999;
+  font-size: 10px;
+}
+.roster-drag-hint {
+  text-align: center;
+  color: #999;
+  font-size: 10px;
+  padding: 6px;
+  background: #f5f8ff;
+  border-radius: 4px;
+  margin-bottom: 4px;
 }
 
 /* Grid Area */
@@ -1480,5 +1776,76 @@ onMounted(async () => {
 .suggestions-list {
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* Context Menu */
+.context-menu-list {
+  min-width: 200px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* Undo Bar */
+.undo-bar {
+  position: fixed;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter-from, .slide-up-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+
+/* Keyboard Shortcuts */
+.shortcut-kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 11px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Keyboard Hint */
+.keyboard-hint {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.keyboard-hint:hover {
+  opacity: 1;
+}
+.keyboard-hint kbd {
+  background: rgba(255,255,255,0.2);
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin: 0 3px;
+  font-family: monospace;
 }
 </style>

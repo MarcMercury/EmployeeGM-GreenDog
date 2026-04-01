@@ -92,6 +92,46 @@
               @request-drop="openDropDialog"
             />
           </v-col>
+
+          <!-- Schedule Notifications -->
+          <v-col cols="12" order="3">
+            <v-card rounded="lg" v-if="scheduleNotifications.length > 0">
+              <v-card-title class="d-flex align-center">
+                <v-icon color="info" class="mr-2">mdi-bell-ring-outline</v-icon>
+                Schedule Notifications
+                <v-chip v-if="unreadNotificationCount > 0" color="error" size="small" class="ml-2">
+                  {{ unreadNotificationCount }}
+                </v-chip>
+              </v-card-title>
+              <v-list lines="two" class="py-0">
+                <v-list-item
+                  v-for="notif in scheduleNotifications.slice(0, 5)"
+                  :key="notif.id"
+                  :class="{ 'bg-blue-lighten-5': !notif.is_read }"
+                >
+                  <template #prepend>
+                    <v-avatar :color="getNotifColor(notif.type)" size="36">
+                      <v-icon color="white" size="18">{{ getNotifIcon(notif.type) }}</v-icon>
+                    </v-avatar>
+                  </template>
+                  <v-list-item-title class="text-body-2 font-weight-medium">
+                    {{ notif.title }}
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    {{ notif.body }}
+                  </v-list-item-subtitle>
+                  <template #append>
+                    <span class="text-caption text-grey">{{ formatTimeAgo(notif.created_at) }}</span>
+                  </template>
+                </v-list-item>
+              </v-list>
+              <v-card-actions v-if="scheduleNotifications.length > 5">
+                <v-btn variant="text" color="primary" to="/activity" size="small">
+                  View All Notifications
+                </v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-col>
         </v-row>
       </v-window-item>
 
@@ -547,6 +587,7 @@
 
 <script setup lang="ts">
 import type { Shift } from '~/stores/operations'
+import { useOperationsShiftsStore } from '~/stores/operationsShifts'
 
 definePageMeta({
   layout: 'default',
@@ -593,6 +634,10 @@ const dropShift = ref<Shift | null>(null)
 const swapTargetEmployee = ref<string | null>(null)
 const dropReason = ref('')
 const isSubmittingChange = ref(false)
+
+// Schedule Notifications
+const scheduleNotifications = ref<any[]>([])
+const unreadNotificationCount = computed(() => scheduleNotifications.value.filter(n => !n.is_read).length)
 
 // Time Off State
 const requestDialog = ref(false)
@@ -848,11 +893,66 @@ function openDropDialog(shift: Shift) {
   dropDialog.value = true
 }
 
+function getNotifColor(type: string) {
+  switch (type) {
+    case 'schedule_assigned': return 'success'
+    case 'schedule_removed': return 'error'
+    case 'schedule_modified': return 'warning'
+    default: return 'info'
+  }
+}
+
+function getNotifIcon(type: string) {
+  switch (type) {
+    case 'schedule_assigned': return 'mdi-calendar-plus'
+    case 'schedule_removed': return 'mdi-calendar-remove'
+    case 'schedule_modified': return 'mdi-calendar-edit'
+    default: return 'mdi-bell'
+  }
+}
+
+function formatTimeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+async function fetchScheduleNotifications() {
+  try {
+    const profileId = authStore.profile?.id
+    if (!profileId) return
+
+    const { data } = await supabase
+      .from('notifications')
+      .select('id, type, title, body, is_read, created_at, data')
+      .eq('profile_id', profileId)
+      .in('type', ['schedule_assigned', 'schedule_removed', 'schedule_modified', 'schedule_published'])
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    scheduleNotifications.value = data || []
+  } catch (err) {
+    console.error('Error fetching schedule notifications:', err)
+  }
+}
+
 async function submitSwapRequest() {
   if (!swapShift.value || !swapTargetEmployee.value) return
+  const employeeId = userStore.employee?.id
+  if (!employeeId) return
   isSubmittingChange.value = true
   try {
-    // TODO: Replace with actual swap request API call
+    const shiftsStore = useOperationsShiftsStore()
+    await shiftsStore.createShiftChange({
+      shift_id: swapShift.value.id,
+      from_employee_id: employeeId,
+      to_employee_id: swapTargetEmployee.value,
+      type: 'swap'
+    })
     snackbar.message = 'Swap request submitted successfully!'
     snackbar.color = 'success'
     snackbar.show = true
@@ -869,9 +969,16 @@ async function submitSwapRequest() {
 
 async function submitDropRequest() {
   if (!dropShift.value) return
+  const employeeId = userStore.employee?.id
+  if (!employeeId) return
   isSubmittingChange.value = true
   try {
-    // TODO: Replace with actual drop request API call
+    const shiftsStore = useOperationsShiftsStore()
+    await shiftsStore.createShiftChange({
+      shift_id: dropShift.value.id,
+      from_employee_id: employeeId,
+      type: 'drop'
+    })
     snackbar.message = 'Drop request submitted successfully!'
     snackbar.color = 'success'
     snackbar.show = true
@@ -1141,7 +1248,10 @@ onMounted(async () => {
   }
   
   await employeeStore.fetchEmployees?.()
-  await fetchRequests()
+  await Promise.all([
+    fetchRequests(),
+    fetchScheduleNotifications()
+  ])
 })
 </script>
 

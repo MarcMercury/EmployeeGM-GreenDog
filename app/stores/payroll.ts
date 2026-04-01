@@ -99,7 +99,7 @@ export const usePayrollStore = defineStore('payroll', {
       })
       
       // Calculate OT using shared California rules utility
-      return calculateCaliforniaOT(dailyHours)
+      return calculateCaliforniaOT(dailyHours, { weekStartDate: state.periodStart })
     },
     
     // Calculate gross pay for selected employee
@@ -256,6 +256,19 @@ export const usePayrollStore = defineStore('payroll', {
           .select('*')
           .eq('pay_period_start', this.periodStart)
           .eq('pay_period_end', this.periodEnd)
+
+        // Get compensation history for accurate mid-period rate lookups
+        let compHistory: any[] = []
+        try {
+          const { data: histData } = await supabase
+            .from('employee_compensation_history')
+            .select('employee_id, pay_type, pay_rate, effective_date, end_date')
+            .lte('effective_date', this.periodEnd)
+            .or(`end_date.is.null,end_date.gte.${this.periodStart}`)
+          compHistory = histData || []
+        } catch (_) {
+          // Table may not exist yet if migration hasn't run
+        }
         
         // Process each employee
         this.employees = (employees || []).map((emp: any) => {
@@ -279,7 +292,7 @@ export const usePayrollStore = defineStore('payroll', {
           })
           
           // California OT calculation (shared utility)
-          const otResult = calculateCaliforniaOT(hoursByDay)
+          const otResult = calculateCaliforniaOT(hoursByDay, { weekStartDate: this.periodStart })
           const regularHours = otResult.regular
           const overtimeHours = otResult.overtime
           const doubleTimeHours = otResult.doubleTime
@@ -289,8 +302,14 @@ export const usePayrollStore = defineStore('payroll', {
             return sum + (a.type === 'deduction' ? -a.amount : a.amount)
           }, 0)
           
-          const payRate = emp.compensation?.pay_rate || 0
-          const payType = emp.compensation?.pay_type || 'Hourly'
+          // Use compensation history for accurate rate lookup (latest active rate in the period)
+          const empHistory = compHistory
+            .filter((h: any) => h.employee_id === emp.id)
+            .sort((a: any, b: any) => b.effective_date.localeCompare(a.effective_date))
+          const activeHistoryRate = empHistory.length > 0 ? empHistory[0] : null
+          
+          const payRate = activeHistoryRate?.pay_rate ?? emp.compensation?.pay_rate ?? 0
+          const payType = activeHistoryRate?.pay_type ?? emp.compensation?.pay_type ?? 'Hourly'
           
           let grossPay = 0
           if (payType === 'Salary') {
@@ -610,7 +629,8 @@ export const usePayrollStore = defineStore('payroll', {
     },
     
     /**
-     * Approve an employee's payroll for the period
+     * Approve an employee's payroll for the period.
+     * Checks that all time entries are approved first.
      */
     async approvePayroll(employeeId: string, notes?: string) {
       // Guard: only admin/hr roles can approve payroll
@@ -625,6 +645,25 @@ export const usePayrollStore = defineStore('payroll', {
       
       const employee = this.employees.find(e => e.employee_id === employeeId)
       if (!employee) throw new Error('Employee not found')
+
+      // Check that all time entries for this employee in the period are approved
+      const { data: unapprovedEntries, error: checkErr } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('employee_id', employeeId)
+        .eq('is_approved', false)
+        .gte('clock_in_at', `${this.periodStart}T00:00:00`)
+        .lte('clock_in_at', `${this.periodEnd}T23:59:59`)
+        .limit(1)
+
+      if (checkErr) {
+        console.warn('[Payroll] Could not verify time entry approval status:', checkErr)
+      } else if (unapprovedEntries && unapprovedEntries.length > 0) {
+        throw new Error(
+          'Cannot approve payroll: this employee has unapproved time entries. ' +
+          'Please review and approve all time entries before approving payroll.'
+        )
+      }
       
       try {
         const { data, error } = await supabase
