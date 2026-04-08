@@ -74,12 +74,87 @@ export default defineNuxtConfig({
     emergencyAdminSecret: process.env.EMERGENCY_ADMIN_SECRET,
     emergencyAdminEmail: process.env.EMERGENCY_ADMIN_EMAIL,
     emergencyAdminName: process.env.EMERGENCY_ADMIN_NAME || 'Emergency Admin',
+
+    // ── Google APIs (Calendar, Drive, Business, Analytics, Maps) ──
+    googleServiceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+    ga4MeasurementId: process.env.GA4_MEASUREMENT_ID,
+    ga4ApiSecret: process.env.GA4_API_SECRET,
+
+    // ── Cal.com ──
+    calcomApiKey: process.env.CALCOM_API_KEY,
+    calcomBaseUrl: process.env.CALCOM_BASE_URL || 'https://api.cal.com/v1',
+
+    // ── Cronitor ──
+    cronitorApiKey: process.env.CRONITOR_API_KEY,
+
+    // ── Clockify ──
+    clockifyApiKey: process.env.CLOCKIFY_API_KEY,
+
+    // ── SendGrid ──
+    sendgridApiKey: process.env.SENDGRID_API_KEY,
+
+    // ── OneSignal ──
+    onesignalAppId: process.env.ONESIGNAL_APP_ID,
+    onesignalApiKey: process.env.ONESIGNAL_API_KEY,
+
+    // ── Google Gemini ──
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+
+    // ── Pinecone ──
+    pineconeApiKey: process.env.PINECONE_API_KEY,
+    pineconeEnvironment: process.env.PINECONE_ENVIRONMENT || 'us-east-1-aws',
+    pineconeIndexName: process.env.PINECONE_INDEX_NAME || 'employee-gm-knowledge',
+
+    // ── AssemblyAI ──
+    assemblyaiApiKey: process.env.ASSEMBLYAI_API_KEY,
+
+    // ── PandaDoc ──
+    pandadocApiKey: process.env.PANDADOC_API_KEY,
+
+    // ── Mixpanel ──
+    mixpanelToken: process.env.MIXPANEL_TOKEN,
+
+    // ── Mailchimp ──
+    mailchimpApiKey: process.env.MAILCHIMP_API_KEY,
+
+    // ── HubSpot ──
+    hubspotAccessToken: process.env.HUBSPOT_ACCESS_TOKEN,
+
+    // ── Yelp ──
+    yelpApiKey: process.env.YELP_API_KEY,
+
+    // ── Meta (Facebook/Instagram) ──
+    metaPageAccessToken: process.env.META_PAGE_ACCESS_TOKEN,
+    metaPageId: process.env.META_PAGE_ID,
+
+    // ── Eventbrite ──
+    eventbriteToken: process.env.EVENTBRITE_TOKEN,
+    eventbriteOrganizationId: process.env.EVENTBRITE_ORGANIZATION_ID,
+
+    // ── Plaid ──
+    plaidClientId: process.env.PLAID_CLIENT_ID,
+    plaidSecret: process.env.PLAID_SECRET,
+    plaidEnv: process.env.PLAID_ENV || 'sandbox',
+
+    // ── Metabase ──
+    metabaseUrl: process.env.METABASE_URL,
+    metabaseSecretKey: process.env.METABASE_SECRET_KEY,
+    metabaseUsername: process.env.METABASE_USERNAME,
+    metabasePassword: process.env.METABASE_PASSWORD,
+
+    // ── VetCove ──
+    vetcoveApiKey: process.env.VETCOVE_API_KEY,
+
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseKey: process.env.SUPABASE_KEY,
       appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL,
-      sentryDsn: process.env.SENTRY_DSN
+      sentryDsn: process.env.SENTRY_DSN,
+      onesignalAppId: process.env.ONESIGNAL_APP_ID,
+      googleMapsApiKey: process.env.GOOGLE_MAPS_PUBLIC_KEY,
     }
   },
 
