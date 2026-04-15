@@ -242,10 +242,18 @@ function copyEndpoint(endpoint: string) {
   navigator.clipboard.writeText(endpoint)
 }
 
+let _apiMonitorInterval: ReturnType<typeof setInterval> | null = null
+
 onMounted(async () => {
   await loadData()
-  // Refresh every 30 seconds
-  setInterval(loadData, 30000)
+  // Refresh every 2 minutes, only when tab is visible
+  _apiMonitorInterval = setInterval(() => {
+    if (document.visibilityState === 'visible') loadData()
+  }, 120000)
+})
+
+onUnmounted(() => {
+  if (_apiMonitorInterval) clearInterval(_apiMonitorInterval)
 })
 
 // Require admin access

@@ -3,12 +3,12 @@
  * 
  * GET /api/cron/agent-dispatcher
  * 
- * Runs every 5 minutes via Vercel cron.
+ * Runs every 15 minutes via Vercel cron.
  * Checks agent_registry for active agents whose cron schedules match,
  * then executes them. This avoids needing a separate Vercel cron for each agent.
  * 
  * Configure in vercel.json:
- *   crons: [{ path: "/api/cron/agent-dispatcher", schedule: "every 5 minutes" }]
+ *   crons: [{ path: "/api/cron/agent-dispatcher", schedule: "*/15 * * * *" }]
  */
 
 export default defineEventHandler(async (event) => {
@@ -47,11 +47,11 @@ export default defineEventHandler(async (event) => {
     // 3. Execute each due agent (sequentially to respect rate limits)
     for (const agent of dueAgents) {
       try {
-        // Skip if agent ran recently (within last 4 minutes) to prevent double-runs
+        // Skip if agent ran recently (within last 13 minutes) to prevent double-runs
         if (agent.last_run_at) {
           const lastRun = new Date(agent.last_run_at)
           const minutesSinceLastRun = (now.getTime() - lastRun.getTime()) / (60 * 1000)
-          if (minutesSinceLastRun < 4) {
+          if (minutesSinceLastRun < 13) {
             logger.info(`[AgentDispatcher] Skipping "${agent.agent_id}" — ran ${minutesSinceLastRun.toFixed(1)}m ago`, 'cron')
             results.push({ agentId: agent.agent_id, status: 'skipped' })
             continue

@@ -21,7 +21,7 @@
     },
     {
       "path": "/api/cron/agent-dispatcher",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/agent-budget-reset",
@@ -29,7 +29,7 @@
     },
     {
       "path": "/api/cron/agent-notifications",
-      "schedule": "*/2 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/slack-sync",

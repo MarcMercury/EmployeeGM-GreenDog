@@ -3,7 +3,7 @@
  *
  * GET /api/cron/agent-notifications
  *
- * Runs every 2 minutes via Vercel cron. Processes pending items
+ * Runs every 15 minutes via Vercel cron. Processes pending items
  * in the notification_queue that were queued by agents.
  * Also sweeps approved proposals that haven't been applied yet.
  */

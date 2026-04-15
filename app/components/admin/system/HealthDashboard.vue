@@ -90,8 +90,8 @@ onMounted(() => {
   refreshAll()
   if (autoRefresh.value) {
     refreshInterval.value = setInterval(() => {
-      if (autoRefresh.value) refreshAll()
-    }, 30000)
+      if (autoRefresh.value && document.visibilityState === 'visible') refreshAll()
+    }, 120000)
   }
 })
 

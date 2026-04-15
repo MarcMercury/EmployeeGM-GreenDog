@@ -34,8 +34,12 @@ export function useConnectionState() {
       window.addEventListener('online', handleOnline)
       window.addEventListener('offline', handleOffline)
       
-      // Periodic connectivity check
-      const interval = setInterval(checkConnectivity, 30000)
+      // Periodic connectivity check (every 2 minutes; only when tab is visible)
+      const interval = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          checkConnectivity()
+        }
+      }, 120000)
       onUnmounted(() => clearInterval(interval))
     }
   })
@@ -203,7 +207,7 @@ export function useStaleDataWarning(config: StaleDataConfig = { maxAge: 300000, 
     const age = Date.now() - lastFetchTime.value
     staleDuration.value = age
     isStale.value = age > config.maxAge * config.warningThreshold
-  }, 10000)
+  }, 60000)
 
   onUnmounted(() => clearInterval(checkInterval))
 
