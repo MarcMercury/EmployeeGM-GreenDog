@@ -8,7 +8,7 @@
  * then executes them. This avoids needing a separate Vercel cron for each agent.
  * 
  * Configure in vercel.json:
- *   crons: [{ path: "/api/cron/agent-dispatcher", schedule: "*/15 * * * *" }]
+ *   crons: [{ path: "/api/cron/agent-dispatcher", schedule: "every 15 min" }]
  */
 
 export default defineEventHandler(async (event) => {
