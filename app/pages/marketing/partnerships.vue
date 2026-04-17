@@ -42,6 +42,10 @@
         <v-icon start>mdi-view-list</v-icon>
         Partners
       </v-tab>
+      <v-tab value="map">
+        <v-icon start>mdi-map</v-icon>
+        Map View
+      </v-tab>
       <v-tab value="targeting">
         <v-icon start>mdi-target</v-icon>
         Targeting
@@ -251,6 +255,15 @@
             </template>
           </v-data-table-virtual>
         </v-card>
+      </v-window-item>
+
+      <!-- MAP VIEW TAB -->
+      <v-window-item value="map">
+        <MarketingPartnerMapView
+          :partners="partners"
+          :loading="loading"
+          @partner-click="openPartnerDetail"
+        />
       </v-window-item>
 
       <!-- TARGETING TAB -->

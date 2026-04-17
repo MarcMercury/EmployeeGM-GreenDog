@@ -23,6 +23,10 @@
     <!-- Tabs -->
     <v-tabs v-model="activeTab" density="compact" class="mb-2">
       <v-tab value="events">Events</v-tab>
+      <v-tab value="map">
+        <v-icon start size="18">mdi-map</v-icon>
+        Map View
+      </v-tab>
       <v-tab value="leads">Event Leads</v-tab>
     </v-tabs>
 
@@ -182,6 +186,15 @@
             </template>
           </v-data-table-virtual>
         </v-card>
+      </v-window-item>
+
+      <!-- ============ MAP TAB ============ -->
+      <v-window-item value="map">
+        <GrowthEventsMapView
+          :events="filteredEvents"
+          :loading="loading"
+          @event-click="eventProfileRef?.open($event)"
+        />
       </v-window-item>
 
       <!-- ============ LEADS TAB ============ -->

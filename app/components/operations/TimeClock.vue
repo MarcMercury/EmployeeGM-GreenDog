@@ -98,6 +98,24 @@
       <p class="text-body-2 text-grey mt-2">No punches recorded today</p>
     </v-card-text>
 
+    <!-- Geofence Map Toggle -->
+    <v-divider />
+    <v-expansion-panels variant="accordion" flat>
+      <v-expansion-panel>
+        <v-expansion-panel-title class="text-body-2">
+          <v-icon size="18" class="mr-2">mdi-map-marker-radius</v-icon>
+          View Work Locations
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <OperationsGeofenceMapView
+            :geofences="opsStore.geofences"
+            :current-location="currentLocation"
+            :employee-location-id="userStore.employee?.location_id"
+          />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+    </v-expansion-panels>
+
     <!-- Geofence Warning Dialog -->
     <v-dialog v-model="showGeofenceWarning" max-width="400">
       <v-card>
