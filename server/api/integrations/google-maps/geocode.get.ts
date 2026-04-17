@@ -5,8 +5,6 @@
  * 
  * GET /api/integrations/google-maps/geocode?address=123+Main+St
  */
-import { geocodeAddress, reverseGeocode } from '~/server/utils/google-maps'
-
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   

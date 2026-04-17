@@ -5,8 +5,6 @@
  * 
  * GET /api/integrations/google-maps/places?lat=34.1536&lng=-118.4426&radius=1000&type=veterinary_care
  */
-import { searchNearbyPlaces, getPlaceDetails } from '~/server/utils/google-maps'
-
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   

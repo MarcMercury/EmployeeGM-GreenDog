@@ -6,8 +6,6 @@
  * GET /api/integrations/google-maps/distance?origin=Venice,CA&destination=Sherman+Oaks,CA
  * GET /api/integrations/google-maps/distance?origins=A|B&destinations=C|D&mode=driving
  */
-import { getDistanceMatrix } from '~/server/utils/google-maps'
-
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   
