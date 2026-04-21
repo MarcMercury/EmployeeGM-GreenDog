@@ -143,7 +143,7 @@
               <v-list-item-title class="text-body-2">{{ type }}</v-list-item-title>
               <template #append>
                 <v-chip size="x-small" variant="text">
-                  {{ assets.filter(a => a.asset_type === type && !a.returned_at).length }}
+                      {{ assignedAssets.filter(a => a.asset_type === type).length }}
                 </v-chip>
               </template>
             </v-list-item>
@@ -151,6 +151,80 @@
         </v-card-text>
       </v-card>
     </v-col>
+
+        <v-col v-if="canViewPasswords" cols="12">
+          <v-card class="bg-white shadow-sm rounded-xl" elevation="0">
+            <v-card-title class="d-flex align-center text-subtitle-1 font-weight-bold">
+              <v-icon start size="20" color="error">mdi-key-chain-variant</v-icon>
+              Passwords
+              <v-spacer />
+              <v-chip size="x-small" variant="tonal" color="error" class="mr-2">
+                {{ passwordAssets.length }} saved
+              </v-chip>
+              <v-btn
+                v-if="canManagePasswords"
+                icon="mdi-plus"
+                size="x-small"
+                variant="tonal"
+                color="error"
+                @click="emit('open-asset-dialog')"
+              />
+            </v-card-title>
+            <v-card-text v-if="passwordAssets.length > 0">
+              <v-table density="compact" hover>
+                <thead>
+                  <tr>
+                    <th class="text-left">Label</th>
+                    <th class="text-left">Site</th>
+                    <th class="text-left">Program</th>
+                    <th class="text-left">Username</th>
+                    <th class="text-left">Password</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="asset in passwordAssets" :key="asset.id">
+                    <td>
+                      <div class="text-body-2 font-weight-medium">{{ asset.asset_name }}</div>
+                      <div v-if="asset.notes" class="text-caption text-grey">{{ asset.notes }}</div>
+                    </td>
+                    <td class="text-caption text-grey-darken-1">{{ asset.credential_site || '—' }}</td>
+                    <td class="text-caption text-grey-darken-1">{{ asset.credential_program || '—' }}</td>
+                    <td class="text-caption text-grey-darken-1">{{ asset.credential_username || '—' }}</td>
+                    <td>
+                      <div class="d-flex align-center ga-2">
+                        <span class="text-caption text-grey-darken-1 password-value">{{ isPasswordVisible(asset.id) ? asset.credential_password || '—' : maskPassword(asset.credential_password) }}</span>
+                        <v-btn
+                          v-if="asset.credential_password"
+                          :icon="isPasswordVisible(asset.id) ? 'mdi-eye-off' : 'mdi-eye'"
+                          size="x-small"
+                          variant="text"
+                          color="error"
+                          :aria-label="isPasswordVisible(asset.id) ? 'Hide password' : 'Show password'"
+                          @click="togglePasswordVisibility(asset.id)"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </v-card-text>
+            <v-card-text v-else class="text-center py-8">
+              <v-icon size="48" color="grey-lighten-2">mdi-key-chain</v-icon>
+              <p class="text-body-2 text-grey mt-2">No passwords saved for this employee</p>
+              <v-btn
+                v-if="canManagePasswords"
+                variant="tonal"
+                color="error"
+                size="small"
+                class="mt-2"
+                @click="emit('open-asset-dialog')"
+              >
+                <v-icon start>mdi-plus</v-icon>
+                Add Password
+              </v-btn>
+            </v-card-text>
+          </v-card>
+        </v-col>
   </v-row>
 </template>
 
@@ -160,6 +234,8 @@ import { formatDate } from '~/utils/rosterFormatters'
 const props = defineProps<{
   assets: any[]
   isAdmin: boolean
+  canViewPasswords: boolean
+  canManagePasswords: boolean
 }>()
 
 const emit = defineEmits<{
@@ -168,9 +244,29 @@ const emit = defineEmits<{
 }>()
 
 const assetTypes = ['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other']
+const visiblePasswordIds = ref<string[]>([])
 
 const activeAssets = computed(() => props.assets.filter(a => !a.returned_at))
+const assignedAssets = computed(() => activeAssets.value.filter(a => a.asset_type !== 'Password'))
+const passwordAssets = computed(() => activeAssets.value.filter(a => a.asset_type === 'Password'))
 const returnedAssets = computed(() => props.assets.filter(a => a.returned_at))
+
+function maskPassword(password: string | null | undefined): string {
+  if (!password) return '—'
+  return '•'.repeat(Math.max(password.length, 8))
+}
+
+function isPasswordVisible(assetId: string): boolean {
+  return visiblePasswordIds.value.includes(assetId)
+}
+
+function togglePasswordVisibility(assetId: string): void {
+  if (isPasswordVisible(assetId)) {
+    visiblePasswordIds.value = visiblePasswordIds.value.filter(id => id !== assetId)
+    return
+  }
+  visiblePasswordIds.value = [...visiblePasswordIds.value, assetId]
+}
 
 function getAssetTypeColor(type: string): string {
   const colors: Record<string, string> = {

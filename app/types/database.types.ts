@@ -1157,6 +1157,10 @@ export type Database = {
           candidate_id: string | null
           checked_out_at: string | null
           condition: string | null
+          credential_password: string | null
+          credential_program: string | null
+          credential_site: string | null
+          credential_username: string | null
           created_at: string
           employee_id: string
           expected_return_date: string | null
@@ -1174,6 +1178,10 @@ export type Database = {
           candidate_id?: string | null
           checked_out_at?: string | null
           condition?: string | null
+          credential_password?: string | null
+          credential_program?: string | null
+          credential_site?: string | null
+          credential_username?: string | null
           created_at?: string
           employee_id: string
           expected_return_date?: string | null
@@ -1191,6 +1199,10 @@ export type Database = {
           candidate_id?: string | null
           checked_out_at?: string | null
           condition?: string | null
+          credential_password?: string | null
+          credential_program?: string | null
+          credential_site?: string | null
+          credential_username?: string | null
           created_at?: string
           employee_id?: string
           expected_return_date?: string | null

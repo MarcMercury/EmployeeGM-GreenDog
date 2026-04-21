@@ -764,7 +764,9 @@
             <RosterAssetsTab
               :assets="assets"
               :is-admin="isAdmin"
-              @open-asset-dialog="showAssetDialog = true"
+              :can-view-passwords="canViewPasswordAssets"
+              :can-manage-passwords="canManagePasswordAssets"
+              @open-asset-dialog="openAssetDialog"
               @return-asset="returnAsset"
             />
           </v-window-item>
@@ -1115,34 +1117,69 @@
         <v-card-text>
           <v-text-field
             v-model="assetForm.asset_name"
-            label="Asset Name"
+            :label="assetForm.asset_type === 'Password' ? 'Label' : 'Asset Name'"
             variant="outlined"
             density="compact"
-            placeholder="e.g., Office Key #3, MacBook Pro"
+            :placeholder="assetForm.asset_type === 'Password' ? 'e.g., Managers Email, Costco Login' : 'e.g., Office Key #3, MacBook Pro'"
           />
           <v-select
             v-model="assetForm.asset_type"
-            :items="['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other']"
+            :items="availableAssetTypes"
             label="Asset Type"
             variant="outlined"
             density="compact"
             class="mt-3"
           />
-          <v-text-field
-            v-model="assetForm.serial_number"
-            label="Serial Number (Optional)"
-            variant="outlined"
-            density="compact"
-            class="mt-3"
-          />
-          <v-text-field
-            v-model="assetForm.expected_return_date"
-            label="Expected Return Date (Optional)"
-            type="date"
-            variant="outlined"
-            density="compact"
-            class="mt-3"
-          />
+          <template v-if="assetForm.asset_type === 'Password'">
+            <v-text-field
+              v-model="assetForm.credential_site"
+              label="Site"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+            />
+            <v-text-field
+              v-model="assetForm.credential_program"
+              label="Program"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+            />
+            <v-text-field
+              v-model="assetForm.credential_username"
+              label="Username"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+            />
+            <v-text-field
+              v-model="assetForm.credential_password"
+              label="Password"
+              :type="showCredentialPassword ? 'text' : 'password'"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+              :append-inner-icon="showCredentialPassword ? 'mdi-eye-off' : 'mdi-eye'"
+              @click:append-inner="showCredentialPassword = !showCredentialPassword"
+            />
+          </template>
+          <template v-else>
+            <v-text-field
+              v-model="assetForm.serial_number"
+              label="Serial Number (Optional)"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+            />
+            <v-text-field
+              v-model="assetForm.expected_return_date"
+              label="Expected Return Date (Optional)"
+              type="date"
+              variant="outlined"
+              density="compact"
+              class="mt-3"
+            />
+          </template>
           <v-textarea
             v-model="assetForm.notes"
             label="Notes (Optional)"
@@ -1158,11 +1195,11 @@
             color="warning"
             variant="flat"
             :loading="savingAsset"
-            :disabled="!assetForm.asset_name.trim()"
+            :disabled="!canSaveAsset"
             @click="saveAsset"
           >
             <v-icon start>mdi-check</v-icon>
-            Assign
+            Save
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1764,10 +1801,15 @@ const noteForm = ref({
 const assetForm = ref({
   asset_name: '',
   asset_type: 'Badge',
+  credential_site: '',
+  credential_program: '',
+  credential_username: '',
+  credential_password: '',
   serial_number: '',
   expected_return_date: null as string | null,
   notes: ''
 })
+const showCredentialPassword = ref(false)
 
 // Document upload state
 const showDocumentDialog = ref(false)
@@ -1963,6 +2005,19 @@ const expiringCertsCount = computed(() => {
 // ==========================================
 const isAdmin = computed(() => authStore.isAdmin)
 const currentRole = computed(() => authStore.userRole || 'user')
+const canViewPasswordAssets = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin'].includes(currentRole.value))
+const canManagePasswordAssets = computed(() => ['super_admin', 'admin', 'manager', 'hr_admin'].includes(currentRole.value))
+const availableAssetTypes = computed(() => {
+  if (isAdmin.value) return ['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other', 'Password']
+  if (canManagePasswordAssets.value) return ['Password']
+  return ['Key', 'Badge', 'Device', 'Equipment', 'Uniform', 'Other']
+})
+const canSaveAsset = computed(() => {
+  if (!assetForm.value.asset_name.trim()) return false
+  if (assetForm.value.asset_type !== 'Password') return true
+  if (!canManagePasswordAssets.value) return false
+  return Boolean(assetForm.value.credential_password.trim() && (assetForm.value.credential_site.trim() || assetForm.value.credential_program.trim()))
+})
 
 const canViewSensitiveData = computed(() => {
   // Admins can see everything
@@ -2961,15 +3016,28 @@ async function saveNote() {
 
 async function saveAsset() {
   if (!assetForm.value.asset_name.trim()) return
+  if (assetForm.value.asset_type === 'Password' && !canManagePasswordAssets.value) {
+    toast.error('You do not have permission to manage password assets')
+    return
+  }
+  if (assetForm.value.asset_type !== 'Password' && !isAdmin.value) {
+    toast.error('Only admins can assign physical assets')
+    return
+  }
   
   savingAsset.value = true
   try {
+    const selectedAssetType = assetForm.value.asset_type
     const insertData = {
       employee_id: employeeId.value,
       asset_name: assetForm.value.asset_name.trim(),
       asset_type: assetForm.value.asset_type,
-      serial_number: assetForm.value.serial_number || null,
-      expected_return_date: assetForm.value.expected_return_date || null,
+      credential_site: assetForm.value.asset_type === 'Password' ? assetForm.value.credential_site.trim() || null : null,
+      credential_program: assetForm.value.asset_type === 'Password' ? assetForm.value.credential_program.trim() || null : null,
+      credential_username: assetForm.value.asset_type === 'Password' ? assetForm.value.credential_username.trim() || null : null,
+      credential_password: assetForm.value.asset_type === 'Password' ? assetForm.value.credential_password : null,
+      serial_number: assetForm.value.asset_type === 'Password' ? null : assetForm.value.serial_number || null,
+      expected_return_date: assetForm.value.asset_type === 'Password' ? null : assetForm.value.expected_return_date || null,
       notes: assetForm.value.notes || null
     }
     
@@ -2989,14 +3057,34 @@ async function saveAsset() {
     
     await loadAssets()
     showAssetDialog.value = false
-    assetForm.value = { asset_name: '', asset_type: 'Badge', serial_number: '', expected_return_date: null, notes: '' }
-    toast.success('Asset assigned successfully')
+    resetAssetForm()
+    toast.success(selectedAssetType === 'Password' ? 'Password saved successfully' : 'Asset assigned successfully')
   } catch (err: any) {
     console.error('Failed to save asset:', err)
     toast.error(err?.message || 'Failed to assign asset')
   } finally {
     savingAsset.value = false
   }
+}
+
+function resetAssetForm() {
+  assetForm.value = {
+    asset_name: '',
+    asset_type: isAdmin.value ? 'Badge' : 'Password',
+    credential_site: '',
+    credential_program: '',
+    credential_username: '',
+    credential_password: '',
+    serial_number: '',
+    expected_return_date: null,
+    notes: ''
+  }
+  showCredentialPassword.value = false
+}
+
+function openAssetDialog() {
+  resetAssetForm()
+  showAssetDialog.value = true
 }
 
 async function returnAsset(assetId: string) {
