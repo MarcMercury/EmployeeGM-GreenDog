@@ -102,6 +102,32 @@ export interface InvoiceRow {
   standard_price: number
   price_after_discount: number
   total_earned: number
+  /** Location tag applied at upload time (e.g. "Sherman Oaks", "Culver City") */
+  location?: string
+  /** Originating file name (for provenance / dedupe) */
+  source_file?: string
+}
+
+/** Normalized client/pet contact row parsed from the ezyVet Contact export */
+export interface ContactRow {
+  contact_id?: string
+  business_name?: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  state?: string
+  postal_code?: string
+  pet_name?: string
+  species?: string
+  breed?: string
+  primary_doctor?: string
+  primary_location?: string
+  created_at?: string
+  last_visit?: string
+  source_file?: string
 }
 
 /** Per-category breakdown line */

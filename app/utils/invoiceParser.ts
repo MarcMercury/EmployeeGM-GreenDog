@@ -12,7 +12,7 @@
  *
  * Column names vary slightly between exports so we do fuzzy header matching.
  */
-import type { InvoiceRow } from '~/types/bonus'
+import type { InvoiceRow, ContactRow } from '~/types/bonus'
 
 /** Case/whitespace-insensitive header lookup helpers */
 function normalize(s: string): string {
@@ -169,4 +169,110 @@ export async function parseInvoiceFile(file: File): Promise<ParseResult> {
   const sheet = workbook.Sheets[sheetName]!
   const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true }) as unknown[][]
   return parseInvoiceRows(raw)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Contact file parsing (ezyVet "Contact Data" export)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface ContactParseResult {
+  rows: ContactRow[]
+  headers: string[]
+  warnings: string[]
+}
+
+export function parseContactRows(data: unknown[][]): ContactParseResult {
+  const warnings: string[] = []
+  let headerIdx = 0
+  for (let i = 0; i < Math.min(15, data.length); i++) {
+    const row = (data[i] || []).map(c => String(c || ''))
+    const joined = row.join(' ').toLowerCase()
+    if ((joined.includes('first name') || joined.includes('contact')) && (joined.includes('email') || joined.includes('phone') || joined.includes('business'))) {
+      headerIdx = i; break
+    }
+  }
+  const headers = (data[headerIdx] || []).map(h => String(h || '').trim())
+
+  const COL = {
+    contact_id:       findCol(headers, ['Contact ID','ID','Client ID']),
+    business_name:    findCol(headers, ['Business Name','Account Name','Client Name']),
+    first_name:       findCol(headers, ['First Name','Client First Name','Given Name']),
+    last_name:        findCol(headers, ['Last Name','Client Last Name','Surname']),
+    email:            findCol(headers, ['Email','Email Address']),
+    phone:            findCol(headers, ['Phone','Mobile','Phone Number','Cell']),
+    address:          findCol(headers, ['Address','Street','Address 1']),
+    city:             findCol(headers, ['City','Town']),
+    state:            findCol(headers, ['State','Province','Region']),
+    postal_code:      findCol(headers, ['Postal Code','Zip','ZIP','Zip Code']),
+    pet_name:         findCol(headers, ['Pet Name','Patient Name','Animal']),
+    species:          findCol(headers, ['Species']),
+    breed:            findCol(headers, ['Breed']),
+    primary_doctor:   findCol(headers, ['Primary Doctor','Preferred Doctor','Primary Vet','Vet']),
+    primary_location: findCol(headers, ['Primary Location','Default Location','Home Location','Clinic']),
+    created_at:       findCol(headers, ['Created','Created Date','Signup']),
+    last_visit:       findCol(headers, ['Last Visit','Last Seen','Most Recent Visit']),
+  }
+
+  const rows: ContactRow[] = []
+  for (let i = headerIdx + 1; i < data.length; i++) {
+    const r = data[i]
+    if (!r || r.length === 0) continue
+    const first = r[COL.first_name]
+    const last = r[COL.last_name]
+    const biz = r[COL.business_name]
+    if (!first && !last && !biz) continue
+    rows.push({
+      contact_id:       String(r[COL.contact_id] || '').trim(),
+      business_name:    String(r[COL.business_name] || '').trim(),
+      first_name:       String(r[COL.first_name] || '').trim(),
+      last_name:        String(r[COL.last_name] || '').trim(),
+      email:            String(r[COL.email] || '').trim(),
+      phone:            String(r[COL.phone] || '').trim(),
+      address:          String(r[COL.address] || '').trim(),
+      city:             String(r[COL.city] || '').trim(),
+      state:            String(r[COL.state] || '').trim(),
+      postal_code:      String(r[COL.postal_code] || '').trim(),
+      pet_name:         String(r[COL.pet_name] || '').trim(),
+      species:          String(r[COL.species] || '').trim(),
+      breed:            String(r[COL.breed] || '').trim(),
+      primary_doctor:   String(r[COL.primary_doctor] || '').trim(),
+      primary_location: String(r[COL.primary_location] || '').trim(),
+      created_at:       toDate(r[COL.created_at]),
+      last_visit:       toDate(r[COL.last_visit]),
+    })
+  }
+  if (!rows.length) warnings.push('No contact rows detected — confirm this is an ezyVet Contact Data export.')
+  return { rows, headers, warnings }
+}
+
+export async function parseContactFile(file: File): Promise<ContactParseResult> {
+  const XLSX: typeof import('xlsx') = await import('xlsx')
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: false })
+  const sheetName = workbook.SheetNames[0]
+  if (!sheetName) return { rows: [], headers: [], warnings: ['Workbook is empty'] }
+  const sheet = workbook.Sheets[sheetName]!
+  const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true }) as unknown[][]
+  return parseContactRows(raw)
+}
+
+/**
+ * Auto-detect whether a file is an invoice-lines export or a contact export
+ * by inspecting the first ~15 rows for signature headers.
+ * Returns 'invoice' | 'contact' | 'unknown'.
+ */
+export async function detectFileKind(file: File): Promise<'invoice' | 'contact' | 'unknown'> {
+  const XLSX: typeof import('xlsx') = await import('xlsx')
+  const buffer = await file.arrayBuffer()
+  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: false })
+  const sheetName = workbook.SheetNames[0]
+  if (!sheetName) return 'unknown'
+  const sheet = workbook.Sheets[sheetName]!
+  const raw: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true }) as unknown[][]
+  for (let i = 0; i < Math.min(15, raw.length); i++) {
+    const joined = (raw[i] || []).map(c => String(c || '').toLowerCase()).join(' ')
+    if (joined.includes('invoice') && joined.includes('product') && joined.includes('price')) return 'invoice'
+    if ((joined.includes('first name') || joined.includes('contact id')) && (joined.includes('email') || joined.includes('phone'))) return 'contact'
+  }
+  return 'unknown'
 }

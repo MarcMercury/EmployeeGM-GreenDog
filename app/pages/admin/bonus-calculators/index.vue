@@ -18,7 +18,7 @@
           prepend-icon="mdi-cloud-upload"
           @click="showUpload = true"
         >
-          Upload Invoice Data
+          Upload Data
         </v-btn>
         <v-btn
           color="secondary"
@@ -35,34 +35,74 @@
       </div>
     </div>
 
-    <!-- Loaded invoice banner -->
-    <v-alert
-      v-if="invoiceRows.length"
-      type="success"
-      variant="tonal"
-      class="mb-4"
-      closable
-      @click:close="clearInvoices"
-    >
-      <div class="d-flex align-center flex-wrap ga-3">
-        <div>
-          <strong>{{ invoiceRows.length.toLocaleString() }}</strong> invoice line items loaded
-          <span v-if="invoiceFileName"> from <strong>{{ invoiceFileName }}</strong></span>
-          · date range <strong>{{ invoiceDateRange.start }}</strong> to <strong>{{ invoiceDateRange.end }}</strong>
-          · total revenue <strong>${{ fmt(invoiceTotalRevenue) }}</strong>
+    <!-- Loaded data summary -->
+    <v-card v-if="invoiceRows.length || contactRows.length" class="mb-4" rounded="lg" elevation="1" color="surface">
+      <v-card-text class="pa-3">
+        <div class="d-flex align-center flex-wrap ga-2 mb-2">
+          <v-icon color="success">mdi-database-check</v-icon>
+          <strong class="text-body-1">Loaded Data</strong>
+          <v-spacer />
+          <v-btn
+            size="small" variant="flat" color="primary"
+            prepend-icon="mdi-flash"
+            :disabled="!invoiceRows.length"
+            :loading="autoCalculating"
+            @click="autoCalculateAll"
+          >
+            Auto-Calculate All Plans
+          </v-btn>
+          <v-btn size="small" variant="text" color="error" prepend-icon="mdi-delete-sweep" @click="clearInvoices">
+            Clear All
+          </v-btn>
         </div>
-        <v-spacer />
-        <v-btn size="small" variant="outlined" color="primary" @click="autoCalculateAll" :loading="autoCalculating">
-          <v-icon start>mdi-flash</v-icon>
-          Auto-Calculate All Plans
-        </v-btn>
-      </div>
-    </v-alert>
+
+        <div v-if="invoiceRows.length" class="mb-2">
+          <div class="text-caption text-grey-darken-2 mb-1">
+            <strong>{{ invoiceRows.length.toLocaleString() }}</strong> invoice lines
+            · {{ invoiceDateRange.start }} → {{ invoiceDateRange.end }}
+            · total revenue <strong>${{ fmt(invoiceTotalRevenue) }}</strong>
+          </div>
+          <v-table density="compact" class="text-caption">
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Location</th>
+                <th class="text-right">Rows</th>
+                <th class="text-right">Revenue</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in uploadedFiles.filter(x => x.kind === 'invoice')" :key="f.id">
+                <td><v-icon size="14" class="mr-1">mdi-file-table</v-icon>{{ f.name }}</td>
+                <td>
+                  <v-chip size="x-small" :color="f.location ? 'primary' : 'grey'" variant="tonal">
+                    {{ f.location || '(untagged)' }}
+                  </v-chip>
+                </td>
+                <td class="text-right">{{ f.rowCount.toLocaleString() }}</td>
+                <td class="text-right">${{ fmt(f.revenue || 0) }}</td>
+                <td class="text-right">
+                  <v-btn size="x-small" variant="text" icon="mdi-close" @click="removeFile(f.id)" />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+
+        <div v-if="contactRows.length" class="d-flex align-center ga-2 mt-2">
+          <v-icon size="16" color="info">mdi-account-multiple</v-icon>
+          <span class="text-caption">
+            <strong>{{ contactRows.length.toLocaleString() }}</strong> contacts loaded from
+            {{ uploadedFiles.filter(f => f.kind === 'contact').map(f => f.name).join(', ') }}
+          </span>
+        </div>
+      </v-card-text>
+    </v-card>
 
     <!-- No data banner -->
-    <v-alert v-else type="info" variant="tonal" class="mb-4">
-      Upload an ezyVet <strong>invoice lines</strong> export (CSV/XLSX) to begin calculating bonuses.
-      The system will parse the file and match each line to the applicable bonus rules.
+    <v-alert v-if="!invoiceRows.length && !contactRows.length" type="info" variant="tonal" class="mb-4">
+      Upload your ezyVet <strong>Invoice Lines</strong> export for each location (employees may work across locations — all files get merged into one dataset with a location tag per row). You can also upload the <strong>Contact Data</strong> export to enrich rows with client/doctor info.
     </v-alert>
 
     <!-- Loading -->
@@ -204,41 +244,103 @@
       </v-row>
     </template>
 
-    <!-- Upload Dialog -->
-    <v-dialog v-model="showUpload" max-width="620" persistent>
+    <!-- Upload Dialog (multi-file, multi-location) -->
+    <v-dialog v-model="showUpload" max-width="820" persistent scrollable>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon start>mdi-file-table</v-icon>Upload Invoice Data
+          <v-icon start>mdi-cloud-upload</v-icon>Upload ezyVet Data
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="showUpload = false" />
         </v-card-title>
         <v-card-text>
+          <v-alert type="info" density="compact" variant="tonal" class="mb-3">
+            Add an <strong>Invoice Lines</strong> export per location and (optionally) the
+            <strong>Contact Data</strong> export. Employees who work across locations will be
+            matched in the merged dataset. Tag each file with its location to make reports clear.
+          </v-alert>
+
           <v-file-input
-            v-model="uploadFile"
+            v-model="stagingFiles"
+            multiple
             accept=".csv,.xls,.xlsx,.tsv"
-            label="Invoice lines export"
-            prepend-icon="mdi-file-table"
+            label="Add one or more files (invoice lines and/or contact data)"
+            prepend-icon="mdi-paperclip"
             variant="outlined"
             density="compact"
             show-size
+            @update:model-value="handleStagedFiles"
           />
-          <p class="text-caption text-grey mt-1">
-            Upload the ezyVet "Invoice Lines" export for the period you want to calculate.
-            Accepted columns: Invoice #, Invoice Date, Department, Product Name, Product Group,
-            Staff Member, Case Owner, Qty, Total Earned(incl).
-          </p>
-          <v-alert v-if="uploadError" type="error" density="compact" variant="tonal" class="mt-3">
-            {{ uploadError }}
-          </v-alert>
+
+          <v-table v-if="stagedFiles.length" density="compact" class="mt-2">
+            <thead>
+              <tr>
+                <th style="width: 26%">File</th>
+                <th style="width: 22%">Type</th>
+                <th style="width: 26%">Location</th>
+                <th style="width: 18%">Preview</th>
+                <th style="width: 8%" class="text-right"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in stagedFiles" :key="f.id">
+                <td class="text-caption">
+                  <v-icon size="14" class="mr-1">mdi-file</v-icon>{{ f.name }}
+                  <div class="text-grey">{{ (f.size / 1024).toFixed(0) }} KB</div>
+                </td>
+                <td>
+                  <v-select
+                    v-model="f.kind"
+                    :items="[
+                      { title: 'Invoice Lines', value: 'invoice' },
+                      { title: 'Contact Data',  value: 'contact' },
+                    ]"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
+                </td>
+                <td>
+                  <v-combobox
+                    v-if="f.kind === 'invoice'"
+                    v-model="f.location"
+                    :items="knownLocations"
+                    label="Location tag"
+                    density="compact"
+                    variant="outlined"
+                    hide-details
+                  />
+                  <span v-else class="text-caption text-grey">(n/a for contacts)</span>
+                </td>
+                <td class="text-caption">
+                  <span v-if="f.status === 'staged'" class="text-grey">auto-detected: {{ f.detected || '…' }}</span>
+                  <span v-else-if="f.status === 'parsing'" class="text-primary">parsing…</span>
+                  <span v-else-if="f.status === 'parsed'" class="text-success">
+                    {{ f.rowCount.toLocaleString() }} rows
+                  </span>
+                  <span v-else-if="f.status === 'error'" class="text-error">{{ f.error }}</span>
+                </td>
+                <td class="text-right">
+                  <v-btn size="x-small" variant="text" icon="mdi-close" @click="removeStaged(f.id)" />
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+
           <v-alert v-for="w in uploadWarnings" :key="w" type="warning" density="compact" variant="tonal" class="mt-2">
             {{ w }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
-          <v-spacer />
           <v-btn variant="text" @click="showUpload = false">Cancel</v-btn>
-          <v-btn color="primary" :loading="uploading" :disabled="!uploadFile" @click="handleUpload">
-            Parse &amp; Load
+          <v-spacer />
+          <v-btn
+            color="primary"
+            :loading="uploading"
+            :disabled="!stagedFiles.length"
+            prepend-icon="mdi-check"
+            @click="processStagedFiles"
+          >
+            Parse &amp; Merge {{ stagedFiles.length }} File(s)
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -503,8 +605,9 @@ import type {
   BonusRunStatus,
   BonusCalculationResult,
   InvoiceRow,
+  ContactRow,
 } from '~/types/bonus'
-import { parseInvoiceFile } from '~/utils/invoiceParser'
+import { parseInvoiceFile, parseContactFile, detectFileKind } from '~/utils/invoiceParser'
 import { calculateBonus, quarterToPeriod, semiAnnualToPeriod } from '~/utils/bonusCalculator'
 
 definePageMeta({
@@ -518,10 +621,30 @@ const {
 
 await loadAll()
 
-// ─── Invoice data (client-side, in-memory) ───────────────────────────────
+// ─── Invoice & Contact data (client-side, in-memory, merged across files) ─
 
 const invoiceRows = useState<InvoiceRow[]>('bonus-invoice-rows', () => [])
-const invoiceFileName = useState<string>('bonus-invoice-filename', () => '')
+const contactRows = useState<ContactRow[]>('bonus-contact-rows', () => [])
+/** Per-file provenance: what was uploaded + its tag */
+interface UploadedFile {
+  id: string
+  name: string
+  kind: 'invoice' | 'contact'
+  location: string | null
+  rowCount: number
+  revenue?: number
+  uploadedAt: string
+}
+const uploadedFiles = useState<UploadedFile[]>('bonus-uploaded-files', () => [])
+
+const knownLocations = [
+  'Sherman Oaks',
+  'Culver City',
+  'Studio City',
+  'Pasadena',
+  'Glendale',
+  'Valencia',
+]
 
 const invoiceDateRange = computed(() => {
   if (!invoiceRows.value.length) return { start: '—', end: '—' }
@@ -538,34 +661,141 @@ const invoiceTotalRevenue = computed(() =>
   invoiceRows.value.reduce((s, r) => s + r.total_earned, 0)
 )
 
-// ─── Upload ──────────────────────────────────────────────────────────────
+/** Short summary of all invoice source files for run provenance */
+const sourceFilenameSummary = computed(() => {
+  const files = uploadedFiles.value.filter(f => f.kind === 'invoice')
+  if (!files.length) return ''
+  if (files.length === 1) return files[0]!.name
+  return `${files.length} files: ${files.map(f => f.location || f.name).join(', ')}`
+})
+
+// ─── Multi-file upload staging ───────────────────────────────────────────
+
+interface StagedFile {
+  id: string
+  file: File
+  name: string
+  size: number
+  kind: 'invoice' | 'contact'
+  detected: 'invoice' | 'contact' | 'unknown' | null
+  location: string | null
+  status: 'staged' | 'parsing' | 'parsed' | 'error'
+  rowCount: number
+  error?: string
+}
 
 const showUpload = ref(false)
-const uploadFile = ref<File | null>(null)
+const stagingFiles = ref<File[] | null>(null) // v-file-input binding
+const stagedFiles = ref<StagedFile[]>([])
 const uploading = ref(false)
-const uploadError = ref<string | null>(null)
 const uploadWarnings = ref<string[]>([])
 
-async function handleUpload() {
-  if (!uploadFile.value) return
+async function handleStagedFiles(files: File[] | File | null) {
+  if (!files) return
+  const list = Array.isArray(files) ? files : [files]
+  for (const file of list) {
+    const id = crypto.randomUUID()
+    const staged: StagedFile = reactive({
+      id, file, name: file.name, size: file.size,
+      kind: 'invoice', detected: null, location: null,
+      status: 'staged', rowCount: 0,
+    })
+    stagedFiles.value.push(staged)
+    // Auto-detect kind and pre-fill location from filename
+    try {
+      const kind = await detectFileKind(file)
+      staged.detected = kind
+      if (kind === 'contact') staged.kind = 'contact'
+      // Guess a location from the filename
+      const lc = file.name.toLowerCase()
+      const hit = knownLocations.find(loc => lc.includes(loc.toLowerCase().replace(/\s+/g, '')))
+        || knownLocations.find(loc => lc.includes(loc.split(' ')[0]!.toLowerCase()))
+      if (hit) staged.location = hit
+    } catch { staged.detected = 'unknown' }
+  }
+  // reset the v-file-input so the same file can be re-selected if removed
+  stagingFiles.value = null
+}
+
+function removeStaged(id: string) {
+  stagedFiles.value = stagedFiles.value.filter(f => f.id !== id)
+}
+
+function removeFile(id: string) {
+  const f = uploadedFiles.value.find(x => x.id === id)
+  if (!f) return
+  if (f.kind === 'invoice') {
+    invoiceRows.value = invoiceRows.value.filter(r => r.source_file !== f.name)
+  } else {
+    contactRows.value = contactRows.value.filter(r => r.source_file !== f.name)
+  }
+  uploadedFiles.value = uploadedFiles.value.filter(x => x.id !== id)
+}
+
+async function processStagedFiles() {
+  if (!stagedFiles.value.length) return
   uploading.value = true
-  uploadError.value = null
   uploadWarnings.value = []
   try {
-    const file = uploadFile.value as unknown as File
-    const result = await parseInvoiceFile(file)
-    if (!result.rows.length) {
-      uploadError.value = 'No invoice rows parsed. Check the file format.'
-      return
+    let addedInvoices = 0
+    let addedContacts = 0
+    for (const s of stagedFiles.value) {
+      s.status = 'parsing'
+      try {
+        if (s.kind === 'invoice') {
+          const r = await parseInvoiceFile(s.file)
+          if (!r.rows.length) {
+            s.status = 'error'; s.error = 'no invoice rows detected'
+            uploadWarnings.value.push(`${s.name}: no invoice rows detected`)
+            continue
+          }
+          const tagged = r.rows.map(row => ({
+            ...row,
+            source_file: s.name,
+            location: s.location || row.business_name || undefined,
+          }))
+          invoiceRows.value = [...invoiceRows.value, ...tagged]
+          const revenue = tagged.reduce((sum, t) => sum + t.total_earned, 0)
+          uploadedFiles.value.push({
+            id: s.id, name: s.name, kind: 'invoice', location: s.location,
+            rowCount: tagged.length, revenue, uploadedAt: new Date().toISOString(),
+          })
+          addedInvoices += tagged.length
+          s.rowCount = tagged.length
+          s.status = 'parsed'
+          if (r.warnings.length) uploadWarnings.value.push(`${s.name}: ${r.warnings.join('; ')}`)
+        } else {
+          const r = await parseContactFile(s.file)
+          if (!r.rows.length) {
+            s.status = 'error'; s.error = 'no contact rows detected'
+            uploadWarnings.value.push(`${s.name}: no contact rows detected`)
+            continue
+          }
+          const tagged = r.rows.map(row => ({ ...row, source_file: s.name }))
+          contactRows.value = [...contactRows.value, ...tagged]
+          uploadedFiles.value.push({
+            id: s.id, name: s.name, kind: 'contact', location: null,
+            rowCount: tagged.length, uploadedAt: new Date().toISOString(),
+          })
+          addedContacts += tagged.length
+          s.rowCount = tagged.length
+          s.status = 'parsed'
+        }
+      } catch (err: any) {
+        s.status = 'error'
+        s.error = err?.message || 'failed to parse'
+        uploadWarnings.value.push(`${s.name}: ${s.error}`)
+      }
     }
-    invoiceRows.value = result.rows
-    invoiceFileName.value = file.name
-    uploadWarnings.value = result.warnings
-    notify(`Loaded ${result.rows.length.toLocaleString()} invoice rows`)
-    showUpload.value = false
-    uploadFile.value = null
-  } catch (err: any) {
-    uploadError.value = err?.message || 'Failed to parse file'
+    if (addedInvoices || addedContacts) {
+      const bits: string[] = []
+      if (addedInvoices) bits.push(`${addedInvoices.toLocaleString()} invoice rows`)
+      if (addedContacts) bits.push(`${addedContacts.toLocaleString()} contacts`)
+      notify('Loaded ' + bits.join(' + '))
+    }
+    // Clear only the staged files that parsed OK; keep errors visible
+    stagedFiles.value = stagedFiles.value.filter(f => f.status === 'error')
+    if (!stagedFiles.value.length) showUpload.value = false
   } finally {
     uploading.value = false
   }
@@ -573,7 +803,8 @@ async function handleUpload() {
 
 function clearInvoices() {
   invoiceRows.value = []
-  invoiceFileName.value = ''
+  contactRows.value = []
+  uploadedFiles.value = []
 }
 
 // ─── Summary filters ─────────────────────────────────────────────────────
@@ -646,7 +877,7 @@ function computePreview() {
     work_days: calcDialog.work_days,
     days_out: calcDialog.days_out,
     notes: calcDialog.notes,
-    source_filename: invoiceFileName.value,
+    source_filename: sourceFilenameSummary.value,
   })
 }
 
@@ -679,7 +910,7 @@ async function saveCalculation() {
       work_days: calcDialog.work_days,
       days_out: calcDialog.days_out,
       notes: calcDialog.notes,
-      source_filename: invoiceFileName.value,
+      source_filename: sourceFilenameSummary.value,
     })
     notify(`Saved ${calcDialog.plan.employee_name} — ${calcDialog.preview.period_label}: $${fmt(calcDialog.preview.total_bonus)}`)
     calcDialog.show = false
@@ -707,7 +938,7 @@ async function autoCalculateAll() {
         period_end: period.period_end,
         work_days: (plan.config as any)?.inputs?.find((i: any) => i.key === 'work_days')?.default,
         days_out: 0,
-        source_filename: invoiceFileName.value,
+        source_filename: sourceFilenameSummary.value,
         notes: 'Auto-calculated batch run',
       }
       const result = calculateBonus(plan, invoiceRows.value, inputs)
