@@ -184,26 +184,17 @@ export default defineEventHandler(async (event) => {
   })
 
   // Only count COMPLETED appointments (departed/complete in ezyVet status report).
-  // For appointment_status rows: filter by status = 'completed'.
-  // For weekly_tracking rows: keep existing filters (no status field, used for type breakdowns only).
-  const booked = normalized.filter(a => {
+  // NOTE: apptsByLocation, dayOfWeek, weeklyTrend and monthly appointment counts
+  // are now derived from invoice_lines (DISTINCT client + date tuples) — see
+  // section 4. A single appointment generates many invoice lines on the same
+  // day, so rolling invoice lines up to (client, date) tuples is the canonical
+  // appointment count. appointment_data is kept ONLY for appointment_type /
+  // service_category breakdowns and duration stats.
+  const typedAppts = normalized.filter(a => {
     if (!CLINIC_LOCATIONS.includes(a.location)) return false
-    if (a.dayOfWeek === 0) return false // Sunday excluded
-    if (a.source === 'appointment_status') {
-      return a.status === 'completed'
-    }
-    // weekly_tracking: apply garbage/availability filters (no per-row status available)
+    if (a.source !== 'weekly_tracking') return false
     return !a.isAvailability && !a.isGarbage
   })
-
-  // For type breakdowns, only use weekly_tracking (status has no real types)
-  const typedAppts = booked.filter(a => a.source === 'weekly_tracking')
-
-  // ── Appointments by Location (only completed) ──
-  const apptsByLocation: Record<string, number> = {}
-  for (const a of booked) {
-    apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
-  }
 
   // ── Appointment Types ──
   const typeMap: Record<string, { total: number; category: string; byLocation: Record<string, number> }> = {}
@@ -227,39 +218,8 @@ export default defineEventHandler(async (event) => {
     .map(([category, info]) => ({ category, total: info.total, byLocation: info.byLocation }))
     .sort((a, b) => b.total - a.total)
 
-  // ── Day of Week ──
-  // Only use appointment_status + completed for day-of-week distribution
-  const datedAppts = booked.filter(a => a.source === 'appointment_status')
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const dowMap: Record<number, { total: number; byLocation: Record<string, number> }> = {}
-  for (let d = 1; d <= 6; d++) dowMap[d] = { total: 0, byLocation: {} }
-  for (const a of datedAppts) {
-    if (a.dayOfWeek === 0) continue
-    dowMap[a.dayOfWeek].total += a.count
-    dowMap[a.dayOfWeek].byLocation[a.location] = (dowMap[a.dayOfWeek].byLocation[a.location] || 0) + a.count
-  }
-  const dayOfWeek = Object.entries(dowMap)
-    .map(([idx, info]) => ({ day: dayNames[Number(idx)], index: Number(idx), total: info.total, byLocation: info.byLocation }))
-    .sort((a, b) => a.index - b.index)
-
-  // ── Weekly Trend ──
-  const weekMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
-  for (const a of datedAppts) {
-    if (!weekMap[a.weekStart]) weekMap[a.weekStart] = { total: 0, byLocation: {} }
-    weekMap[a.weekStart].total += a.count
-    weekMap[a.weekStart].byLocation[a.location] = (weekMap[a.weekStart].byLocation[a.location] || 0) + a.count
-  }
-  const weeklyTrend = Object.entries(weekMap)
-    .map(([week, info]) => ({ week, total: info.total, byLocation: info.byLocation }))
-    .sort((a, b) => a.week.localeCompare(b.week))
-
-  // ── Monthly Appointment Trend ──
-  const monthApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
-  for (const a of datedAppts) {
-    if (!monthApptMap[a.month]) monthApptMap[a.month] = { total: 0, byLocation: {} }
-    monthApptMap[a.month].total += a.count
-    monthApptMap[a.month].byLocation[a.location] = (monthApptMap[a.month].byLocation[a.location] || 0) + a.count
-  }
+  // ── Day of Week / Weekly / Monthly appointment counts come from invoice_lines
+  //    (DISTINCT client + date tuples) — computed below in section 4.
 
   // ── 4. AGGREGATE INVOICE REVENUE (directly from invoice_lines) ────────
 
@@ -286,6 +246,15 @@ export default defineEventHandler(async (event) => {
   const pgMap: Record<string, { revenue: number; byLocation: Record<string, number> }> = {}
   const staffMap: Record<string, { revenue: number; location: string; byLocation: Record<string, number> }> = {}
 
+  // ── Appointment counts derived from invoice_lines (DISTINCT client + date).
+  //    A single appointment generates many invoice lines on the same day —
+  //    roll lines up to (client_code, invoice_date) tuples for appointment grain.
+  const apptsByLocation: Record<string, number> = {}
+  const monthApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
+  const weekApptMap: Record<string, { total: number; byLocation: Record<string, number> }> = {}
+  const dowApptMap: Record<number, { total: number; byLocation: Record<string, number> }> = {}
+  for (let d = 1; d <= 6; d++) dowApptMap[d] = { total: 0, byLocation: {} }
+
   if (invoiceSummary) {
     // ── RPC fast path — single DB call, PostgreSQL-side aggregation ──
     const rpc = invoiceSummary
@@ -299,6 +268,7 @@ export default defineEventHandler(async (event) => {
       if (CLINIC_LOCATIONS.includes(loc)) {
         revenueByLocation[loc] = (revenueByLocation[loc] || 0) + Number(row.revenue || 0)
         clientCountByLocation[loc] = (clientCountByLocation[loc] || 0) + Number(row.unique_clients || 0)
+        apptsByLocation[loc] = (apptsByLocation[loc] || 0) + Number(row.appointments || 0)
       }
     }
 
@@ -306,11 +276,37 @@ export default defineEventHandler(async (event) => {
       const rawDiv = row.division === '(null)' ? null : row.division
       const loc = normLocDynamic(rawDiv)
       const rev = Number(row.revenue || 0)
+      const appts = Number(row.appointments || 0)
       monthRevTotalMap[row.month] = (monthRevTotalMap[row.month] || 0) + rev
+      if (!monthApptMap[row.month]) monthApptMap[row.month] = { total: 0, byLocation: {} }
       if (CLINIC_LOCATIONS.includes(loc)) {
         if (!monthRevMap[row.month]) monthRevMap[row.month] = {}
         monthRevMap[row.month][loc] = (monthRevMap[row.month][loc] || 0) + rev
+        monthApptMap[row.month].total += appts
+        monthApptMap[row.month].byLocation[loc] = (monthApptMap[row.month].byLocation[loc] || 0) + appts
       }
+    }
+
+    for (const row of (rpc.byWeek || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      const loc = normLocDynamic(rawDiv)
+      if (!CLINIC_LOCATIONS.includes(loc)) continue
+      const appts = Number(row.appointments || 0)
+      if (!weekApptMap[row.week]) weekApptMap[row.week] = { total: 0, byLocation: {} }
+      weekApptMap[row.week].total += appts
+      weekApptMap[row.week].byLocation[loc] = (weekApptMap[row.week].byLocation[loc] || 0) + appts
+    }
+
+    for (const row of (rpc.byDow || [])) {
+      const rawDiv = row.division === '(null)' ? null : row.division
+      const loc = normLocDynamic(rawDiv)
+      if (!CLINIC_LOCATIONS.includes(loc)) continue
+      const dow = Number(row.dow)
+      if (dow < 1 || dow > 6) continue // exclude Sunday
+      const appts = Number(row.appointments || 0)
+      if (!dowApptMap[dow]) dowApptMap[dow] = { total: 0, byLocation: {} }
+      dowApptMap[dow].total += appts
+      dowApptMap[dow].byLocation[loc] = (dowApptMap[dow].byLocation[loc] || 0) + appts
     }
 
     for (const row of (rpc.byProductGroup || [])) {
@@ -334,6 +330,36 @@ export default defineEventHandler(async (event) => {
           staffMap[row.staff_member].location = loc
         }
       }
+    }
+
+    // ── If RPC is an older version without byWeek/byDow, fall back below ──
+    const rpcHasApptGrain =
+      rpc.totals?.appointments !== undefined ||
+      (rpc.byDivision || []).some((r: any) => r.appointments !== undefined)
+
+    if (!rpcHasApptGrain) {
+      // Fetch raw lines just for appointment grain
+      let invPage = 0
+      let invHasMore = true
+      while (invHasMore) {
+        const from = invPage * pageSize
+        const to = from + pageSize - 1
+        const { data: invData } = await supabase
+          .from('invoice_lines')
+          .select('invoice_date, division, client_code')
+          .not('invoice_type', 'eq', 'Header')
+          .gte('invoice_date', startDate)
+          .lte('invoice_date', endDate)
+          .range(from, to)
+        if (invData && invData.length > 0) {
+          invoiceLines = invoiceLines.concat(invData)
+          invHasMore = invData.length === pageSize
+          invPage++
+        } else {
+          invHasMore = false
+        }
+      }
+      computeApptGrainFromLines(invoiceLines)
     }
   } else {
     // ── Fallback: client-side aggregation from raw invoice lines ──
@@ -389,7 +415,71 @@ export default defineEventHandler(async (event) => {
     for (const [loc, s] of Object.entries(clientsByLocationSets)) {
       clientCountByLocation[loc] = s.size
     }
+
+    computeApptGrainFromLines(invoiceLines)
   }
+
+  // Compute appointment grain from invoice_lines (DISTINCT client + date).
+  // Used in the fallback path and when RPC is an older version without tuples.
+  function computeApptGrainFromLines(lines: any[]) {
+    const seenTotal: Record<string, Set<string>> = {} // per-location Set of "client__date"
+    const seenByMonth: Record<string, Record<string, Set<string>>> = {} // month -> loc -> Set
+    const seenByWeek: Record<string, Record<string, Set<string>>> = {}
+    const seenByDow: Record<number, Record<string, Set<string>>> = {}
+
+    for (const line of lines) {
+      if (!line.client_code || !line.invoice_date) continue
+      const loc = normLocDynamic(line.division)
+      if (!CLINIC_LOCATIONS.includes(loc)) continue
+
+      const key = `${line.client_code}__${line.invoice_date}`
+      const month = line.invoice_date.substring(0, 7)
+      const d = new Date(line.invoice_date + 'T00:00:00')
+      const dow = d.getDay()
+      const mon = new Date(d); mon.setDate(mon.getDate() - ((dow + 6) % 7))
+      const weekStart = mon.toISOString().split('T')[0]
+
+      ;(seenTotal[loc] ||= new Set()).add(key)
+      ;((seenByMonth[month] ||= {})[loc] ||= new Set()).add(key)
+      ;((seenByWeek[weekStart] ||= {})[loc] ||= new Set()).add(key)
+      if (dow >= 1 && dow <= 6) {
+        ;((seenByDow[dow] ||= {})[loc] ||= new Set()).add(key)
+      }
+    }
+
+    for (const [loc, s] of Object.entries(seenTotal)) apptsByLocation[loc] = s.size
+    for (const [month, byLoc] of Object.entries(seenByMonth)) {
+      const entry = (monthApptMap[month] ||= { total: 0, byLocation: {} })
+      for (const [loc, s] of Object.entries(byLoc)) {
+        entry.byLocation[loc] = s.size
+        entry.total += s.size
+      }
+    }
+    for (const [week, byLoc] of Object.entries(seenByWeek)) {
+      const entry = (weekApptMap[week] ||= { total: 0, byLocation: {} })
+      for (const [loc, s] of Object.entries(byLoc)) {
+        entry.byLocation[loc] = s.size
+        entry.total += s.size
+      }
+    }
+    for (const [dow, byLoc] of Object.entries(seenByDow)) {
+      const entry = (dowApptMap[Number(dow)] ||= { total: 0, byLocation: {} })
+      for (const [loc, s] of Object.entries(byLoc)) {
+        entry.byLocation[loc] = s.size
+        entry.total += s.size
+      }
+    }
+  }
+
+  // ── Derive dayOfWeek + weeklyTrend output shapes from invoice-based maps ──
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const dayOfWeek = Object.entries(dowApptMap)
+    .map(([idx, info]) => ({ day: dayNames[Number(idx)], index: Number(idx), total: info.total, byLocation: info.byLocation }))
+    .sort((a, b) => a.index - b.index)
+
+  const weeklyTrend = Object.entries(weekApptMap)
+    .map(([week, info]) => ({ week, total: info.total, byLocation: info.byLocation }))
+    .sort((a, b) => a.week.localeCompare(b.week))
 
   // Combine monthly trends (appointments + revenue)
   const allMonths = new Set([...Object.keys(monthApptMap), ...Object.keys(monthRevMap), ...Object.keys(monthRevTotalMap)])

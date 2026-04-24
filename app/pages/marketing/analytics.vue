@@ -1251,6 +1251,10 @@ async function loadAll() {
 
     const crmParams = new URLSearchParams()
     if (divisionFilter.value && divisionFilter.value !== 'All Divisions') crmParams.append('division', divisionFilter.value)
+    // Location filter — maps to a raw division ilike match (e.g. "Venice" → "%Venice%")
+    if (locationFilter.value && locationFilter.value !== 'All Locations' && locationFilter.value !== 'Compare Locations') {
+      crmParams.append('location', locationFilter.value)
+    }
     if (dateRange.start) crmParams.append('startDate', dateRange.start)
     if (dateRange.end) crmParams.append('endDate', dateRange.end)
 
@@ -1278,7 +1282,7 @@ async function loadAll() {
   }
 }
 
-watch(() => [dateRange.start, dateRange.end, divisionFilter.value], () => {
+watch(() => [dateRange.start, dateRange.end, divisionFilter.value, locationFilter.value], () => {
   if (_debounce) clearTimeout(_debounce)
   _debounce = setTimeout(() => loadAll(), 500)
 })

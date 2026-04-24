@@ -28,25 +28,33 @@ export default defineEventHandler(async (event) => {
 
   // Optional filters
   const division = query.division as string | undefined
+  const location = query.location as string | undefined // normalized: "Venice" | "Van Nuys" | "Sherman Oaks"
   const startDate = query.startDate as string | undefined
   const endDate = query.endDate as string | undefined
 
-  const cacheKey = `analytics:ezyvet:${division || 'all'}:${startDate || 'ytd'}:${endDate || 'now'}`
+  // Map normalized location name to the substring(s) found in raw ezyVet
+  // division strings (e.g. "Green Dog - Venice (BU)" contains "venice").
+  // Using ilike lets us match across any division variant for that clinic.
+  const locationDivisionPattern = location ? `%${location}%` : null
+
+  const cacheKey = `analytics:ezyvet:${division || 'all'}:${location || 'all'}:${startDate || 'ytd'}:${endDate || 'now'}`
   return getCached(cacheKey, async () => {
 
   try {
-    // Build base query for contacts (division filter only — date filtering is on invoice_lines)
+    // Build base query for contacts (division/location filter — date filtering is on invoice_lines)
     function buildContactQuery(selectExpr: string = '*') {
       let q = supabase.from('ezyvet_crm_contacts').select(selectExpr)
       if (division) q = q.eq('division', division)
+      else if (locationDivisionPattern) q = q.ilike('division', locationDivisionPattern)
       return q
     }
 
-    // Build base query for invoice_lines (division filter; date range applied at call site)
+    // Build base query for invoice_lines (division/location filter; date range applied at call site)
     function buildInvoiceQuery(selectExpr: string = '*') {
       let q = supabase.from('invoice_lines').select(selectExpr)
         .not('invoice_type', 'eq', 'Header')
       if (division) q = q.eq('division', division)
+      else if (locationDivisionPattern) q = q.ilike('division', locationDivisionPattern)
       return q
     }
 
@@ -144,6 +152,13 @@ export default defineEventHandler(async (event) => {
     twoYearsAgo.setFullYear(endOfLastMonth.getFullYear() - 2)
     const oneYearAgo = twelveMonthsAgo
 
+    // Helper to apply the same division/location filter as the base contact query
+    const applyContactFilter = <T extends { eq: any; ilike: any }>(q: T): T => {
+      if (division) return q.eq('division', division)
+      if (locationDivisionPattern) return q.ilike('division', locationDivisionPattern)
+      return q
+    }
+
     // Run recency count queries in parallel (pushed to DB)
     const [
       { count: totalInDb },
@@ -155,12 +170,12 @@ export default defineEventHandler(async (event) => {
       { count: neverVisitedCount }
     ] = await Promise.all([
       supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', threeMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', sixMonthsAgo.toISOString()).lt('last_visit', threeMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twelveMonthsAgo.toISOString()).lt('last_visit', sixMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twoYearsAgo.toISOString()).lt('last_visit', twelveMonthsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).lt('last_visit', twoYearsAgo.toISOString()); if (division) q = q.eq('division', division); return q })(),
-      (() => { let q = supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).is('last_visit', null); if (division) q = q.eq('division', division); return q })()
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', threeMonthsAgo.toISOString())),
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', sixMonthsAgo.toISOString()).lt('last_visit', threeMonthsAgo.toISOString())),
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twelveMonthsAgo.toISOString()).lt('last_visit', sixMonthsAgo.toISOString())),
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).gte('last_visit', twoYearsAgo.toISOString()).lt('last_visit', twelveMonthsAgo.toISOString())),
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).lt('last_visit', twoYearsAgo.toISOString())),
+      applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).is('last_visit', null))
     ])
     
     const activeContacts = filteredContacts.filter(c => {

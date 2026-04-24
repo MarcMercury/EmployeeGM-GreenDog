@@ -11,6 +11,7 @@ export const analyticsQuerySchema = z.object({
   startDate: isoDate,
   endDate: isoDate,
   division: z.string().optional(),
+  location: z.string().optional(),
   _t: z.string().optional(), // cache-bust param
 })
 
