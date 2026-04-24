@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   const startDate = query.startDate || '2025-01-01'
   const endDate = query.endDate || new Date().toISOString().split('T')[0]
 
-  const cacheKey = `analytics:performance:${startDate}:${endDate}`
+  const cacheKey = `analytics:performance:v3:${startDate}:${endDate}`
   return getCached(cacheKey, async () => {
 
   // ── 1. LOAD APPOINTMENT DATA (only completed from appointment_status) ─
@@ -184,17 +184,25 @@ export default defineEventHandler(async (event) => {
   })
 
   // Only count COMPLETED appointments (departed/complete in ezyVet status report).
-  // NOTE: apptsByLocation, dayOfWeek, weeklyTrend and monthly appointment counts
-  // are now derived from invoice_lines (DISTINCT client + date tuples) — see
-  // section 4. A single appointment generates many invoice lines on the same
-  // day, so rolling invoice lines up to (client, date) tuples is the canonical
-  // appointment count. appointment_data is kept ONLY for appointment_type /
-  // service_category breakdowns and duration stats.
+  // NOTE: invoice-derived appointment counts (DISTINCT client + date)
+  // are computed in section 4. appointment_data is also retained for:
+  //   - appointment_type / service_category breakdowns (weekly_tracking)
+  //   - duration stats
+  //   - dayOfWeek / weeklyTrend FALLBACK when invoice_lines hasn't been
+  //     uploaded for that period (avoids blank charts during onboarding).
   const typedAppts = normalized.filter(a => {
     if (!CLINIC_LOCATIONS.includes(a.location)) return false
     if (a.source !== 'weekly_tracking') return false
     return !a.isAvailability && !a.isGarbage
   })
+
+  // appointment_status (completed) — used as fallback for location/dow/week
+  const completedStatusAppts = normalized.filter(a =>
+    a.source === 'appointment_status' &&
+    a.status === 'completed' &&
+    CLINIC_LOCATIONS.includes(a.location) &&
+    a.dayOfWeek !== 0
+  )
 
   // ── Appointment Types ──
   const typeMap: Record<string, { total: number; category: string; byLocation: Record<string, number> }> = {}
@@ -202,6 +210,16 @@ export default defineEventHandler(async (event) => {
     if (!typeMap[a.type]) typeMap[a.type] = { total: 0, category: a.category, byLocation: {} }
     typeMap[a.type].total += a.count
     typeMap[a.type].byLocation[a.location] = (typeMap[a.type].byLocation[a.location] || 0) + a.count
+  }
+  // If weekly_tracking is empty but appointment_status has data, derive a
+  // type breakdown from appointment_status so the chart isn't blank.
+  if (Object.keys(typeMap).length === 0 && completedStatusAppts.length > 0) {
+    for (const a of completedStatusAppts) {
+      const t = a.type || 'Unspecified'
+      if (!typeMap[t]) typeMap[t] = { total: 0, category: a.category, byLocation: {} }
+      typeMap[t].total += a.count
+      typeMap[t].byLocation[a.location] = (typeMap[t].byLocation[a.location] || 0) + a.count
+    }
   }
   const appointmentTypes = Object.entries(typeMap)
     .map(([type, info]) => ({ type, category: info.category, total: info.total, byLocation: info.byLocation }))
@@ -213,6 +231,13 @@ export default defineEventHandler(async (event) => {
     if (!catMap[a.category]) catMap[a.category] = { total: 0, byLocation: {} }
     catMap[a.category].total += a.count
     catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + a.count
+  }
+  if (Object.keys(catMap).length === 0 && completedStatusAppts.length > 0) {
+    for (const a of completedStatusAppts) {
+      if (!catMap[a.category]) catMap[a.category] = { total: 0, byLocation: {} }
+      catMap[a.category].total += a.count
+      catMap[a.category].byLocation[a.location] = (catMap[a.category].byLocation[a.location] || 0) + a.count
+    }
   }
   const serviceCategories = Object.entries(catMap)
     .map(([category, info]) => ({ category, total: info.total, byLocation: info.byLocation }))
@@ -467,6 +492,34 @@ export default defineEventHandler(async (event) => {
       for (const [loc, s] of Object.entries(byLoc)) {
         entry.byLocation[loc] = s.size
         entry.total += s.size
+      }
+    }
+  }
+
+  // ── Fallback: if invoice_lines yielded no appointment grain (e.g. invoices
+  //    not yet uploaded for this period), populate the per-location / dow /
+  //    week / month maps from completed appointment_status records so the
+  //    charts aren't blank.
+  const invoiceApptTotal = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
+  if (invoiceApptTotal === 0 && completedStatusAppts.length > 0) {
+    for (const a of completedStatusAppts) {
+      apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
+      const m = a.month
+      if (m) {
+        const e = (monthApptMap[m] ||= { total: 0, byLocation: {} })
+        e.total += a.count
+        e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count
+      }
+      const w = a.weekStart
+      if (w) {
+        const e = (weekApptMap[w] ||= { total: 0, byLocation: {} })
+        e.total += a.count
+        e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count
+      }
+      if (a.dayOfWeek >= 1 && a.dayOfWeek <= 6) {
+        const e = (dowApptMap[a.dayOfWeek] ||= { total: 0, byLocation: {} })
+        e.total += a.count
+        e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count
       }
     }
   }
