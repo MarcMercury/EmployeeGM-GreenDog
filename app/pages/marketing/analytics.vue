@@ -834,7 +834,15 @@
                   <v-btn variant="text" :disabled="wizardBusy" @click="wizardStep = 1">
                     <v-icon start>mdi-arrow-left</v-icon>Back
                   </v-btn>
-                  <div>
+                  <div class="d-flex gap-2">
+                    <v-btn
+                      v-if="invoiceBatchProcessing"
+                      color="error" variant="outlined" prepend-icon="mdi-close"
+                      :disabled="invoiceCancelRequested"
+                      @click="cancelInvoiceBatch"
+                    >
+                      {{ invoiceCancelRequested ? 'Canceling...' : 'Cancel' }}
+                    </v-btn>
                     <v-btn
                       v-if="!invoiceBatchComplete"
                       color="primary" prepend-icon="mdi-cloud-upload"
@@ -1588,6 +1596,8 @@ const invoiceBatchComplete = ref(false)
 const invoiceCurrentIdx = ref(-1)
 const invoiceTotalInserted = ref(0)
 const invoiceTotalErrors = ref(0)
+const invoiceCancelRequested = ref(false)
+const invoiceAbortCtrl = ref<AbortController | null>(null)
 
 function onInvoiceFilesSelected(files: File | File[] | null) {
   const list = Array.isArray(files) ? files : files ? [files] : []
@@ -1636,26 +1646,64 @@ async function parseInvoiceFileClientSide(file: File): Promise<Record<string, an
 }
 
 async function uploadInvoiceRowsInBatches(entry: InvoiceBatchFile, allRows: Record<string, any>[]) {
-  const BATCH_SIZE = 2000
+  // Smaller client batches → server processes 1 chunk per request → finishes well
+  // under the Vercel function timeout, even on a busy invoice_lines table.
+  const BATCH_SIZE = 500
+  const REQUEST_TIMEOUT_MS = 90_000 // per-batch timeout (function maxDuration is 300s)
+  const MAX_RETRIES = 2
   let totalInserted = 0
   let totalSkipped = 0
+
   for (let i = 0; i < allRows.length; i += BATCH_SIZE) {
+    if (invoiceCancelRequested.value) throw new Error('Upload canceled')
     const batch = allRows.slice(i, i + BATCH_SIZE)
-    entry.progressMessage = `Uploading rows ${i + 1}–${Math.min(i + BATCH_SIZE, allRows.length)} of ${allRows.length}...`
-    const result = await $fetch('/api/invoices/upload', {
-      method: 'POST',
-      body: { invoiceLines: batch, fileName: entry.name }
-    }) as any
-    totalInserted += result.inserted || 0
-    totalSkipped += result.duplicatesSkipped || 0
+    const rangeLabel = `rows ${i + 1}–${Math.min(i + BATCH_SIZE, allRows.length)} of ${allRows.length}`
+    entry.progressMessage = `Uploading ${rangeLabel}...`
+
+    let attempt = 0
+    let lastErr: any = null
+    while (attempt <= MAX_RETRIES) {
+      const ctrl = new AbortController()
+      invoiceAbortCtrl.value = ctrl
+      const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS)
+      try {
+        const result = await $fetch('/api/invoices/upload', {
+          method: 'POST',
+          body: { invoiceLines: batch, fileName: entry.name },
+          signal: ctrl.signal,
+        }) as any
+        clearTimeout(timer)
+        totalInserted += result.inserted || 0
+        totalSkipped += result.duplicatesSkipped || 0
+        lastErr = null
+        break
+      } catch (err: any) {
+        clearTimeout(timer)
+        lastErr = err
+        if (invoiceCancelRequested.value) throw new Error('Upload canceled')
+        attempt++
+        if (attempt > MAX_RETRIES) break
+        entry.progressMessage = `Retrying ${rangeLabel} (attempt ${attempt + 1})...`
+        await new Promise(r => setTimeout(r, 1500 * attempt))
+      }
+    }
+    if (lastErr) {
+      throw new Error(`Failed at ${rangeLabel}: ${lastErr.data?.message || lastErr.message || 'timeout'}`)
+    }
   }
   return { inserted: totalInserted, duplicatesSkipped: totalSkipped }
+}
+
+function cancelInvoiceBatch() {
+  invoiceCancelRequested.value = true
+  invoiceAbortCtrl.value?.abort()
 }
 
 async function runInvoiceBatch() {
   if (!invoiceBatch.value.length) return
   invoiceBatchProcessing.value = true
   invoiceBatchComplete.value = false
+  invoiceCancelRequested.value = false
   invoiceTotalInserted.value = 0
   invoiceTotalErrors.value = 0
 
