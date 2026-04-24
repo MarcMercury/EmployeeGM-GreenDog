@@ -15,6 +15,7 @@
     "db:types": "npx supabase gen types typescript --project-id <your-project-id> > types/database.types.ts",
     "lint:unused": "knip",
     "lint:deps": "depcheck",
+    "lint:secrets": "node scripts/security/secret-sentinel.mjs --full",
     "lint:all": "npm run lint:unused && npm run lint:deps",
     "test": "vitest run",
     "test:watch": "vitest",

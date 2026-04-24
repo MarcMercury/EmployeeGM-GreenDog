@@ -4,60 +4,106 @@
  */
 
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { verifyCronAuth } from '../../utils/cronAuth'
+import { ADMIN_ROLES, hasRole } from '../../utils/roles'
 
 export default defineEventHandler(async (event) => {
-  // Authenticate user
-  const user = await serverSupabaseUser(event)
-  if (!user) {
-    throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  const authHeader = getHeader(event, 'authorization')
+  let authorized = false
+
+  // Allow secure internal/cron checks via CRON_SECRET.
+  if (authHeader) {
+    try {
+      verifyCronAuth(event)
+      authorized = true
+    } catch {
+      // Fallback to admin-user auth below.
+    }
   }
 
   const supabase = await serverSupabaseServiceRole(event)
 
-  // Verify admin role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('auth_user_id', user.id)
-    .single()
+  if (!authorized) {
+    const user = await serverSupabaseUser(event)
+    if (!user) {
+      throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    }
 
-  if (!profile || !ADMIN_ROLES.includes(profile.role as any)) {
-    throw createError({
-      statusCode: 403,
-      message: 'Only admins can check agent health',
-    })
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('auth_user_id', user.id)
+      .single()
+
+    if (!profile || !hasRole(profile.role, ADMIN_ROLES)) {
+      throw createError({
+        statusCode: 403,
+        message: 'Only admins can check agent health',
+      })
+    }
+
+    authorized = true
   }
 
   try {
-    // Check if OpenAI is configured
-    const apiKey = process.env.OPENAI_API_KEY
-    const openai = apiKey ? true : false
+    const config = useRuntimeConfig()
+    const openai = !!(process.env.OPENAI_API_KEY || config.openaiApiKey)
 
-    // Check recent successful agent runs
-    const { data: recentRuns, error: runsError } = await supabase
+    const nowMs = Date.now()
+    const dayAgo = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString()
+    const staleThresholdMs = nowMs - 48 * 60 * 60 * 1000
+
+    const { count: activeAgentCount, error: activeErr } = await supabase
+      .from('agent_registry')
+      .select('agent_id', { count: 'exact', head: true })
+      .eq('status', 'active')
+
+    if (activeErr) {
+      throw createError({ statusCode: 500, message: `Failed to read agent registry: ${activeErr.message}` })
+    }
+
+    const { count: recentSuccessCount, error: successErr } = await supabase
       .from('agent_runs')
-      .select('id, status, started_at')
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'success')
-      .gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-      .order('started_at', { ascending: false })
-      .limit(5)
+      .gte('started_at', dayAgo)
 
-    const recentSuccess = !runsError && (recentRuns?.length ?? 0) > 0
+    if (successErr) {
+      throw createError({ statusCode: 500, message: `Failed to read agent runs: ${successErr.message}` })
+    }
 
-    // Check active agents
-    const { data: activeAgents, error: agentsError } = await supabase
-      .from('agents')
-      .select('id, status')
-      .eq('is_active', true)
-      .limit(1)
+    const { count: recentErrorCount, error: errorErr } = await supabase
+      .from('agent_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'error')
+      .gte('started_at', dayAgo)
 
-    const hasActiveAgents = !agentsError && (activeAgents?.length ?? 0) > 0
+    if (errorErr) {
+      throw createError({ statusCode: 500, message: `Failed to read agent errors: ${errorErr.message}` })
+    }
 
-    // Determine overall status
+    const { data: activeAgents, error: staleErr } = await supabase
+      .from('agent_registry')
+      .select('agent_id, schedule_cron, last_run_at, last_run_status')
+      .eq('status', 'active')
+
+    if (staleErr) {
+      throw createError({ statusCode: 500, message: `Failed to read active agent state: ${staleErr.message}` })
+    }
+
+    const staleAgents = (activeAgents ?? []).filter((agent: any) => {
+      if (!agent.schedule_cron) return false
+      if (!agent.last_run_at) return true
+      return new Date(agent.last_run_at).getTime() < staleThresholdMs
+    })
+
+    const hasActiveAgents = (activeAgentCount ?? 0) > 0
+    const recentSuccess = (recentSuccessCount ?? 0) > 0
+
     let status = 'degraded'
     let message = 'Agent system operational with some issues'
 
-    if (openai && recentSuccess && hasActiveAgents) {
+    if (openai && hasActiveAgents && recentSuccess && staleAgents.length === 0) {
       status = 'healthy'
       message = 'Agent system fully operational'
     } else if (!openai) {
@@ -69,6 +115,9 @@ export default defineEventHandler(async (event) => {
     } else if (!recentSuccess) {
       status = 'degraded'
       message = 'No recent successful agent runs'
+    } else if (staleAgents.length > 0) {
+      status = 'degraded'
+      message = `${staleAgents.length} scheduled agent(s) appear stale`
     }
 
     return {
@@ -77,6 +126,13 @@ export default defineEventHandler(async (event) => {
       openai,
       recentSuccess,
       hasActiveAgents,
+      metrics: {
+        activeAgentCount: activeAgentCount ?? 0,
+        recentSuccessCount: recentSuccessCount ?? 0,
+        recentErrorCount: recentErrorCount ?? 0,
+        staleAgentCount: staleAgents.length,
+        staleAgentIds: staleAgents.map((a: any) => a.agent_id),
+      },
       lastUpdated: new Date().toISOString(),
     }
   } catch (error) {

@@ -56,6 +56,9 @@
         </v-btn>
         <v-btn color="primary" variant="outlined" prepend-icon="mdi-printer" @click="printReport">Print</v-btn>
         <v-btn color="primary" variant="text" prepend-icon="mdi-refresh" :loading="loading" @click="loadAll">Refresh</v-btn>
+        <v-btn color="error" variant="text" prepend-icon="mdi-delete-sweep" :disabled="!hasAnyData || clearing" @click="clearDialogOpen = true">
+          Clear Data
+        </v-btn>
       </div>
     </div>
 
@@ -644,6 +647,54 @@
     <!-- Error -->
     <v-alert v-if="error" type="error" class="mt-4" closable @click:close="error = null">{{ error }}</v-alert>
 
+    <!-- ═══════════════════════════ CLEAR DATA DIALOG ═══════════════════════════ -->
+    <v-dialog v-model="clearDialogOpen" max-width="520" :persistent="clearing">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="error">mdi-delete-sweep</v-icon>
+          Clear Analytics Data
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
+            This permanently deletes uploaded data from the database. Re-upload CSVs to restore.
+          </v-alert>
+          <v-radio-group v-model="clearScope" density="compact" hide-details>
+            <v-radio value="all">
+              <template #label>
+                <div>
+                  <div class="font-weight-medium">Everything</div>
+                  <div class="text-caption text-grey">Invoice lines ({{ invoiceLineCount.toLocaleString() }}) + CRM contacts ({{ crmContactCount.toLocaleString() }})</div>
+                </div>
+              </template>
+            </v-radio>
+            <v-radio value="invoices">
+              <template #label>
+                <div>
+                  <div class="font-weight-medium">Invoice lines only</div>
+                  <div class="text-caption text-grey">{{ invoiceLineCount.toLocaleString() }} rows</div>
+                </div>
+              </template>
+            </v-radio>
+            <v-radio value="contacts">
+              <template #label>
+                <div>
+                  <div class="font-weight-medium">CRM contacts only</div>
+                  <div class="text-caption text-grey">{{ crmContactCount.toLocaleString() }} rows</div>
+                </div>
+              </template>
+            </v-radio>
+          </v-radio-group>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn :disabled="clearing" @click="clearDialogOpen = false">Cancel</v-btn>
+          <v-btn color="error" :loading="clearing" prepend-icon="mdi-delete-sweep" @click="clearData">
+            Clear {{ clearScope === 'all' ? 'Everything' : clearScope === 'invoices' ? 'Invoices' : 'Contacts' }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- ═══════════════════════════ UPLOAD WIZARD ═══════════════════════════ -->
     <v-dialog v-model="wizardOpen" max-width="820" persistent scrollable>
       <v-card>
@@ -848,6 +899,9 @@ const supabase = useSupabaseClient()
 // ═══════════════════════════ STATE ═══════════════════════════
 const loading = ref(false)
 const syncing = ref(false)
+const clearing = ref(false)
+const clearDialogOpen = ref(false)
+const clearScope = ref<'all' | 'invoices' | 'contacts'>('all')
 const error = ref<string | null>(null)
 
 const perfData = ref<any>(null)          // /api/analytics/performance
@@ -1303,6 +1357,27 @@ async function syncAll() {
     notify(msg.includes('No active ezyVet clinic') ? 'ezyVet API not configured.' : 'Sync failed: ' + msg, 'warning')
   } finally {
     syncing.value = false
+  }
+}
+
+async function clearData() {
+  clearing.value = true
+  try {
+    const result = await $fetch('/api/analytics/clear-data', {
+      method: 'POST',
+      body: { scope: clearScope.value },
+    }) as any
+    if (result?.success) {
+      notify(`Cleared ${result.invoicesDeleted.toLocaleString()} invoice lines, ${result.contactsDeleted.toLocaleString()} contacts`)
+      clearDialogOpen.value = false
+      await loadAll()
+    } else {
+      notify('Clear failed', 'warning')
+    }
+  } catch (err: any) {
+    notify('Clear failed: ' + (err.data?.message || err.message || 'Unknown error'), 'warning')
+  } finally {
+    clearing.value = false
   }
 }
 

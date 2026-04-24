@@ -50,6 +50,7 @@ handlerMap.set('market_events_scout', () => import('~~/server/agents/handlers/ma
 // Phase 4: Orchestration
 // =========================================================
 handlerMap.set('supervisor_agent', () => import('~~/server/agents/handlers/supervisor-agent'))
+handlerMap.set('cron_reliability', () => import('~~/server/agents/handlers/cron-reliability'))
 
 // =========================================================
 // Phase 5: System Monitor
