@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'app/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.ts'
+      - '.github/workflows/test.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - 'app/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.ts'
+
+jobs:
+  vitest:
+    name: Vitest Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Stub Nuxt tsconfig (vitest needs .nuxt/*.json)
+        run: |
+          mkdir -p .nuxt
+          for f in tsconfig.app.json tsconfig.server.json tsconfig.shared.json tsconfig.node.json; do
+            echo '{"compilerOptions":{"module":"esnext","moduleResolution":"bundler","target":"esnext","strict":false},"include":[]}' > ".nuxt/$f"
+          done
+
+      - name: Run vitest
+        run: npm test

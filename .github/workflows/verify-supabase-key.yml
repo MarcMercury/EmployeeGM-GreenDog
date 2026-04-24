@@ -1,0 +1,35 @@
+name: Verify Supabase Service-Role Key
+
+# Manually-triggered workflow to confirm the configured
+# SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY pair is valid.
+# Run before and after rotating the key to validate the new value.
+
+on:
+  workflow_dispatch:
+    inputs:
+      label:
+        description: 'Optional label for this verification run'
+        required: false
+        default: 'pre-rotation'
+
+jobs:
+  verify:
+    name: Verify key works
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run verification
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Run label: ${{ inputs.label }}"
+          node scripts/security/verify-supabase-key.mjs
