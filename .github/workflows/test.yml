@@ -49,3 +49,26 @@ jobs:
 
       - name: Run vitest
         run: npm test
+
+  knip:
+    name: Knip (unused code report)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Informational only — won't fail the PR. Surfaces dead code drift.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run knip
+        run: npx knip --no-progress --reporter compact

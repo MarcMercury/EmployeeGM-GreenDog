@@ -1,0 +1,43 @@
+# Dependabot configuration
+# Keeps npm packages and GitHub Actions up to date with weekly PRs.
+# Security updates are always opened immediately regardless of schedule.
+
+version: 2
+updates:
+  # Application dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    groups:
+      # Group all non-major dev/runtime updates into a single PR per week
+      minor-and-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Major Vue/Nuxt jumps need coordinated migration; handle manually.
+      - dependency-name: "nuxt"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vue"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vuetify"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
