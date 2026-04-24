@@ -178,7 +178,7 @@
           </div>
 
           <div class="text-right mt-3">
-            <v-btn variant="text" size="small" color="green" to="/marketing/practice-analytics" append-icon="mdi-arrow-right">Full Performance Analysis</v-btn>
+            <v-btn variant="text" size="small" color="green" to="/marketing/analytics" append-icon="mdi-arrow-right">Full Performance Analysis</v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -260,7 +260,7 @@
           </v-row>
 
           <div class="text-right mt-3">
-            <v-btn variant="text" size="small" color="deep-purple" to="/marketing/ezyvet-analytics" append-icon="mdi-arrow-right">Full Client Analytics</v-btn>
+            <v-btn variant="text" size="small" color="deep-purple" to="/marketing/analytics?tab=clients" append-icon="mdi-arrow-right">Full Client Analytics</v-btn>
           </div>
         </v-card-text>
       </v-card>
@@ -337,7 +337,7 @@
           </v-row>
 
           <div class="text-right mt-3">
-            <v-btn variant="text" size="small" color="indigo" to="/marketing/practice-analytics?tab=appointments" append-icon="mdi-arrow-right">Full Appointment Analysis</v-btn>
+            <v-btn variant="text" size="small" color="indigo" to="/marketing/analytics?tab=services" append-icon="mdi-arrow-right">Full Appointment Analysis</v-btn>
           </div>
         </v-card-text>
       </v-card>

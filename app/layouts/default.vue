@@ -474,13 +474,9 @@ const closeMobileMenu = () => {
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div class="section-content" :class="{ 'section-open': sections.crmAnalytics }">
-                <NuxtLink to="/marketing/practice-analytics" class="nav-link group" active-class="nav-link-active">
+                <NuxtLink to="/marketing/analytics" class="nav-link group" active-class="nav-link-active">
                   <div class="nav-icon-wrap group-hover:bg-emerald-500/20">📈</div>
-                  Practice Analytics
-                </NuxtLink>
-                <NuxtLink to="/marketing/ezyvet-analytics" class="nav-link group" active-class="nav-link-active">
-                  <div class="nav-icon-wrap group-hover:bg-violet-500/20">📊</div>
-                  EzyVet Analytics
+                  Practice Analytics &amp; CRM
                 </NuxtLink>
               </div>
             </div>
