@@ -60,7 +60,7 @@
     "autoprefixer": "^10.4.22",
     "csv-parse": "^6.1.0",
     "depcheck": "^1.4.7",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.4.2",
     "knip": "^5.82.1",
     "pg": "^8.20.0",
     "postcss": "^8.5.6",
