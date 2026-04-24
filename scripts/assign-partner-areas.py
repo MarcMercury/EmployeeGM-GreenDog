@@ -6,12 +6,16 @@ Does NOT overwrite any existing area assignments.
 """
 
 import json
+import os
 import urllib.request
 import urllib.error
 import sys
 
-SUPABASE_URL = "https://uekumyupkhnpjpdcjfxb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4"
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars", file=sys.stderr)
+    sys.exit(1)
 
 # ============================================================
 # Known business → area mappings (researched LA businesses)

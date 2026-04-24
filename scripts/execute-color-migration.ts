@@ -15,8 +15,12 @@ async function executeMigrationViaAPI(): Promise<ExecuteResponse> {
   try {
     console.log('🚀 Executing marketing events color categorization migration...\n');
     
-    const supabaseUrl = 'https://uekumyupkhnpjpdcjfxb.supabase.co';
-    const accessToken = 'sbp_f8af710de6c6cd3cc8d230e31f14e684fddb8e39';
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
+    const apiKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !accessToken || !apiKey) {
+      throw new Error('Missing SUPABASE_URL, SUPABASE_ACCESS_TOKEN, or SUPABASE_SERVICE_ROLE_KEY env vars');
+    }
     
     // Use Supabase's SQL Editor API endpoint
     const response = await fetch(`${supabaseUrl}/rest/v1/{todo}`, {
@@ -24,7 +28,7 @@ async function executeMigrationViaAPI(): Promise<ExecuteResponse> {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4',
+        'apikey': apiKey,
       },
       body: JSON.stringify({ query: migrationSQL })
     });

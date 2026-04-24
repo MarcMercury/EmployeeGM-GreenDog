@@ -13,19 +13,33 @@ import type { AgentRunContext, AgentRunResult } from '~/types/agent.types'
 import { createProposal, autoApproveProposal } from '../../utils/agents/proposals'
 import { logger } from '../../utils/logger'
 
-const STALE_HOURS = 48
-const ERROR_WINDOW_HOURS = 24
-const ERROR_WARN_THRESHOLD = 5
+const DEFAULT_STALE_HOURS = 48
+const DEFAULT_ERROR_WINDOW_HOURS = 24
+const DEFAULT_ERROR_WARN_THRESHOLD = 5
+
+function readPositiveNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) && n > 0 ? n : fallback
+}
 
 const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
-  const { supabase: _sb, agentId, runId } = ctx
+  const { supabase: _sb, agentId, runId, config } = ctx
   const supabase = _sb as any
 
-  logger.info(`[Agent:${agentId}] Starting cron reliability scan`, 'agent', { runId })
+  const staleHours = readPositiveNumber(config?.stale_hours, DEFAULT_STALE_HOURS)
+  const errorWindowHours = readPositiveNumber(config?.error_window_hours, DEFAULT_ERROR_WINDOW_HOURS)
+  const errorWarnThreshold = readPositiveNumber(config?.error_warn_threshold, DEFAULT_ERROR_WARN_THRESHOLD)
+
+  logger.info(`[Agent:${agentId}] Starting cron reliability scan`, 'agent', {
+    runId,
+    staleHours,
+    errorWindowHours,
+    errorWarnThreshold,
+  })
 
   const nowMs = Date.now()
-  const staleThresholdIso = new Date(nowMs - STALE_HOURS * 60 * 60 * 1000).toISOString()
-  const errorWindowIso = new Date(nowMs - ERROR_WINDOW_HOURS * 60 * 60 * 1000).toISOString()
+  const staleThresholdIso = new Date(nowMs - staleHours * 60 * 60 * 1000).toISOString()
+  const errorWindowIso = new Date(nowMs - errorWindowHours * 60 * 60 * 1000).toISOString()
 
   const { data: activeAgents, error: activeErr } = await supabase
     .from('agent_registry')
@@ -56,7 +70,7 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
   }
 
   const noisyAgents = Array.from(errorsByAgent.entries())
-    .filter(([, count]) => count >= ERROR_WARN_THRESHOLD)
+    .filter(([, count]) => count >= errorWarnThreshold)
     .map(([id, count]) => ({ agent_id: id, error_count: count }))
 
   const issueCount = staleAgents.length + noisyAgents.length
@@ -78,9 +92,9 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
       title: `Cron Reliability Alert (${issueCount} issue${issueCount === 1 ? '' : 's'})`,
       summary: summaryParts.join('; '),
       detail: {
-        stale_threshold_hours: STALE_HOURS,
-        error_window_hours: ERROR_WINDOW_HOURS,
-        error_warn_threshold: ERROR_WARN_THRESHOLD,
+        stale_threshold_hours: staleHours,
+        error_window_hours: errorWindowHours,
+        error_warn_threshold: errorWarnThreshold,
         stale_agents: staleAgents.map((a: any) => ({
           agent_id: a.agent_id,
           display_name: a.display_name,

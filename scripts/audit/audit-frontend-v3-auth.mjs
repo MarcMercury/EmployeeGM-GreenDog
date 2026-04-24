@@ -16,8 +16,12 @@ const INTER_BATCH_DELAY = 3000;
 const PAGE_TIMEOUT = 30000;
 const SPA_SETTLE = 3000;
 
-const SUPABASE_URL = 'https://uekumyupkhnpjpdcjfxb.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars');
+  process.exit(1);
+}
 const ADMIN_EMAIL = 'rendvm@gmail.com';
 
 const ALL_ROUTES = [
@@ -208,7 +212,10 @@ async function authenticate(context) {
         await loginPage.waitForTimeout(2000);
 
         // Use the Supabase anon key to set up client-side auth
-        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwOTU2MzIsImV4cCI6MjA4MDY3MTYzMn0.5iik5FKdA2rgFfK-IeRL7FAiE_wymiaSavD4b9EheTw';
+        const SUPABASE_ANON = process.env.SUPABASE_ANON_KEY;
+        if (!SUPABASE_ANON) {
+          throw new Error('Missing SUPABASE_ANON_KEY env var');
+        }
 
         // Generate link and verify it to get tokens
         const { data: verifyData, error: verifyErr } = await sb.auth.admin.generateLink({

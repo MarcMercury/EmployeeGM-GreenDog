@@ -16,9 +16,13 @@ const INTER_BATCH_DELAY = 3000;
 const PAGE_TIMEOUT = 35000;
 const SPA_SETTLE = 3500;
 
-const SUPABASE_URL = 'https://uekumyupkhnpjpdcjfxb.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTA5NTYzMiwiZXhwIjoyMDgwNjcxNjMyfQ.zAUg6sayz3TYhw9eeo3hrFA5sytlSYybQAypKKOaoL4';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVla3VteXVwa2hucGpwZGNqZnhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUwOTU2MzIsImV4cCI6MjA4MDY3MTYzMn0.5iik5FKdA2rgFfK-IeRL7FAiE_wymiaSavD4b9EheTw';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !SUPABASE_ANON_KEY) {
+  console.error('❌ Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or SUPABASE_ANON_KEY env vars');
+  process.exit(1);
+}
 const ADMIN_EMAIL = 'rendvm@gmail.com';
 const PROJECT_REF = 'uekumyupkhnpjpdcjfxb';
 
