@@ -54,10 +54,5 @@
       "destination": "/marketing/practice-analytics",
       "permanent": true
     }
-  ],
-  "functions": {
-    "server/api/invoices/upload.post.ts": { "maxDuration": 300 },
-    "server/api/marketing/ezyvet-upsert.post.ts": { "maxDuration": 300 },
-    "server/api/analytics/clear-data.post.ts": { "maxDuration": 300 }
-  }
+  ]
 }
