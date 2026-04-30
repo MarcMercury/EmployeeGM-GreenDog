@@ -371,6 +371,7 @@
         <v-tab value="locations"><v-icon start size="18">mdi-map-marker</v-icon>Locations</v-tab>
         <v-tab value="clients"><v-icon start size="18">mdi-account-group</v-icon>Client Behavior</v-tab>
         <v-tab value="services"><v-icon start size="18">mdi-tag-multiple</v-icon>Services</v-tab>
+        <v-tab value="staff"><v-icon start size="18">mdi-account-tie</v-icon>Staff Performance</v-tab>
         <v-tab value="trends"><v-icon start size="18">mdi-chart-line</v-icon>Trends</v-tab>
         <v-tab value="data"><v-icon start size="18">mdi-database-check</v-icon>Data Sources</v-tab>
       </v-tabs>
@@ -634,6 +635,313 @@
               </v-card>
             </v-col>
           </v-row>
+        </v-window-item>
+
+        <!-- ─────────── STAFF PERFORMANCE ─────────── -->
+        <v-window-item value="staff">
+          <div v-if="loading" class="d-flex justify-center pa-12">
+            <v-progress-circular indeterminate color="deep-purple" size="48" />
+          </div>
+
+          <template v-else-if="staffPerf">
+            <!-- KPIs -->
+            <v-row class="mb-2">
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="deep-purple">
+                  <v-card-text>
+                    <div class="text-caption">Active Staff</div>
+                    <div class="text-h5 font-weight-bold">{{ staffPerf.kpis.totalStaff }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="success">
+                  <v-card-text>
+                    <div class="text-caption">Total Revenue</div>
+                    <div class="text-h5 font-weight-bold">${{ staffPerf.kpis.totalRevenue.toLocaleString() }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="info">
+                  <v-card-text>
+                    <div class="text-caption">Transactions</div>
+                    <div class="text-h5 font-weight-bold">{{ staffPerf.kpis.totalTransactions.toLocaleString() }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="primary">
+                  <v-card-text>
+                    <div class="text-caption">Avg Revenue / Staff</div>
+                    <div class="text-h5 font-weight-bold">${{ staffPerf.kpis.avgRevenuePerStaff.toLocaleString() }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Leaderboards -->
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start>mdi-trophy</v-icon>Top by Revenue
+                    <v-spacer />
+                    <span class="text-caption text-grey">{{ staffPerf.period.startDate }} – {{ staffPerf.period.endDate }}</span>
+                  </v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Staff</th>
+                          <th>Primary Location</th>
+                          <th class="text-right">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(s, i) in staffPerf.leaderboards.topByRevenue" :key="s.staff">
+                          <td class="text-caption">{{ i + 1 }}</td>
+                          <td class="font-weight-medium">{{ s.staff }}</td>
+                          <td><v-chip size="x-small" label>{{ s.location }}</v-chip></td>
+                          <td class="text-right font-weight-bold">${{ s.revenue.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1">
+                    <v-icon start color="success">mdi-trending-up</v-icon>Top Growth (vs prior {{ staffPerfPriorLabel }})
+                  </v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Staff</th>
+                          <th class="text-right">Prior</th>
+                          <th class="text-right">Current</th>
+                          <th class="text-right">Δ %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-if="!staffPerf.leaderboards.topGrowers.length">
+                          <td colspan="4" class="text-center text-caption text-grey pa-4">Insufficient prior-period data.</td>
+                        </tr>
+                        <tr v-for="s in staffPerf.leaderboards.topGrowers" :key="s.staff">
+                          <td class="font-weight-medium">{{ s.staff }}</td>
+                          <td class="text-right text-caption">${{ s.priorRevenue.toLocaleString() }}</td>
+                          <td class="text-right">${{ s.revenue.toLocaleString() }}</td>
+                          <td class="text-right">
+                            <v-chip size="x-small" :color="s.revenueChangePct >= 0 ? 'success' : 'error'" label>
+                              {{ s.revenueChangePct >= 0 ? '+' : '' }}{{ s.revenueChangePct }}%
+                            </v-chip>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1"><v-icon start>mdi-account-multiple</v-icon>Most Clients Served</v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Staff</th>
+                          <th class="text-right">Clients</th>
+                          <th class="text-right">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="s in staffPerf.leaderboards.mostClients" :key="s.staff">
+                          <td class="font-weight-medium">{{ s.staff }}</td>
+                          <td class="text-right">{{ s.uniqueClients.toLocaleString() }}</td>
+                          <td class="text-right">${{ s.revenue.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" md="6">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1"><v-icon start>mdi-cash-multiple</v-icon>Highest Avg Ticket (≥10 tx)</v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Staff</th>
+                          <th class="text-right">Avg Ticket</th>
+                          <th class="text-right">Transactions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="s in staffPerf.leaderboards.highestAvgTicket" :key="s.staff">
+                          <td class="font-weight-medium">{{ s.staff }}</td>
+                          <td class="text-right font-weight-bold">${{ s.avgTransactionValue.toLocaleString() }}</td>
+                          <td class="text-right">{{ s.transactions.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Practice product groups + staff-by-location -->
+            <v-row>
+              <v-col cols="12" md="7">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1"><v-icon start>mdi-package-variant-closed</v-icon>Strongest Product Groups (Practice-Wide)</v-card-title>
+                  <v-card-text>
+                    <ClientOnly>
+                      <apexchart
+                        v-if="staffPgSeries[0]?.data?.length"
+                        type="bar" height="360"
+                        :options="staffPgOptions" :series="staffPgSeries"
+                        :key="'staffpg'+chartKey"
+                      />
+                    </ClientOnly>
+                    <div v-if="!staffPgSeries[0]?.data?.length" class="text-center text-grey pa-8">No revenue in selected period.</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="5">
+                <v-card elevation="2" class="mb-4">
+                  <v-card-title class="text-subtitle-1"><v-icon start>mdi-map-marker-multiple</v-icon>Staff By Location</v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Location</th>
+                          <th class="text-right">Staff</th>
+                          <th class="text-right">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="l in staffPerf.staffByLocation" :key="l.location">
+                          <td>{{ l.location }}</td>
+                          <td class="text-right">{{ l.staffCount }}</td>
+                          <td class="text-right font-weight-bold">${{ l.revenue.toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Full staff roster with drill-down -->
+            <v-card elevation="2">
+              <v-card-title class="d-flex align-center flex-wrap">
+                <v-icon start>mdi-account-details</v-icon>Staff Roster &amp; Product-Group Mix
+                <v-spacer />
+                <v-text-field
+                  v-model="staffSearch" placeholder="Search staff..." prepend-inner-icon="mdi-magnify"
+                  density="compact" variant="outlined" hide-details clearable style="max-width:240px" class="mr-2"
+                />
+                <v-select
+                  v-model="staffPrimaryLocFilter"
+                  :items="['All Locations', ...staffLocationOptions]"
+                  density="compact" variant="outlined" hide-details
+                  style="max-width:200px"
+                />
+              </v-card-title>
+              <v-card-text class="pa-0">
+                <v-expansion-panels variant="accordion" multiple>
+                  <v-expansion-panel v-for="s in filteredStaffRows" :key="s.staff">
+                    <v-expansion-panel-title>
+                      <div class="d-flex align-center w-100">
+                        <div class="font-weight-medium" style="min-width:200px">{{ s.staff }}</div>
+                        <v-chip size="x-small" label class="mr-3">{{ s.primaryLocation }}</v-chip>
+                        <div class="text-caption mr-3">
+                          <v-icon size="14">mdi-cash</v-icon> ${{ s.revenue.toLocaleString() }}
+                        </div>
+                        <div class="text-caption mr-3">
+                          <v-icon size="14">mdi-receipt</v-icon> {{ s.transactions.toLocaleString() }} tx
+                        </div>
+                        <div class="text-caption mr-3">
+                          <v-icon size="14">mdi-account-group</v-icon> {{ s.uniqueClients.toLocaleString() }} clients
+                        </div>
+                        <v-spacer />
+                        <v-chip
+                          size="x-small" label
+                          :color="s.revenueChangePct >= 0 ? 'success' : 'error'"
+                        >
+                          {{ s.revenueChangePct >= 0 ? '+' : '' }}{{ s.revenueChangePct }}%
+                        </v-chip>
+                      </div>
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <v-row dense>
+                        <v-col cols="12" md="4">
+                          <div class="text-caption text-grey">Avg Ticket</div>
+                          <div class="text-body-1 font-weight-bold">${{ s.avgTransactionValue.toLocaleString() }}</div>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <div class="text-caption text-grey">Revenue / Client</div>
+                          <div class="text-body-1 font-weight-bold">${{ s.revenuePerClient.toLocaleString() }}</div>
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <div class="text-caption text-grey">Prior Period Revenue</div>
+                          <div class="text-body-1 font-weight-bold">${{ s.priorRevenue.toLocaleString() }}</div>
+                        </v-col>
+                      </v-row>
+
+                      <div class="text-subtitle-2 mt-4 mb-2">
+                        <v-icon size="18">mdi-tag-outline</v-icon> Top Product Groups
+                      </div>
+                      <v-table density="compact" class="mb-3">
+                        <thead>
+                          <tr><th>Group</th><th class="text-right">Revenue</th><th class="text-right">% of Their Book</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="g in s.topProductGroups" :key="g.group">
+                            <td>{{ g.group }}</td>
+                            <td class="text-right">${{ g.revenue.toLocaleString() }}</td>
+                            <td class="text-right">
+                              <v-progress-linear
+                                :model-value="g.pctOfStaffRevenue"
+                                color="deep-purple" height="14" rounded
+                                style="max-width:140px;display:inline-block;vertical-align:middle"
+                              >
+                                <span class="text-caption">{{ g.pctOfStaffRevenue }}%</span>
+                              </v-progress-linear>
+                            </td>
+                          </tr>
+                          <tr v-if="!s.topProductGroups.length">
+                            <td colspan="3" class="text-center text-grey text-caption pa-2">No product-group data</td>
+                          </tr>
+                        </tbody>
+                      </v-table>
+
+                      <div v-if="s.byLocation.length > 1">
+                        <div class="text-subtitle-2 mb-2"><v-icon size="18">mdi-map-marker</v-icon> Revenue by Location</div>
+                        <v-chip-group>
+                          <v-chip v-for="l in s.byLocation" :key="l.location" size="small" variant="tonal">
+                            {{ l.location }} · ${{ l.revenue.toLocaleString() }}
+                          </v-chip>
+                        </v-chip-group>
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+                <div v-if="!filteredStaffRows.length" class="text-center text-grey pa-6">No staff match the current filters.</div>
+              </v-card-text>
+            </v-card>
+          </template>
+
+          <v-alert v-else type="info" variant="tonal" class="mt-4">
+            No staff data loaded yet. Make sure invoice lines have been imported for the selected period.
+          </v-alert>
         </v-window-item>
 
         <!-- ─────────── TRENDS ─────────── -->
@@ -1029,6 +1337,9 @@ const error = ref<string | null>(null)
 const perfData = ref<any>(null)          // /api/analytics/performance
 const overviewData = ref<any>(null)      // /api/analytics/practice-overview
 const crmAnalytics = ref<any>(null)      // /api/marketing/ezyvet-analytics
+const staffPerf = ref<any>(null)         // /api/analytics/staff-performance
+const staffSearch = ref('')
+const staffPrimaryLocFilter = ref('All Locations')
 
 const activeTab = ref((route.query.tab as string) || 'overview')
 const chartKey = ref(0)
@@ -1313,6 +1624,60 @@ const staffOptions = computed(() => {
   }
 })
 
+// ═══════════════════════════ STAFF PERFORMANCE TAB ═══════════════════════════
+const staffLocationOptions = computed<string[]>(() => {
+  if (!staffPerf.value?.staff) return []
+  const locs = new Set<string>()
+  for (const s of staffPerf.value.staff) locs.add(s.primaryLocation)
+  return Array.from(locs).sort()
+})
+
+const filteredStaffRows = computed<any[]>(() => {
+  if (!staffPerf.value?.staff) return []
+  const q = staffSearch.value?.trim().toLowerCase() || ''
+  const locFilter = staffPrimaryLocFilter.value
+  return staffPerf.value.staff.filter((s: any) => {
+    if (q && !s.staff.toLowerCase().includes(q)) return false
+    if (locFilter && locFilter !== 'All Locations' && s.primaryLocation !== locFilter) return false
+    return true
+  })
+})
+
+const staffPerfPriorLabel = computed(() => {
+  const p = staffPerf.value?.priorPeriod
+  if (!p) return 'period'
+  return `${p.startDate} – ${p.endDate}`
+})
+
+const staffPgSeries = computed(() => {
+  const groups = staffPerf.value?.productGroupTotals || []
+  if (!groups.length) return [{ name: 'Revenue', data: [] }]
+  return [{ name: 'Revenue', data: groups.map((g: any) => g.revenue) }]
+})
+const staffPgOptions = computed(() => {
+  const groups = staffPerf.value?.productGroupTotals || []
+  return {
+    chart: { type: 'bar', toolbar: { show: false } },
+    colors: ['#7C3AED'],
+    plotOptions: { bar: { borderRadius: 3, horizontal: true, dataLabels: { position: 'bottom' } } },
+    dataLabels: {
+      enabled: true,
+      formatter: (_v: number, opts: any) => {
+        const g = groups[opts.dataPointIndex]
+        return g ? `${g.pctOfPractice}%` : ''
+      },
+      style: { colors: ['#fff'] },
+    },
+    xaxis: {
+      categories: groups.map((g: any) => g.group),
+      labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' },
+    },
+    tooltip: {
+      y: { formatter: (v: number) => '$' + (v || 0).toLocaleString() },
+    },
+  }
+})
+
 // ═══════════════════════════ CHART COMPUTEDS (CRM-sourced) ═══════════════════════════
 const segmentDonutSeries = computed(() => crmAnalytics.value?.clientSegments?.map((s: any) => s.revenue) || [])
 const segmentDonutOptions = computed(() => ({
@@ -1418,6 +1783,7 @@ async function loadAll() {
   perfData.value = null
   overviewData.value = null
   crmAnalytics.value = null
+  staffPerf.value = null
 
   try {
     const params = new URLSearchParams()
@@ -1434,10 +1800,11 @@ async function loadAll() {
     if (dateRange.start) crmParams.append('startDate', dateRange.start)
     if (dateRange.end) crmParams.append('endDate', dateRange.end)
 
-    const [perfResult, overviewResult, crmResult] = await Promise.allSettled([
+    const [perfResult, overviewResult, crmResult, staffResult] = await Promise.allSettled([
       $fetch(`/api/analytics/performance?${params.toString()}`),
       $fetch(`/api/analytics/practice-overview?${params.toString()}`),
       $fetch(`/api/marketing/ezyvet-analytics?${crmParams.toString()}`),
+      $fetch(`/api/analytics/staff-performance?${crmParams.toString()}`),
     ])
 
     if (perfResult.status === 'fulfilled') perfData.value = perfResult.value
@@ -1448,6 +1815,10 @@ async function loadAll() {
     if (crmResult.status === 'fulfilled') {
       const cr = crmResult.value as any
       if (cr?.success) crmAnalytics.value = cr
+    }
+    if (staffResult.status === 'fulfilled') {
+      const sp = staffResult.value as any
+      if (sp?.success) staffPerf.value = sp
     }
 
     chartKey.value++
