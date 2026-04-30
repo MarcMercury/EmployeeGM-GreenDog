@@ -1411,7 +1411,10 @@ const kpis = computed(() => {
   const ovKpis = overviewData.value?.kpis
   const crmKpis = crmAnalytics.value?.kpis
 
-  let totalRevenue = perfKpis?.totalRevenue ?? ovKpis?.revenue?.totalRevenue ?? crmKpis?.totalRevenue ?? 0
+  // For the headline KPIs we use clinic-only revenue so totalRevenue and
+  // totalAppointments share the same denominator grain. The all-divisions
+  // figure is available as perfKpis.totalRevenue for transparency tabs.
+  let totalRevenue = perfKpis?.clinicRevenue ?? perfKpis?.totalRevenue ?? ovKpis?.revenue?.totalRevenue ?? crmKpis?.totalRevenue ?? 0
   let totalAppointments = perfKpis?.totalAppointments ?? ovKpis?.appointments?.totalAppointments ?? 0
   let uniqueClients = perfKpis?.uniqueClients ?? ovKpis?.clients?.activeContacts ?? crmKpis?.activeContacts ?? 0
   let avgRevenuePerAppt = perfKpis?.avgRevenuePerAppt ?? 0
@@ -1830,6 +1833,10 @@ async function loadAll() {
 }
 
 watch(() => [dateRange.start, dateRange.end, divisionFilter.value, locationFilter.value], () => {
+  // Clear stale AI review the moment filters change — otherwise the card
+  // shows findings from a different time window and looks like the report
+  // isn't responding to date changes.
+  aiReview.value = null
   if (_debounce) clearTimeout(_debounce)
   _debounce = setTimeout(() => loadAll(), 500)
 })

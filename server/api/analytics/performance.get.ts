@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   const startDate = query.startDate || '2025-01-01'
   const endDate = query.endDate || new Date().toISOString().split('T')[0]
 
-  const cacheKey = `analytics:performance:v3:${startDate}:${endDate}`
+  const cacheKey = `analytics:performance:v4:${startDate}:${endDate}`
   return getCached(cacheKey, async () => {
 
   // ── 1. LOAD APPOINTMENT DATA (only completed from appointment_status) ─
@@ -553,7 +553,12 @@ export default defineEventHandler(async (event) => {
   }))
 
   // ── KPIs (cross-referenced) ──
+  // CRITICAL: numerator and denominator must use the SAME grain (clinic-only)
+  // or the ratio explodes. grandTotalRevenue includes MPMV / Other / null-
+  // division lines whose appointments aren't counted in apptsByLocation,
+  // which previously produced figures like $10,585/appointment.
   const totalAppointments = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
+  const clinicRevenueTotal = Object.values(revenueByLocation).reduce((s, v) => s + v, 0)
   const totalRevenue = grandTotalRevenue
 
   // ── Revenue per Appointment cross-reference ──
@@ -604,9 +609,15 @@ export default defineEventHandler(async (event) => {
 
     kpis: {
       totalAppointments,
+      // totalRevenue exposes the all-divisions figure for completeness, but
+      // the per-appointment ratio uses clinic-only revenue so the grain
+      // matches the appointment denominator.
       totalRevenue: Math.round(totalRevenue * 100) / 100,
+      clinicRevenue: Math.round(clinicRevenueTotal * 100) / 100,
       uniqueClients,
-      avgRevenuePerAppt: totalAppointments > 0 ? Math.round(totalRevenue / totalAppointments * 100) / 100 : 0,
+      avgRevenuePerAppt: totalAppointments > 0
+        ? Math.round((clinicRevenueTotal / totalAppointments) * 100) / 100
+        : 0,
     },
 
     apptsByLocation,
