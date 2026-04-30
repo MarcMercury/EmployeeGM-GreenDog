@@ -54,6 +54,16 @@
         <v-btn color="success" prepend-icon="mdi-cloud-sync" variant="outlined" :loading="syncing" @click="syncAll">
           Sync ezyVet
         </v-btn>
+        <v-btn
+          color="deep-purple"
+          variant="outlined"
+          prepend-icon="mdi-robot-outline"
+          :loading="aiReviewLoading"
+          :disabled="!hasAnyData"
+          @click="runAiReview"
+        >
+          AI Review
+        </v-btn>
         <v-btn color="primary" variant="outlined" prepend-icon="mdi-printer" @click="printReport">Print</v-btn>
         <v-btn color="primary" variant="text" prepend-icon="mdi-refresh" :loading="loading" @click="loadAll">Refresh</v-btn>
         <v-btn color="error" variant="text" prepend-icon="mdi-delete-sweep" :disabled="!hasAnyData || clearing" @click="clearDialogOpen = true">
@@ -250,6 +260,110 @@
           </v-card>
         </v-col>
       </v-row>
+
+      <!-- ═══ AI DATA REVIEW ═══ -->
+      <v-card v-if="aiReview" class="mb-5" elevation="3" border>
+        <v-card-title class="d-flex align-center flex-wrap">
+          <v-icon start color="deep-purple">mdi-robot-outline</v-icon>
+          AI Data &amp; Methodology Review
+          <v-chip
+            class="ml-3"
+            size="small"
+            :color="aiReview.confidenceScore >= 75 ? 'success' : aiReview.confidenceScore >= 50 ? 'warning' : 'error'"
+            label
+          >
+            Confidence: {{ aiReview.confidenceScore }}%
+          </v-chip>
+          <v-spacer />
+          <span class="text-caption text-grey">
+            {{ aiReview.model }} · {{ aiReview.tokensUsed.toLocaleString() }} tokens · ${{ aiReview.costUsd.toFixed(4) }}
+          </span>
+          <v-btn icon="mdi-close" variant="text" size="small" class="ml-2" @click="aiReview = null" />
+        </v-card-title>
+
+        <v-card-text>
+          <p class="text-body-1 mb-4 font-italic">{{ aiReview.summary }}</p>
+
+          <v-row dense>
+            <!-- Findings -->
+            <v-col cols="12" md="7">
+              <div class="text-subtitle-2 mb-2">
+                <v-icon size="18" class="mr-1">mdi-magnify-scan</v-icon>
+                Findings ({{ aiReview.findings.length }})
+              </div>
+              <div v-if="!aiReview.findings.length" class="text-caption text-grey">No findings.</div>
+              <v-alert
+                v-for="(f, idx) in aiReview.findings"
+                :key="idx"
+                :type="aiSeverityType(f.severity)"
+                variant="tonal"
+                density="compact"
+                class="mb-2"
+                border="start"
+              >
+                <div class="d-flex align-center mb-1">
+                  <v-chip size="x-small" label class="mr-2 text-uppercase" :color="aiCategoryColor(f.category)">
+                    {{ f.category.replace('_', ' ') }}
+                  </v-chip>
+                  <span class="font-weight-bold text-body-2">{{ f.title }}</span>
+                </div>
+                <div class="text-caption">{{ f.detail }}</div>
+                <div v-if="f.metric" class="text-caption font-weight-bold mt-1">
+                  Metric: {{ f.metric }}
+                  <span v-if="f.affectedRecords"> · {{ f.affectedRecords.toLocaleString() }} records</span>
+                </div>
+                <div v-if="f.suggestedAction" class="text-caption mt-1">
+                  <v-icon size="14">mdi-arrow-right-bold</v-icon> {{ f.suggestedAction }}
+                </div>
+              </v-alert>
+            </v-col>
+
+            <!-- Verified metrics + actions -->
+            <v-col cols="12" md="5">
+              <div class="text-subtitle-2 mb-2">
+                <v-icon size="18" class="mr-1">mdi-check-decagram-outline</v-icon>
+                Metric Audit
+              </div>
+              <v-table density="compact" class="mb-4">
+                <tbody>
+                  <tr v-for="(m, idx) in aiReview.verifiedMetrics" :key="idx">
+                    <td class="text-caption">{{ m.name }}</td>
+                    <td class="text-caption text-right font-weight-bold">{{ m.value }}</td>
+                    <td class="text-right" style="width:100px">
+                      <v-chip
+                        size="x-small" label
+                        :color="m.assessment === 'verified' ? 'success' : m.assessment === 'questionable' ? 'warning' : 'error'"
+                      >
+                        {{ m.assessment }}
+                      </v-chip>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <div class="text-subtitle-2 mb-2">
+                <v-icon size="18" class="mr-1">mdi-clipboard-check-outline</v-icon>
+                Top Recommended Actions
+              </div>
+              <div
+                v-for="(a, idx) in aiReview.topActions"
+                :key="idx"
+                class="action-item mb-2 pa-2 rounded-lg"
+                :class="`action-${a.priority}`"
+              >
+                <div class="d-flex align-center mb-1">
+                  <span class="font-weight-bold text-body-2">{{ a.title }}</span>
+                  <v-spacer />
+                  <v-chip size="x-small" label :color="a.priority === 'high' ? 'error' : a.priority === 'medium' ? 'warning' : 'info'">
+                    {{ a.priority }}
+                  </v-chip>
+                </div>
+                <div class="text-caption text-medium-emphasis">{{ a.rationale }}</div>
+              </div>
+            </v-col>
+          </v-row>
+        </v-card-text>
+      </v-card>
 
       <!-- ═══ TABS ═══ -->
       <v-tabs v-model="activeTab" color="deep-purple" class="mb-4">
@@ -894,7 +1008,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { evaluateRetention } from '~/utils/vetBenchmarks'
 
 definePageMeta({ layout: 'default', middleware: ['auth', 'marketing-admin'] })
@@ -1368,6 +1482,81 @@ async function syncAll() {
   }
 }
 
+// ═══════════════════════════ AI DATA REVIEW ═══════════════════════════
+interface AiFinding {
+  severity: 'critical' | 'warning' | 'info' | 'success'
+  category: 'methodology' | 'data_quality' | 'anomaly' | 'benchmark' | 'recommendation'
+  title: string
+  detail: string
+  metric?: string
+  affectedRecords?: number
+  suggestedAction?: string
+}
+interface AiReview {
+  generatedAt: string
+  model: string
+  costUsd: number
+  tokensUsed: number
+  durationMs: number
+  summary: string
+  confidenceScore: number
+  findings: AiFinding[]
+  verifiedMetrics: Array<{ name: string; value: string; assessment: 'verified' | 'questionable' | 'flagged'; note: string }>
+  topActions: Array<{ priority: 'high' | 'medium' | 'low'; title: string; rationale: string }>
+}
+const aiReview = ref<AiReview | null>(null)
+const aiReviewLoading = ref(false)
+
+function aiSeverityType(s: string) {
+  return s === 'critical' ? 'error' : s === 'warning' ? 'warning' : s === 'success' ? 'success' : 'info'
+}
+function aiCategoryColor(c: string) {
+  switch (c) {
+    case 'methodology': return 'deep-purple'
+    case 'data_quality': return 'orange'
+    case 'anomaly': return 'red'
+    case 'benchmark': return 'blue'
+    case 'recommendation': return 'teal'
+    default: return 'grey'
+  }
+}
+
+async function runAiReview() {
+  if (aiReviewLoading.value) return
+  aiReviewLoading.value = true
+  try {
+    const body: Record<string, string> = {}
+    if (dateRange.start) body.startDate = dateRange.start
+    if (dateRange.end) body.endDate = dateRange.end
+    if (locationFilter.value && locationFilter.value !== 'All Locations' && locationFilter.value !== 'Compare Locations') {
+      body.location = locationFilter.value
+    }
+    if (divisionFilter.value && divisionFilter.value !== 'All Divisions') {
+      body.division = divisionFilter.value
+    }
+    const result = await $fetch<AiReview & { success: boolean }>('/api/marketing/analytics-ai-review', {
+      method: 'POST',
+      body,
+      // The endpoint also pulls live KPIs internally — give it room to run.
+      timeout: 90_000,
+    })
+    if (result?.success) {
+      aiReview.value = result
+      notify(`AI review complete — confidence ${result.confidenceScore}%, ${result.findings.length} finding(s).`)
+      // Scroll the user to the review card
+      await nextTick()
+      document.querySelector('.unified-analytics-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      notify('AI review returned no result', 'warning')
+    }
+  } catch (err: any) {
+    const msg = err.data?.message || err.message || 'AI review failed'
+    notify(msg, 'warning')
+  } finally {
+    aiReviewLoading.value = false
+  }
+}
+
 async function clearData() {
   clearing.value = true
   try {
@@ -1458,42 +1647,145 @@ const CRM_HEADER_MAP: Record<string, string> = {
   'Service Department': 'department',
 }
 
-function parseCSV(text: string): any[] {
-  const lines = text.split('\n').filter(l => l.trim())
-  if (!lines.length) return []
-  const headers = parseCSVLine(lines[0])
-  const rows: any[] = []
-  for (let i = 1; i < lines.length; i++) {
-    const vals = parseCSVLine(lines[i])
+// RFC 4180-compliant CSV parser — handles CRLF / LF / CR line endings,
+// quoted fields with embedded newlines/commas, and escaped quotes ("").
+// Returns an array of records keyed by the header row.
+function parseCSV(text: string): Record<string, string>[] {
+  // Strip BOM if present (Excel commonly prepends \uFEFF)
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1)
+
+  const records: string[][] = []
+  let field = ''
+  let row: string[] = []
+  let inQuotes = false
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++ }      // escaped quote → "
+        else inQuotes = false                                // end of quoted value
+      } else {
+        field += ch
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true
+      } else if (ch === ',') {
+        row.push(field); field = ''
+      } else if (ch === '\r' || ch === '\n') {
+        // End of record. Handle CRLF as one terminator.
+        row.push(field); field = ''
+        // Skip empty rows (e.g. trailing newline at EOF)
+        if (row.length > 1 || (row.length === 1 && row[0] !== '')) records.push(row)
+        row = []
+        if (ch === '\r' && text[i + 1] === '\n') i++
+      } else {
+        field += ch
+      }
+    }
+  }
+  // Flush trailing field/row at EOF (no terminating newline)
+  if (field !== '' || row.length > 0) {
+    row.push(field)
+    if (row.length > 1 || (row.length === 1 && row[0] !== '')) records.push(row)
+  }
+
+  if (!records.length) return []
+
+  const headers = records[0].map(h => h.trim())
+  const out: Record<string, string>[] = []
+  for (let r = 1; r < records.length; r++) {
+    const vals = records[r]
     if (!vals.length) continue
-    const row: Record<string, any> = {}
-    headers.forEach((h, idx) => { row[h.trim()] = vals[idx]?.trim() || '' })
-    rows.push(row)
+    const obj: Record<string, string> = {}
+    for (let c = 0; c < headers.length; c++) {
+      obj[headers[c]] = (vals[c] ?? '').trim()
+    }
+    out.push(obj)
   }
-  return rows
+  return out
 }
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = '', inQuotes = false
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') inQuotes = !inQuotes
-    else if (ch === ',' && !inQuotes) { result.push(current); current = '' }
-    else current += ch
+
+// Robust date parser — accepts ISO, DD/MM/YYYY (EzyVet AU default), MM/DD/YYYY,
+// DD-Mmm-YYYY, and Excel serial numbers. Returns YYYY-MM-DD or null.
+// Mirrors server/api/invoices/upload.post.ts → parseDate() so client and
+// server parse the same source data identically.
+function parseFlexibleDate(val: unknown): string | null {
+  if (val == null || val === '') return null
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val.toISOString().slice(0, 10)
   }
-  result.push(current)
-  return result
+  if (typeof val === 'number') {
+    if (val > 1 && val < 200000) {
+      const d = new Date((val - 25569) * 86400 * 1000)
+      return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10)
+    }
+    return null
+  }
+  const v = String(val).trim()
+  if (!v) return null
+
+  // ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+    const d = new Date(v)
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+  }
+  // DD/MM/YYYY or MM/DD/YYYY (or with -). EzyVet exports DD/MM/YYYY.
+  const slash = v.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2,4})/)
+  if (slash) {
+    let [, a, b, y] = slash
+    let day = parseInt(a, 10), month = parseInt(b, 10)
+    let year = parseInt(y, 10)
+    if (year < 100) year += 2000
+    if (day > 12 && month <= 12) { /* DD/MM */ }
+    else if (month > 12 && day <= 12) { [day, month] = [month, day] } // swap
+    // both ≤12 → assume DD/MM (EzyVet convention)
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31 && year >= 2000 && year <= 2100) {
+      const d = new Date(Date.UTC(year, month - 1, day))
+      if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+    }
+  }
+  // DD-Mmm-YYYY (e.g. 15-Jan-2026)
+  const named = v.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/)
+  if (named) {
+    const d = new Date(`${named[2]} ${named[1]}, ${named[3]}`)
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+  }
+  // Last resort
+  const d = new Date(v)
+  if (!isNaN(d.getTime()) && d.getUTCFullYear() >= 2000 && d.getUTCFullYear() <= 2100) {
+    return d.toISOString().slice(0, 10)
+  }
+  return null
 }
+
+// Robust number parser — handles "$1,234.56", "(125.00)" → -125, blanks → null.
+function parseFlexibleNumber(val: unknown): number | null {
+  if (val == null || val === '') return null
+  if (typeof val === 'number') return isNaN(val) ? null : val
+  const cleaned = String(val).replace(/[$,\s]/g, '').replace(/^\(([^)]+)\)$/, '-$1')
+  if (!cleaned) return null
+  const n = parseFloat(cleaned)
+  return isNaN(n) ? null : n
+}
+
 function transformCrmRow(csvRow: Record<string, any>): Record<string, any> {
   const dbRow: Record<string, any> = {}
   for (const [csvHeader, dbField] of Object.entries(CRM_HEADER_MAP)) {
-    let value = csvRow[csvHeader]
-    if (value === undefined || value === '') value = null
-    else if (dbField === 'is_active') value = value?.toUpperCase() === 'YES'
-    else if (dbField === 'revenue_ytd') value = parseFloat(String(value).replace(/[$,]/g, '')) || 0
-    else if (dbField === 'last_visit' && value) {
-      const parsed = new Date(value)
-      value = isNaN(parsed.getTime()) ? null : parsed.toISOString().split('T')[0]
+    const raw = csvRow[csvHeader]
+    let value: any = raw === undefined || raw === '' ? null : raw
+
+    if (dbField === 'is_active') {
+      // Accept "Yes"/"Y"/"True"/"1" — anything else (including blank) is false.
+      const s = (value == null ? '' : String(value)).trim().toUpperCase()
+      value = s === 'YES' || s === 'Y' || s === 'TRUE' || s === '1'
+    } else if (dbField === 'revenue_ytd') {
+      value = parseFlexibleNumber(value) ?? 0
+    } else if (dbField === 'last_visit') {
+      value = parseFlexibleDate(value)
+    } else if (typeof value === 'string') {
+      value = value.trim() || null
     }
     dbRow[dbField] = value
   }
@@ -1622,10 +1914,16 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
 async function parseInvoiceFileClientSide(file: File): Promise<Record<string, any>[]> {
   const XLSX = await import('xlsx')
   const buffer = await readFileAsArrayBuffer(file)
-  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' })
+  // cellDates: true returns date-typed cells as JS Date objects rather than
+  // raw Excel serial numbers. Without this, dates like 45412 get serialised
+  // through String() and the server's parseDate() rejects them — silently
+  // dropping every invoice_date in XLSX uploads.
+  const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
   if (!sheet) throw new Error('No sheets found in file')
-  const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+  // raw: true keeps Date objects intact (otherwise sheet_to_json formats them
+  // back to strings using the cell's number-format).
+  const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true })
   const headerKeywords = ['invoice #', 'invoice', 'invoice line reference', 'invoice number', 'product name', 'appointment']
   let headerIdx = 0
   for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
@@ -1637,9 +1935,20 @@ async function parseInvoiceFileClientSide(file: File): Promise<Record<string, an
   const rows: Record<string, any>[] = []
   for (let i = headerIdx + 1; i < rawRows.length; i++) {
     const row = rawRows[i]
-    if (!row || row.every((c: any) => !String(c).trim())) continue
+    if (!row || row.every((c: any) => c == null || String(c).trim() === '')) continue
     const obj: Record<string, any> = {}
-    headers.forEach((h: string, idx: number) => { if (h) obj[h] = row[idx] != null ? String(row[idx]) : '' })
+    headers.forEach((h: string, idx: number) => {
+      if (!h) return
+      const v = row[idx]
+      if (v == null) { obj[h] = ''; return }
+      if (v instanceof Date) {
+        // Normalise to ISO YYYY-MM-DD so the server treats it as a real date
+        // regardless of the user's locale-formatted Excel column.
+        obj[h] = isNaN(v.getTime()) ? '' : v.toISOString().slice(0, 10)
+      } else {
+        obj[h] = typeof v === 'number' ? v : String(v)
+      }
+    })
     rows.push(obj)
   }
   return rows

@@ -133,11 +133,33 @@ export default defineEventHandler(async (event) => {
     // Build a map of client_code → total invoice revenue for the period
     // Uses standardised lineRevenue() for consistent COALESCE(total_earned, price_after_discount)
     const clientInvoiceRevenue = new Map<string, number>()
+    // Build a map of client_code → most recent invoice_date (any date) so we
+    // can correct stale CRM last_visit values when invoices show fresher
+    // activity. CRM exports are point-in-time snapshots; invoices are the
+    // source of truth for "did this client transact recently?".
+    const clientLastInvoiceDate = new Map<string, string>()
     for (const line of invoiceLines) {
       const code = line.client_code
       if (!code) continue
       const earned = lineRevenue(line)
       clientInvoiceRevenue.set(code, (clientInvoiceRevenue.get(code) || 0) + earned)
+      const dt = line.invoice_date
+      if (dt) {
+        const cur = clientLastInvoiceDate.get(code)
+        if (!cur || dt > cur) clientLastInvoiceDate.set(code, dt)
+      }
+    }
+
+    // Resolve the most reliable "last visit" for a contact: prefer the most
+    // recent invoice_date when newer than CRM's last_visit, otherwise the
+    // CRM value. Returns ISO YYYY-MM-DD or null.
+    function effectiveLastVisit(contact: any): string | null {
+      const fromInvoices = contact.ezyvet_contact_code
+        ? clientLastInvoiceDate.get(contact.ezyvet_contact_code) || null
+        : null
+      const fromCrm = contact.last_visit ? String(contact.last_visit).slice(0, 10) : null
+      if (fromInvoices && fromCrm) return fromInvoices > fromCrm ? fromInvoices : fromCrm
+      return fromInvoices || fromCrm
     }
 
     // Anchor recency boundaries to end-of-last-complete-month (consistent with Sauron)
@@ -178,9 +200,12 @@ export default defineEventHandler(async (event) => {
       applyContactFilter(supabase.from('ezyvet_crm_contacts').select('*', { count: 'exact', head: true }).is('last_visit', null))
     ])
     
+    // Active = visited in last 12 months. Use the merged invoice/CRM date so
+    // a client with a fresh invoice but stale CRM record isn't falsely lapsed.
     const activeContacts = filteredContacts.filter(c => {
-      if (!c.last_visit) return false
-      return new Date(c.last_visit) >= oneYearAgo
+      const lv = effectiveLastVisit(c)
+      if (!lv) return false
+      return new Date(lv) >= oneYearAgo
     })
 
     // ========================================
@@ -236,15 +261,27 @@ export default defineEventHandler(async (event) => {
     })
 
     // ========================================
-    // RECENCY ANALYSIS
+    // RECENCY ANALYSIS — recompute in JS using effectiveLastVisit so the
+    // buckets reflect invoice-driven activity (DB counts above use only
+    // ezyvet_crm_contacts.last_visit and can't see fresh invoices).
     // ========================================
     const recencyAnalysis = {
-      zeroToThreeMonths: zeroToThreeCount || 0,
-      threeToSixMonths: threeToSixCount || 0,
-      sixToTwelveMonths: sixToTwelveCount || 0,
-      oneToTwoYears: oneToTwoCount || 0,
-      overTwoYears: overTwoCount || 0,
-      neverVisited: neverVisitedCount || 0
+      zeroToThreeMonths: 0,
+      threeToSixMonths: 0,
+      sixToTwelveMonths: 0,
+      oneToTwoYears: 0,
+      overTwoYears: 0,
+      neverVisited: 0,
+    }
+    for (const c of filteredContacts) {
+      const lv = effectiveLastVisit(c)
+      if (!lv) { recencyAnalysis.neverVisited++; continue }
+      const t = new Date(lv).getTime()
+      if (t >= threeMonthsAgo.getTime()) recencyAnalysis.zeroToThreeMonths++
+      else if (t >= sixMonthsAgo.getTime()) recencyAnalysis.threeToSixMonths++
+      else if (t >= twelveMonthsAgo.getTime()) recencyAnalysis.sixToTwelveMonths++
+      else if (t >= twoYearsAgo.getTime()) recencyAnalysis.oneToTwoYears++
+      else recencyAnalysis.overTwoYears++
     }
 
     const recencyChart = [
@@ -270,11 +307,12 @@ export default defineEventHandler(async (event) => {
       divisionMap.set(div, existing)
     }
 
-    // Cross-reference with contacts for active status
+    // Cross-reference with contacts for active status (uses merged date).
     const contactActiveMap = new Map<string, boolean>()
     for (const c of filteredContacts) {
       if (c.ezyvet_contact_code) {
-        contactActiveMap.set(c.ezyvet_contact_code, !!(c.last_visit && new Date(c.last_visit) >= oneYearAgo))
+        const lv = effectiveLastVisit(c)
+        contactActiveMap.set(c.ezyvet_contact_code, !!(lv && new Date(lv) >= oneYearAgo))
       }
     }
 
@@ -404,7 +442,8 @@ export default defineEventHandler(async (event) => {
       // Use invoice-based revenue for this client
       existing.revenue += clientInvoiceRevenue.get(contact.ezyvet_contact_code) || 0
       existing.zips.add(zip.slice(0, 5))
-      if (contact.last_visit && new Date(contact.last_visit) >= oneYearAgo) {
+      const lv = effectiveLastVisit(contact)
+      if (lv && new Date(lv) >= oneYearAgo) {
         existing.active++
       }
       neighborhoodMap.set(neighborhood, existing)
@@ -437,7 +476,8 @@ export default defineEventHandler(async (event) => {
     for (const contact of filteredContacts) {
       // Use invoice-based revenue for segmentation
       const rev = clientInvoiceRevenue.get(contact.ezyvet_contact_code) || 0
-      const isActive = contact.last_visit && new Date(contact.last_visit) >= oneYearAgo
+      const lv = effectiveLastVisit(contact)
+      const isActive = !!(lv && new Date(lv) >= oneYearAgo)
 
       let seg: keyof typeof segments
       if (rev >= 5000) seg = 'vip'
@@ -464,24 +504,26 @@ export default defineEventHandler(async (event) => {
       .filter(c => {
         const rev = clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0
         if (rev < 100) return false
-        if (!c.last_visit) return true
-        const daysSince = Math.floor((now.getTime() - new Date(c.last_visit).getTime()) / (1000 * 60 * 60 * 24))
+        const lv = effectiveLastVisit(c)
+        if (!lv) return true
+        const daysSince = Math.floor((now.getTime() - new Date(lv).getTime()) / (1000 * 60 * 60 * 24))
         return daysSince >= 180
       })
       .map(c => {
-        const daysSince = c.last_visit
-          ? Math.floor((now.getTime() - new Date(c.last_visit).getTime()) / (1000 * 60 * 60 * 24))
+        const lv = effectiveLastVisit(c)
+        const daysSince = lv
+          ? Math.floor((now.getTime() - new Date(lv).getTime()) / (1000 * 60 * 60 * 24))
           : null
         return {
           name: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
           email: c.email,
           phone: c.phone_mobile,
           revenue: clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0,
-          lastVisit: c.last_visit,
+          lastVisit: lv,
           daysSinceVisit: daysSince,
           division: c.division,
           city: c.address_city,
-          riskLevel: !c.last_visit ? 'critical' : (daysSince! >= 365 ? 'high' : 'medium') as 'critical' | 'high' | 'medium'
+          riskLevel: !lv ? 'critical' : (daysSince! >= 365 ? 'high' : 'medium') as 'critical' | 'high' | 'medium'
         }
       })
       .sort((a, b) => b.revenue - a.revenue)
@@ -498,7 +540,7 @@ export default defineEventHandler(async (event) => {
         name: `${c.first_name || ''} ${c.last_name || ''}`.trim(),
         email: c.email,
         revenue: clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0,
-        lastVisit: c.last_visit,
+        lastVisit: effectiveLastVisit(c),
         division: c.division,
         city: c.address_city,
         zip: c.address_zip,
@@ -514,7 +556,8 @@ export default defineEventHandler(async (event) => {
       missingEmail: filteredContacts.filter(c => !c.email).length,
       missingPhone: filteredContacts.filter(c => !c.phone_mobile).length,
       missingCity: filteredContacts.filter(c => !c.address_city).length,
-      missingLastVisit: filteredContacts.filter(c => !c.last_visit).length,
+      // Count missing only when neither CRM nor invoice activity provides a date.
+      missingLastVisit: filteredContacts.filter(c => !effectiveLastVisit(c)).length,
       missingZip: filteredContacts.filter(c => !c.address_zip).length,
       missingDivision: filteredContacts.filter(c => !c.division).length,
       zeroRevenue: filteredContacts.filter(c => (clientInvoiceRevenue.get(c.ezyvet_contact_code) || 0) === 0).length,
