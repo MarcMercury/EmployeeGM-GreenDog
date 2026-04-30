@@ -248,7 +248,9 @@ export default defineEventHandler(async (event) => {
       ...mapped,
       source: 'csv_upload',
       batch_id: batchId,
-      raw_data: row,
+      // raw_data intentionally omitted — storing the full source row doubles the
+      // payload and write time per upload, with no downstream consumer. Mapped
+      // columns are the source of truth.
       uploaded_by: profile.id,
     }
   }).filter((r: any) => r.invoice_number || r.invoice_line_reference || r.invoice_date) // Must have at least one identifier
@@ -257,11 +259,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'No valid invoice line records found. Each row must have an invoice number, line reference, or date.' })
   }
 
-  // Insert in chunks with ON CONFLICT skip (deduplication)
+  // Insert in chunks with ON CONFLICT skip (deduplication).
+  // The client now sends 250-row batches, so this loop usually runs once per request.
+  // We keep an internal CHUNK_SIZE in case a larger payload is ever sent directly.
   const CHUNK_SIZE = 500
   let inserted = 0
   let duplicatesSkipped = 0
   let errors = 0
+  const chunkErrors: string[] = []
 
   for (let i = 0; i < records.length; i += CHUNK_SIZE) {
     const chunk = records.slice(i, i + CHUNK_SIZE)
@@ -276,36 +281,27 @@ export default defineEventHandler(async (event) => {
       .select('id')
 
     if (error) {
-      // If it's a conflict-related error, try individual inserts
+      // Previously we fell back to per-row upsert here, but a single bad row could
+      // trigger 500 sequential round-trips and blow past the function timeout —
+      // making the upload appear to hang for many minutes. Now we record the
+      // chunk error and continue; the client retries the same range with a
+      // smaller batch via its own retry logic.
       console.error(`Chunk ${Math.floor(i / CHUNK_SIZE) + 1} upsert error:`, error.message)
-      
-      // Fallback: insert one by one to handle duplicates gracefully
-      for (const record of chunk) {
-        const { data: singleData, error: singleError } = await supabase
-          .from('invoice_lines')
-          .upsert(record, {
-            onConflict: 'invoice_number,invoice_line_reference',
-            ignoreDuplicates: true,
-          })
-          .select('id')
-
-        if (singleError) {
-          if (singleError.code === '23505') {
-            duplicatesSkipped++
-          } else {
-            errors++
-          }
-        } else if (singleData && singleData.length > 0) {
-          inserted++
-        } else {
-          duplicatesSkipped++
-        }
-      }
+      errors += chunk.length
+      chunkErrors.push(error.message)
     } else {
       const insertedCount = upsertData?.length || 0
       inserted += insertedCount
       duplicatesSkipped += chunk.length - insertedCount
     }
+  }
+
+  // If everything in this request failed, surface a 500 so the client can retry.
+  if (errors === records.length && records.length > 0) {
+    throw createError({
+      statusCode: 500,
+      message: `Insert failed for all ${records.length} rows. First error: ${chunkErrors[0] || 'unknown'}`,
+    })
   }
 
   // Record upload history
@@ -319,13 +315,19 @@ export default defineEventHandler(async (event) => {
     uploaded_by: profile.id,
   })
 
-  // Auto-purge records older than 24 months
+  // Auto-purge records older than 24 months.
+  // Only run when this request likely represents the END of a multi-batch upload
+  // (i.e. a small final chunk). Running purge_old_invoice_lines on every 250-row
+  // chunk multiplies its cost by N and was the dominant cause of "upload hangs
+  // forever" on large files. The weekly cleanup cron handles the general case.
   let purged = 0
-  try {
-    const { data: purgeResult } = await supabase.rpc('purge_old_invoice_lines')
-    purged = purgeResult || 0
-  } catch (purgeErr) {
-    console.warn('Auto-purge failed (non-critical):', purgeErr)
+  if (records.length < 200) {
+    try {
+      const { data: purgeResult } = await supabase.rpc('purge_old_invoice_lines')
+      purged = purgeResult || 0
+    } catch (purgeErr) {
+      console.warn('Auto-purge failed (non-critical):', purgeErr)
+    }
   }
 
   return {

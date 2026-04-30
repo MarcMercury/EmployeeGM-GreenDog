@@ -1911,9 +1911,19 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   })
 }
 
-async function parseInvoiceFileClientSide(file: File): Promise<Record<string, any>[]> {
+async function parseInvoiceFileClientSide(
+  file: File,
+  onProgress?: (msg: string) => void
+): Promise<Record<string, any>[]> {
+  const yieldUI = () => new Promise(r => setTimeout(r, 0))
+  onProgress?.(`Reading ${(file.size / 1024 / 1024).toFixed(1)} MB...`)
+  await yieldUI()
+
   const XLSX = await import('xlsx')
   const buffer = await readFileAsArrayBuffer(file)
+  onProgress?.('Decoding spreadsheet...')
+  await yieldUI()
+
   // cellDates: true returns date-typed cells as JS Date objects rather than
   // raw Excel serial numbers. Without this, dates like 45412 get serialised
   // through String() and the server's parseDate() rejects them — silently
@@ -1924,6 +1934,9 @@ async function parseInvoiceFileClientSide(file: File): Promise<Record<string, an
   // raw: true keeps Date objects intact (otherwise sheet_to_json formats them
   // back to strings using the cell's number-format).
   const rawRows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true })
+  onProgress?.(`Found ${rawRows.length.toLocaleString()} rows — extracting...`)
+  await yieldUI()
+
   const headerKeywords = ['invoice #', 'invoice', 'invoice line reference', 'invoice number', 'product name', 'appointment']
   let headerIdx = 0
   for (let i = 0; i < Math.min(rawRows.length, 20); i++) {
@@ -1933,7 +1946,8 @@ async function parseInvoiceFileClientSide(file: File): Promise<Record<string, an
   }
   const headers = rawRows[headerIdx].map((c: any) => String(c).trim())
   const rows: Record<string, any>[] = []
-  for (let i = headerIdx + 1; i < rawRows.length; i++) {
+  const total = rawRows.length
+  for (let i = headerIdx + 1; i < total; i++) {
     const row = rawRows[i]
     if (!row || row.every((c: any) => c == null || String(c).trim() === '')) continue
     const obj: Record<string, any> = {}
@@ -1950,15 +1964,24 @@ async function parseInvoiceFileClientSide(file: File): Promise<Record<string, an
       }
     })
     rows.push(obj)
+    // Yield every 5K rows so the UI can repaint the progress message.
+    if (rows.length % 5000 === 0) {
+      onProgress?.(`Parsed ${rows.length.toLocaleString()} of ${total.toLocaleString()} rows...`)
+      await yieldUI()
+    }
   }
+  onProgress?.(`Parsed ${rows.length.toLocaleString()} rows. Preparing upload...`)
+  await yieldUI()
   return rows
 }
 
 async function uploadInvoiceRowsInBatches(entry: InvoiceBatchFile, allRows: Record<string, any>[]) {
   // Smaller client batches → server processes 1 chunk per request → finishes well
   // under the Vercel function timeout, even on a busy invoice_lines table.
-  const BATCH_SIZE = 500
-  const REQUEST_TIMEOUT_MS = 90_000 // per-batch timeout (function maxDuration is 300s)
+  // 250 rows × ~1KB ≈ 250KB request payload — fast enough that no batch should
+  // approach the 60s server timeout even with the auto-purge step at the end.
+  const BATCH_SIZE = 250
+  const REQUEST_TIMEOUT_MS = 60_000 // per-batch timeout
   const MAX_RETRIES = 2
   let totalInserted = 0
   let totalSkipped = 0
@@ -2022,7 +2045,7 @@ async function runInvoiceBatch() {
     entry.status = 'uploading'
     entry.progressMessage = 'Parsing file...'
     try {
-      const rows = await parseInvoiceFileClientSide(entry.file)
+      const rows = await parseInvoiceFileClientSide(entry.file, msg => { entry.progressMessage = msg })
       if (rows.length === 0) throw new Error('No data rows found')
       const result = await uploadInvoiceRowsInBatches(entry, rows)
       entry.status = 'done'
