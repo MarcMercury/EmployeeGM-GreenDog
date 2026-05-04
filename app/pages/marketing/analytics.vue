@@ -54,16 +54,6 @@
         <v-btn color="success" prepend-icon="mdi-cloud-sync" variant="outlined" :loading="syncing" @click="syncAll">
           Sync ezyVet
         </v-btn>
-        <v-btn
-          color="deep-purple"
-          variant="outlined"
-          prepend-icon="mdi-robot-outline"
-          :loading="aiReviewLoading"
-          :disabled="!hasAnyData"
-          @click="runAiReview"
-        >
-          AI Review
-        </v-btn>
         <v-btn color="primary" variant="outlined" prepend-icon="mdi-printer" @click="printReport">Print</v-btn>
         <v-btn color="primary" variant="text" prepend-icon="mdi-refresh" :loading="loading" @click="loadAll">Refresh</v-btn>
         <v-btn color="error" variant="text" prepend-icon="mdi-delete-sweep" :disabled="!hasAnyData || clearing" @click="clearDialogOpen = true">
@@ -262,6 +252,20 @@
       </v-row>
 
       <!-- ═══ AI DATA REVIEW ═══ -->
+      <v-card
+        v-if="aiReviewLoading && !aiReview"
+        class="mb-5"
+        elevation="2"
+        border
+        color="deep-purple-lighten-5"
+      >
+        <v-card-text class="d-flex align-center ga-3 py-3">
+          <v-progress-circular indeterminate color="deep-purple" size="22" width="2" />
+          <span class="text-body-2 text-deep-purple-darken-2">
+            AI is reviewing the current data window…
+          </span>
+        </v-card-text>
+      </v-card>
       <v-card v-if="aiReview" class="mb-5" elevation="3" border>
         <v-card-title class="d-flex align-center flex-wrap">
           <v-icon start color="deep-purple">mdi-robot-outline</v-icon>
@@ -1830,12 +1834,20 @@ async function loadAll() {
   } finally {
     loading.value = false
   }
+
+  // Auto-trigger AI review after a successful load whenever there is
+  // data to analyze. This makes the review run on initial page load and
+  // any time the date range / filters change, without the user clicking.
+  if (!error.value && hasAnyData.value) {
+    void runAiReview({ silent: true })
+  }
 }
 
 watch(() => [dateRange.start, dateRange.end, divisionFilter.value, locationFilter.value], () => {
   // Clear stale AI review the moment filters change — otherwise the card
   // shows findings from a different time window and looks like the report
-  // isn't responding to date changes.
+  // isn't responding to date changes. The fresh review is auto-triggered
+  // at the end of loadAll() once the new dataset has loaded.
   aiReview.value = null
   if (_debounce) clearTimeout(_debounce)
   _debounce = setTimeout(() => loadAll(), 500)
@@ -1899,8 +1911,9 @@ function aiCategoryColor(c: string) {
   }
 }
 
-async function runAiReview() {
+async function runAiReview(opts: { silent?: boolean } = {}) {
   if (aiReviewLoading.value) return
+  const silent = opts.silent === true
   aiReviewLoading.value = true
   try {
     const body: Record<string, string> = {}
@@ -1920,16 +1933,21 @@ async function runAiReview() {
     })
     if (result?.success) {
       aiReview.value = result
-      notify(`AI review complete — confidence ${result.confidenceScore}%, ${result.findings.length} finding(s).`)
-      // Scroll the user to the review card
-      await nextTick()
-      document.querySelector('.unified-analytics-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else {
+      if (!silent) {
+        notify(`AI review complete — confidence ${result.confidenceScore}%, ${result.findings.length} finding(s).`)
+        // Scroll to the review card on user-initiated runs only; silent
+        // auto-runs should not yank the page on every date change.
+        await nextTick()
+        document.querySelector('.unified-analytics-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    } else if (!silent) {
       notify('AI review returned no result', 'warning')
     }
   } catch (err: any) {
-    const msg = err.data?.message || err.message || 'AI review failed'
-    notify(msg, 'warning')
+    if (!silent) {
+      const msg = err.data?.message || err.message || 'AI review failed'
+      notify(msg, 'warning')
+    }
   } finally {
     aiReviewLoading.value = false
   }
