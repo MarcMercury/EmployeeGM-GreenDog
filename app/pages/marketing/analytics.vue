@@ -1415,10 +1415,21 @@ const kpis = computed(() => {
   const ovKpis = overviewData.value?.kpis
   const crmKpis = crmAnalytics.value?.kpis
 
-  // For the headline KPIs we use clinic-only revenue so totalRevenue and
-  // totalAppointments share the same denominator grain. The all-divisions
-  // figure is available as perfKpis.totalRevenue for transparency tabs.
-  let totalRevenue = perfKpis?.clinicRevenue ?? perfKpis?.totalRevenue ?? ovKpis?.revenue?.totalRevenue ?? crmKpis?.totalRevenue ?? 0
+  // The headline "Total Revenue" KPI shows the grand total across every
+  // division (clinic + MPMV + Other + null) so users always see all the
+  // revenue they uploaded — even when an invoice's division string didn't
+  // match a known clinic. The per-appointment ratio is already computed
+  // server-side using clinic-only numerator + denominator, so showing the
+  // grand total here does not re-introduce the ratio mismatch fixed in
+  // commit 97d041b.
+  // Use `||` for the first hop instead of `??` so a literal 0 falls
+  // through (otherwise clinicRevenue=0 would mask a non-zero grand total).
+  let totalRevenue =
+    perfKpis?.totalRevenue
+    || perfKpis?.clinicRevenue
+    || ovKpis?.revenue?.totalRevenue
+    || crmKpis?.totalRevenue
+    || 0
   let totalAppointments = perfKpis?.totalAppointments ?? ovKpis?.appointments?.totalAppointments ?? 0
   let uniqueClients = perfKpis?.uniqueClients ?? ovKpis?.clients?.activeContacts ?? crmKpis?.activeContacts ?? 0
   let avgRevenuePerAppt = perfKpis?.avgRevenuePerAppt ?? 0

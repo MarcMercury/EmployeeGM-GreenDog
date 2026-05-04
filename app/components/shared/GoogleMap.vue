@@ -94,21 +94,45 @@ const effectiveCenter = computed(() => props.center || defaultCenter)
 async function loadGoogleMapsScript(): Promise<void> {
   if (window.google?.maps) return
 
-  return new Promise((resolve, reject) => {
-    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]')
+  // Reuse a single in-flight promise across all GoogleMap instances on the page
+  // so we never end up appending the script twice or hanging on a second mount
+  // when the first <script> is still loading.
+  const w = window as unknown as { __googleMapsLoader?: Promise<void> }
+  if (w.__googleMapsLoader) return w.__googleMapsLoader
+
+  const apiKey = config.public.googleMapsApiKey
+  if (!apiKey) {
+    throw new Error('Google Maps API key is not configured (set GOOGLE_MAPS_PUBLIC_KEY).')
+  }
+
+  w.__googleMapsLoader = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>('script[src*="maps.googleapis.com"]')
     if (existingScript) {
+      // Script tag already present — wait for it, but also resolve immediately
+      // if google.maps is already on the window (load event already fired).
+      if (window.google?.maps) {
+        resolve()
+        return
+      }
       existingScript.addEventListener('load', () => resolve())
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps')))
       return
     }
 
     const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.public.googleMapsApiKey}&libraries=places,geometry`
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`
     script.async = true
     script.defer = true
     script.onload = () => resolve()
     script.onerror = () => reject(new Error('Failed to load Google Maps'))
     document.head.appendChild(script)
+  }).catch((err) => {
+    // Allow a retry on subsequent mounts if loading failed.
+    w.__googleMapsLoader = undefined
+    throw err
   })
+
+  return w.__googleMapsLoader
 }
 
 // Initialize map

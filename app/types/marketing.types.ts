@@ -377,6 +377,13 @@ export interface ReferralPartner {
   payment_status?: string | null
   payment_amount?: number | null
   payment_date?: string | null
+
+  // Google Maps coordinates (migration 279)
+  latitude?: number | null
+  longitude?: number | null
+  place_id?: string | null
+  geocoded_address?: string | null
+  service_radius_km?: number | null
 }
 
 export interface MarketingPartner {

@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const { geocode, getDistance, loading: geocoding } = useGoogleMaps()
+const supabase = useSupabaseClient()
 
 // Clinic locations
 const clinics = [
@@ -36,6 +37,8 @@ const selectedPartnerDistances = ref<Array<{ clinic: string; clinicId: string; d
 const loadingDistances = ref(false)
 const showRouteDialog = ref(false)
 const routePlan = ref<{ origin: { lat: number; lng: number }; destination: { lat: number; lng: number }; waypoints?: string[] } | null>(null)
+const geocodingMissing = ref(false)
+const geocodeProgress = ref({ done: 0, total: 0 })
 
 // Filter state
 const showClinics = ref(true)
@@ -126,20 +129,78 @@ function getTierLabel(tier: string): string {
 }
 
 // Geocode partner addresses
+// 1. Prime cache from any stored latitude/longitude on the partner record (migration 279).
+// 2. For partners that still have no coords but do have an address, call the geocoding
+//    API and persist the result back to referral_partners so we don't repeat the work.
 async function geocodePartnerLocations() {
+  // Prime cache from stored coordinates first.
   for (const partner of props.partners) {
-    if (!partner.address || geocodedPartners.value.has(partner.id)) continue
-
-    try {
-      const result = await geocode(partner.address)
-      if (result) {
-        geocodedPartners.value.set(partner.id, { lat: result.lat, lng: result.lng })
-      }
-    } catch (e) {
-      console.warn(`Could not geocode: ${partner.address}`)
+    if (geocodedPartners.value.has(partner.id)) continue
+    const lat = typeof partner.latitude === 'number' ? partner.latitude : null
+    const lng = typeof partner.longitude === 'number' ? partner.longitude : null
+    if (lat != null && lng != null) {
+      geocodedPartners.value.set(partner.id, { lat, lng })
     }
   }
+  // Trigger reactivity for the markers computed.
+  geocodedPartners.value = new Map(geocodedPartners.value)
 }
+
+// Geocode any partners that have an address but no stored coordinates.
+// Persists results back to the database via Supabase update.
+async function geocodeMissingPartners() {
+  if (geocodingMissing.value) return
+
+  const missing = props.partners.filter(p =>
+    p.address && !geocodedPartners.value.has(p.id)
+  )
+  if (missing.length === 0) return
+
+  geocodingMissing.value = true
+  geocodeProgress.value = { done: 0, total: missing.length }
+
+  try {
+    for (const partner of missing) {
+      try {
+        const result = await geocode(partner.address as string) as
+          | { lat: number; lng: number; formatted_address?: string; place_id?: string }
+          | null
+        if (result && typeof result.lat === 'number' && typeof result.lng === 'number') {
+          geocodedPartners.value.set(partner.id, { lat: result.lat, lng: result.lng })
+          // Persist for next time
+          try {
+            await supabase
+              .from('referral_partners')
+              .update({
+                latitude: result.lat,
+                longitude: result.lng,
+                place_id: result.place_id ?? null,
+                geocoded_address: result.formatted_address ?? null
+              })
+              .eq('id', partner.id)
+          } catch (persistErr) {
+            console.warn(`Could not persist coords for ${partner.name}:`, persistErr)
+          }
+        }
+      } catch (e) {
+        console.warn(`Could not geocode: ${partner.address}`)
+      } finally {
+        geocodeProgress.value = {
+          done: geocodeProgress.value.done + 1,
+          total: missing.length
+        }
+      }
+    }
+    // Trigger reactivity
+    geocodedPartners.value = new Map(geocodedPartners.value)
+  } finally {
+    geocodingMissing.value = false
+  }
+}
+
+const partnersWithoutCoords = computed(() =>
+  props.partners.filter(p => p.address && !geocodedPartners.value.has(p.id)).length
+)
 
 // Handle marker click
 async function handleMarkerClick(marker: MapMarker) {
@@ -292,6 +353,23 @@ onMounted(() => {
               <v-icon start size="14">mdi-map-marker</v-icon>
               {{ partnerMarkers.length - (showClinics ? 3 : 0) }} partners mapped
             </v-chip>
+          </v-col>
+          <v-col v-if="partnersWithoutCoords > 0" cols="auto">
+            <v-btn
+              size="small"
+              color="warning"
+              variant="tonal"
+              :loading="geocodingMissing"
+              prepend-icon="mdi-crosshairs-gps"
+              @click="geocodeMissingPartners"
+            >
+              <template v-if="geocodingMissing">
+                Geocoding {{ geocodeProgress.done }} / {{ geocodeProgress.total }}…
+              </template>
+              <template v-else>
+                Geocode {{ partnersWithoutCoords }} missing
+              </template>
+            </v-btn>
           </v-col>
         </v-row>
 
