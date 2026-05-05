@@ -496,27 +496,44 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // ── Fallback: if invoice_lines yielded no appointment grain (e.g. invoices
-  //    not yet uploaded for this period), populate the per-location / dow /
-  //    week / month maps from completed appointment_status records so the
-  //    charts aren't blank.
-  const invoiceApptTotal = Object.values(apptsByLocation).reduce((s, v) => s + v, 0)
-  if (invoiceApptTotal === 0 && completedStatusAppts.length > 0) {
+  // ── Per-month/week/dow fallback: any bucket with zero invoice-derived
+  //    appointments gets backfilled from completed appointment_status records.
+  //    This handles the common case where some months' invoice CSVs were
+  //    imported without client_code or with non-clinic divisions, leaving
+  //    those months with revenue but zero appointment grain.
+  if (completedStatusAppts.length > 0) {
+    const invoiceMonthsWithAppts = new Set(
+      Object.entries(monthApptMap).filter(([, v]) => v.total > 0).map(([k]) => k)
+    )
+    const invoiceWeeksWithAppts = new Set(
+      Object.entries(weekApptMap).filter(([, v]) => v.total > 0).map(([k]) => k)
+    )
+    const invoiceDowsWithAppts = new Set(
+      Object.entries(dowApptMap).filter(([, v]) => v.total > 0).map(([k]) => Number(k))
+    )
+    const invoiceLocsWithAppts = new Set(
+      Object.entries(apptsByLocation).filter(([, v]) => v > 0).map(([k]) => k)
+    )
+
     for (const a of completedStatusAppts) {
-      apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
-      const m = a.month
-      if (m) {
-        const e = (monthApptMap[m] ||= { total: 0, byLocation: {} })
+      // Per-location total fallback (only for locations missing from invoices)
+      if (!invoiceLocsWithAppts.has(a.location)) {
+        apptsByLocation[a.location] = (apptsByLocation[a.location] || 0) + a.count
+      }
+      // Per-month fallback
+      if (a.month && !invoiceMonthsWithAppts.has(a.month)) {
+        const e = (monthApptMap[a.month] ||= { total: 0, byLocation: {} })
         e.total += a.count
         e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count
       }
-      const w = a.weekStart
-      if (w) {
-        const e = (weekApptMap[w] ||= { total: 0, byLocation: {} })
+      // Per-week fallback
+      if (a.weekStart && !invoiceWeeksWithAppts.has(a.weekStart)) {
+        const e = (weekApptMap[a.weekStart] ||= { total: 0, byLocation: {} })
         e.total += a.count
         e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count
       }
-      if (a.dayOfWeek >= 1 && a.dayOfWeek <= 6) {
+      // Per-day-of-week fallback (only fires if invoice grain produced none for that dow)
+      if (a.dayOfWeek >= 1 && a.dayOfWeek <= 6 && !invoiceDowsWithAppts.has(a.dayOfWeek)) {
         const e = (dowApptMap[a.dayOfWeek] ||= { total: 0, byLocation: {} })
         e.total += a.count
         e.byLocation[a.location] = (e.byLocation[a.location] || 0) + a.count

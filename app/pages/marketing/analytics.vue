@@ -1504,7 +1504,7 @@ const monthlyTrendOptions = computed(() => ({
   xaxis: { categories: (perfData.value?.monthlyTrend || []).map((m: any) => m.label), labels: { rotate: -45 } },
   yaxis: [
     { title: { text: 'Revenue ($)' }, labels: { formatter: (v: number) => '$' + (v / 1000).toFixed(0) + 'k' } },
-    { opposite: true, title: { text: 'Appointments' } },
+    { opposite: true, title: { text: 'Appointments' }, labels: { formatter: (v: number) => Math.round(v).toString() }, forceNiceScale: true },
   ],
   tooltip: { ...CHART_THEME, shared: true },
   legend: { position: 'top' as const },
@@ -1537,8 +1537,9 @@ const dowOptions = computed(() => ({
   chart: { type: 'bar', toolbar: { show: false } },
   colors: isSingleLoc() ? [LOC_COLORS[activeLoc()] || '#888'] : clinicLocations.value.map(l => LOC_COLORS[l]),
   xaxis: { categories: (perfData.value?.dayOfWeek || []).map((d: any) => d.day?.substring(0, 3)) },
+  yaxis: { labels: { formatter: (v: number) => Math.round(v).toString() }, forceNiceScale: true },
   plotOptions: { bar: { borderRadius: 3, columnWidth: '60%' } },
-  dataLabels: { enabled: true },
+  dataLabels: { enabled: true, formatter: (v: number) => Math.round(v).toString() },
   tooltip: { ...CHART_THEME },
   legend: { position: 'top' as const },
 }))
@@ -1556,8 +1557,8 @@ const typeOptions = computed(() => {
     chart: { type: 'bar', toolbar: { show: false } },
     colors: ['#7C3AED'],
     plotOptions: { bar: { borderRadius: 4, horizontal: true } },
-    xaxis: { title: { text: 'Count' } },
-    dataLabels: { enabled: true },
+    xaxis: { title: { text: 'Count' }, labels: { formatter: (v: number) => Math.round(v).toString() } },
+    dataLabels: { enabled: true, formatter: (v: number) => Math.round(v).toString() },
     tooltip: { ...CHART_THEME },
     labels: top.map((t: any) => t.type),
   }
@@ -1575,8 +1576,9 @@ const weeklyTrendOptions = computed(() => ({
   fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } },
   stroke: { curve: 'smooth' as const, width: 2 },
   xaxis: { categories: (perfData.value?.weeklyTrend || []).map((w: any) => w.week), labels: { rotate: -45 } },
+  yaxis: { labels: { formatter: (v: number) => Math.round(v).toString() }, forceNiceScale: true, title: { text: 'Appointments' } },
   dataLabels: { enabled: false },
-  tooltip: { ...CHART_THEME, shared: true },
+  tooltip: { ...CHART_THEME, shared: true, y: { formatter: (v: number) => Math.round(v || 0).toLocaleString() } },
   legend: { position: 'top' as const },
 }))
 
