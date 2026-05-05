@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   const startDate = query.startDate || '2025-01-01'
   const endDate = query.endDate || new Date().toISOString().split('T')[0]
 
-  const cacheKey = `analytics:performance:v4:${startDate}:${endDate}`
+  const cacheKey = `analytics:performance:v5:${startDate}:${endDate}`
   return getCached(cacheKey, async () => {
 
   // ── 1. LOAD APPOINTMENT DATA (only completed from appointment_status) ─
@@ -391,13 +391,21 @@ export default defineEventHandler(async (event) => {
     const allClientCodes = new Set<string>()
     const clientsByLocationSets: Record<string, Set<string>> = {}
 
+    // Practice management treats invoice_lines.department as the canonical
+    // location signal (more reliable than the legacy `division` column).
+    // Use department when present, fall back to division for old rows.
+    const lineLocRaw = (line: any): string | null => {
+      const dept = (line.department || '').toString().trim()
+      return dept || line.division || null
+    }
+
     for (const line of invoiceLines) {
-      const d = line.division || '(null)'
+      const d = lineLocRaw(line) || '(null)'
       divisionCounts[d] = (divisionCounts[d] || 0) + 1
     }
 
     for (const line of invoiceLines) {
-      const loc = normLocDynamic(line.division)
+      const loc = normLocDynamic(lineLocRaw(line))
       const rev = lineRevenue(line)
       const month = line.invoice_date?.substring(0, 7) || ''
       const isClinic = CLINIC_LOCATIONS.includes(loc)
@@ -454,7 +462,8 @@ export default defineEventHandler(async (event) => {
 
     for (const line of lines) {
       if (!line.client_code || !line.invoice_date) continue
-      const loc = normLocDynamic(line.division)
+      const dept = (line.department || '').toString().trim()
+      const loc = normLocDynamic(dept || line.division)
       if (!CLINIC_LOCATIONS.includes(loc)) continue
 
       const key = `${line.client_code}__${line.invoice_date}`
