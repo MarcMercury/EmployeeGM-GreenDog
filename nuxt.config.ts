@@ -154,7 +154,10 @@ export default defineNuxtConfig({
       appUrl: process.env.NUXT_PUBLIC_APP_URL || process.env.APP_URL,
       sentryDsn: process.env.SENTRY_DSN,
       onesignalAppId: process.env.ONESIGNAL_APP_ID,
-      googleMapsApiKey: process.env.GOOGLE_MAPS_PUBLIC_KEY,
+      // Prefer a browser-restricted public key, but fall back to the
+      // generic GOOGLE_MAPS_API_KEY so the Maps JS API still loads in
+      // deployments that only configured a single key.
+      googleMapsApiKey: process.env.GOOGLE_MAPS_PUBLIC_KEY || process.env.GOOGLE_MAPS_API_KEY,
     }
   },
 

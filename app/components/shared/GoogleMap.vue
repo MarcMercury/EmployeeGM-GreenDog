@@ -458,6 +458,11 @@ defineExpose({
     <div v-else-if="error" class="map-error" :style="{ height }">
       <v-icon color="error" size="48">mdi-map-marker-off</v-icon>
       <p class="text-body-2 mt-2 text-error">{{ error }}</p>
+      <p v-if="error.includes('API key')" class="text-caption mt-2 text-grey-darken-1" style="max-width: 480px; text-align: center;">
+        Add <code>GOOGLE_MAPS_PUBLIC_KEY</code> (or <code>GOOGLE_MAPS_API_KEY</code>) to your
+        <code>.env</code> file with a Google Maps JavaScript API key, then restart the dev server.
+        See <a href="https://console.cloud.google.com/apis/library/maps-backend.googleapis.com" target="_blank" rel="noopener">Google Cloud Console</a>.
+      </p>
     </div>
 
     <!-- Map container -->

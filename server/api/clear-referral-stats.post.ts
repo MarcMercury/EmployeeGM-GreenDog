@@ -4,7 +4,7 @@
  * This is useful when re-importing referral data from scratch
  */
 import { createError, defineEventHandler } from 'h3'
-import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -24,9 +24,6 @@ export default defineEventHandler(async (event) => {
     }
     
     const userId = user.id
-    
-    // Get supabase client
-    const supabase = await serverSupabaseClient(event)
     
     logger.debug('Looking up profile', 'clear-referral-stats', { authUserId: userId })
     
@@ -49,7 +46,7 @@ export default defineEventHandler(async (event) => {
     logger.info('Access granted', 'clear-referral-stats', { role: profile.role })
     
     // Get current counts for logging
-    const { data: partners, error: countError } = await supabase
+    const { data: partners, error: countError } = await supabaseAdmin
       .from('referral_partners')
       .select('id, name, total_referrals_all_time, total_revenue_all_time')
     
@@ -67,12 +64,16 @@ export default defineEventHandler(async (event) => {
     
     logger.info('Before clear', 'clear-referral-stats', { partnersWithData: partnersWithData.length, referrals: totalReferralsBefore, revenue: totalRevenueBefore.toFixed(2) })
     
-    // Clear all referral stats
-    const { error: updateError, count } = await supabase
+    // Clear all referral stats — use the service-role client for every table
+    // because RLS on referral_revenue_line_items / referral_sync_history is
+    // gated on is_admin() (which excludes marketing_admin), and we already
+    // role-gated this endpoint above.
+    const { error: updateError } = await supabaseAdmin
       .from('referral_partners')
       .update({
         total_referrals_all_time: 0,
         total_revenue_all_time: 0,
+        referrals_last_12_months: 0,
         last_referral_date: null,
         last_sync_date: null,
         last_data_source: null
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event) => {
     logger.info('Cleared stats for all partners', 'clear-referral-stats')
     
     // Clear revenue line items (row-level dedup table)
-    const { error: lineItemsError } = await supabase
+    const { error: lineItemsError } = await supabaseAdmin
       .from('referral_revenue_line_items')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows
@@ -98,7 +99,7 @@ export default defineEventHandler(async (event) => {
     }
 
     // Also clear the sync history so we can re-upload
-    const { error: historyError } = await supabase
+    const { error: historyError } = await supabaseAdmin
       .from('referral_sync_history')
       .delete()
       .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all rows

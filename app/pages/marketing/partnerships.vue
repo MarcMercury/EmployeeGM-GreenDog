@@ -927,8 +927,8 @@
             <div class="text-caption mt-1">Report type is auto-detected. Revenue uses row-level dedup — re-uploads only add new rows. Both reports auto-update Tier, Priority &amp; Health.</div>
           </v-alert>
           
-          <!-- Clear Stats Section — requires file to be selected first -->
-          <v-expansion-panels variant="accordion" class="mb-4">
+          <!-- Clear Stats Section — Marketing Admin / Admin only -->
+          <v-expansion-panels v-if="canManageReferralUploads" variant="accordion" class="mb-4">
             <v-expansion-panel>
               <v-expansion-panel-title class="text-caption">
                 <v-icon start size="small" color="warning">mdi-delete-sweep</v-icon>
@@ -968,6 +968,7 @@
             variant="outlined"
             prepend-icon="mdi-file-delimited"
             :disabled="uploadProcessing"
+            :multiple="false"
             show-size
           />
 
@@ -1159,6 +1160,15 @@ const confirmClearStats = ref(false)
 const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
+
+// Maximum file size accepted by the /api/parse-referrals endpoint (25 MB).
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
+// Only marketing-admin / admin / super_admin should see the destructive
+// "Clear All Stats" panel. The server enforces this too — this is a UX guard.
+const canManageReferralUploads = computed(() =>
+  authStore.isAdmin || authStore.isSuperAdmin || authStore.isMarketingAdmin
+)
 
 // Upload Log state
 const loadingUploadLog = ref(false)
@@ -1812,9 +1822,13 @@ async function processUpload() {
   try {
     const formData = new FormData()
     const file = Array.isArray(uploadFile.value) ? uploadFile.value[0] : uploadFile.value
-    if (file) {
-      formData.append('file', file)
+    if (!file) {
+      throw new Error('No file selected')
     }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      throw new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`)
+    }
+    formData.append('file', file)
     
     // Get the current session token to pass to the server
     const { data: { session } } = await supabase.auth.getSession()
@@ -1858,14 +1872,12 @@ async function processUpload() {
   } catch (error: any) {
     console.error('Upload error:', error)
     const errorMsg = error.data?.message || error.message || 'Failed to process CSV'
-    const isDuplicate = error.statusCode === 409 || error.data?.statusCode === 409
     uploadResult.value = {
       success: false,
       message: errorMsg,
-      isDuplicate
     }
-    snackbar.message = isDuplicate ? 'Duplicate file — already uploaded' : 'Failed to process CSV'
-    snackbar.color = isDuplicate ? 'warning' : 'error'
+    snackbar.message = errorMsg
+    snackbar.color = 'error'
     snackbar.show = true
   } finally {
     uploadProcessing.value = false

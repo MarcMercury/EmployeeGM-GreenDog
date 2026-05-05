@@ -15,7 +15,12 @@
  */
 import { createError, defineEventHandler, readMultipartFormData } from 'h3'
 import { serverSupabaseServiceRole } from '#supabase/server'
+import { createHash } from 'crypto'
 import XLSX from 'xlsx'
+
+// Hard cap for uploaded reports — protects against memory blow-ups and
+// XLSX-based ZIP-bomb style payloads.
+const MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
 
 // Report type detection
 type ReportType = 'revenue' | 'statistics'
@@ -477,7 +482,16 @@ export default defineEventHandler(async (event) => {
     }
     
     logger.info('File received', 'parse-referrals', { filename: file.filename, size: file.data.length })
-    
+
+    // Reject oversized payloads early — guards against memory exhaustion
+    // and pathological XLSX inputs.
+    if (file.data.length > MAX_FILE_SIZE_BYTES) {
+      throw createError({
+        statusCode: 413,
+        message: `File too large (${(file.data.length / 1024 / 1024).toFixed(1)} MB). Maximum is ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB.`
+      })
+    }
+
     // Check file type - accept CSV or XLS
     const filename = file.filename?.toLowerCase() || ''
     const isXLS = filename.endsWith('.xls') || filename.endsWith('.xlsx')
@@ -537,6 +551,30 @@ export default defineEventHandler(async (event) => {
       visitorsAdded: 0,
       details: []
     }
+
+    // Hash the raw file bytes for provenance / soft duplicate-detection.
+    const contentHash = createHash('sha256').update(fileBuffer).digest('hex')
+
+    // Create the sync_history row up-front so line items can reference it via
+    // upload_id and downstream queries can show "what came from this upload".
+    const { data: syncRow, error: syncInsertErr } = await supabaseAdmin
+      .from('referral_sync_history')
+      .insert({
+        filename: file.filename || 'referral-report.csv',
+        uploaded_by: profile?.id,
+        content_hash: contentHash,
+        report_type: reportType,
+        data_source: 'csv_upload',
+        sync_details: { stage: 'started' },
+      })
+      .select('id')
+      .single()
+
+    if (syncInsertErr || !syncRow) {
+      logger.error('Failed to create sync_history row', null, 'parse-referrals', { message: syncInsertErr?.message })
+      throw createError({ statusCode: 500, message: `Failed to record upload: ${syncInsertErr?.message || 'unknown error'}` })
+    }
+    const uploadId = syncRow.id as string
     
     if (reportType === 'revenue') {
       // ========================================
@@ -558,56 +596,24 @@ export default defineEventHandler(async (event) => {
       const csvTotalVisits = aggregated.reduce((sum, a) => sum + a.totalVisits, 0)
       const csvTotalRevenue = aggregated.reduce((sum, a) => sum + a.totalRevenue, 0)
       logger.info('Revenue CSV Totals', 'parse-referrals', { visits: csvTotalVisits, revenue: csvTotalRevenue.toFixed(2) })
-      
-      // Match and batch-update: revenue, referral count, last date & divisions
-      const revenueUpdates: Array<{
-        id: string
-        total_revenue_all_time: number
-        total_referrals_all_time: number
-        last_referral_date: string | null
-        referral_divisions: string[]
-        last_sync_date: string
-      }> = []
-      const syncDate = new Date().toISOString()
 
+      // Build clinic→partner lookup ONCE (avoid O(n²) double-matching)
+      const clinicToPartner = new Map<string, any>()
       for (const agg of aggregated) {
         const match = findBestMatch(agg.clinicName, partners)
-        
-        if (match) {
-          // Merge divisions: combine existing divisions with new ones
-          const existingDivisions: string[] = match.referral_divisions || []
-          const mergedDivisions = [...new Set([...existingDivisions, ...agg.divisions])].sort()
-          
-          // Use the most recent last_referral_date between existing and new
-          let bestLastDate = agg.lastReferralDate
-          if (match.last_referral_date) {
-            const existingDate = match.last_referral_date.split('T')[0]
-            if (!bestLastDate || existingDate > bestLastDate) {
-              bestLastDate = existingDate
-            }
-          }
-          
-          revenueUpdates.push({
-            id: match.id,
-            total_revenue_all_time: agg.totalRevenue,
-            total_referrals_all_time: agg.totalVisits,
-            last_referral_date: bestLastDate,
-            referral_divisions: mergedDivisions,
-            last_sync_date: syncDate
-          })
-          result.updated++
-          result.revenueAdded += agg.totalRevenue
-          result.visitorsAdded += agg.totalVisits
-          result.details.push({
-            clinicName: agg.clinicName,
-            matched: true,
-            matchedTo: match.name,
-            visits: agg.totalVisits,
-            revenue: agg.totalRevenue,
-            lastVisitDate: agg.lastReferralDate || undefined,
-            divisions: agg.divisions
-          })
-        } else {
+        if (match) clinicToPartner.set(agg.clinicName, match)
+      }
+
+      const syncDate = new Date().toISOString()
+
+      // Update divisions + last_sync_date per matched partner. Cumulative
+      // totals (revenue, count, last_referral_date) are NOT written here —
+      // they are derived from the line-item ledger by recompute_referral_partner_totals
+      // so re-uploads accumulate instead of overwriting.
+      let divisionUpdateErrors = 0
+      for (const agg of aggregated) {
+        const match = clinicToPartner.get(agg.clinicName)
+        if (!match) {
           result.notMatched++
           result.details.push({
             clinicName: agg.clinicName,
@@ -617,48 +623,62 @@ export default defineEventHandler(async (event) => {
             lastVisitDate: agg.lastReferralDate || undefined,
             divisions: agg.divisions
           })
+          continue
         }
-      }
 
-      // Update each matched partner individually (use admin client to bypass RLS)
-      let updateErrors = 0
-      for (const upd of revenueUpdates) {
-        const { id, ...fields } = upd
+        const existingDivisions: string[] = match.referral_divisions || []
+        const mergedDivisions = [...new Set([...existingDivisions, ...agg.divisions])].sort()
+
         const { error: updError } = await supabaseAdmin
           .from('referral_partners')
-          .update(fields)
-          .eq('id', id)
-
+          .update({
+            referral_divisions: mergedDivisions,
+            last_sync_date: syncDate,
+            last_data_source: 'csv_upload',
+          })
+          .eq('id', match.id)
         if (updError) {
-          updateErrors++
-          logger.error('Partner update error', null, 'parse-referrals', { id, message: updError.message })
+          divisionUpdateErrors++
+          logger.error('Partner divisions update error', null, 'parse-referrals', { id: match.id, message: updError.message })
         }
+
+        result.updated++
+        result.revenueAdded += agg.totalRevenue
+        result.visitorsAdded += agg.totalVisits
+        result.details.push({
+          clinicName: agg.clinicName,
+          matched: true,
+          matchedTo: match.name,
+          visits: agg.totalVisits,
+          revenue: agg.totalRevenue,
+          lastVisitDate: agg.lastReferralDate || undefined,
+          divisions: agg.divisions
+        })
       }
-      if (updateErrors > 0) {
-        logger.warn(`Failed to update ${updateErrors} of ${revenueUpdates.length} partners`, 'parse-referrals')
+      if (divisionUpdateErrors > 0) {
+        logger.warn(`Failed division/sync update for ${divisionUpdateErrors} partners`, 'parse-referrals')
       }
 
-      // ── Insert individual line items into referral_revenue_line_items ──
-      // Build a lookup: clinicName → partner_id
-      const clinicToPartner = new Map<string, string>()
-      for (const agg of aggregated) {
-        const match = findBestMatch(agg.clinicName, partners)
-        if (match) clinicToPartner.set(agg.clinicName, match.id)
-      }
-
-      const { createHash } = await import('crypto')
+      // ── Build line-item rows with sequence-aware dedup hashes ──
+      // The hash includes a per-(date,client,animal,amount) sequence index so
+      // legitimate same-day repeat visits aren't collapsed by the unique index.
+      const seqCounters = new Map<string, number>()
       const lineItemRows: any[] = []
       for (const entry of entries) {
-        const partnerId = clinicToPartner.get(entry.clinicName) || null
+        const partner = clinicToPartner.get(entry.clinicName)
+        const partnerId = partner?.id || null
         const parsedDate = parseEzyVetDate(entry.date)
-        const hashInput = [
+        const seqKey = [
           parsedDate || entry.date,
           entry.clinicName,
-          entry.referringVet,
           entry.clientName,
           entry.animalName,
           entry.amount.toFixed(2),
         ].join('|')
+        const seq = (seqCounters.get(seqKey) ?? 0) + 1
+        seqCounters.set(seqKey, seq)
+
+        const hashInput = `${seqKey}|${entry.referringVet}|${seq}`
         const dedupHash = createHash('sha256').update(hashInput).digest('hex').slice(0, 40)
 
         lineItemRows.push({
@@ -671,29 +691,50 @@ export default defineEventHandler(async (event) => {
           division: entry.division || null,
           amount: Math.round(entry.amount * 100) / 100,
           dedup_hash: dedupHash,
+          row_index: seq,
+          upload_id: uploadId,
         })
       }
 
-      // Upsert in batches of 500
-      let lineItemInserted = 0
+
+      // Upsert in batches of 500 with ignoreDuplicates so .select() returns
+      // only genuinely-new rows — gives us an accurate newRows count.
+      let newRows = 0
       let lineItemErrors = 0
       for (let i = 0; i < lineItemRows.length; i += 500) {
         const batch = lineItemRows.slice(i, i + 500)
-        const { error: upsertErr } = await supabaseAdmin
+        const { data: inserted, error: upsertErr } = await supabaseAdmin
           .from('referral_revenue_line_items')
-          .upsert(batch, { onConflict: 'dedup_hash' })
+          .upsert(batch, { onConflict: 'dedup_hash', ignoreDuplicates: true })
+          .select('id')
         if (upsertErr) {
           lineItemErrors++
           logger.error('Line item upsert error', null, 'parse-referrals', { batch: i, message: upsertErr.message })
         } else {
-          lineItemInserted += batch.length
+          newRows += inserted?.length || 0
         }
       }
-      logger.info('Line items upserted', 'parse-referrals', { inserted: lineItemInserted, errors: lineItemErrors })
+      const skippedRows = lineItemRows.length - newRows
+      result.skipped = skippedRows
+      logger.info('Line items upserted', 'parse-referrals', { newRows, skipped: skippedRows, errors: lineItemErrors })
+
+      // Stash counts on result for return payload
+      ;(result as any).newRows = newRows
+      ;(result as any).totalRows = lineItemRows.length
+
+      // Date range derived from parsed line items
+      const parsedDates = lineItemRows
+        .map(r => r.transaction_date)
+        .filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        .sort()
+      ;(result as any).dateRange = parsedDates.length
+        ? { start: parsedDates[0], end: parsedDates[parsedDates.length - 1] }
+        : null
       
     } else {
       // ========================================
-      // STATISTICS REPORT - Update visit counts and last visit date (NOT revenue)
+      // STATISTICS REPORT — writes the rolling 12-month count to a dedicated
+      // column so it does NOT clobber cumulative totals.
       // ========================================
       const entries = statisticsEntries
       
@@ -706,25 +747,28 @@ export default defineEventHandler(async (event) => {
       
       const csvTotalVisits = entries.reduce((sum, e) => sum + e.totalReferrals12Months, 0)
       logger.info('Statistics CSV Total', 'parse-referrals', { visits: csvTotalVisits })
-      
-      // Match and batch-update (ONLY visit counts and last date, NOT revenue)
-      const statsUpdates: Record<string, any>[] = []
+
       const syncDate = new Date().toISOString()
+      const statsUpdates: Record<string, any>[] = []
 
       for (const entry of entries) {
         const match = findBestMatch(entry.clinicName, partners)
-        
+
         if (match) {
-          // Build update object
           const updateData: any = {
             id: match.id,
-            total_referrals_all_time: entry.totalReferrals12Months,
-            last_sync_date: syncDate
+            referrals_last_12_months: entry.totalReferrals12Months,
+            last_sync_date: syncDate,
+            last_data_source: 'csv_upload',
           }
-          
+
           if (entry.lastReferralDate) {
-            updateData.last_referral_date = entry.lastReferralDate
             updateData.last_contact_date = entry.lastReferralDate
+            // Only advance last_referral_date — never move it backwards.
+            const existing = match.last_referral_date ? String(match.last_referral_date).split('T')[0] : null
+            if (!existing || entry.lastReferralDate > existing) {
+              updateData.last_referral_date = entry.lastReferralDate
+            }
           }
 
           statsUpdates.push(updateData)
@@ -767,27 +811,40 @@ export default defineEventHandler(async (event) => {
       if (statsUpdateErrors > 0) {
         logger.warn(`Failed to update ${statsUpdateErrors} of ${statsUpdates.length} partners`, 'parse-referrals')
       }
+
+      // Date range from statistics entries
+      const statsDates = entries
+        .map(e => e.lastReferralDate)
+        .filter((d): d is string => !!d)
+        .sort()
+      ;(result as any).dateRange = statsDates.length
+        ? { start: statsDates[0], end: statsDates[statsDates.length - 1] }
+        : null
     }
+
+    // Finalise sync_history with the stats we just gathered.
+    const dateRange = (result as any).dateRange as { start: string; end: string } | null
+    await supabaseAdmin
+      .from('referral_sync_history')
+      .update({
+        date_range_start: dateRange?.start || null,
+        date_range_end: dateRange?.end || null,
+        total_rows_parsed: (result as any).totalRows ?? result.details.length,
+        total_rows_matched: result.updated,
+        total_rows_skipped: result.skipped,
+        total_revenue_added: result.revenueAdded,
+        sync_details: {
+          reportType,
+          notMatched: result.notMatched,
+          visitorsAdded: result.visitorsAdded,
+          newRows: (result as any).newRows ?? null,
+          clinicDetails: result.details,
+        },
+      })
+      .eq('id', uploadId)
     
-    // Log sync history (use admin client to bypass RLS)
-    await supabaseAdmin.from('referral_sync_history').insert({
-      filename: file.filename || 'referral-report.csv',
-      date_range_start: null,
-      date_range_end: null,
-      total_rows_parsed: result.details.length,
-      total_rows_matched: result.updated,
-      total_rows_skipped: result.skipped,
-      total_revenue_added: result.revenueAdded,
-      uploaded_by: profile?.id,
-      sync_details: {
-        reportType,
-        notMatched: result.notMatched,
-        visitorsAdded: result.visitorsAdded,
-        clinicDetails: result.details
-      }
-    })
-    
-    // Recalculate all partner metrics (Tier, Priority, Relationship Health, Overdue)
+    // Recalculate metrics — this also recomputes ledger-derived totals
+    // (revenue, count, last_referral_date) onto referral_partners.
     logger.info('Recalculating partner metrics...', 'parse-referrals')
     const { error: recalcError } = await supabaseAdmin.rpc('recalculate_partner_metrics')
     if (recalcError) {
@@ -797,10 +854,17 @@ export default defineEventHandler(async (event) => {
     }
     
     logger.info('Sync complete', 'parse-referrals', { updated: result.updated, notMatched: result.notMatched })
-    
+
+    const newRowsOut = (result as any).newRows ?? null
+    const totalRowsOut = (result as any).totalRows ?? null
+    const overlapWarning = reportType === 'revenue' && totalRowsOut && newRowsOut !== null && newRowsOut < totalRowsOut
+      ? `${(totalRowsOut - newRowsOut).toLocaleString()} of ${totalRowsOut.toLocaleString()} rows were already on file and were skipped.`
+      : null
+
     return {
       success: true,
       reportType,
+      uploadId,
       message: reportType === 'revenue' 
         ? `Revenue Report: Updated ${result.updated} partners — ${result.visitorsAdded.toLocaleString()} referrals, $${result.revenueAdded.toLocaleString()} revenue`
         : `Statistics Report: Updated ${result.updated} partners with ${result.visitorsAdded} visits`,
@@ -809,6 +873,10 @@ export default defineEventHandler(async (event) => {
       notMatched: result.notMatched,
       revenueAdded: Math.round(result.revenueAdded * 100) / 100,
       visitorsAdded: result.visitorsAdded,
+      newRows: newRowsOut,
+      totalRows: totalRowsOut,
+      dateRange: (result as any).dateRange ?? null,
+      overlapWarning,
       details: result.details
     }
     
