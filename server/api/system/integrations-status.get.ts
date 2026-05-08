@@ -222,7 +222,7 @@ async function pingOpenAI(apiKey: string, baseUrl?: string): Promise<{ ok: boole
 }
 
 async function pingGemini(apiKey: string, model?: string): Promise<{ ok: boolean; message: string }> {
-  const m = model || 'gemini-1.5-flash'
+  const m = model || 'gemini-2.0-flash'
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}?key=${apiKey}`)
   if (!res.ok) return { ok: false, message: `${res.status} ${res.statusText}` }
   return { ok: true, message: `Model ${m} reachable` }

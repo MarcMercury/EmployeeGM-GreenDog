@@ -18,7 +18,7 @@ function getApiKey(): string {
 
 function getModel(): string {
   const config = useRuntimeConfig()
-  return config.geminiModel || 'gemini-1.5-flash'
+  return config.geminiModel || 'gemini-2.0-flash'
 }
 
 /** Generate text content */

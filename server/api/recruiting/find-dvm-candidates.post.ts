@@ -330,17 +330,27 @@ export default defineEventHandler(async (event) => {
     }))
   }
 
+  // A provider is "active" only if it was configured AND did not error.
+  const erroredProviders = new Set(
+    providerErrors.map(e => e.split(':')[0]?.trim()).filter(Boolean) as string[],
+  )
+  const okOpenAI = hasOpenAI && !erroredProviders.has('openai') && settled.some(r => r?.provider === 'openai')
+  const okGemini = hasGemini && !erroredProviders.has('gemini') && settled.some(r => r?.provider === 'gemini')
+  const okApollo = hasApollo && !erroredProviders.has('apollo')
+  const okTavily = hasTavily && !erroredProviders.has('tavily')
+  const okGoogleCse = hasGoogleCse && !erroredProviders.has('google_cse')
+
   return {
     success: true,
     count: sorted.length,
     prospects: sorted,
     providers: {
-      openai: hasOpenAI,
-      gemini: hasGemini,
-      apollo: hasApollo,
+      openai: okOpenAI,
+      gemini: okGemini,
+      apollo: okApollo,
       npi: hasNpi,
-      tavily: hasTavily,
-      google_cse: hasGoogleCse,
+      tavily: okTavily,
+      google_cse: okGoogleCse,
     },
     warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse }, providerErrors, droppedOutsideRadius),
     criteria: input,
@@ -501,6 +511,44 @@ function mergeProspects(list: DvmProspect[]): DvmProspect[] {
   return Array.from(map.values())
 }
 
+function summarizeProviderError(raw: string): string {
+  // Format: "<provider>: <message>"
+  const colon = raw.indexOf(':')
+  const provider = colon > 0 ? raw.slice(0, colon) : 'unknown'
+  const msg = colon > 0 ? raw.slice(colon + 1).trim() : raw
+
+  const labels: Record<string, string> = {
+    apollo: 'Apollo.io',
+    openai: 'OpenAI',
+    gemini: 'Gemini',
+    tavily: 'Tavily',
+    google_cse: 'Google CSE',
+    npi: 'NPI Registry',
+  }
+  const label = labels[provider] || provider
+
+  if (/\b403\b|forbidden/i.test(msg)) {
+    if (provider === 'apollo') return `${label}: People Search not enabled on this Apollo plan (403). Upgrade to a plan with API access to enable Apollo results.`
+    return `${label}: access denied (403). Verify the API key has the required permissions.`
+  }
+  if (/\b401\b|unauthorized/i.test(msg)) {
+    return `${label}: invalid or missing API key (401).`
+  }
+  if (/\b404\b|not found/i.test(msg)) {
+    if (provider === 'gemini') return `${label}: model not found (404). Update GEMINI_MODEL — try "gemini-2.0-flash" or "gemini-2.5-flash".`
+    return `${label}: endpoint not found (404).`
+  }
+  if (/\b429\b|quota|rate limit|insufficient_quota/i.test(msg)) {
+    if (provider === 'openai') return `${label}: quota exceeded (429). Check billing at platform.openai.com.`
+    return `${label}: rate limit / quota exceeded (429).`
+  }
+  if (/timeout|ETIMEDOUT|ECONNRESET/i.test(msg)) {
+    return `${label}: network timeout — try again.`
+  }
+  // Default: short message only
+  return `${label}: ${msg.slice(0, 160)}`
+}
+
 function buildWarnings(
   flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean },
   providerErrors: string[],
@@ -512,7 +560,7 @@ function buildWarnings(
   if (!flags.hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
   if (!flags.hasTavily) warnings.push('TAVILY_API_KEY not set — Tavily web search skipped.')
   if (!flags.hasGoogleCse) warnings.push('GOOGLE_CSE_API_KEY/GOOGLE_CSE_ID not set — Google Custom Search skipped.')
-  if (providerErrors.length) warnings.push(`Provider error(s): ${providerErrors.join('; ')}`)
+  for (const e of providerErrors) warnings.push(summarizeProviderError(e))
   if (droppedOutsideRadius > 0) warnings.push(`${droppedOutsideRadius} prospect(s) dropped after OSM-based radius enforcement.`)
   return warnings
 }
