@@ -45,6 +45,13 @@
       <v-tab value="revisit" prepend-icon="mdi-account-reactivate">
         Candidate Revisit
       </v-tab>
+      <v-tab
+        value="dvm-search"
+        prepend-icon="mdi-robot-outline"
+        to="/recruiting/find-dvm-candidates"
+      >
+        DVM Search (AI)
+      </v-tab>
     </v-tabs>
 
     <v-tabs-window v-model="activeTab">
