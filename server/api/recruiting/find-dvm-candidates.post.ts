@@ -27,9 +27,17 @@ import {
   getDiplomateDirectoryByCredential,
   isAvmaAccreditedSchool,
 } from '../../utils/state-vet-boards'
-import { apolloPeopleSearch, type ApolloPerson } from '../../utils/apollo'
-import { tavilySearch } from '../../utils/tavily'
+import { apolloPeopleSearch, apolloPeopleEnrich, type ApolloPerson } from '../../utils/apollo'
+import { tavilySearch, tavilyExtract } from '../../utils/tavily'
 import { googleSearch } from '../../utils/googleSearch'
+
+// Credentials we recognize when scanning titles / LinkedIn content.
+const VET_CREDENTIAL_RE = /\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR|DACVB|DACVN|DACVPM|DACVSMR|DACZM|DACVM|DABVT|DACPV|DACT|DACVP|MRCVS|BVSc|BVMS|MS|MPH|PhD)\b/gi
+
+function isMaskedEmail(email?: string | null): boolean {
+  if (!email) return true
+  return /email_not_unlocked|do_not_email|domain\.com$|hidden|locked/i.test(email)
+}
 
 interface SearchInput {
   specialty?: string          // e.g. "Surgery", "Internal Medicine", "General Practice"
@@ -258,6 +266,23 @@ export default defineEventHandler(async (event) => {
   let sorted = merged
     .sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
     .slice(0, input.maxResults)
+
+  // ── Contact enrichment: unlock email/phone via Apollo people/match ──
+  if (hasApollo) {
+    await enrichContactsViaApollo(sorted).catch(err => {
+      providerErrors.push(`apollo_enrich: ${(err as Error).message}`)
+      logger.error('Apollo contact enrichment failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
+  // ── LinkedIn enrichment: scrape public profile via Tavily extract to fill
+  //    in credentials (DVM / DACVS / etc.) and any visible email. ──
+  if (hasTavily) {
+    await enrichFromLinkedIn(sorted).catch(err => {
+      providerErrors.push(`linkedin_enrich: ${(err as Error).message}`)
+      logger.error('LinkedIn enrichment failed', err as Error, 'find-dvm-candidates')
+    })
+  }
 
   // ── Optional: enforce radius via OSM Nominatim ──
   let droppedOutsideRadius = 0
@@ -657,7 +682,7 @@ function apolloPersonToProspect(p: ApolloPerson): DvmProspect | null {
     current_employer: org.name || null,
     city: p.city || null,
     state: p.state || null,
-    email: p.email || null,
+    email: isMaskedEmail(p.email) ? null : (p.email || null),
     phone: null,
     linkedin_url: linkedin,
     website_url: website,
@@ -753,11 +778,20 @@ const SPECIALTY_DIRECTORIES: SpecialtyDirectory[] = [
     domains: ['acvs.org', 'online.acvs.org'],
   },
   {
-    match: ['internal medicine', 'internist', 'cardiology', 'oncology', 'neurology', 'sa-im', 'la-im'],
+    match: [
+      'internal medicine', 'internist',
+      'cardiology', 'cardiologist',
+      'oncology', 'oncologist',
+      'neurology', 'neurologist',
+      'nutrition', 'nutritionist',
+      'large animal internal medicine',
+      'small animal internal medicine',
+      'sa-im', 'la-im',
+    ],
     college: 'American College of Veterinary Internal Medicine',
     abbreviation: 'ACVIM',
     credential: 'DACVIM',
-    urls: ['https://find.acvim.org/'],
+    urls: ['https://find.acvim.org/', 'https://www.acvim.org/'],
     domains: ['acvim.org', 'find.acvim.org'],
   },
   {
@@ -857,12 +891,51 @@ const SPECIALTY_DIRECTORIES: SpecialtyDirectory[] = [
     domains: ['vsmr.org'],
   },
   {
-    match: ['zoo', 'zoological', 'wildlife', 'exotic', 'avian'],
+    match: ['zoo', 'zoological', 'wildlife', 'exotic', 'avian', 'reptile', 'amphibian', 'fish'],
     college: 'American College of Zoological Medicine',
     abbreviation: 'ACZM',
     credential: 'DACZM',
     urls: ['https://www.aczm.org/diplomates'],
     domains: ['aczm.org'],
+  },
+  {
+    match: [
+      // ABVP species & practice categories
+      'abvp', 'general practice', 'general practitioner', 'gp',
+      'canine', 'feline', 'canine and feline', 'cat practice', 'dog practice',
+      'avian practice', 'beef cattle', 'dairy', 'equine', 'food animal',
+      'exotic companion mammal', 'reptile and amphibian', 'shelter medicine',
+      'swine', 'fish practice',
+    ],
+    college: 'American Board of Veterinary Practitioners',
+    abbreviation: 'ABVP',
+    credential: 'DABVP',
+    urls: ['https://abvp.com/find-a-diplomate/', 'https://abvp.com/'],
+    domains: ['abvp.com'],
+  },
+  {
+    match: ['animal welfare', 'welfare'],
+    college: 'American College of Animal Welfare',
+    abbreviation: 'ACAW',
+    credential: 'DACAW',
+    urls: ['https://www.acaw.org/diplomates', 'https://www.acaw.org/'],
+    domains: ['acaw.org'],
+  },
+  {
+    match: ['laboratory animal', 'lab animal', 'research animal'],
+    college: 'American College of Laboratory Animal Medicine',
+    abbreviation: 'ACLAM',
+    credential: 'DACLAM',
+    urls: ['https://www.aclam.org/find-a-diplomate', 'https://www.aclam.org/'],
+    domains: ['aclam.org'],
+  },
+  {
+    match: ['clinical pharmacology', 'pharmacology', 'pharmacologist'],
+    college: 'American College of Veterinary Clinical Pharmacology',
+    abbreviation: 'ACVCP',
+    credential: 'DACVCP',
+    urls: ['https://www.acvcp.org/diplomates', 'https://www.acvcp.org/'],
+    domains: ['acvcp.org'],
   },
   {
     match: ['microbiology', 'microbiologist'],
@@ -903,7 +976,15 @@ function buildSearchQueries(input: Required<SearchInput>): string[] {
     `${role} DVM "${loc}" site:linkedin.com/in`,
     `${role} veterinarian ${loc} hospital staff`,
     `${role} veterinarian ${loc} "Meet the Doctors"`,
-    `DVM ${loc} jobs.avma.org OR careers.aaha.org OR jobs.acvs.org OR jobs.acvim.org`,
+    // Job boards
+    `DVM ${loc} site:jobs.avma.org OR site:careers.aaha.org OR site:jobs.acvs.org OR site:jobs.acvim.org`,
+    `${role} ${loc} site:vetcandy.com OR site:ihireveterinary.com OR site:veccs.org`,
+    `${role} ${loc} site:indeed.com OR site:ziprecruiter.com OR site:linkedin.com/jobs`,
+    // Governing / oversight bodies (AVMA, AAVSB, ABVS, VIRMP)
+    `${role} ${loc} site:avma.org`,
+    `veterinary specialty ${role} site:avma.org/education/veterinary-specialties`,
+    `licensed veterinarian ${loc} site:aavsb.org`,
+    `${role} resident OR intern ${loc} site:virmp.org`,
   ]
 
   // Add a dedicated query per matching specialty directory.
@@ -916,18 +997,18 @@ function buildSearchQueries(input: Required<SearchInput>): string[] {
 
   if (input.activeOnly) {
     queries.push(`"open to work" OR "actively seeking" DVM ${loc}`)
-    queries.push(`veterinarian ${loc} ihireveterinary.com OR vetcandy.com`)
+    queries.push(`veterinarian ${loc} site:ihireveterinary.com OR site:vetcandy.com OR site:jobs.avma.org`)
   }
-  return queries.slice(0, 12)
+  return queries.slice(0, 20)
 }
 
 function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
   // Try to extract "First Last, DVM" or "Dr. First Last" from the title
   const title = s.title || ''
   const cleaned = title.replace(/\s*[-|–].*$/, '').replace(/^Dr\.?\s+/i, '').trim()
-  const credMatch = cleaned.match(/\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR)\b/i)
+  const credMatch = cleaned.match(/\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC)\b/i)
   const credentials = credMatch ? credMatch[1].toUpperCase() : null
-  const stripped = cleaned.replace(/,?\s*\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR)\b/gi, '').trim()
+  const stripped = cleaned.replace(/,?\s*\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC)\b/gi, '').trim()
 
   // Need at least "First Last"
   const parts = stripped.split(/\s+/).filter(p => /^[A-Z][a-zA-Z'’\-]+$/.test(p))
@@ -1193,3 +1274,120 @@ async function searchSpecialtyDirectories(input: Required<SearchInput>): Promise
 
   return fetched.flat()
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apollo people/match enrichment — unlock email + phone for each prospect.
+// ─────────────────────────────────────────────────────────────────────────────
+async function enrichContactsViaApollo(list: DvmProspect[]): Promise<void> {
+  // Cap concurrency so we don't burn the Apollo quota in one shot.
+  const tasks = list.map((p) => async () => {
+    const needsEmail = isMaskedEmail(p.email)
+    const needsPhone = !p.phone
+    if (!needsEmail && !needsPhone) return
+    if (!p.first_name || !p.last_name) return
+    try {
+      const opts: Parameters<typeof apolloPeopleEnrich>[0] = {
+        first_name: p.first_name,
+        last_name: p.last_name,
+        reveal_personal_emails: needsEmail,
+        reveal_phone_number: needsPhone,
+      }
+      if (p.linkedin_url) opts.linkedin_url = p.linkedin_url
+      if (p.current_employer) opts.organization_name = p.current_employer
+      const res = await apolloPeopleEnrich(opts)
+      const person = (res.person || {}) as Record<string, any>
+
+      if (needsEmail) {
+        const candidates: string[] = []
+        if (person.email && !isMaskedEmail(person.email)) candidates.push(person.email)
+        if (Array.isArray(person.personal_emails)) {
+          for (const e of person.personal_emails) {
+            const val = typeof e === 'string' ? e : e?.email
+            if (val && !isMaskedEmail(val)) candidates.push(val)
+          }
+        }
+        if (Array.isArray(person.contact_emails)) {
+          for (const e of person.contact_emails) {
+            const val = typeof e === 'string' ? e : e?.email
+            if (val && !isMaskedEmail(val)) candidates.push(val)
+          }
+        }
+        if (candidates[0]) p.email = candidates[0]
+      }
+
+      if (needsPhone) {
+        const phones = Array.isArray(person.phone_numbers) ? person.phone_numbers : []
+        const first = phones[0]?.sanitized_number || phones[0]?.raw_number || person.phone || person.mobile_phone || null
+        if (first) p.phone = String(first)
+      }
+
+      if (!p.credentials && typeof person.title === 'string') {
+        const m = person.title.match(VET_CREDENTIAL_RE)
+        if (m && m.length) {
+          p.credentials = Array.from(new Set(m.map((s: string) => s.toUpperCase()))).slice(0, 4).join(', ')
+        }
+      }
+      if (!p.linkedin_url && person.linkedin_url) p.linkedin_url = person.linkedin_url
+    } catch (err) {
+      logger.warn(
+        `Apollo enrich failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  // Run in batches of 5 to stay polite with Apollo's rate limits.
+  const BATCH = 5
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LinkedIn enrichment — pull each prospect's public LinkedIn page through
+// Tavily extract and parse credentials / email out of the visible text.
+// ─────────────────────────────────────────────────────────────────────────────
+async function enrichFromLinkedIn(list: DvmProspect[]): Promise<void> {
+  const targets = list.filter(p => p.linkedin_url && (!p.credentials || isMaskedEmail(p.email)))
+  if (!targets.length) return
+
+  const tasks = targets.map((p) => async () => {
+    try {
+      const res = await tavilyExtract(p.linkedin_url!, { extract_depth: 'basic' })
+      const content = (res.results || [])
+        .map(r => r.raw_content || '')
+        .join('\n')
+        .trim()
+      if (!content) return
+
+      if (!p.credentials) {
+        const matches = content.match(VET_CREDENTIAL_RE)
+        if (matches && matches.length) {
+          const unique = Array.from(new Set(matches.map((s: string) => s.toUpperCase())))
+          // Prioritize DVM/VMD first, then specialty diplomate creds.
+          const ordered = [
+            ...unique.filter(c => c === 'DVM' || c === 'VMD' || c === 'BVSc' || c === 'BVMS' || c === 'MRCVS'),
+            ...unique.filter(c => !['DVM', 'VMD', 'BVSc', 'BVMS', 'MRCVS'].includes(c)),
+          ].slice(0, 4)
+          if (ordered.length) p.credentials = ordered.join(', ')
+        }
+      }
+
+      if (isMaskedEmail(p.email)) {
+        const emailMatch = content.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+        if (emailMatch && !isMaskedEmail(emailMatch[0])) p.email = emailMatch[0]
+      }
+    } catch (err) {
+      logger.warn(
+        `LinkedIn extract failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 4
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
