@@ -148,17 +148,30 @@
       </v-card-text>
     </v-card>
 
-    <!-- Warnings -->
+    <!-- Warnings (collapsed into a single expandable banner) -->
     <v-alert
-      v-for="(w, idx) in warnings"
-      :key="idx"
+      v-if="warnings.length"
       type="info"
       variant="tonal"
       density="compact"
       class="mb-2"
-      :icon="w.includes('not set') ? 'mdi-key-alert' : 'mdi-information-outline'"
+      icon="mdi-information-outline"
     >
-      {{ w }}
+      <div class="d-flex align-center justify-space-between">
+        <span>{{ warnings.length }} provider notice{{ warnings.length === 1 ? '' : 's' }}</span>
+        <v-btn
+          size="x-small"
+          variant="text"
+          @click="warningsOpen = !warningsOpen"
+        >
+          {{ warningsOpen ? 'Hide' : 'Show details' }}
+        </v-btn>
+      </div>
+      <v-expand-transition>
+        <ul v-if="warningsOpen" class="mt-2 mb-0 pl-4" style="font-size: 0.85rem">
+          <li v-for="(w, idx) in warnings" :key="idx">{{ w }}</li>
+        </ul>
+      </v-expand-transition>
     </v-alert>
 
     <!-- Provider chips + view toggle -->
@@ -612,6 +625,7 @@ const loading = ref(false)
 const hasSearched = ref(false)
 const prospects = ref<ProspectRow[]>([])
 const warnings = ref<string[]>([])
+const warningsOpen = ref(false)
 const lastSearchProviders = ref<Record<string, boolean> | null>(null)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const viewMode = ref<'grid' | 'cards'>('grid')
