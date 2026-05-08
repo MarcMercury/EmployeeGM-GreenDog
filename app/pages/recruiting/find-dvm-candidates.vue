@@ -164,28 +164,14 @@
     <!-- Provider chips + view toggle -->
     <div v-if="lastSearchProviders" class="d-flex gap-2 mb-3 align-center flex-wrap">
       <v-chip
+        v-for="(enabled, key) in lastSearchProviders"
+        :key="key"
         size="small"
-        :color="lastSearchProviders.apollo ? 'success' : 'grey'"
-        :prepend-icon="lastSearchProviders.apollo ? 'mdi-check-circle' : 'mdi-close-circle'"
+        :color="enabled ? 'success' : 'grey'"
+        :prepend-icon="enabled ? 'mdi-check-circle' : 'mdi-close-circle'"
         variant="tonal"
       >
-        Apollo.io
-      </v-chip>
-      <v-chip
-        size="small"
-        :color="lastSearchProviders.openai ? 'success' : 'grey'"
-        :prepend-icon="lastSearchProviders.openai ? 'mdi-check-circle' : 'mdi-close-circle'"
-        variant="tonal"
-      >
-        OpenAI
-      </v-chip>
-      <v-chip
-        size="small"
-        :color="lastSearchProviders.gemini ? 'success' : 'grey'"
-        :prepend-icon="lastSearchProviders.gemini ? 'mdi-check-circle' : 'mdi-close-circle'"
-        variant="tonal"
-      >
-        Gemini
+        {{ providerLabel(String(key)) }}
       </v-chip>
       <v-chip size="small" variant="tonal">
         {{ prospects.length }} prospect{{ prospects.length === 1 ? '' : 's' }}
@@ -626,7 +612,7 @@ const loading = ref(false)
 const hasSearched = ref(false)
 const prospects = ref<ProspectRow[]>([])
 const warnings = ref<string[]>([])
-const lastSearchProviders = ref<{ openai: boolean; gemini: boolean; apollo?: boolean } | null>(null)
+const lastSearchProviders = ref<Record<string, boolean> | null>(null)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const viewMode = ref<'grid' | 'cards'>('grid')
 
@@ -690,6 +676,18 @@ function providerIcon(provider: string) {
   return 'mdi-robot-outline'
 }
 
+function providerLabel(key: string): string {
+  const labels: Record<string, string> = {
+    apollo: 'Apollo.io',
+    npi: 'NPI Registry',
+    tavily: 'Tavily',
+    google_cse: 'Google CSE',
+    openai: 'OpenAI',
+    gemini: 'Gemini',
+  }
+  return labels[key] || key
+}
+
 async function runSearch() {
   loading.value = true
   hasSearched.value = true
@@ -700,7 +698,7 @@ async function runSearch() {
     const res = await $fetch<{
       success: boolean
       prospects: ProspectRow[]
-      providers: { openai: boolean; gemini: boolean; apollo?: boolean }
+      providers: Record<string, boolean>
       warnings: string[]
     }>('/api/recruiting/find-dvm-candidates', {
       method: 'POST',

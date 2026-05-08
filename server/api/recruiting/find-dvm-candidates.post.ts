@@ -21,13 +21,15 @@ import { agentChat } from '../../utils/agents/openai'
 import { geminiGenerate } from '../../utils/gemini'
 import { logger } from '../../utils/logger'
 import { nominatimGeocode, distanceMiles } from '../../utils/nominatim'
-import { verifyDvmInNpi } from '../../utils/npi-registry'
+import { verifyDvmInNpi, searchNpiProviders, type NpiResult } from '../../utils/npi-registry'
 import {
   buildStateBoardSearchUrl,
   getDiplomateDirectoryByCredential,
   isAvmaAccreditedSchool,
 } from '../../utils/state-vet-boards'
 import { apolloPeopleSearch, type ApolloPerson } from '../../utils/apollo'
+import { tavilySearch } from '../../utils/tavily'
+import { googleSearch } from '../../utils/googleSearch'
 
 interface SearchInput {
   specialty?: string          // e.g. "Surgery", "Internal Medicine", "General Practice"
@@ -71,7 +73,7 @@ export interface DvmProspect {
   actively_seeking?: boolean
   notes?: string | null
   match_score?: number         // 0-100, AI confidence in fit
-  provider: 'openai' | 'gemini' | 'apollo' | 'merged'
+  provider: 'openai' | 'gemini' | 'apollo' | 'npi' | 'tavily' | 'google_cse' | 'merged'
   /** Distance from the search center in miles (populated when enforceRadius=true). */
   distance_miles?: number | null
   /** Free public-source verification (populated when verify=true). */
@@ -127,34 +129,68 @@ export default defineEventHandler(async (event) => {
   const hasOpenAI = !!config.openaiApiKey
   const hasGemini = !!config.geminiApiKey
   const hasApollo = !!config.apolloApiKey
+  const hasTavily = !!config.tavilyApiKey
+  const hasGoogleCse = !!config.googleCseApiKey && !!config.googleCseId
+  const hasNpi = true // free, no key
 
-  if (!hasOpenAI && !hasGemini && !hasApollo) {
+  if (!hasOpenAI && !hasGemini && !hasApollo && !hasTavily && !hasGoogleCse) {
     throw createError({
       statusCode: 503,
-      message: 'No data providers configured. Set APOLLO_API_KEY, OPENAI_API_KEY, and/or GEMINI_API_KEY.',
+      message: 'No data providers configured.',
     })
   }
 
   const systemPrompt = buildSystemPrompt(input)
   const userPrompt = buildUserPrompt(input)
 
-  const providerPromises: Promise<{ provider: 'openai' | 'gemini'; raw: string } | null>[] = []
+  const providerErrors: string[] = []
 
-  // ── Apollo.io (primary structured source) ──
-  let apolloProspects: DvmProspect[] = []
-  let apolloError: string | null = null
-  if (hasApollo) {
-    try {
-      apolloProspects = await searchApolloDvms(input)
-      logger.info(`Apollo returned ${apolloProspects.length} prospects`, 'find-dvm-candidates')
-    } catch (err) {
-      apolloError = (err as Error).message
-      logger.error('Apollo DVM search failed', err as Error, 'find-dvm-candidates')
-    }
-  }
+  // ── Stage 1: run all DIRECT data providers in parallel ──
+  const [apolloRes, npiRes, tavilyRes, googleRes] = await Promise.all([
+    hasApollo
+      ? searchApolloDvms(input).catch(err => {
+          providerErrors.push(`apollo: ${(err as Error).message}`)
+          logger.error('Apollo DVM search failed', err as Error, 'find-dvm-candidates')
+          return [] as DvmProspect[]
+        })
+      : Promise.resolve([] as DvmProspect[]),
+    hasNpi
+      ? searchNpiDvms(input).catch(err => {
+          providerErrors.push(`npi: ${(err as Error).message}`)
+          logger.error('NPI DVM search failed', err as Error, 'find-dvm-candidates')
+          return [] as DvmProspect[]
+        })
+      : Promise.resolve([] as DvmProspect[]),
+    hasTavily
+      ? searchTavilyDvms(input).catch(err => {
+          providerErrors.push(`tavily: ${(err as Error).message}`)
+          logger.error('Tavily DVM search failed', err as Error, 'find-dvm-candidates')
+          return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
+        })
+      : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
+    hasGoogleCse
+      ? searchGoogleCseDvms(input).catch(err => {
+          providerErrors.push(`google_cse: ${(err as Error).message}`)
+          logger.error('Google CSE DVM search failed', err as Error, 'find-dvm-candidates')
+          return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
+        })
+      : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
+  ])
+
+  logger.info(
+    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length}`,
+    'find-dvm-candidates',
+  )
+
+  // Combine web snippets so LLMs have grounding context
+  const webSnippets = [...tavilyRes.snippets, ...googleRes.snippets].slice(0, 30)
+  const groundingBlock = buildGroundingBlock(webSnippets)
+
+  // ── Stage 2: run LLM providers in parallel, with web grounding ──
+  const llmPromises: Promise<{ provider: 'openai' | 'gemini'; raw: string } | null>[] = []
 
   if (hasOpenAI) {
-    providerPromises.push(
+    llmPromises.push(
       (async () => {
         try {
           const result = await agentChat({
@@ -162,7 +198,7 @@ export default defineEventHandler(async (event) => {
             runId: `dvm-scout-${Date.now()}`,
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
+              { role: 'user', content: `${userPrompt}\n\n${groundingBlock}` },
             ],
             model: 'reasoning',
             maxTokens: 4000,
@@ -172,39 +208,41 @@ export default defineEventHandler(async (event) => {
           return { provider: 'openai' as const, raw: result.content }
         } catch (err) {
           logger.error('OpenAI DVM scout failed', err as Error, 'find-dvm-candidates')
+          providerErrors.push(`openai: ${(err as Error).message}`)
           return null
         }
-      })()
+      })(),
     )
   }
 
   if (hasGemini) {
-    providerPromises.push(
+    llmPromises.push(
       (async () => {
         try {
           const raw = await geminiGenerate(
-            `${systemPrompt}\n\n${userPrompt}\n\nReturn ONLY valid JSON in the exact schema requested.`,
+            `${systemPrompt}\n\n${userPrompt}\n\n${groundingBlock}\n\nReturn ONLY valid JSON in the exact schema requested.`,
             { temperature: 0.4, maxTokens: 4000 },
           )
           return { provider: 'gemini' as const, raw }
         } catch (err) {
           logger.error('Gemini DVM scout failed', err as Error, 'find-dvm-candidates')
+          providerErrors.push(`gemini: ${(err as Error).message}`)
           return null
         }
-      })()
+      })(),
     )
   }
 
-  const settled = await Promise.all(providerPromises)
-  const allProspects: DvmProspect[] = [...apolloProspects]
-  const providerErrors: string[] = []
-  if (apolloError) providerErrors.push(`apollo: ${apolloError}`)
+  const settled = await Promise.all(llmPromises)
+  const allProspects: DvmProspect[] = [
+    ...apolloRes,
+    ...npiRes,
+    ...tavilyRes.prospects,
+    ...googleRes.prospects,
+  ]
 
   for (const r of settled) {
-    if (!r) {
-      providerErrors.push('one provider failed')
-      continue
-    }
+    if (!r) continue
     const parsed = parseProspects(r.raw, r.provider)
     allProspects.push(...parsed)
   }
@@ -300,8 +338,11 @@ export default defineEventHandler(async (event) => {
       openai: hasOpenAI,
       gemini: hasGemini,
       apollo: hasApollo,
+      npi: hasNpi,
+      tavily: hasTavily,
+      google_cse: hasGoogleCse,
     },
-    warnings: buildWarnings(hasOpenAI, hasGemini, hasApollo, providerErrors, droppedOutsideRadius),
+    warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse }, providerErrors, droppedOutsideRadius),
     criteria: input,
   }
 })
@@ -460,11 +501,17 @@ function mergeProspects(list: DvmProspect[]): DvmProspect[] {
   return Array.from(map.values())
 }
 
-function buildWarnings(hasOpenAI: boolean, hasGemini: boolean, hasApollo: boolean, providerErrors: string[], droppedOutsideRadius = 0): string[] {
+function buildWarnings(
+  flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean },
+  providerErrors: string[],
+  droppedOutsideRadius = 0,
+): string[] {
   const warnings: string[] = []
-  if (!hasApollo) warnings.push('APOLLO_API_KEY not set — Apollo people search skipped.')
-  if (!hasOpenAI) warnings.push('OPENAI_API_KEY not set — OpenAI provider skipped.')
-  if (!hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
+  if (!flags.hasApollo) warnings.push('APOLLO_API_KEY not set — Apollo people search skipped.')
+  if (!flags.hasOpenAI) warnings.push('OPENAI_API_KEY not set — OpenAI provider skipped.')
+  if (!flags.hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
+  if (!flags.hasTavily) warnings.push('TAVILY_API_KEY not set — Tavily web search skipped.')
+  if (!flags.hasGoogleCse) warnings.push('GOOGLE_CSE_API_KEY/GOOGLE_CSE_ID not set — Google Custom Search skipped.')
   if (providerErrors.length) warnings.push(`Provider error(s): ${providerErrors.join('; ')}`)
   if (droppedOutsideRadius > 0) warnings.push(`${droppedOutsideRadius} prospect(s) dropped after OSM-based radius enforcement.`)
   return warnings
@@ -590,4 +637,212 @@ async function searchApolloDvms(input: Required<SearchInput>): Promise<DvmProspe
   return list
     .map(apolloPersonToProspect)
     .filter((x): x is DvmProspect => x !== null)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Web grounding (snippets shared with the LLM providers for citations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface WebSnippet {
+  title: string
+  url: string
+  snippet: string
+  source: 'tavily' | 'google_cse'
+}
+
+function buildGroundingBlock(snippets: WebSnippet[]): string {
+  if (!snippets.length) return ''
+  const lines = snippets
+    .slice(0, 30)
+    .map((s, i) => `[${i + 1}] (${s.source}) ${s.title}\n  URL: ${s.url}\n  ${s.snippet.slice(0, 280)}`)
+    .join('\n\n')
+  return `WEB GROUNDING — real, freshly-retrieved sources you may cite for prospects.\nUse these URLs as source_url when extracting candidate names from these pages.\n\n${lines}`
+}
+
+function buildSearchQueries(input: Required<SearchInput>): string[] {
+  const role = input.specialty || 'veterinarian'
+  const loc = input.location || ''
+  const queries = [
+    `${role} DVM "${loc}" site:linkedin.com/in`,
+    `${role} veterinarian ${loc} hospital staff`,
+    `${role} veterinarian ${loc} "Meet the Doctors"`,
+    `DVM ${loc} jobs.avma.org OR careers.aaha.org OR jobs.acvs.org OR jobs.acvim.org`,
+  ]
+  if (input.activeOnly) {
+    queries.push(`"open to work" OR "actively seeking" DVM ${loc}`)
+    queries.push(`veterinarian ${loc} ihireveterinary.com OR vetcandy.com`)
+  }
+  return queries.slice(0, input.activeOnly ? 6 : 4)
+}
+
+function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
+  // Try to extract "First Last, DVM" or "Dr. First Last" from the title
+  const title = s.title || ''
+  const cleaned = title.replace(/\s*[-|–].*$/, '').replace(/^Dr\.?\s+/i, '').trim()
+  const credMatch = cleaned.match(/\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR)\b/i)
+  const credentials = credMatch ? credMatch[1].toUpperCase() : null
+  const stripped = cleaned.replace(/,?\s*\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR)\b/gi, '').trim()
+
+  // Need at least "First Last"
+  const parts = stripped.split(/\s+/).filter(p => /^[A-Z][a-zA-Z'’\-]+$/.test(p))
+  if (parts.length < 2) return null
+  const first = parts[0]!
+  const last = parts[parts.length - 1]!
+
+  return {
+    first_name: first,
+    last_name: last,
+    credentials,
+    specialty: null,
+    current_employer: null,
+    city: null,
+    state: null,
+    email: null,
+    phone: null,
+    linkedin_url: /linkedin\.com\/in\//i.test(s.url) ? s.url : null,
+    website_url: s.url,
+    source_name: provider === 'tavily' ? 'Tavily web search' : 'Google Custom Search',
+    source_url: s.url,
+    experience_years: null,
+    vet_school: null,
+    graduation_year: null,
+    residency: null,
+    actively_seeking: false,
+    notes: s.snippet?.slice(0, 200) || null,
+    match_score: 50,
+    provider,
+  }
+}
+
+async function searchTavilyDvms(
+  input: Required<SearchInput>,
+): Promise<{ prospects: DvmProspect[]; snippets: WebSnippet[] }> {
+  const queries = buildSearchQueries(input)
+  const results = await Promise.all(
+    queries.map(q =>
+      tavilySearch(q, { max_results: 5, search_depth: 'basic' }).catch(() => null),
+    ),
+  )
+  const snippets: WebSnippet[] = []
+  const seen = new Set<string>()
+  for (const r of results) {
+    for (const item of r?.results || []) {
+      if (!item.url || seen.has(item.url)) continue
+      seen.add(item.url)
+      snippets.push({
+        title: item.title || '',
+        url: item.url,
+        snippet: item.content || '',
+        source: 'tavily',
+      })
+    }
+  }
+  const prospects = snippets
+    .map(s => snippetToProspect(s, 'tavily'))
+    .filter((p): p is DvmProspect => p !== null)
+  return { prospects, snippets }
+}
+
+async function searchGoogleCseDvms(
+  input: Required<SearchInput>,
+): Promise<{ prospects: DvmProspect[]; snippets: WebSnippet[] }> {
+  const queries = buildSearchQueries(input)
+  const results = await Promise.all(
+    queries.map(q => googleSearch(q, { num: 8 }).catch(() => null)),
+  )
+  const snippets: WebSnippet[] = []
+  const seen = new Set<string>()
+  for (const r of results) {
+    for (const item of r?.items || []) {
+      if (!item.link || seen.has(item.link)) continue
+      seen.add(item.link)
+      snippets.push({
+        title: item.title || '',
+        url: item.link,
+        snippet: item.snippet || '',
+        source: 'google_cse',
+      })
+    }
+  }
+  const prospects = snippets
+    .map(s => snippetToProspect(s, 'google_cse'))
+    .filter((p): p is DvmProspect => p !== null)
+  return { prospects, snippets }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NPI Registry: structured DVM search (free, public, no key required)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const US_STATE_ABBR: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS',
+  missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY',
+  'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK',
+  oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC',
+  'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
+  vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV',
+  wisconsin: 'WI', wyoming: 'WY',
+}
+
+function extractStateFromLocation(loc: string): string | undefined {
+  const m = loc.match(/\b([A-Z]{2})\b/)
+  if (m) return m[1]
+  const lower = loc.toLowerCase()
+  for (const [name, abbr] of Object.entries(US_STATE_ABBR)) {
+    if (lower.includes(name)) return abbr
+  }
+  return undefined
+}
+
+function npiResultToProspect(r: NpiResult): DvmProspect | null {
+  const basic: any = (r as any).basic || {}
+  const first = basic.first_name?.trim()
+  const last = basic.last_name?.trim()
+  if (!first || !last) return null
+  const addresses: any[] = (r as any).addresses || []
+  const loc = addresses.find(a => a.address_purpose === 'LOCATION') || addresses[0] || {}
+  const taxonomies: any[] = (r as any).taxonomies || []
+  const primaryTax = taxonomies.find(t => t.primary) || taxonomies[0]
+  const credentials = basic.credential || null
+
+  return {
+    first_name: first,
+    last_name: last,
+    credentials,
+    specialty: primaryTax?.desc || null,
+    current_employer: null,
+    city: loc.city || null,
+    state: loc.state || null,
+    email: null,
+    phone: loc.telephone_number || null,
+    linkedin_url: null,
+    website_url: null,
+    source_name: 'NPI Registry (CMS)',
+    source_url: `https://npiregistry.cms.hhs.gov/provider-view/${(r as any).number}`,
+    experience_years: null,
+    vet_school: null,
+    graduation_year: null,
+    residency: null,
+    actively_seeking: false,
+    notes: primaryTax?.license ? `License: ${primaryTax.license}` : null,
+    match_score: 60,
+    provider: 'npi',
+  }
+}
+
+async function searchNpiDvms(input: Required<SearchInput>): Promise<DvmProspect[]> {
+  const state = extractStateFromLocation(input.location)
+  if (!state) return []
+  const results = await searchNpiProviders({
+    state,
+    taxonomyDescription: 'Veterinarian',
+    enumerationType: 'NPI-1',
+    limit: Math.min(Math.max(input.maxResults, 10), 50),
+  })
+  return results.map(npiResultToProspect).filter((p): p is DvmProspect => p !== null)
 }
