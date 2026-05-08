@@ -27,6 +27,7 @@ import {
   getDiplomateDirectoryByCredential,
   isAvmaAccreditedSchool,
 } from '../../utils/state-vet-boards'
+import { apolloPeopleSearch, type ApolloPerson } from '../../utils/apollo'
 
 interface SearchInput {
   specialty?: string          // e.g. "Surgery", "Internal Medicine", "General Practice"
@@ -70,7 +71,7 @@ export interface DvmProspect {
   actively_seeking?: boolean
   notes?: string | null
   match_score?: number         // 0-100, AI confidence in fit
-  provider: 'openai' | 'gemini' | 'merged'
+  provider: 'openai' | 'gemini' | 'apollo' | 'merged'
   /** Distance from the search center in miles (populated when enforceRadius=true). */
   distance_miles?: number | null
   /** Free public-source verification (populated when verify=true). */
@@ -125,11 +126,12 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const hasOpenAI = !!config.openaiApiKey
   const hasGemini = !!config.geminiApiKey
+  const hasApollo = !!config.apolloApiKey
 
-  if (!hasOpenAI && !hasGemini) {
+  if (!hasOpenAI && !hasGemini && !hasApollo) {
     throw createError({
       statusCode: 503,
-      message: 'No AI providers configured. Set OPENAI_API_KEY and/or GEMINI_API_KEY.',
+      message: 'No data providers configured. Set APOLLO_API_KEY, OPENAI_API_KEY, and/or GEMINI_API_KEY.',
     })
   }
 
@@ -137,6 +139,19 @@ export default defineEventHandler(async (event) => {
   const userPrompt = buildUserPrompt(input)
 
   const providerPromises: Promise<{ provider: 'openai' | 'gemini'; raw: string } | null>[] = []
+
+  // ── Apollo.io (primary structured source) ──
+  let apolloProspects: DvmProspect[] = []
+  let apolloError: string | null = null
+  if (hasApollo) {
+    try {
+      apolloProspects = await searchApolloDvms(input)
+      logger.info(`Apollo returned ${apolloProspects.length} prospects`, 'find-dvm-candidates')
+    } catch (err) {
+      apolloError = (err as Error).message
+      logger.error('Apollo DVM search failed', err as Error, 'find-dvm-candidates')
+    }
+  }
 
   if (hasOpenAI) {
     providerPromises.push(
@@ -181,8 +196,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const settled = await Promise.all(providerPromises)
-  const allProspects: DvmProspect[] = []
+  const allProspects: DvmProspect[] = [...apolloProspects]
   const providerErrors: string[] = []
+  if (apolloError) providerErrors.push(`apollo: ${apolloError}`)
 
   for (const r of settled) {
     if (!r) {
@@ -283,8 +299,9 @@ export default defineEventHandler(async (event) => {
     providers: {
       openai: hasOpenAI,
       gemini: hasGemini,
+      apollo: hasApollo,
     },
-    warnings: buildWarnings(hasOpenAI, hasGemini, providerErrors, droppedOutsideRadius),
+    warnings: buildWarnings(hasOpenAI, hasGemini, hasApollo, providerErrors, droppedOutsideRadius),
     criteria: input,
   }
 })
@@ -443,12 +460,134 @@ function mergeProspects(list: DvmProspect[]): DvmProspect[] {
   return Array.from(map.values())
 }
 
-function buildWarnings(hasOpenAI: boolean, hasGemini: boolean, providerErrors: string[], droppedOutsideRadius = 0): string[] {
+function buildWarnings(hasOpenAI: boolean, hasGemini: boolean, hasApollo: boolean, providerErrors: string[], droppedOutsideRadius = 0): string[] {
   const warnings: string[] = []
+  if (!hasApollo) warnings.push('APOLLO_API_KEY not set — Apollo people search skipped.')
   if (!hasOpenAI) warnings.push('OPENAI_API_KEY not set — OpenAI provider skipped.')
   if (!hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
-  if (providerErrors.length) warnings.push('One or more providers errored — partial results returned.')
+  if (providerErrors.length) warnings.push(`Provider error(s): ${providerErrors.join('; ')}`)
   if (droppedOutsideRadius > 0) warnings.push(`${droppedOutsideRadius} prospect(s) dropped after OSM-based radius enforcement.`)
-  warnings.push('Results are limited to publicly indexed sources. To search LinkedIn Recruiter, paid job boards, or gated directories, additional API credentials are required (e.g. LinkedIn Talent Solutions, Indeed Hiring, ZipRecruiter Partner API).')
   return warnings
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apollo.io: structured DVM search
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Map a free-form specialty input (from the UI) to a list of Apollo person_titles
+ * that should match it. We over-include synonyms because Apollo title matching
+ * is a partial/contains-style match, not an enum.
+ */
+function specialtyToApolloTitles(specialty: string): string[] {
+  const s = specialty.trim().toLowerCase()
+  const base = ['veterinarian', 'doctor of veterinary medicine', 'DVM', 'VMD']
+  if (!s || s === 'general practice' || s === 'general practitioner' || s === 'gp') {
+    return [...base, 'associate veterinarian', 'general practitioner']
+  }
+  if (s.includes('surgery') || s.includes('surgeon')) {
+    return ['veterinary surgeon', 'small animal surgeon', 'surgical resident', 'DACVS', ...base]
+  }
+  if (s.includes('internal medicine') || s.includes('internist')) {
+    return ['veterinary internist', 'internal medicine specialist', 'DACVIM', ...base]
+  }
+  if (s.includes('emergency') || s.includes('criticalist') || s.includes('ecc')) {
+    return ['emergency veterinarian', 'criticalist', 'DACVECC', 'ER veterinarian', ...base]
+  }
+  if (s.includes('dent')) {
+    return ['veterinary dentist', 'DAVDC', ...base]
+  }
+  if (s.includes('cardio')) {
+    return ['veterinary cardiologist', 'DACVIM cardiology', ...base]
+  }
+  if (s.includes('derm')) {
+    return ['veterinary dermatologist', 'DACVD', ...base]
+  }
+  if (s.includes('onco')) {
+    return ['veterinary oncologist', 'DACVIM oncology', ...base]
+  }
+  if (s.includes('ophthal')) {
+    return ['veterinary ophthalmologist', 'DACVO', ...base]
+  }
+  if (s.includes('neuro')) {
+    return ['veterinary neurologist', 'DACVIM neurology', ...base]
+  }
+  if (s.includes('radio')) {
+    return ['veterinary radiologist', 'DACVR', ...base]
+  }
+  if (s.includes('anesth')) {
+    return ['veterinary anesthesiologist', 'DACVAA', ...base]
+  }
+  if (s.includes('exotic') || s.includes('avian')) {
+    return ['exotic animal veterinarian', 'avian veterinarian', ...base]
+  }
+  // Fall back: include the specialty itself plus base titles
+  return [specialty, ...base]
+}
+
+function locationToApolloLocations(location: string): string[] {
+  const l = location.trim()
+  if (!l) return []
+  // Apollo accepts free-form "City, State, Country" strings. We pass the user
+  // input plus a US-suffixed variant if it looks like a US state/city.
+  const variants = new Set<string>([l])
+  if (!/united states|usa|us\b/i.test(l)) variants.add(`${l}, US`)
+  return Array.from(variants)
+}
+
+function apolloPersonToProspect(p: ApolloPerson): DvmProspect | null {
+  const first = (p.first_name || '').trim()
+  const last = (p.last_name || '').trim()
+  if (!first || !last) return null
+
+  const title = (p.title || '').trim()
+  const credentialsMatch = title.match(/\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR)\b/i)
+  const credentials = credentialsMatch ? credentialsMatch[1].toUpperCase() : null
+
+  const org = p.organization || {}
+  const linkedin = p.linkedin_url || null
+  const website = (org as any).website_url || null
+
+  return {
+    first_name: first,
+    last_name: last,
+    credentials,
+    specialty: title || null,
+    current_employer: org.name || null,
+    city: p.city || null,
+    state: p.state || null,
+    email: p.email || null,
+    phone: null,
+    linkedin_url: linkedin,
+    website_url: website,
+    source_name: 'Apollo.io',
+    source_url: linkedin || website || 'https://app.apollo.io',
+    experience_years: null,
+    vet_school: null,
+    graduation_year: null,
+    residency: null,
+    actively_seeking: false,
+    notes: org.industry ? `${org.industry}${org.estimated_num_employees ? ` · ~${org.estimated_num_employees} employees` : ''}` : null,
+    match_score: 70,
+    provider: 'apollo',
+  }
+}
+
+async function searchApolloDvms(input: Required<SearchInput>): Promise<DvmProspect[]> {
+  const titles = specialtyToApolloTitles(input.specialty)
+  const locations = locationToApolloLocations(input.location)
+
+  const opts: Parameters<typeof apolloPeopleSearch>[0] = {
+    person_titles: titles,
+    per_page: Math.min(Math.max(input.maxResults, 10), 100),
+    page: 1,
+  }
+  if (locations.length) opts.person_locations = locations
+  if (input.keywords.length) opts.q_keywords = input.keywords.join(' ')
+
+  const res = await apolloPeopleSearch(opts)
+  const list = (res.people || res.contacts || []) as ApolloPerson[]
+  return list
+    .map(apolloPersonToProspect)
+    .filter((x): x is DvmProspect => x !== null)
 }

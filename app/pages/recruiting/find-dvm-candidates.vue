@@ -165,6 +165,14 @@
     <div v-if="lastSearchProviders" class="d-flex gap-2 mb-3 align-center flex-wrap">
       <v-chip
         size="small"
+        :color="lastSearchProviders.apollo ? 'success' : 'grey'"
+        :prepend-icon="lastSearchProviders.apollo ? 'mdi-check-circle' : 'mdi-close-circle'"
+        variant="tonal"
+      >
+        Apollo.io
+      </v-chip>
+      <v-chip
+        size="small"
         :color="lastSearchProviders.openai ? 'success' : 'grey'"
         :prepend-icon="lastSearchProviders.openai ? 'mdi-check-circle' : 'mdi-close-circle'"
         variant="tonal"
@@ -618,7 +626,7 @@ const loading = ref(false)
 const hasSearched = ref(false)
 const prospects = ref<ProspectRow[]>([])
 const warnings = ref<string[]>([])
-const lastSearchProviders = ref<{ openai: boolean; gemini: boolean } | null>(null)
+const lastSearchProviders = ref<{ openai: boolean; gemini: boolean; apollo?: boolean } | null>(null)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const viewMode = ref<'grid' | 'cards'>('grid')
 
@@ -692,7 +700,7 @@ async function runSearch() {
     const res = await $fetch<{
       success: boolean
       prospects: ProspectRow[]
-      providers: { openai: boolean; gemini: boolean }
+      providers: { openai: boolean; gemini: boolean; apollo?: boolean }
       warnings: string[]
     }>('/api/recruiting/find-dvm-candidates', {
       method: 'POST',
