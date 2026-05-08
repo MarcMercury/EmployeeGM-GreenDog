@@ -604,3 +604,229 @@ export interface MetabaseDashboard {
   description?: string
   parameters: { id: string; name: string; type: string; default?: any }[]
 }
+
+// =====================================================
+// TAVILY (AI Web Search)
+// =====================================================
+
+export interface TavilySearchOptions {
+  search_depth?: 'basic' | 'advanced'
+  topic?: 'general' | 'news'
+  max_results?: number
+  include_answer?: boolean | 'basic' | 'advanced'
+  include_raw_content?: boolean
+  include_images?: boolean
+  include_domains?: string[]
+  exclude_domains?: string[]
+  /** Limit to results from the last N days (news topic) */
+  days?: number
+}
+
+export interface TavilySearchResult {
+  title: string
+  url: string
+  content: string
+  score: number
+  raw_content?: string | null
+  published_date?: string
+}
+
+export interface TavilySearchResponse {
+  query: string
+  answer?: string
+  images?: string[]
+  results: TavilySearchResult[]
+  response_time: number
+}
+
+export interface TavilyExtractResult {
+  url: string
+  raw_content: string
+}
+
+export interface TavilyExtractResponse {
+  results: TavilyExtractResult[]
+  failed_results: { url: string; error: string }[]
+  response_time: number
+}
+
+// =====================================================
+// GOOGLE CUSTOM SEARCH (Programmable Search Engine)
+// 100 queries/day free; restrict to specific domains via the
+// Programmable Search Engine "Sites to search" config.
+// =====================================================
+
+export interface GoogleCseSearchOptions {
+  /** Number of results (1-10 per request) */
+  num?: number
+  /** 1-based start index for pagination */
+  start?: number
+  /** ISO language, e.g. 'lang_en' */
+  lr?: string
+  /** Country restrict, e.g. 'countryUS' */
+  cr?: string
+  /** Date restrict, e.g. 'd7' (last 7 days), 'm1' (last month) */
+  dateRestrict?: string
+  /** Restrict to a single site (e.g. 'avma.org') */
+  siteSearch?: string
+  /** 'i' = include only siteSearch, 'e' = exclude siteSearch */
+  siteSearchFilter?: 'i' | 'e'
+  /** Safe search level */
+  safe?: 'active' | 'off'
+}
+
+export interface GoogleCseItem {
+  kind: string
+  title: string
+  htmlTitle: string
+  link: string
+  displayLink: string
+  snippet: string
+  htmlSnippet: string
+  formattedUrl: string
+  pagemap?: Record<string, any>
+}
+
+export interface GoogleCseResponse {
+  kind: string
+  url: { type: string; template: string }
+  queries: {
+    request: Array<Record<string, any>>
+    nextPage?: Array<Record<string, any>>
+    previousPage?: Array<Record<string, any>>
+  }
+  searchInformation: {
+    searchTime: number
+    formattedSearchTime: string
+    totalResults: string
+    formattedTotalResults: string
+  }
+  items?: GoogleCseItem[]
+}
+
+// =====================================================
+// HUNTER.IO (Email finder, domain search, enrichment)
+// =====================================================
+
+export interface HunterMeta {
+  results?: number
+  limit?: number
+  offset?: number
+  params?: Record<string, any>
+}
+
+export interface HunterEmail {
+  value: string
+  type?: 'personal' | 'generic'
+  confidence?: number
+  sources?: { domain?: string; uri?: string; extracted_on?: string; last_seen_on?: string; still_on_page?: boolean }[]
+  first_name?: string | null
+  last_name?: string | null
+  position?: string | null
+  position_raw?: string | null
+  seniority?: string | null
+  department?: string | null
+  linkedin?: string | null
+  twitter?: string | null
+  phone_number?: string | null
+  verification?: { date?: string | null; status?: string | null }
+}
+
+export interface HunterDomainSearchData {
+  domain: string
+  disposable: boolean
+  webmail: boolean
+  accept_all: boolean
+  pattern?: string | null
+  organization?: string | null
+  description?: string | null
+  industry?: string | null
+  twitter?: string | null
+  facebook?: string | null
+  linkedin?: string | null
+  instagram?: string | null
+  youtube?: string | null
+  technologies?: string[]
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  postal_code?: string | null
+  street?: string | null
+  headcount?: string | null
+  company_type?: string | null
+  emails: HunterEmail[]
+  linked_domains?: string[]
+}
+
+export interface HunterDomainSearchResponse {
+  data: HunterDomainSearchData
+  meta: HunterMeta
+}
+
+export interface HunterEmailFinderData {
+  first_name?: string
+  last_name?: string
+  email: string
+  score?: number
+  domain?: string
+  accept_all?: boolean
+  position?: string | null
+  twitter?: string | null
+  linkedin_url?: string | null
+  phone_number?: string | null
+  company?: string | null
+  sources?: { domain?: string; uri?: string; extracted_on?: string; last_seen_on?: string; still_on_page?: boolean }[]
+  verification?: { date?: string | null; status?: string | null }
+}
+
+export interface HunterEmailFinderResponse {
+  data: HunterEmailFinderData
+  meta: HunterMeta
+}
+
+export interface HunterCombinedFindResponse {
+  data: {
+    person?: Record<string, any> | null
+    company?: Record<string, any> | null
+  }
+  meta: HunterMeta
+}
+
+export interface HunterDiscoverFilters {
+  organization?: { name?: string; domain?: string }
+  industry?: string[]
+  type?: string[]
+  size?: string[]
+  technology?: string[]
+  country_code?: string[]
+  state_code?: string[]
+  city?: string[]
+  query?: string
+}
+
+export interface HunterDiscoverOptions {
+  query?: string
+  filters?: HunterDiscoverFilters
+  limit?: number
+  offset?: number
+}
+
+export interface HunterDiscoverCompany {
+  domain: string
+  organization?: string | null
+  industry?: string | null
+  description?: string | null
+  country?: string | null
+  state?: string | null
+  city?: string | null
+  headcount?: string | null
+  company_type?: string | null
+  technologies?: string[]
+}
+
+export interface HunterDiscoverResponse {
+  data: {
+    companies: HunterDiscoverCompany[]
+  }
+  meta: HunterMeta
+}

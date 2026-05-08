@@ -147,6 +147,22 @@ export default defineNuxtConfig({
     // ── VetCove ──
     vetcoveApiKey: process.env.VETCOVE_API_KEY,
 
+    // ── Tavily (AI web search) ──
+    tavilyApiKey: process.env.TAVILY_API_KEY,
+
+    // ── Google Custom Search (domain-restricted web search) ──
+    googleCseApiKey: process.env.GOOGLE_CSE_API_KEY,
+    googleCseId: process.env.GOOGLE_CSE_ID,
+
+    // ── Hunter.io (Email finder / domain search / enrichment) ──
+    hunterApiKey: process.env.HUNTER_API_KEY,
+
+    // ── Apollo.io (People & company search / enrichment) ──
+    apolloApiKey: process.env.APOLLO_API_KEY,
+
+    // ── OSM Nominatim (free geocoding; required identifying User-Agent) ──
+    nominatimUserAgent: process.env.NOMINATIM_USER_AGENT,
+
     // Public (exposed to client)
     public: {
       supabaseUrl: process.env.SUPABASE_URL,

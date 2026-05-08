@@ -13,105 +13,95 @@ const activeSection = ref('integrations')
 // =====================================================
 // INTEGRATIONS
 // =====================================================
-const integrations = ref<any[]>([])
+interface IntegrationCheck {
+  id: string
+  name: string
+  category: string
+  status: 'connected' | 'misconfigured' | 'error' | 'not_configured'
+  configured: boolean
+  connected: boolean
+  latencyMs?: number
+  message: string
+  envVars: string[]
+  optional: boolean
+}
+
+interface IntegrationsResponse {
+  timestamp: string
+  summary: {
+    total: number
+    connected: number
+    misconfigured: number
+    error: number
+    not_configured: number
+  }
+  checks: IntegrationCheck[]
+}
+
+const integrationsResponse = ref<IntegrationsResponse | null>(null)
 const loadingIntegrations = ref(false)
+
+const CATEGORY_META: Record<string, { label: string; icon: string }> = {
+  core: { label: 'Core', icon: 'mdi-server' },
+  ai: { label: 'AI / ML', icon: 'mdi-brain' },
+  communications: { label: 'Communications', icon: 'mdi-message-text' },
+  scheduling: { label: 'Scheduling & Workspace', icon: 'mdi-calendar' },
+  observability: { label: 'Observability', icon: 'mdi-monitor-eye' },
+  analytics: { label: 'Analytics', icon: 'mdi-chart-line' },
+  finance: { label: 'Finance & Documents', icon: 'mdi-cash' },
+  marketing: { label: 'Marketing & Maps', icon: 'mdi-bullhorn' },
+  veterinary: { label: 'Veterinary', icon: 'mdi-paw' },
+}
+
+const CATEGORY_ORDER = ['core', 'ai', 'communications', 'scheduling', 'observability', 'analytics', 'finance', 'marketing', 'veterinary']
+
+const groupedIntegrations = computed(() => {
+  const checks = integrationsResponse.value?.checks ?? []
+  const groups: { category: string; label: string; icon: string; items: IntegrationCheck[] }[] = []
+  for (const cat of CATEGORY_ORDER) {
+    const items = checks.filter(c => c.category === cat)
+    if (!items.length) continue
+    const meta = CATEGORY_META[cat] || { label: cat, icon: 'mdi-puzzle' }
+    groups.push({ category: cat, label: meta.label, icon: meta.icon, items })
+  }
+  return groups
+})
+
+function statusColor(status: IntegrationCheck['status']) {
+  switch (status) {
+    case 'connected': return 'success'
+    case 'misconfigured': return 'warning'
+    case 'error': return 'error'
+    case 'not_configured': return 'grey'
+  }
+}
+
+function statusIcon(status: IntegrationCheck['status']) {
+  switch (status) {
+    case 'connected': return 'mdi-check-circle'
+    case 'misconfigured': return 'mdi-alert'
+    case 'error': return 'mdi-close-circle'
+    case 'not_configured': return 'mdi-circle-outline'
+  }
+}
+
+function statusLabel(status: IntegrationCheck['status']) {
+  switch (status) {
+    case 'connected': return 'Connected'
+    case 'misconfigured': return 'Misconfigured'
+    case 'error': return 'Error'
+    case 'not_configured': return 'Not configured'
+  }
+}
 
 async function loadIntegrations() {
   loadingIntegrations.value = true
   try {
-    const results = await Promise.allSettled([
-      checkSlack(),
-      checkEzyVet(),
-      checkOpenAI(),
-      checkSupabase()
-    ])
-
-    integrations.value = results
-      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
-      .map(r => r.value)
-  } catch (err) {
-    console.error('Error loading integrations:', err)
+    integrationsResponse.value = await $fetch<IntegrationsResponse>('/api/system/integrations-status')
+  } catch (err: any) {
+    toast.error(err?.data?.message || err?.message || 'Failed to load integrations')
   } finally {
     loadingIntegrations.value = false
-  }
-}
-
-async function checkSlack(): Promise<any> {
-  let connected = false
-  let details = ''
-  try {
-    const health = await $fetch('/api/slack/health')
-    connected = health?.status === 'healthy' || health?.status === 'degraded' || health?.connected === true
-    details = health?.status === 'healthy' ? 'All channels active' : health?.message || 'Degraded'
-  } catch { details = 'Not configured' }
-
-  return {
-    id: 'slack', name: 'Slack', description: 'Team communication and notifications',
-    icon: 'mdi-slack', connected, details,
-    configUrl: '/admin/slack', color: connected ? 'purple' : 'grey'
-  }
-}
-
-async function checkEzyVet(): Promise<any> {
-  let connected = false
-  let details = ''
-  try {
-    const { count, error } = await supabase.from('ezyvet_contacts').select('*', { count: 'exact', head: true }).limit(1)
-    connected = !error && count !== null && count > 0
-    details = connected ? `${count} contacts synced` : 'No data'
-  } catch { details = 'Not configured' }
-
-  return {
-    id: 'ezyvet', name: 'EzyVet', description: 'Veterinary practice management',
-    icon: 'mdi-paw', connected, details,
-    configUrl: null, color: connected ? 'teal' : 'grey'
-  }
-}
-
-async function checkOpenAI(): Promise<any> {
-  let connected = false
-  let details = ''
-  try {
-    const health = await $fetch('/api/agents/health')
-    connected = health?.openai === true || health?.status === 'ok'
-    details = connected ? 'API connected' : 'Inactive'
-  } catch {
-    try {
-      const { count } = await supabase.from('agent_runs').select('*', { count: 'exact', head: true })
-        .eq('status', 'success').gte('started_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).limit(1)
-      connected = (count ?? 0) > 0
-      details = connected ? `${count} runs (24h)` : 'No recent activity'
-    } catch { details = 'Not configured' }
-  }
-
-  return {
-    id: 'openai', name: 'OpenAI', description: 'AI agent intelligence & analysis',
-    icon: 'mdi-brain', connected, details,
-    configUrl: '/admin/agents', color: connected ? 'deep-purple' : 'grey'
-  }
-}
-
-async function checkSupabase(): Promise<any> {
-  let details = ''
-  try {
-    const start = Date.now()
-    await supabase.from('profiles').select('id', { count: 'exact', head: true }).limit(1)
-    const latency = Date.now() - start
-    details = `${latency}ms latency`
-  } catch { details = 'Connection error' }
-
-  return {
-    id: 'supabase', name: 'Supabase', description: 'Database & authentication',
-    icon: 'mdi-database', connected: true, details,
-    configUrl: null, color: 'green'
-  }
-}
-
-function openIntegration(integration: any) {
-  if (integration.configUrl) {
-    navigateTo(integration.configUrl)
-  } else {
-    toast.info(`${integration.name} configuration is managed externally`)
   }
 }
 
@@ -260,39 +250,87 @@ onMounted(() => {
     <!-- ===== INTEGRATIONS ===== -->
     <div v-show="activeSection === 'integrations'">
       <v-progress-circular v-if="loadingIntegrations" indeterminate color="primary" class="d-block mx-auto my-8" />
-      <v-row v-else>
-        <v-col v-for="int in integrations" :key="int.id" cols="12" sm="6" md="3">
-          <v-card rounded="lg" :class="int.connected ? 'border-l-4' : ''" :style="int.connected ? `border-left-color: rgb(var(--v-theme-${int.color}))` : ''">
-            <v-card-text class="text-center py-6">
-              <v-avatar size="56" :color="int.connected ? int.color : 'grey-lighten-2'" class="mb-3">
-                <v-icon size="28" :color="int.connected ? 'white' : 'grey'">{{ int.icon }}</v-icon>
-              </v-avatar>
-              <h3 class="text-subtitle-1 font-weight-bold">{{ int.name }}</h3>
-              <p class="text-body-2 text-grey mb-2">{{ int.description }}</p>
-              <v-chip :color="int.connected ? 'success' : 'grey'" size="small" variant="tonal" class="mb-1">
-                <v-icon start size="12">{{ int.connected ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
-                {{ int.connected ? 'Connected' : 'Disconnected' }}
-              </v-chip>
-              <p class="text-caption text-grey mt-1">{{ int.details }}</p>
-            </v-card-text>
-            <v-divider />
-            <v-card-actions>
-              <v-btn
-                :color="int.configUrl ? 'primary' : 'grey'"
-                variant="text"
-                block
-                :prepend-icon="int.configUrl ? 'mdi-cog' : 'mdi-open-in-new'"
-                @click="openIntegration(int)"
-              >
-                {{ int.configUrl ? 'Configure' : 'External' }}
-              </v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-col>
-      </v-row>
+      <template v-else-if="integrationsResponse">
+        <!-- Summary -->
+        <v-row dense class="mb-2">
+          <v-col cols="6" sm="3">
+            <v-card variant="outlined" class="text-center pa-3">
+              <div class="text-h5 font-weight-bold text-success">{{ integrationsResponse.summary.connected }}</div>
+              <div class="text-caption text-grey">Connected</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <v-card variant="outlined" class="text-center pa-3">
+              <div class="text-h5 font-weight-bold text-warning">{{ integrationsResponse.summary.misconfigured }}</div>
+              <div class="text-caption text-grey">Misconfigured</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <v-card variant="outlined" class="text-center pa-3">
+              <div class="text-h5 font-weight-bold text-error">{{ integrationsResponse.summary.error }}</div>
+              <div class="text-caption text-grey">Errors</div>
+            </v-card>
+          </v-col>
+          <v-col cols="6" sm="3">
+            <v-card variant="outlined" class="text-center pa-3">
+              <div class="text-h5 font-weight-bold text-grey">{{ integrationsResponse.summary.not_configured }}</div>
+              <div class="text-caption text-grey">Not configured</div>
+            </v-card>
+          </v-col>
+        </v-row>
+        <p class="text-caption text-grey mb-4">
+          Last checked {{ new Date(integrationsResponse.timestamp).toLocaleString() }}
+        </p>
 
-      <v-btn class="mt-4" variant="outlined" prepend-icon="mdi-refresh" size="small" @click="loadIntegrations">
-        Refresh Status
+        <!-- Grouped checks -->
+        <div v-for="group in groupedIntegrations" :key="group.category" class="mb-6">
+          <h3 class="text-subtitle-1 font-weight-bold mb-2 d-flex align-center gap-2">
+            <v-icon size="20">{{ group.icon }}</v-icon>
+            {{ group.label }}
+          </h3>
+          <v-row dense>
+            <v-col v-for="int in group.items" :key="int.id" cols="12" sm="6" md="4" lg="3">
+              <v-card variant="outlined" class="fill-height">
+                <v-card-text class="py-3">
+                  <div class="d-flex align-center justify-space-between mb-1">
+                    <span class="text-subtitle-2 font-weight-bold">{{ int.name }}</span>
+                    <v-chip
+                      :color="statusColor(int.status)"
+                      size="x-small"
+                      variant="tonal"
+                      :prepend-icon="statusIcon(int.status)"
+                    >
+                      {{ statusLabel(int.status) }}
+                    </v-chip>
+                  </div>
+                  <p class="text-caption text-grey-darken-1 mb-1" style="min-height: 2.4em;">
+                    {{ int.message }}
+                  </p>
+                  <div class="text-caption text-grey d-flex justify-space-between">
+                    <span v-if="int.latencyMs != null">{{ int.latencyMs }}ms</span>
+                    <span v-else></span>
+                    <span v-if="!int.optional" class="text-error font-weight-medium">Required</span>
+                  </div>
+                  <div v-if="int.status !== 'connected'" class="mt-2">
+                    <v-chip
+                      v-for="v in int.envVars"
+                      :key="v"
+                      size="x-small"
+                      variant="outlined"
+                      class="mr-1 mb-1"
+                    >
+                      {{ v }}
+                    </v-chip>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </div>
+      </template>
+
+      <v-btn class="mt-2" variant="outlined" prepend-icon="mdi-refresh" size="small" @click="loadIntegrations">
+        Re-run Checks
       </v-btn>
     </div>
 

@@ -6,6 +6,8 @@
  */
 
 import { logger } from '../logger'
+import { googleSearchDomains } from '../googleSearch'
+import type { GoogleCseItem } from '~/types/external-apis.types'
 
 export interface ScrapedEvent {
   name: string
@@ -184,6 +186,88 @@ Return real, verifiable upcoming events with accurate dates. Include the source 
   }
 
   return events
+}
+
+/**
+ * Default whitelist of local event source domains used when callers don't
+ * provide their own. Mirrors the source list in the scout agent's system
+ * prompt so Google CSE results align with what the LLM is told to consult.
+ */
+export const DEFAULT_EVENT_SOURCE_DOMAINS = [
+  'business.venicechamber.net',
+  'members.smchamber.com',
+  'members.shermanoaksencinochamber.org',
+  'dogppl.co',
+  'vsa.la',
+  'venicepaparazzi.com',
+  'thevenicefest.com',
+  'veniceheritagemuseum.org',
+  'mainstreetsm.com',
+  'eventbrite.com',
+]
+
+export interface CseGroundingHit {
+  title: string
+  url: string
+  snippet: string
+  source: string
+}
+
+/**
+ * Search the configured local-event domains via Google Custom Search.
+ *
+ * Returns lightweight hits (title/url/snippet/source) suitable for grounding
+ * an LLM prompt with real, verifiable links. Silently returns [] if the
+ * GOOGLE_CSE_* env vars are not configured, so the agent can fall back to
+ * pure-LLM discovery.
+ */
+export async function searchEventsViaGoogleCSE(
+  queries: SearchQuery[],
+  options: {
+    domains?: string[]
+    perQueryLimit?: number
+    overallLimit?: number
+  } = {},
+): Promise<CseGroundingHit[]> {
+  const domains = options.domains ?? DEFAULT_EVENT_SOURCE_DOMAINS
+  const perQueryLimit = options.perQueryLimit ?? 5
+  const overallLimit = options.overallLimit ?? 30
+
+  const hits: CseGroundingHit[] = []
+  const seen = new Set<string>()
+
+  for (const q of queries) {
+    if (hits.length >= overallLimit) break
+
+    // Build a simple keyword phrase + location string for the search query.
+    const phrase = `${q.keywords.filter(Boolean).join(' OR ')} ${q.location}`.trim()
+    if (!phrase) continue
+
+    let items: GoogleCseItem[] | undefined
+    try {
+      items = await googleSearchDomains(phrase, domains, { num: perQueryLimit })
+    } catch (err) {
+      // Missing creds or quota — degrade gracefully.
+      logger.warn('[EventScraping] Google CSE search failed', 'agent', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+      return hits
+    }
+
+    for (const item of items ?? []) {
+      if (!item.link || seen.has(item.link)) continue
+      seen.add(item.link)
+      hits.push({
+        title: item.title,
+        url: item.link,
+        snippet: item.snippet ?? '',
+        source: item.displayLink ?? '',
+      })
+      if (hits.length >= overallLimit) break
+    }
+  }
+
+  return hits
 }
 
 /**

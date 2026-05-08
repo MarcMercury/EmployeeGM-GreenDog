@@ -16,6 +16,7 @@ import { agentChat } from '../../utils/agents/openai'
 import {
   generateEventSearchQueries,
   searchEventsViaAI,
+  searchEventsViaGoogleCSE,
   filterRelevantEvents,
   deduplicateEvents,
   eventExists,
@@ -75,6 +76,18 @@ const handler = async (ctx: AgentRunContext): Promise<AgentRunResult> => {
       queryCount: queries.length,
     })
 
+    // 2a. Ground the LLM with real Google Custom Search hits from our
+    //     whitelisted local-event domains. Returns [] (and logs a warning)
+    //     if GOOGLE_CSE_API_KEY / GOOGLE_CSE_ID are not configured, so the
+    //     agent still works in pure-LLM mode.
+    const searchDomains = (config.searchDomains as string[] | undefined)
+    const cseHits = await searchEventsViaGoogleCSE(queries, {
+      domains: searchDomains,
+      perQueryLimit: 5,
+      overallLimit: 30,
+    })
+    logger.info(`[Agent:${agentId}] Google CSE returned ${cseHits.length} grounding hits`, 'agent')
+
     const searchMessages = [
       {
         role: 'system' as const,
@@ -106,7 +119,13 @@ Return real, verifiable upcoming events with accurate dates. Include the source 
 
     searchMessages.push({
       role: 'user' as const,
-      content: `Find upcoming local events that match this description for ${location}. Look for pet-related, animal-related, community, street fair, adoption, and festival events:\n${queryDescriptions}\n\nCheck the specific source websites listed in your instructions plus any other local event sources you can find. Return 10-15 events as a JSON array with: name, date (YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), location, description, hostedBy, contact (name, email, phone), attendance estimate, cost, source (name of source), and url (source URL where the event was found).`,
+      content: `Find upcoming local events that match this description for ${location}. Look for pet-related, animal-related, community, street fair, adoption, and festival events:\n${queryDescriptions}\n\nCheck the specific source websites listed in your instructions plus any other local event sources you can find. Return 10-15 events as a JSON array with: name, date (YYYY-MM-DD), startTime (HH:MM), endTime (HH:MM), location, description, hostedBy, contact (name, email, phone), attendance estimate, cost, source (name of source), and url (source URL where the event was found).${
+        cseHits.length > 0
+          ? `\n\nGROUNDING — the following pages were returned by a real Google search restricted to our whitelisted local-event domains. PREFER these as your sources of truth; only use the URL/title/snippet evidence below to extract event details, and do not invent events that are not supported by these hits or by additional verifiable sources:\n${cseHits
+              .map((h, i) => `${i + 1}. [${h.source}] ${h.title}\n   ${h.url}\n   ${h.snippet}`)
+              .join('\n')}`
+          : ''
+      }`,
     })
 
     const chatResult = await agentChat({
@@ -246,7 +265,8 @@ Return real, verifiable upcoming events with accurate dates. Include the source 
       status: proposalsCreated > 0 ? 'success' : 'partial',
       proposalsCreated,
       proposalsAutoApproved,
-      tokensUsed,
+      tokseGroundingHits: cseHits.length,
+        censUsed,
       costUsd,
       summary: `Discovered ${proposalsCreated} new event(s), auto-approved ${proposalsAutoApproved}. Searched in ${location} for pet and animal-related events.`,
       metadata: {

@@ -17,6 +17,14 @@
           Export
         </v-btn>
         <v-btn
+          color="secondary"
+          variant="tonal"
+          prepend-icon="mdi-robot-outline"
+          to="/recruiting/find-dvm-candidates"
+        >
+          Find DVM Candidates (AI)
+        </v-btn>
+        <v-btn
           color="primary"
           prepend-icon="mdi-plus"
           @click="showAddDialog = true"
