@@ -146,7 +146,7 @@ export default defineEventHandler(async (event) => {
   const providerErrors: string[] = []
 
   // ── Stage 1: run all DIRECT data providers in parallel ──
-  const [apolloRes, npiRes, tavilyRes, googleRes] = await Promise.all([
+  const [apolloRes, npiRes, tavilyRes, googleRes, directoryRes] = await Promise.all([
     hasApollo
       ? searchApolloDvms(input).catch(err => {
           providerErrors.push(`apollo: ${(err as Error).message}`)
@@ -175,10 +175,15 @@ export default defineEventHandler(async (event) => {
           return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
         })
       : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
+    searchSpecialtyDirectories(input).catch(err => {
+      providerErrors.push(`specialty_directories: ${(err as Error).message}`)
+      logger.error('Specialty directory scrape failed', err as Error, 'find-dvm-candidates')
+      return [] as DvmProspect[]
+    }),
   ])
 
   logger.info(
-    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length}`,
+    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length} directories=${directoryRes.length}`,
     'find-dvm-candidates',
   )
 
@@ -239,6 +244,7 @@ export default defineEventHandler(async (event) => {
     ...npiRes,
     ...tavilyRes.prospects,
     ...googleRes.prospects,
+    ...directoryRes,
   ]
 
   for (const r of settled) {
@@ -707,6 +713,189 @@ function buildGroundingBlock(snippets: WebSnippet[]): string {
   return `WEB GROUNDING — real, freshly-retrieved sources you may cite for prospects.\nUse these URLs as source_url when extracting candidate names from these pages.\n\n${lines}`
 }
 
+/**
+ * Veterinary specialty diplomate directories.
+ *
+ * Each entry maps a specialty keyword (matched against the user's
+ * specialty/keywords input) to the public "find a specialist" pages
+ * maintained by the relevant American Veterinary Specialty College.
+ * These pages list every board-certified diplomate in the US.
+ *
+ * We use these to:
+ *   1. Add `site:<domain>` queries to Tavily / Google CSE so the
+ *      LLMs and snippet parser surface real specialists from these
+ *      directories.
+ *   2. Try a direct HTTP fetch of the directory page and parse names
+ *      out of the HTML (lightweight, no headless browser).
+ */
+interface SpecialtyDirectory {
+  /** Specialty terms that should activate this directory (lowercase, partial match). */
+  match: string[]
+  college: string
+  abbreviation: string
+  credential: string
+  /** Public "find a specialist" URLs (often multiple — directory + search form). */
+  urls: string[]
+  /** Domains to feed into siteSearch / Tavily include_domains. */
+  domains: string[]
+}
+
+const SPECIALTY_DIRECTORIES: SpecialtyDirectory[] = [
+  {
+    match: ['surgery', 'surgeon'],
+    college: 'American College of Veterinary Surgeons',
+    abbreviation: 'ACVS',
+    credential: 'DACVS',
+    urls: [
+      'https://www.acvs.org/find-surgeon/',
+      'https://online.acvs.org/acvsssa/rflssareferral.query_page?P_VENDOR_TY=VETS',
+    ],
+    domains: ['acvs.org', 'online.acvs.org'],
+  },
+  {
+    match: ['internal medicine', 'internist', 'cardiology', 'oncology', 'neurology', 'sa-im', 'la-im'],
+    college: 'American College of Veterinary Internal Medicine',
+    abbreviation: 'ACVIM',
+    credential: 'DACVIM',
+    urls: ['https://find.acvim.org/'],
+    domains: ['acvim.org', 'find.acvim.org'],
+  },
+  {
+    match: ['ophthalmology', 'ophthalmologist', 'eye'],
+    college: 'American College of Veterinary Ophthalmologists',
+    abbreviation: 'ACVO',
+    credential: 'DACVO',
+    urls: ['https://www.acvo.org/find-a-veterinary-ophthalmologist'],
+    domains: ['acvo.org'],
+  },
+  {
+    match: ['dermatology', 'dermatologist', 'derm', 'skin'],
+    college: 'American College of Veterinary Dermatology',
+    abbreviation: 'ACVD',
+    credential: 'DACVD',
+    urls: ['https://www.acvd.org/page/diplomatedirectory'],
+    domains: ['acvd.org'],
+  },
+  {
+    match: ['emergency', 'criticalist', 'critical care', 'ecc', 'urgent care'],
+    college: 'American College of Veterinary Emergency & Critical Care',
+    abbreviation: 'ACVECC',
+    credential: 'DACVECC',
+    urls: ['https://acvecc.org/find-a-criticalist/'],
+    domains: ['acvecc.org'],
+  },
+  {
+    match: ['anesthesia', 'anesthesiology', 'anesthesiologist'],
+    college: 'American College of Veterinary Anesthesia and Analgesia',
+    abbreviation: 'ACVAA',
+    credential: 'DACVAA',
+    urls: ['https://acvaa.org/find-a-diplomate/'],
+    domains: ['acvaa.org'],
+  },
+  {
+    match: ['dentistry', 'dental', 'dentist'],
+    college: 'American Veterinary Dental College',
+    abbreviation: 'AVDC',
+    credential: 'DAVDC',
+    urls: ['https://avdc.org/find-a-veterinary-dentist/'],
+    domains: ['avdc.org'],
+  },
+  {
+    match: ['behavior', 'behaviorist'],
+    college: 'American College of Veterinary Behaviorists',
+    abbreviation: 'ACVB',
+    credential: 'DACVB',
+    urls: ['https://www.dacvb.org/search/custom.asp?id=4709'],
+    domains: ['dacvb.org', 'acvb.org'],
+  },
+  {
+    match: ['radiology', 'radiologist', 'imaging', 'ultrasound', 'mri'],
+    college: 'American College of Veterinary Radiology',
+    abbreviation: 'ACVR',
+    credential: 'DACVR',
+    urls: ['https://acvr.org/page/diplomate-directory'],
+    domains: ['acvr.org'],
+  },
+  {
+    match: ['pathology', 'pathologist'],
+    college: 'American College of Veterinary Pathologists',
+    abbreviation: 'ACVP',
+    credential: 'DACVP',
+    urls: ['https://www.acvp.org/page/Members'],
+    domains: ['acvp.org'],
+  },
+  {
+    match: ['theriogenology', 'reproduction', 'reproductive'],
+    college: 'American College of Theriogenologists',
+    abbreviation: 'ACT',
+    credential: 'DACT',
+    urls: ['https://theriogenology.org/page/DiplomateDirectory'],
+    domains: ['theriogenology.org'],
+  },
+  {
+    match: ['nutrition', 'nutritionist'],
+    college: 'American College of Veterinary Nutrition',
+    abbreviation: 'ACVN',
+    credential: 'DACVN',
+    urls: ['https://www.acvn.org/directory/'],
+    domains: ['acvn.org'],
+  },
+  {
+    match: ['preventive medicine', 'public health', 'epidemiology'],
+    college: 'American College of Veterinary Preventive Medicine',
+    abbreviation: 'ACVPM',
+    credential: 'DACVPM',
+    urls: ['https://acvpm.org/Diplomate-Directory'],
+    domains: ['acvpm.org'],
+  },
+  {
+    match: ['sports medicine', 'rehabilitation', 'rehab', 'physical therapy'],
+    college: 'American College of Veterinary Sports Medicine and Rehabilitation',
+    abbreviation: 'ACVSMR',
+    credential: 'DACVSMR',
+    urls: ['https://vsmr.org/find-a-specialist/'],
+    domains: ['vsmr.org'],
+  },
+  {
+    match: ['zoo', 'zoological', 'wildlife', 'exotic', 'avian'],
+    college: 'American College of Zoological Medicine',
+    abbreviation: 'ACZM',
+    credential: 'DACZM',
+    urls: ['https://www.aczm.org/diplomates'],
+    domains: ['aczm.org'],
+  },
+  {
+    match: ['microbiology', 'microbiologist'],
+    college: 'American College of Veterinary Microbiologists',
+    abbreviation: 'ACVM',
+    credential: 'DACVM',
+    urls: ['https://www.acvm.us/diplomates'],
+    domains: ['acvm.us'],
+  },
+  {
+    match: ['toxicology', 'toxicologist'],
+    college: 'American Board of Veterinary Toxicology',
+    abbreviation: 'ABVT',
+    credential: 'DABVT',
+    urls: ['https://www.abvt.org/diplomates/'],
+    domains: ['abvt.org'],
+  },
+  {
+    match: ['poultry', 'avian medicine'],
+    college: 'American College of Poultry Veterinarians',
+    abbreviation: 'ACPV',
+    credential: 'DACPV',
+    urls: ['https://acpv.info/Find-a-Diplomate'],
+    domains: ['acpv.info'],
+  },
+]
+
+function findSpecialtyDirectories(input: Required<SearchInput>): SpecialtyDirectory[] {
+  const haystack = [input.specialty, ...input.keywords].join(' ').toLowerCase()
+  if (!haystack.trim()) return []
+  return SPECIALTY_DIRECTORIES.filter(d => d.match.some(m => haystack.includes(m)))
+}
+
 function buildSearchQueries(input: Required<SearchInput>): string[] {
   const role = input.specialty || 'veterinarian'
   const loc = input.location || ''
@@ -716,11 +905,20 @@ function buildSearchQueries(input: Required<SearchInput>): string[] {
     `${role} veterinarian ${loc} "Meet the Doctors"`,
     `DVM ${loc} jobs.avma.org OR careers.aaha.org OR jobs.acvs.org OR jobs.acvim.org`,
   ]
+
+  // Add a dedicated query per matching specialty directory.
+  const dirs = findSpecialtyDirectories(input)
+  for (const d of dirs) {
+    const sites = d.domains.map(dom => `site:${dom}`).join(' OR ')
+    queries.push(`${role} ${loc} ${sites}`)
+    queries.push(`${d.credential} diplomate ${loc} ${sites}`)
+  }
+
   if (input.activeOnly) {
     queries.push(`"open to work" OR "actively seeking" DVM ${loc}`)
     queries.push(`veterinarian ${loc} ihireveterinary.com OR vetcandy.com`)
   }
-  return queries.slice(0, input.activeOnly ? 6 : 4)
+  return queries.slice(0, 12)
 }
 
 function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
@@ -893,4 +1091,105 @@ async function searchNpiDvms(input: Required<SearchInput>): Promise<DvmProspect[
     limit: Math.min(Math.max(input.maxResults, 10), 50),
   })
   return results.map(npiResultToProspect).filter((p): p is DvmProspect => p !== null)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Direct specialty-directory scraping
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// We attempt a lightweight GET on each matching specialty directory and
+// extract names with a regex. This deliberately avoids a headless-browser
+// dependency. Some directory pages render their listings via JavaScript
+// and will yield zero hits — that's fine, the Tavily/Google CSE site:
+// queries handle those.
+
+function extractNamesFromHtml(html: string): Array<{ first: string; last: string; credentials?: string }> {
+  if (!html) return []
+  // Strip scripts/styles to reduce noise.
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+
+  // "First Last, DVM, DACVS" — capture First, Last, optional credentials cluster
+  const re = /\b([A-Z][a-z]{1,20})\s+([A-Z][a-z'’\-]{1,30})\s*,?\s*(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR|DACVB|DACVP|DACT|DACVN|DACVPM|DACVSMR|DACZM|DACVM|DABVT|DACPV|MS|PhD)\b/g
+  const out: Array<{ first: string; last: string; credentials?: string }> = []
+  const seen = new Set<string>()
+  let m: RegExpExecArray | null
+  while ((m = re.exec(cleaned)) !== null) {
+    const first = m[1]!
+    const last = m[2]!
+    const cred = m[3]!.toUpperCase()
+    const key = `${first.toLowerCase()}|${last.toLowerCase()}`
+    if (seen.has(key)) continue
+    // Filter out obvious non-names (Find Surgeon, About Us, etc.)
+    if (/^(Find|About|Contact|Search|Home|Member|Login|Welcome|Skip|Click|View|Read|Learn|Privacy|Terms|All|Resources|Accessibility)$/i.test(first)) continue
+    if (/^(Surgeon|Surgery|Specialist|Veterinarian|Diplomate|Directory|Member|Diplomates|Privacy|Policy|College|Hospital|Education)$/i.test(last)) continue
+    seen.add(key)
+    out.push({ first, last, credentials: cred })
+    if (out.length >= 80) break
+  }
+  return out
+}
+
+async function fetchDirectoryHtml(url: string): Promise<string | null> {
+  try {
+    return await $fetch<string>(url, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; GreenDogVetRecruiter/1.0; +https://www.employeegmgreendog.com)',
+        accept: 'text/html,application/xhtml+xml',
+      },
+      timeout: 8000,
+      // @ts-expect-error nitro $fetch supports `responseType` in runtime
+      responseType: 'text',
+    })
+  } catch {
+    return null
+  }
+}
+
+async function searchSpecialtyDirectories(input: Required<SearchInput>): Promise<DvmProspect[]> {
+  const dirs = findSpecialtyDirectories(input)
+  if (!dirs.length) return []
+
+  // Fetch every URL across all matching directories in parallel.
+  const flatUrls: Array<{ dir: SpecialtyDirectory; url: string }> = []
+  for (const d of dirs) {
+    for (const u of d.urls) flatUrls.push({ dir: d, url: u })
+  }
+
+  const fetched = await Promise.all(flatUrls.map(async ({ dir, url }) => {
+    const html = await fetchDirectoryHtml(url)
+    if (!html) return [] as DvmProspect[]
+    const names = extractNamesFromHtml(html)
+    return names.map<DvmProspect>(n => ({
+      first_name: n.first,
+      last_name: n.last,
+      credentials: n.credentials || dir.credential,
+      specialty: dir.college,
+      current_employer: null,
+      city: null,
+      state: null,
+      email: null,
+      phone: null,
+      linkedin_url: null,
+      website_url: url,
+      source_name: `${dir.abbreviation} diplomate directory`,
+      source_url: url,
+      experience_years: null,
+      vet_school: null,
+      graduation_year: null,
+      residency: null,
+      actively_seeking: false,
+      notes: null,
+      match_score: 80,
+      provider: 'google_cse', // grouped under web sources
+    }))
+  }))
+
+  return fetched.flat()
 }
