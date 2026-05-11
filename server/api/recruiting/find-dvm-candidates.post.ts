@@ -17,8 +17,7 @@
  */
 
 import { serverSupabaseClient, serverSupabaseUser } from '#supabase/server'
-import { agentChat } from '../../utils/agents/openai'
-import { geminiGenerate } from '../../utils/gemini'
+import { runLlmChainsInParallel } from '../../utils/llm-fallback'
 import { logger } from '../../utils/logger'
 import { nominatimGeocode, distanceMiles } from '../../utils/nominatim'
 import { verifyDvmInNpi, searchNpiProviders, type NpiResult } from '../../utils/npi-registry'
@@ -222,54 +221,27 @@ export default defineEventHandler(async (event) => {
   const virmpBlock = buildVirmpGroundingBlock(input.specialty, input.keywords)
   const combinedGrounding = [groundingBlock, virmpBlock].filter(Boolean).join('\n\n')
 
-  // ── Stage 2: run LLM providers in parallel, with web grounding ──
-  const llmPromises: Promise<{ provider: 'openai' | 'gemini'; raw: string } | null>[] = []
-
-  if (hasOpenAI) {
-    llmPromises.push(
-      (async () => {
-        try {
-          const result = await agentChat({
-            agentId: 'dvm-candidate-scout',
-            runId: `dvm-scout-${Date.now()}`,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: `${userPrompt}\n\n${combinedGrounding}` },
-            ],
-            model: 'reasoning',
-            maxTokens: 4000,
-            temperature: 0.4,
-            responseFormat: 'json',
-          })
-          return { provider: 'openai' as const, raw: result.content }
-        } catch (err) {
-          logger.error('OpenAI DVM scout failed', err as Error, 'find-dvm-candidates')
-          providerErrors.push(`openai: ${(err as Error).message}`)
-          return null
-        }
-      })(),
-    )
+  // ── Stage 2: run LLM provider chains in parallel, with web grounding.
+  //    Each chain (OpenAI / Gemini) walks through its own list of model
+  //    variants — when one variant 429s / 503s / hits a daily quota, the
+  //    chain automatically falls through to the next model. This keeps
+  //    the scout working even after we exhaust the free Gemini tier or
+  //    the OpenAI rate limit on `gpt-4o`. See server/utils/llm-fallback.ts.
+  const llmRun = await runLlmChainsInParallel(
+    {
+      systemPrompt,
+      userPrompt,
+      grounding: combinedGrounding,
+      temperature: 0.4,
+      maxTokens: 4000,
+    },
+    { hasOpenAI, hasGemini },
+  )
+  for (const a of llmRun.attempts) {
+    if (!a.ok && a.error) providerErrors.push(`${a.provider}/${a.model}: ${a.error}`)
   }
+  const settled = llmRun.results.map(r => ({ provider: r.provider, raw: r.raw }))
 
-  if (hasGemini) {
-    llmPromises.push(
-      (async () => {
-        try {
-          const raw = await geminiGenerate(
-            `${systemPrompt}\n\n${userPrompt}\n\n${combinedGrounding}\n\nReturn ONLY valid JSON in the exact schema requested.`,
-            { temperature: 0.4, maxTokens: 4000 },
-          )
-          return { provider: 'gemini' as const, raw }
-        } catch (err) {
-          logger.error('Gemini DVM scout failed', err as Error, 'find-dvm-candidates')
-          providerErrors.push(`gemini: ${(err as Error).message}`)
-          return null
-        }
-      })(),
-    )
-  }
-
-  const settled = await Promise.all(llmPromises)
   const allProspects: DvmProspect[] = [
     ...apolloRes,
     ...npiRes,
