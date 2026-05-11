@@ -284,9 +284,14 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Snapshot field-fill state before vs. after deep enrichment so we
+  // can report exactly how many empty cells the enrichment passes
+  // managed to fill in. Surfaced as `enrichment_stats` on the response.
+  const before = snapshotFillState(sorted)
+
   // ── Discover LinkedIn URLs for prospects that came from sources
   //    without one (ACVS Diplomate Directory, AVMA, hospital staff
-  //    pages, etc.). Uses Google CSE first, Tavily as fallback. ──
+  //    pages, etc.). Tavily-first (open web), Google CSE fallback. ──
   if (hasGoogleCse || hasTavily) {
     await discoverLinkedInUrls(sorted, { hasGoogleCse, hasTavily }).catch(err => {
       providerErrors.push(`linkedin_discover: ${(err as Error).message}`)
@@ -414,10 +419,43 @@ export default defineEventHandler(async (event) => {
       google_cse: okGoogleCse,
       acvs: !erroredProviders.has('acvs'),
     },
+    enrichment_stats: diffFillState(before, snapshotFillState(sorted), sorted.length),
     warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse }, providerErrors, droppedOutsideRadius),
     criteria: input,
   }
 })
+
+// Field-fill diagnostic — count how many prospects had each field
+// populated before and after the enrichment passes.
+interface FillState {
+  linkedin_url: number
+  current_employer: number
+  vet_school: number
+  graduation_year: number
+  experience_years: number
+  email: number
+  phone: number
+}
+function snapshotFillState(list: DvmProspect[]): FillState {
+  const s: FillState = { linkedin_url: 0, current_employer: 0, vet_school: 0, graduation_year: 0, experience_years: 0, email: 0, phone: 0 }
+  for (const p of list) {
+    if (p.linkedin_url) s.linkedin_url++
+    if (p.current_employer) s.current_employer++
+    if (p.vet_school) s.vet_school++
+    if (p.graduation_year) s.graduation_year++
+    if (p.experience_years != null) s.experience_years++
+    if (p.email && !isMaskedEmail(p.email)) s.email++
+    if (p.phone) s.phone++
+  }
+  return s
+}
+function diffFillState(before: FillState, after: FillState, total: number): Record<string, { before: number; after: number; gained: number; of: number }> {
+  const out: Record<string, { before: number; after: number; gained: number; of: number }> = {}
+  for (const k of Object.keys(before) as (keyof FillState)[]) {
+    out[k] = { before: before[k], after: after[k], gained: after[k] - before[k], of: total }
+  }
+  return out
+}
 
 function buildSystemPrompt(input: Required<SearchInput>): string {
   return `You are a veterinary recruiting researcher for Green Dog Animal Hospital, a multi-location veterinary practice.
@@ -1523,30 +1561,34 @@ async function discoverLinkedInUrls(
 ): Promise<void> {
   const targets = list.filter(p => !p.linkedin_url && p.first_name && p.last_name)
   if (!targets.length) return
-  // Hard cap to avoid burning the Google CSE free 100/day quota in a
-  // single search request.
-  const MAX = 20
+  // Cap prospects per pass to stay inside free-tier quotas.
+  const MAX = 30
   const slice = targets.slice(0, MAX)
 
   const tasks = slice.map((p) => async () => {
     const stateBit = p.state ? ` "${p.state}"` : ''
+    const cityBit = p.city ? ` "${p.city}"` : ''
     const credBit = (p.credentials || '').includes('DACVS') ? ' DACVS' : ' DVM'
-    const query = `"${p.first_name} ${p.last_name}"${credBit}${stateBit} site:linkedin.com/in`
+    const query = `"${p.first_name} ${p.last_name}"${credBit}${stateBit}${cityBit} site:linkedin.com/in`
     try {
-      if (flags.hasGoogleCse) {
-        const res = await googleSearch(query, { num: 3 })
-        for (const item of res.items || []) {
-          const url = extractLinkedInUrlFromText(item.link || '') || extractLinkedInUrlFromText(item.snippet || '')
+      // Prefer Tavily first — it crawls the whole open web, so the
+      // `site:linkedin.com/in` operator always works.  Google CSE only
+      // matches sites configured in your Programmable Search Engine, so
+      // it can silently return zero hits if linkedin.com isn't listed.
+      if (flags.hasTavily) {
+        const t = await tavilySearch(query, { max_results: 5 })
+        for (const r of t.results || []) {
+          const url = extractLinkedInUrlFromText(r.url || '') || extractLinkedInUrlFromText(r.content || '')
           if (url) {
             p.linkedin_url = url
             return
           }
         }
       }
-      if (flags.hasTavily) {
-        const t = await tavilySearch(query, { max_results: 3 })
-        for (const r of t.results || []) {
-          const url = extractLinkedInUrlFromText(r.url || '') || extractLinkedInUrlFromText(r.content || '')
+      if (flags.hasGoogleCse) {
+        const res = await googleSearch(query, { num: 3 })
+        for (const item of res.items || []) {
+          const url = extractLinkedInUrlFromText(item.link || '') || extractLinkedInUrlFromText(item.snippet || '')
           if (url) {
             p.linkedin_url = url
             return
@@ -1561,7 +1603,7 @@ async function discoverLinkedInUrls(
     }
   })
 
-  const BATCH = 4
+  const BATCH = 5
   for (let i = 0; i < tasks.length; i += BATCH) {
     await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
   }
@@ -1619,7 +1661,7 @@ async function enrichFromHospitalPages(
 ): Promise<void> {
   const targets = list.filter(p => !p.current_employer && p.first_name && p.last_name)
   if (!targets.length) return
-  const MAX = 15
+  const MAX = 30
   const slice = targets.slice(0, MAX)
 
   const tasks = slice.map((p) => async () => {
@@ -1628,31 +1670,55 @@ async function enrichFromHospitalPages(
     const query = `"${p.first_name} ${p.last_name}"${credBit}${locBit}`
     try {
       let items: Array<{ url: string; title: string; snippet: string }> = []
-      if (flags.hasGoogleCse) {
-        const res = await googleSearch(query, { num: 5 })
-        items = (res.items || []).map(i => ({
-          url: i.link || '',
-          title: i.title || '',
-          snippet: i.snippet || '',
-        }))
-      } else if (flags.hasTavily) {
-        const t = await tavilySearch(query, { max_results: 5 })
+      // Tavily first — it crawls the open web, so it works regardless
+      // of which sites are configured in the Google CSE engine.
+      if (flags.hasTavily) {
+        const t = await tavilySearch(query, { max_results: 7 })
         items = (t.results || []).map(r => ({
           url: r.url || '',
           title: r.title || '',
           snippet: r.content || '',
         }))
       }
+      if (!items.length && flags.hasGoogleCse) {
+        const res = await googleSearch(query, { num: 7 })
+        items = (res.items || []).map(i => ({
+          url: i.link || '',
+          title: i.title || '',
+          snippet: i.snippet || '',
+        }))
+      }
 
+      const nameRe = new RegExp(`\\b${p.first_name}\\b[\\s\\S]{0,80}\\b${p.last_name}\\b|\\b${p.last_name}\\b[\\s\\S]{0,80}\\b${p.first_name}\\b`, 'i')
+
+      // Pass 1: strict — hospital-looking domain + name in title/snippet.
       for (const it of items) {
         const host = hostnameOf(it.url)
-        if (!isLikelyHospitalDomain(host)) continue
-        // Confirm the page actually mentions this person.
-        const nameRe = new RegExp(`\\b${p.first_name}\\b.*\\b${p.last_name}\\b|\\b${p.last_name}\\b.*\\b${p.first_name}\\b`, 'i')
+        if (NON_HOSPITAL_DOMAINS.has(host)) continue
         if (!nameRe.test(it.title) && !nameRe.test(it.snippet)) continue
+        if (!isLikelyHospitalDomain(host)) continue
 
         const hospital = extractHospitalNameFromTitle(it.title)
-          || host.replace(/\.(com|net|org|vet|us|co)$/i, '').replace(/[-.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          || prettifyHostname(host)
+        if (hospital) {
+          p.current_employer = hospital
+          p.website_url ||= it.url
+          return
+        }
+      }
+
+      // Pass 2: looser — any non-social domain whose title OR snippet
+      // mentions the name and a vet keyword. Often catches small clinic
+      // pages on generic domains like example.com that nonetheless are
+      // the surgeon's actual practice site.
+      for (const it of items) {
+        const host = hostnameOf(it.url)
+        if (NON_HOSPITAL_DOMAINS.has(host)) continue
+        if (!nameRe.test(it.title) && !nameRe.test(it.snippet)) continue
+        const text = `${it.title} ${it.snippet}`
+        if (!/vet|animal|hospital|clinic|surgery|specialty|surgeon|practice/i.test(text)) continue
+
+        const hospital = extractHospitalNameFromTitle(it.title) || prettifyHostname(host)
         if (hospital) {
           p.current_employer = hospital
           p.website_url ||= it.url
@@ -1667,10 +1733,18 @@ async function enrichFromHospitalPages(
     }
   })
 
-  const BATCH = 3
+  const BATCH = 4
   for (let i = 0; i < tasks.length; i += BATCH) {
     await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
   }
+}
+
+function prettifyHostname(host: string): string {
+  return host
+    .replace(/\.(com|net|org|vet|us|co|io|app)$/i, '')
+    .replace(/[-.]/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .trim()
 }
 
 // ── Helpers for parsing fields out of LinkedIn raw text ─────────────
