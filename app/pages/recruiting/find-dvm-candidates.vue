@@ -359,6 +359,22 @@
             {{ item.match_score }}%
           </v-chip>
         </template>
+        <template #item.specialty_match="{ item }">
+          <v-tooltip v-if="item.specialty_match != null" text="How well this prospect's credentials and source match the requested specialty. Drives the result ordering.">
+            <template #activator="{ props: tp }">
+              <v-chip
+                v-bind="tp"
+                size="x-small"
+                :color="matchColor(item.specialty_match)"
+                variant="tonal"
+                :prepend-icon="item.specialty_match >= 70 ? 'mdi-medal' : undefined"
+              >
+                {{ item.specialty_match }}%
+              </v-chip>
+            </template>
+          </v-tooltip>
+          <span v-else class="text-caption text-grey">—</span>
+        </template>
         <template #item.source="{ item }">
           <a
             v-if="item.source_url"
@@ -579,6 +595,8 @@ interface ProspectRow {
   actively_seeking?: boolean
   notes?: string | null
   match_score?: number | null
+  /** Specialty-alignment score (0-100). Drives the primary result order. */
+  specialty_match?: number | null
   provider: string
   distance_miles?: number | null
   verification?: ProspectVerification | null
@@ -640,6 +658,7 @@ const gridHeaders = [
   { title: 'Distance', key: 'distance_miles', width: 90 },
   { title: 'Verified', key: 'verification', sortable: false, width: 130 },
   { title: 'Contact', key: 'contact', sortable: false, width: 200 },
+  { title: 'Specialty Fit', key: 'specialty_match', width: 110 },
   { title: 'Match', key: 'match_score', width: 90 },
   { title: 'Source', key: 'source', sortable: false, width: 120 },
   { title: '', key: 'actions', sortable: false, width: 130 },
@@ -687,6 +706,9 @@ function providerIcon(provider: string) {
   if (provider === 'openai') return 'mdi-creation'
   if (provider === 'gemini') return 'mdi-google'
   if (provider === 'merged') return 'mdi-source-merge'
+  if (provider === 'acvs') return 'mdi-medal-outline'
+  if (provider === 'apollo') return 'mdi-account-search'
+  if (provider === 'npi') return 'mdi-card-account-details-outline'
   return 'mdi-robot-outline'
 }
 
@@ -698,6 +720,7 @@ function providerLabel(key: string): string {
     google_cse: 'Google CSE',
     openai: 'OpenAI',
     gemini: 'Gemini',
+    acvs: 'ACVS Directory',
   }
   return labels[key] || key
 }

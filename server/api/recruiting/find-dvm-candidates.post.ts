@@ -30,6 +30,17 @@ import {
 import { apolloPeopleSearch, apolloPeopleEnrich, type ApolloPerson } from '../../utils/apollo'
 import { tavilySearch, tavilyExtract } from '../../utils/tavily'
 import { googleSearch } from '../../utils/googleSearch'
+import {
+  searchAcvsDirectory,
+  ACVS_DIRECTORY_URL,
+  type AcvsSurgeon,
+  type AcvsSpeciesCode,
+} from '../../utils/acvs-directory'
+import {
+  matchVirmpCategories,
+  isVirmpFeederSchool,
+  buildVirmpGroundingBlock,
+} from '../../utils/virmp-match'
 
 // Credentials we recognize when scanning titles / LinkedIn content.
 const VET_CREDENTIAL_RE = /\b(DVM|VMD|DACVS|DACVIM|DACVO|DACVD|DACVECC|DACVAA|DAVDC|DACVR|DACVB|DACVN|DACVPM|DACVSMR|DACZM|DACVM|DABVT|DACPV|DACT|DACVP|MRCVS|BVSc|BVMS|MS|MPH|PhD)\b/gi
@@ -81,7 +92,11 @@ export interface DvmProspect {
   actively_seeking?: boolean
   notes?: string | null
   match_score?: number         // 0-100, AI confidence in fit
-  provider: 'openai' | 'gemini' | 'apollo' | 'npi' | 'tavily' | 'google_cse' | 'merged'
+  /** Specialty-alignment score (0-100). Higher = better fit for the
+   *  requested specialty. Used as the primary sort key so DACVS results
+   *  show up first when the user searches for "Surgeon", etc. */
+  specialty_match?: number
+  provider: 'openai' | 'gemini' | 'apollo' | 'npi' | 'tavily' | 'google_cse' | 'acvs' | 'merged'
   /** Distance from the search center in miles (populated when enforceRadius=true). */
   distance_miles?: number | null
   /** Free public-source verification (populated when verify=true). */
@@ -154,7 +169,7 @@ export default defineEventHandler(async (event) => {
   const providerErrors: string[] = []
 
   // ── Stage 1: run all DIRECT data providers in parallel ──
-  const [apolloRes, npiRes, tavilyRes, googleRes, directoryRes] = await Promise.all([
+  const [apolloRes, npiRes, tavilyRes, googleRes, directoryRes, acvsRes] = await Promise.all([
     hasApollo
       ? searchApolloDvms(input).catch(err => {
           providerErrors.push(`apollo: ${(err as Error).message}`)
@@ -188,16 +203,23 @@ export default defineEventHandler(async (event) => {
       logger.error('Specialty directory scrape failed', err as Error, 'find-dvm-candidates')
       return [] as DvmProspect[]
     }),
+    searchAcvsDirectoryForInput(input).catch(err => {
+      providerErrors.push(`acvs: ${(err as Error).message}`)
+      logger.error('ACVS directory scrape failed', err as Error, 'find-dvm-candidates')
+      return [] as DvmProspect[]
+    }),
   ])
 
   logger.info(
-    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length} directories=${directoryRes.length}`,
+    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length} directories=${directoryRes.length} acvs=${acvsRes.length}`,
     'find-dvm-candidates',
   )
 
   // Combine web snippets so LLMs have grounding context
   const webSnippets = [...tavilyRes.snippets, ...googleRes.snippets].slice(0, 30)
   const groundingBlock = buildGroundingBlock(webSnippets)
+  const virmpBlock = buildVirmpGroundingBlock(input.specialty, input.keywords)
+  const combinedGrounding = [groundingBlock, virmpBlock].filter(Boolean).join('\n\n')
 
   // ── Stage 2: run LLM providers in parallel, with web grounding ──
   const llmPromises: Promise<{ provider: 'openai' | 'gemini'; raw: string } | null>[] = []
@@ -211,7 +233,7 @@ export default defineEventHandler(async (event) => {
             runId: `dvm-scout-${Date.now()}`,
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: `${userPrompt}\n\n${groundingBlock}` },
+              { role: 'user', content: `${userPrompt}\n\n${combinedGrounding}` },
             ],
             model: 'reasoning',
             maxTokens: 4000,
@@ -233,7 +255,7 @@ export default defineEventHandler(async (event) => {
       (async () => {
         try {
           const raw = await geminiGenerate(
-            `${systemPrompt}\n\n${userPrompt}\n\n${groundingBlock}\n\nReturn ONLY valid JSON in the exact schema requested.`,
+            `${systemPrompt}\n\n${userPrompt}\n\n${combinedGrounding}\n\nReturn ONLY valid JSON in the exact schema requested.`,
             { temperature: 0.4, maxTokens: 4000 },
           )
           return { provider: 'gemini' as const, raw }
@@ -253,6 +275,7 @@ export default defineEventHandler(async (event) => {
     ...tavilyRes.prospects,
     ...googleRes.prospects,
     ...directoryRes,
+    ...acvsRes,
   ]
 
   for (const r of settled) {
@@ -263,8 +286,21 @@ export default defineEventHandler(async (event) => {
 
   // Deduplicate by name + employer + city
   const merged = mergeProspects(allProspects)
+
+  // Specialty-aware scoring: every prospect gets a `specialty_match`
+  // score (0-100) describing how well its credentials/specialty/source
+  // align with the requested specialty. We sort primarily by this score,
+  // then by the provider-supplied match_score as a tiebreaker. This is
+  // why searching for "Surgeon" now puts DACVS specialists first.
+  for (const p of merged) {
+    p.specialty_match = computeSpecialtyMatch(p, input)
+  }
   let sorted = merged
-    .sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
+    .sort((a, b) => {
+      const sm = (b.specialty_match ?? 0) - (a.specialty_match ?? 0)
+      if (sm !== 0) return sm
+      return (b.match_score ?? 0) - (a.match_score ?? 0)
+    })
     .slice(0, input.maxResults)
 
   // ── Contact enrichment: unlock email/phone via Apollo people/match ──
@@ -382,6 +418,7 @@ export default defineEventHandler(async (event) => {
       npi: hasNpi,
       tavily: okTavily,
       google_cse: okGoogleCse,
+      acvs: !erroredProviders.has('acvs'),
     },
     warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse }, providerErrors, droppedOutsideRadius),
     criteria: input,
@@ -555,6 +592,7 @@ function summarizeProviderError(raw: string): string {
     tavily: 'Tavily',
     google_cse: 'Google CSE',
     npi: 'NPI Registry',
+    acvs: 'ACVS Directory',
   }
   const label = labels[provider] || provider
 
@@ -1002,19 +1040,66 @@ function buildSearchQueries(input: Required<SearchInput>): string[] {
   return queries.slice(0, 20)
 }
 
-function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
-  // Try to extract "First Last, DVM" or "Dr. First Last" from the title
-  const title = s.title || ''
-  const cleaned = title.replace(/\s*[-|–].*$/, '').replace(/^Dr\.?\s+/i, '').trim()
-  const credMatch = cleaned.match(/\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC)\b/i)
-  const credentials = credMatch ? credMatch[1].toUpperCase() : null
-  const stripped = cleaned.replace(/,?\s*\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC)\b/gi, '').trim()
+// Common page-title noise that the snippet→prospect extractor must reject
+// so we don't end up with "John Search" / "Find Surgeon" style false hits.
+const SNIPPET_NOISE_RE = /\b(search|find|results?|directory|diplomate|surgeon|specialist|home|page|welcome|login|privacy|terms|contact|about|menu|college|hospital|clinic|service|sitemap|index)\b/i
 
-  // Need at least "First Last"
-  const parts = stripped.split(/\s+/).filter(p => /^[A-Z][a-zA-Z'’\-]+$/.test(p))
+/** Detect a US state abbreviation or full state name in free text. */
+function extractStateFromText(text: string): { state: string | null; city: string | null } {
+  if (!text) return { state: null, city: null }
+  // "City, ST 12345" or "City, ST"
+  const m = text.match(/([A-Z][A-Za-z .'\-]+?),\s*([A-Z]{2})(?:\s+\d{5})?\b/)
+  if (m) return { city: m[1]!.trim(), state: m[2]! }
+  for (const [name, abbr] of Object.entries(US_STATE_ABBR)) {
+    if (text.toLowerCase().includes(name)) return { city: null, state: abbr }
+  }
+  return { state: null, city: null }
+}
+
+function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
+  const title = (s.title || '').replace(/\s+/g, ' ').trim()
+  // Strip site-name suffixes / publisher tails.
+  const cleaned = title
+    .replace(/\s*[-|–—].*$/, '')
+    .replace(/^Dr\.?\s+/i, '')
+    .replace(/^Profile of\s+/i, '')
+    .replace(/^Meet\s+/i, '')
+    .trim()
+  if (!cleaned) return null
+
+  const credMatches = cleaned.match(/\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC|MS|PhD)\b/gi)
+  const credentials = credMatches
+    ? Array.from(new Set(credMatches.map(c => c.toUpperCase()))).slice(0, 4).join(', ')
+    : null
+  const stripped = cleaned
+    .replace(/,?\s*\b(DVM|VMD|DABVP|DABVT|DACAW|DACLAM|DACPV|DACT|DACVAA|DACVB|DACVCP|DACVD|DACVECC|DACVIM|DACVM|DACVN|DACVO|DACVP|DACVPM|DACVR|DACVS|DACVSMR|DACZM|DAVDC|MS|PhD)\b/gi, '')
+    .replace(/\s*\([^)]*\)\s*/g, ' ') // drop parentheticals like "(SA)"
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  const parts = stripped.split(/\s+/).filter(p => /^[A-Z][a-zA-Z'’\-]+\.?$/.test(p))
   if (parts.length < 2) return null
-  const first = parts[0]!
-  const last = parts[parts.length - 1]!
+
+  // Reject obvious page-title noise where the "name" is actually a keyword.
+  if (SNIPPET_NOISE_RE.test(parts[0]!) || SNIPPET_NOISE_RE.test(parts[parts.length - 1]!)) {
+    return null
+  }
+  // Names should not be ALL CAPS chunks (often nav-bar labels).
+  const first = parts[0]!.replace(/\.$/, '')
+  const last = parts[parts.length - 1]!.replace(/\.$/, '')
+  if (first.length < 2 || last.length < 2) return null
+
+  const haystack = `${title} ${s.snippet || ''}`
+  const { city, state } = extractStateFromText(haystack)
+  // Try to harvest an email or phone if it's already in the snippet.
+  const emailMatch = haystack.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+  const phoneMatch = haystack.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)
+
+  // Stronger source labelling so users know which engine surfaced the hit.
+  const host = (() => { try { return new URL(s.url).hostname.replace(/^www\./, '') } catch { return '' } })()
+  const sourceName = host
+    ? `${provider === 'tavily' ? 'Tavily' : 'Google CSE'} · ${host}`
+    : (provider === 'tavily' ? 'Tavily web search' : 'Google Custom Search')
 
   return {
     first_name: first,
@@ -1022,13 +1107,13 @@ function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): Dv
     credentials,
     specialty: null,
     current_employer: null,
-    city: null,
-    state: null,
-    email: null,
-    phone: null,
+    city,
+    state,
+    email: emailMatch ? emailMatch[0] : null,
+    phone: phoneMatch ? phoneMatch[0] : null,
     linkedin_url: /linkedin\.com\/in\//i.test(s.url) ? s.url : null,
     website_url: s.url,
-    source_name: provider === 'tavily' ? 'Tavily web search' : 'Google Custom Search',
+    source_name: sourceName,
     source_url: s.url,
     experience_years: null,
     vet_school: null,
@@ -1391,3 +1476,254 @@ async function enrichFromLinkedIn(list: DvmProspect[]): Promise<void> {
   }
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACVS find-a-surgeon — official ACVS Diplomate Directory.
+// Returns the most authoritative roster of board-certified veterinary
+// surgeons in the U.S. / Canada. Only invoked when the requested
+// specialty or keywords actually imply surgery.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function specialtyImpliesSurgery(specialty: string, keywords: string[]): boolean {
+  const hay = [specialty, ...keywords].join(' ').toLowerCase()
+  return /\b(surgery|surgeon|dacvs)\b/.test(hay)
+}
+
+function inputToAcvsSpecies(input: Required<SearchInput>): AcvsSpeciesCode[] {
+  const hay = [input.specialty, ...input.keywords].join(' ').toLowerCase()
+  const species: AcvsSpeciesCode[] = []
+  if (/\b(equine|horse)\b/.test(hay)) species.push('EQ_PRACT')
+  if (/\b(food animal|cattle|dairy|swine|bovine|farm)\b/.test(hay)) {
+    species.push('FA_PRACT')
+    species.push('LA_PRACT')
+  }
+  if (/\b(large animal|la-im)\b/.test(hay)) species.push('LA_PRACT')
+  // Default to small animal when nothing more specific was said.
+  if (!species.length || /\b(small animal|sa|canine|feline|dog|cat|companion)\b/.test(hay)) {
+    species.push('SA_PRACT')
+  }
+  return Array.from(new Set(species))
+}
+
+function acvsSurgeonToProspect(s: AcvsSurgeon): DvmProspect {
+  // The match score is anchored at 90 because every ACVS-directory
+  // result is, by definition, a board-certified DACVS — the strongest
+  // possible signal for a surgeon search. Specialty-match scoring then
+  // boosts it further to keep these at the very top of the list.
+  const speciesStr = s.species.length ? ` (${s.species.join(', ')})` : ''
+  return {
+    first_name: s.first_name,
+    last_name: s.last_name,
+    credentials: s.credentials || 'DVM, DACVS',
+    specialty: `Veterinary Surgery — ACVS Diplomate${speciesStr}`,
+    current_employer: null,
+    city: s.city,
+    state: s.state,
+    email: s.email,
+    phone: s.phone,
+    linkedin_url: null,
+    website_url: s.profile_url,
+    source_name: 'ACVS Diplomate Directory',
+    source_url: s.profile_url || ACVS_DIRECTORY_URL,
+    experience_years: null,
+    vet_school: null,
+    graduation_year: null,
+    residency: null,
+    actively_seeking: false,
+    notes: s.address ? `ACVS-listed practice address: ${s.address}` : null,
+    match_score: 90,
+    provider: 'acvs',
+  }
+}
+
+async function searchAcvsDirectoryForInput(input: Required<SearchInput>): Promise<DvmProspect[]> {
+  if (!specialtyImpliesSurgery(input.specialty, input.keywords)) return []
+
+  const state = extractStateFromLocation(input.location)
+  const zipMatch = input.location.match(/\b(\d{5})\b/)
+  const species = inputToAcvsSpecies(input)
+
+  // ACVS's allowed distance buckets — snap user input to the nearest.
+  const distanceBuckets = [3, 5, 10, 25, 50, 100, 250, 500] as const
+  const snapped = distanceBuckets.reduce<typeof distanceBuckets[number]>((best, v) =>
+    Math.abs(v - input.radiusMiles) < Math.abs(best - input.radiusMiles) ? v : best,
+    distanceBuckets[0])
+
+  const surgeons = await searchAcvsDirectory({
+    state,
+    zip: zipMatch ? zipMatch[1] : undefined,
+    distanceMiles: zipMatch ? snapped : undefined,
+    species,
+    maxResults: Math.min(Math.max(input.maxResults * 2, 25), 200),
+  })
+
+  return surgeons.map(acvsSurgeonToProspect)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Specialty-aware scoring.
+//
+// We compute a 0-100 alignment score per prospect that captures how well
+// the prospect's credentials, declared specialty, and source align with
+// the user-requested specialty. This is used as the primary sort key so
+// — for example — searching for "Surgeon" puts DACVS specialists ahead
+// of generalist DVMs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SpecialtyTarget {
+  /** Credential strings (uppercase) that are strong evidence of this specialty. */
+  credentials: string[]
+  /** Substring keywords (lowercase) that we look for in `specialty` / `notes`. */
+  keywords: string[]
+  /** Sources that are by-definition correct for this specialty. */
+  sourceMatchRe?: RegExp
+}
+
+const SPECIALTY_TARGETS: Array<{ test: RegExp; target: SpecialtyTarget }> = [
+  {
+    test: /\b(surgery|surgeon)\b/i,
+    target: {
+      credentials: ['DACVS', 'DACVS-SA', 'DACVS-LA'],
+      keywords: ['surgery', 'surgeon', 'surgical'],
+      sourceMatchRe: /acvs|acvs diplomate/i,
+    },
+  },
+  {
+    test: /\b(internal medicine|internist)\b/i,
+    target: {
+      credentials: ['DACVIM'],
+      keywords: ['internal medicine', 'internist', 'sa-im', 'la-im'],
+      sourceMatchRe: /acvim/i,
+    },
+  },
+  {
+    test: /\b(emergency|criticalist|critical care|ecc)\b/i,
+    target: {
+      credentials: ['DACVECC'],
+      keywords: ['emergency', 'criticalist', 'critical care', 'ecc', 'er '],
+      sourceMatchRe: /acvecc/i,
+    },
+  },
+  {
+    test: /\b(cardio)/i,
+    target: { credentials: ['DACVIM'], keywords: ['cardiology', 'cardiologist'] },
+  },
+  {
+    test: /\b(onco)/i,
+    target: { credentials: ['DACVIM'], keywords: ['oncology', 'oncologist'] },
+  },
+  {
+    test: /\b(neuro)/i,
+    target: { credentials: ['DACVIM'], keywords: ['neurology', 'neurologist', 'neurosurgery'] },
+  },
+  {
+    test: /\b(derm)/i,
+    target: { credentials: ['DACVD'], keywords: ['dermatology', 'dermatologist'], sourceMatchRe: /acvd/i },
+  },
+  {
+    test: /\b(ophthal)/i,
+    target: { credentials: ['DACVO'], keywords: ['ophthalmology', 'ophthalmologist', 'eye'], sourceMatchRe: /acvo/i },
+  },
+  {
+    test: /\b(anesth)/i,
+    target: { credentials: ['DACVAA'], keywords: ['anesthesia', 'anesthesiology', 'anesthesiologist'], sourceMatchRe: /acvaa/i },
+  },
+  {
+    test: /\b(dent)/i,
+    target: { credentials: ['DAVDC'], keywords: ['dental', 'dentistry', 'dentist'], sourceMatchRe: /avdc/i },
+  },
+  {
+    test: /\b(radio|imaging|ultrasound|mri)\b/i,
+    target: { credentials: ['DACVR'], keywords: ['radiology', 'radiologist', 'imaging'], sourceMatchRe: /acvr/i },
+  },
+  {
+    test: /\b(behavior|behaviorist)\b/i,
+    target: { credentials: ['DACVB'], keywords: ['behavior', 'behaviorist'] },
+  },
+]
+
+/**
+ * Compute a 0-100 specialty-match score for the prospect given the
+ * requested search criteria. Larger = better alignment.
+ *
+ * Scoring breakdown (additive, capped at 100):
+ *   +45  credentials contain a target diplomate credential
+ *   +25  specialty / notes text contains a target keyword
+ *   +15  source comes from a specialty-college directory
+ *   +10  source is ACVS Diplomate Directory (only when surgery requested)
+ *   +5   declared specialty literally contains the requested term
+ *   +5   vet school is a VIRMP feeder (mild boost — residency-eligible)
+ *
+ * If the requested specialty is a non-specialist role (general practice,
+ * new graduate), credential-bearing specialists get a small penalty so
+ * they don't dominate the generalist results.
+ */
+function computeSpecialtyMatch(p: DvmProspect, input: Required<SearchInput>): number {
+  const requested = input.specialty || ''
+  const wantsGeneralist = /\b(general practice|gp|associate veterinarian|new graduate)\b/i.test(requested)
+
+  const blob = [
+    p.specialty || '',
+    p.notes || '',
+    p.credentials || '',
+    p.source_name || '',
+  ].join(' ').toLowerCase()
+  const creds = (p.credentials || '').toUpperCase()
+  const source = (p.source_name || '').toLowerCase()
+
+  const matchedTarget = SPECIALTY_TARGETS.find(t => t.test.test(requested))?.target
+
+  if (!matchedTarget) {
+    // No targeted specialty — fall back to provider match_score with mild
+    // boosts for credential-clarity and active-seeker signal.
+    let s = p.match_score ?? 50
+    if (/\bDVM\b|\bVMD\b/.test(creds)) s += 5
+    if (p.actively_seeking) s += 10
+    if (wantsGeneralist && /\bDAC|DAVDC|DABVP\b/.test(creds)) s -= 15
+    return clamp(s, 0, 100)
+  }
+
+  let score = 0
+
+  // Credential alignment is the strongest signal (boards never lie).
+  if (matchedTarget.credentials.some(c => creds.includes(c))) score += 45
+
+  // Keyword alignment in declared specialty / notes / source.
+  if (matchedTarget.keywords.some(k => blob.includes(k))) score += 25
+
+  // Source-of-truth alignment (e.g. ACVS directory → surgery search).
+  if (matchedTarget.sourceMatchRe && matchedTarget.sourceMatchRe.test(source)) score += 15
+  if (/\b(surgery|surgeon)\b/i.test(requested) && /acvs/.test(source)) score += 10
+
+  // Literal echo of the requested term in the declared specialty.
+  if (requested && (p.specialty || '').toLowerCase().includes(requested.toLowerCase())) score += 5
+
+  // VIRMP feeder school — small bump because their alumni are
+  // disproportionately residency-trained.
+  if (isVirmpFeederSchool(p.vet_school)) score += 5
+
+  // Active job-board hits get a nudge.
+  if (p.actively_seeking) score += 5
+
+  // Penalize obvious generalists when a specialty was requested.
+  if (creds && !creds.includes('DAC') && !creds.includes('DAVDC') && !creds.includes('DACVECC')) {
+    score -= 10
+  }
+
+  // VIRMP category awareness — if the prospect's specialty string matches
+  // a relevant VIRMP residency category, give a small boost. This helps
+  // surface residency-trained or residency-bound DVMs.
+  const virmpCats = matchVirmpCategories(requested, input.keywords)
+  if (virmpCats.length && p.specialty) {
+    const sp = p.specialty.toLowerCase()
+    if (virmpCats.some(c => sp.includes(c.category.toLowerCase().split(/[^a-z]+/)[0]!))) {
+      score += 5
+    }
+  }
+
+  return clamp(score, 0, 100)
+}
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n))
+}
