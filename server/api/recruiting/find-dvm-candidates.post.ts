@@ -40,6 +40,7 @@ import {
   matchVirmpCategories,
   isVirmpFeederSchool,
   buildVirmpGroundingBlock,
+  VIRMP_FEEDER_SCHOOLS,
 } from '../../utils/virmp-match'
 
 // Credentials we recognize when scanning titles / LinkedIn content.
@@ -311,12 +312,33 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // ── Discover LinkedIn URLs for prospects that came from sources
+  //    without one (ACVS Diplomate Directory, AVMA, hospital staff
+  //    pages, etc.). Uses Google CSE first, Tavily as fallback. ──
+  if (hasGoogleCse || hasTavily) {
+    await discoverLinkedInUrls(sorted, { hasGoogleCse, hasTavily }).catch(err => {
+      providerErrors.push(`linkedin_discover: ${(err as Error).message}`)
+      logger.error('LinkedIn URL discovery failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
   // ── LinkedIn enrichment: scrape public profile via Tavily extract to fill
-  //    in credentials (DVM / DACVS / etc.) and any visible email. ──
+  //    in credentials (DVM / DACVS / etc.), current employer, vet school,
+  //    graduation year, and any visible email. ──
   if (hasTavily) {
     await enrichFromLinkedIn(sorted).catch(err => {
       providerErrors.push(`linkedin_enrich: ${(err as Error).message}`)
       logger.error('LinkedIn enrichment failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
+  // ── Hospital staff-page enrichment: for prospects still missing
+  //    current_employer, search the web for their name + DVM and try
+  //    to detect a hospital / clinic that lists them on staff. ──
+  if (hasTavily || hasGoogleCse) {
+    await enrichFromHospitalPages(sorted, input, { hasGoogleCse, hasTavily }).catch(err => {
+      providerErrors.push(`hospital_enrich: ${(err as Error).message}`)
+      logger.error('Hospital staff enrichment failed', err as Error, 'find-dvm-candidates')
     })
   }
 
@@ -1433,7 +1455,16 @@ async function enrichContactsViaApollo(list: DvmProspect[]): Promise<void> {
 // Tavily extract and parse credentials / email out of the visible text.
 // ─────────────────────────────────────────────────────────────────────────────
 async function enrichFromLinkedIn(list: DvmProspect[]): Promise<void> {
-  const targets = list.filter(p => p.linkedin_url && (!p.credentials || isMaskedEmail(p.email)))
+  const targets = list.filter(p =>
+    p.linkedin_url && (
+      !p.credentials ||
+      isMaskedEmail(p.email) ||
+      !p.current_employer ||
+      !p.vet_school ||
+      !p.graduation_year ||
+      p.experience_years == null
+    ),
+  )
   if (!targets.length) return
 
   const tasks = targets.map((p) => async () => {
@@ -1462,6 +1493,31 @@ async function enrichFromLinkedIn(list: DvmProspect[]): Promise<void> {
         const emailMatch = content.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
         if (emailMatch && !isMaskedEmail(emailMatch[0])) p.email = emailMatch[0]
       }
+
+      // Current employer — LinkedIn public profile usually surfaces it
+      // as "<Name> | <Title> at <Company>" or "Experience\n<Company>".
+      if (!p.current_employer) {
+        const employer = extractCurrentEmployer(content)
+        if (employer) p.current_employer = employer
+      }
+
+      // Vet school — match against known VIRMP feeder list first, fall
+      // back to a generic "* College of Veterinary Medicine" / "School of
+      // Veterinary Medicine" pattern.
+      if (!p.vet_school) {
+        const school = extractVetSchool(content)
+        if (school) p.vet_school = school
+      }
+
+      // Graduation year → experience years estimate.
+      if (!p.graduation_year) {
+        const gy = extractGraduationYear(content)
+        if (gy) p.graduation_year = gy
+      }
+      if (p.experience_years == null && p.graduation_year) {
+        const yrs = new Date().getFullYear() - p.graduation_year
+        if (yrs >= 0 && yrs <= 60) p.experience_years = yrs
+      }
     } catch (err) {
       logger.warn(
         `LinkedIn extract failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
@@ -1474,6 +1530,220 @@ async function enrichFromLinkedIn(list: DvmProspect[]): Promise<void> {
   for (let i = 0; i < tasks.length; i += BATCH) {
     await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Discover LinkedIn URLs for prospects that came in without one (ACVS
+// Diplomate Directory, AVMA index, hospital staff pages, etc.). We query
+// Google Custom Search with `site:linkedin.com/in` to surface the
+// canonical public LinkedIn profile, then store the first plausible
+// match on the prospect.
+// ─────────────────────────────────────────────────────────────────────────────
+function extractLinkedInUrlFromText(text: string): string | null {
+  const m = text.match(/https?:\/\/(?:www\.)?linkedin\.com\/in\/[A-Za-z0-9_\-%/.]+/i)
+  if (!m) return null
+  return m[0].replace(/[).,;\]]+$/, '')
+}
+
+async function discoverLinkedInUrls(
+  list: DvmProspect[],
+  flags: { hasGoogleCse: boolean; hasTavily: boolean },
+): Promise<void> {
+  const targets = list.filter(p => !p.linkedin_url && p.first_name && p.last_name)
+  if (!targets.length) return
+  // Hard cap to avoid burning the Google CSE free 100/day quota in a
+  // single search request.
+  const MAX = 20
+  const slice = targets.slice(0, MAX)
+
+  const tasks = slice.map((p) => async () => {
+    const stateBit = p.state ? ` "${p.state}"` : ''
+    const credBit = (p.credentials || '').includes('DACVS') ? ' DACVS' : ' DVM'
+    const query = `"${p.first_name} ${p.last_name}"${credBit}${stateBit} site:linkedin.com/in`
+    try {
+      if (flags.hasGoogleCse) {
+        const res = await googleSearch(query, { num: 3 })
+        for (const item of res.items || []) {
+          const url = extractLinkedInUrlFromText(item.link || '') || extractLinkedInUrlFromText(item.snippet || '')
+          if (url) {
+            p.linkedin_url = url
+            return
+          }
+        }
+      }
+      if (flags.hasTavily) {
+        const t = await tavilySearch(query, { max_results: 3 })
+        for (const r of t.results || []) {
+          const url = extractLinkedInUrlFromText(r.url || '') || extractLinkedInUrlFromText(r.content || '')
+          if (url) {
+            p.linkedin_url = url
+            return
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `LinkedIn discover failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 4
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hospital staff-page enrichment — for prospects still missing
+// current_employer (typical of ACVS / AVMA directory results), search
+// the web with their name + credentials and inspect the resulting page
+// titles / domains. Veterinary specialty hospitals almost always list
+// surgeons by name on their team page, so the title of the highest-
+// ranked match is usually `Dr. <Name>, DVM, DACVS | <Hospital Name>`.
+// ─────────────────────────────────────────────────────────────────────────────
+const NON_HOSPITAL_DOMAINS = new Set([
+  'linkedin.com', 'facebook.com', 'twitter.com', 'x.com', 'instagram.com',
+  'youtube.com', 'wikipedia.org', 'avma.org', 'acvs.org', 'acvim.org',
+  'acvecc.org', 'aaha.org', 'indeed.com', 'glassdoor.com', 'ziprecruiter.com',
+  'healthgrades.com', 'yelp.com', 'google.com', 'bing.com', 'yahoo.com',
+])
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
+function isLikelyHospitalDomain(host: string): boolean {
+  if (!host) return false
+  if (NON_HOSPITAL_DOMAINS.has(host)) return false
+  return /vet|animal|pet|hospital|clinic|surgery|specialty|care/.test(host)
+}
+
+function extractHospitalNameFromTitle(title: string): string | null {
+  // Titles look like:  "Dr. Jane Smith, DVM, DACVS | VCA Specialty"
+  // or                 "Our Team - SAGE Veterinary Centers"
+  // or                 "Jane Smith DVM — Bishop Ranch Veterinary Center"
+  const parts = title.split(/[|·•–—\-]/).map(s => s.trim()).filter(Boolean)
+  if (!parts.length) return null
+  // Prefer the last segment that looks like a hospital name.
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const seg = parts[i]
+    if (/vet|animal|hospital|clinic|surgery|specialty|care|center|practice/i.test(seg) && seg.length < 80) {
+      return seg.replace(/\s+/g, ' ').trim()
+    }
+  }
+  return null
+}
+
+async function enrichFromHospitalPages(
+  list: DvmProspect[],
+  input: Required<SearchInput>,
+  flags: { hasGoogleCse: boolean; hasTavily: boolean },
+): Promise<void> {
+  const targets = list.filter(p => !p.current_employer && p.first_name && p.last_name)
+  if (!targets.length) return
+  const MAX = 15
+  const slice = targets.slice(0, MAX)
+
+  const tasks = slice.map((p) => async () => {
+    const locBit = p.city && p.state ? ` "${p.city}, ${p.state}"` : (p.state ? ` "${p.state}"` : (input.location ? ` "${input.location}"` : ''))
+    const credBit = (p.credentials || '').includes('DACVS') ? ' DVM DACVS surgeon' : ' DVM veterinarian'
+    const query = `"${p.first_name} ${p.last_name}"${credBit}${locBit}`
+    try {
+      let items: Array<{ url: string; title: string; snippet: string }> = []
+      if (flags.hasGoogleCse) {
+        const res = await googleSearch(query, { num: 5 })
+        items = (res.items || []).map(i => ({
+          url: i.link || '',
+          title: i.title || '',
+          snippet: i.snippet || '',
+        }))
+      } else if (flags.hasTavily) {
+        const t = await tavilySearch(query, { max_results: 5 })
+        items = (t.results || []).map(r => ({
+          url: r.url || '',
+          title: r.title || '',
+          snippet: r.content || '',
+        }))
+      }
+
+      for (const it of items) {
+        const host = hostnameOf(it.url)
+        if (!isLikelyHospitalDomain(host)) continue
+        // Confirm the page actually mentions this person.
+        const nameRe = new RegExp(`\\b${p.first_name}\\b.*\\b${p.last_name}\\b|\\b${p.last_name}\\b.*\\b${p.first_name}\\b`, 'i')
+        if (!nameRe.test(it.title) && !nameRe.test(it.snippet)) continue
+
+        const hospital = extractHospitalNameFromTitle(it.title)
+          || host.replace(/\.(com|net|org|vet|us|co)$/i, '').replace(/[-.]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        if (hospital) {
+          p.current_employer = hospital
+          p.website_url ||= it.url
+          return
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `Hospital enrichment failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 3
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ── Helpers for parsing fields out of LinkedIn raw text ─────────────
+function extractCurrentEmployer(content: string): string | null {
+  // Pattern 1: "<Name> | <Title> at <Company> | LinkedIn" appears in
+  // the og:title / page <title>. The Tavily basic extractor includes
+  // it near the top of the content.
+  const m1 = content.match(/(?:DVM|VMD|veterinarian|surgeon|specialist|doctor)[^|\n]*\bat\s+([A-Z][A-Za-z0-9 .,'&\-]{2,80}?)(?:\s*\||\n|$)/i)
+  if (m1 && m1[1]) return cleanCompanyName(m1[1])
+
+  // Pattern 2: an explicit "Experience" or "Current" section header.
+  const m2 = content.match(/(?:^|\n)\s*(?:Current|Experience)[\s\S]{0,300}?\n([A-Z][A-Za-z0-9 .,'&\-]{2,80})\n/i)
+  if (m2 && m2[1]) return cleanCompanyName(m2[1])
+
+  return null
+}
+
+function cleanCompanyName(raw: string): string | null {
+  const s = raw.replace(/\s+/g, ' ').trim().replace(/[.,;:\-–—]+$/, '')
+  if (s.length < 3 || s.length > 80) return null
+  if (/^(LinkedIn|Profile|Account|Sign\s*in)$/i.test(s)) return null
+  return s
+}
+
+function extractVetSchool(content: string): string | null {
+  // Cheap regex against the VIRMP feeder list first.
+  for (const school of VIRMP_FEEDER_SCHOOLS) {
+    // Normalize "The Ohio State University" → match either form
+    const norm = school.replace(/^The\s+/i, '')
+    const re = new RegExp(`\\b${norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+    if (re.test(content)) return school
+  }
+  // Generic match.
+  const generic = content.match(/\b([A-Z][A-Za-z.&\- ]{3,60})\s+(?:College|School)\s+of\s+Veterinary\s+Medicine\b/)
+  if (generic) return generic[0].trim()
+  return null
+}
+
+function extractGraduationYear(content: string): number | null {
+  // "Doctor of Veterinary Medicine, 2014" or "DVM, Class of 2014".
+  const m1 = content.match(/(?:Doctor\s+of\s+Veterinary\s+Medicine|DVM|VMD)[^0-9]{0,40}(19[89]\d|20[0-3]\d)/i)
+  if (m1) return Number(m1[1])
+  const m2 = content.match(/Class\s+of\s+(19[89]\d|20[0-3]\d)/i)
+  if (m2) return Number(m2[1])
+  return null
 }
 
 
