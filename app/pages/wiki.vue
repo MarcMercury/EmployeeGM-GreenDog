@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-h4 font-weight-bold mb-1">Green Dog Wiki</h1>
         <p class="text-body-1 text-grey-darken-1">
-          AI-powered knowledge base — search company policies, medical info, and more
+          Knowledge base — search company policies, medical info, and more
         </p>
       </div>
     </div>
@@ -114,21 +114,21 @@
       </v-row>
     </template>
 
-    <!-- AI Response -->
+    <!-- Assistant Response -->
     <v-card v-if="aiResponse" rounded="lg" class="mb-6">
       <v-card-title class="d-flex align-center">
         <v-icon color="primary" class="mr-2">mdi-robot</v-icon>
-        AI Assistant Response
+        Assistant Response
         <v-chip size="x-small" variant="tonal" color="primary" class="ml-2">
           <v-icon start size="12">mdi-brain</v-icon>
-          AI Generated
+          Generated
         </v-chip>
       </v-card-title>
       <v-card-text>
         <div class="ai-response" v-html="sanitize(formattedAiResponse)"></div>
         <v-alert type="info" variant="tonal" density="compact" class="mt-4">
           <v-icon start size="16">mdi-information</v-icon>
-          AI-generated content is for reference. For company policy details, refer to the official documents linked above.
+          Generated content is for reference. For company policy details, refer to the official documents linked above.
         </v-alert>
       </v-card-text>
     </v-card>

@@ -29,6 +29,9 @@ import {
 import { apolloPeopleSearch, apolloPeopleEnrich, type ApolloPerson } from '../../utils/apollo'
 import { tavilySearch, tavilyExtract } from '../../utils/tavily'
 import { googleSearch } from '../../utils/googleSearch'
+import { hunterEmailFinder, hunterDomainSearch, hunterEmailVerify } from '../../utils/hunter'
+import { lookupLicenseStatus, licenseStatusBoost, type LicenseStatus } from '../../utils/license-status'
+import { normalizeVetSchool } from '../../utils/vet-schools'
 import {
   searchAcvsDirectory,
   ACVS_DIRECTORY_URL,
@@ -110,12 +113,83 @@ export interface DvmProspect {
     diplomate_directory_url?: string | null
     avma_school_match: boolean | null
   } | null
+  /** Normalized AVMA-accredited vet school (when match found). */
+  vet_school_canonical?: string | null
+  vet_school_short?: string | null
+  /** Live state-board license status (CA + TX supported; null elsewhere). */
+  license_status?: {
+    status: 'active' | 'inactive' | 'expired' | 'lapsed' | 'suspended' | 'revoked' | 'unknown'
+    license_number?: string | null
+    expiration_date?: string | null
+    source_url: string
+    raw_status?: string | null
+  } | null
+  /** Hunter.io email-verifier deliverability summary. */
+  email_verification?: {
+    status: string
+    result?: string
+    score?: number
+  } | null
+  /** True when Apollo signals a recent job change (≤90 days). */
+  recent_job_change?: boolean
+  /** VIN public-profile cross-reference snippet. */
+  vin_profile?: { url: string; snippet?: string } | null
 }
 
 const ALLOWED_ROLES = [
   'super_admin', 'admin', 'manager', 'hr_admin',
   'sup_admin', 'office_admin', 'marketing_admin',
 ]
+
+// ─────────────────────────────────────────────────────────────────────────────
+// In-process result cache.
+//
+// A full search round-trip easily costs several seconds (LLM chains +
+// directory scrapes + radius geocoding). Re-runs with identical criteria
+// are common when the user toggles a view mode or exports results — we
+// short-circuit those with a small in-memory TTL cache. Cleared at most
+// every 30 minutes and capped at 50 entries to stay friendly with serverless
+// memory limits.
+// ─────────────────────────────────────────────────────────────────────────────
+interface CachedResult { value: any; expires: number }
+const RESULT_CACHE = new Map<string, CachedResult>()
+const RESULT_CACHE_TTL_MS = 30 * 60 * 1000
+const RESULT_CACHE_MAX = 50
+
+function cacheKey(input: Required<SearchInput>): string {
+  return JSON.stringify({
+    s: input.specialty.toLowerCase(),
+    l: input.location.toLowerCase(),
+    r: input.radiusMiles,
+    e: input.experienceMin,
+    k: [...input.keywords].sort(),
+    sp: input.includeSpecialists,
+    ng: input.includeNewGraduates,
+    n: input.maxResults,
+    ao: input.activeOnly,
+    v: input.verify,
+    er: input.enforceRadius,
+  })
+}
+
+function readCache(key: string): any | null {
+  const hit = RESULT_CACHE.get(key)
+  if (!hit) return null
+  if (Date.now() > hit.expires) {
+    RESULT_CACHE.delete(key)
+    return null
+  }
+  return hit.value
+}
+
+function writeCache(key: string, value: any): void {
+  if (RESULT_CACHE.size >= RESULT_CACHE_MAX) {
+    // Evict the oldest entry.
+    const oldest = RESULT_CACHE.keys().next().value
+    if (oldest) RESULT_CACHE.delete(oldest)
+  }
+  RESULT_CACHE.set(key, { value, expires: Date.now() + RESULT_CACHE_TTL_MS })
+}
 
 export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient(event)
@@ -148,12 +222,20 @@ export default defineEventHandler(async (event) => {
     enforceRadius: body.enforceRadius ?? false,
   }
 
+  // Return cached result for identical criteria within the TTL window.
+  const cKey = cacheKey(input)
+  const cached = readCache(cKey)
+  if (cached) {
+    return { ...cached, cached: true }
+  }
+
   const config = useRuntimeConfig()
   const hasOpenAI = !!config.openaiApiKey
   const hasGemini = !!config.geminiApiKey
   const hasApollo = !!config.apolloApiKey
   const hasTavily = !!config.tavilyApiKey
   const hasGoogleCse = !!config.googleCseApiKey && !!config.googleCseId
+  const hasHunter = !!config.hunterApiKey
   const hasNpi = true // free, no key
 
   if (!hasOpenAI && !hasGemini && !hasApollo && !hasTavily && !hasGoogleCse) {
@@ -284,6 +366,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // ── Contact enrichment via Hunter.io: when we know the prospect's
+  //    current_employer, try domain search + email finder. Hunter is
+  //    designed for exactly this use case and frequently finds the
+  //    work email that Apollo masks behind credits. ──
+  if (hasHunter) {
+    await enrichContactsViaHunter(sorted).catch(err => {
+      providerErrors.push(`hunter: ${(err as Error).message}`)
+      logger.error('Hunter.io enrichment failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
   // Snapshot field-fill state before vs. after deep enrichment so we
   // can report exactly how many empty cells the enrichment passes
   // managed to fill in. Surfaced as `enrichment_stats` on the response.
@@ -319,21 +412,73 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // ── Vet-school normalization: map free-form vet-school strings
+  //    to the canonical AVMA-accredited school name + short label. ──
+  for (const p of sorted) {
+    const match = normalizeVetSchool(p.vet_school)
+    if (match) {
+      p.vet_school = match.canonical
+      p.vet_school_canonical = match.canonical
+      p.vet_school_short = match.short
+    }
+  }
+
+  // ── VIN public profile cross-reference: surface vin.com / VIN community
+  //    pages mentioning the candidate. VIN listings often include grad
+  //    year + school which back-fill missing fields. ──
+  if (hasTavily) {
+    await enrichFromVin(sorted).catch(err => {
+      providerErrors.push(`vin: ${(err as Error).message}`)
+      logger.error('VIN cross-reference failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
+  // ── Hunter email-verifier: confirm deliverability of every email we
+  //    have so the user knows which addresses are safe to outreach. ──
+  if (hasHunter) {
+    await verifyEmailsViaHunter(sorted).catch(err => {
+      providerErrors.push(`hunter: ${(err as Error).message}`)
+      logger.error('Hunter email verification failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
+  // ── Job-change signal: secondary Apollo pass for top prospects to
+  //    flag anyone who has changed jobs in the past 90 days. ──
+  if (hasApollo) {
+    await detectRecentJobChangesViaApollo(sorted).catch(err => {
+      providerErrors.push(`apollo_jobchange: ${(err as Error).message}`)
+      logger.error('Apollo job-change detection failed', err as Error, 'find-dvm-candidates')
+    })
+  }
+
   // ── Optional: enforce radius via OSM Nominatim ──
   let droppedOutsideRadius = 0
+  let droppedNoAddress = 0
+  let centerGeocodeFailed = false
   if (input.enforceRadius) {
     const center = await nominatimGeocode(input.location).catch(() => null)
     if (center) {
+      logger.info(
+        `Radius center: ${input.location} -> (${center.lat}, ${center.lng}) [${center.display_name}]`,
+        'find-dvm-candidates',
+      )
       const filtered: DvmProspect[] = []
       for (const p of sorted) {
-        const addr = [p.current_employer, p.city, p.state].filter(Boolean).join(', ')
+        // Prefer the prospect's city/state for geocoding (most precise).
+        // Fall back to current_employer only when no city/state is known —
+        // chain employers like "VCA Animal Hospitals" can otherwise geocode
+        // to a corporate HQ that lies outside the requested radius.
+        const cityState = [p.city, p.state].filter(Boolean).join(', ')
+        const addr = cityState || p.current_employer || ''
         if (!addr) {
-          filtered.push(p) // can't verify, keep
+          // No address at all → cannot verify radius. Drop so the user sees
+          // only prospects we could actually place on the map.
+          droppedNoAddress++
           continue
         }
         const loc = await nominatimGeocode(addr).catch(() => null)
         if (!loc) {
-          filtered.push(p)
+          droppedNoAddress++
           continue
         }
         const d = distanceMiles(center.lat, center.lng, loc.lat, loc.lng)
@@ -344,8 +489,9 @@ export default defineEventHandler(async (event) => {
           droppedOutsideRadius++
         }
       }
-      sorted = filtered
+      sorted = filtered.sort((a, b) => (a.distance_miles ?? 0) - (b.distance_miles ?? 0))
     } else {
+      centerGeocodeFailed = true
       logger.warn(`Nominatim could not geocode search center "${input.location}"`, 'find-dvm-candidates')
     }
   }
@@ -366,6 +512,13 @@ export default defineEventHandler(async (event) => {
           : diplomate?.directoryUrl ?? null
         const schoolMatch = p.vet_school ? isAvmaAccreditedSchool(p.vet_school) : null
 
+        // Live license status (CA + TX). Other states return null; the
+        // user can still click through to the canonical board URL above.
+        let licenseStatus: LicenseStatus | null = null
+        if (p.state && (p.state.toUpperCase() === 'CA' || p.state.toUpperCase() === 'TX')) {
+          licenseStatus = await lookupLicenseStatus(p.state, p.first_name, p.last_name).catch(() => null)
+        }
+
         let confidence = 0
         const reasons: string[] = []
         if (npi.matched) {
@@ -378,6 +531,29 @@ export default defineEventHandler(async (event) => {
         else if (schoolMatch === false) reasons.push('Vet school not in AVMA list')
         if (stateUrl) reasons.push(`State board lookup available (${p.state})`)
         if (diplomate) reasons.push(`Verify ${diplomate.diplomateCredential} via ${diplomate.abbreviation}`)
+        if (licenseStatus) {
+          if (licenseStatus.status === 'active') {
+            confidence += 25
+            reasons.push(`State license ACTIVE${licenseStatus.license_number ? ` (#${licenseStatus.license_number})` : ''}`)
+          } else if (licenseStatus.status === 'expired' || licenseStatus.status === 'lapsed') {
+            reasons.push(`State license ${licenseStatus.status.toUpperCase()}${licenseStatus.expiration_date ? ` (exp ${licenseStatus.expiration_date})` : ''}`)
+          } else if (licenseStatus.status === 'suspended' || licenseStatus.status === 'revoked') {
+            reasons.push(`⚠ State license ${licenseStatus.status.toUpperCase()}`)
+          } else if (licenseStatus.status !== 'unknown') {
+            reasons.push(`State license: ${licenseStatus.status}`)
+          }
+          p.license_status = {
+            status: licenseStatus.status,
+            license_number: licenseStatus.license_number ?? null,
+            expiration_date: licenseStatus.expiration_date ?? null,
+            source_url: licenseStatus.source_url,
+            raw_status: licenseStatus.raw_status ?? null,
+          }
+          // Move the specialty score in line with the licensing reality.
+          if (typeof p.specialty_match === 'number') {
+            p.specialty_match = clamp(p.specialty_match + licenseStatusBoost(licenseStatus.status), 0, 100)
+          }
+        }
 
         p.verification = {
           confidence: Math.min(confidence, 100),
@@ -405,8 +581,9 @@ export default defineEventHandler(async (event) => {
   const okApollo = hasApollo && !erroredProviders.has('apollo')
   const okTavily = hasTavily && !erroredProviders.has('tavily')
   const okGoogleCse = hasGoogleCse && !erroredProviders.has('google_cse')
+  const okHunter = hasHunter && !erroredProviders.has('hunter')
 
-  return {
+  const response = {
     success: true,
     count: sorted.length,
     prospects: sorted,
@@ -418,11 +595,17 @@ export default defineEventHandler(async (event) => {
       tavily: okTavily,
       google_cse: okGoogleCse,
       acvs: !erroredProviders.has('acvs'),
+      hunter: okHunter,
     },
     enrichment_stats: diffFillState(before, snapshotFillState(sorted), sorted.length),
-    warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse }, providerErrors, droppedOutsideRadius),
+    warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse, hasHunter }, providerErrors, { droppedOutsideRadius, droppedNoAddress, centerGeocodeFailed, enforced: input.enforceRadius, location: input.location, radiusMiles: input.radiusMiles }),
     criteria: input,
   }
+
+  // Cache the successful response so quick re-renders with identical
+  // criteria short-circuit the entire pipeline.
+  writeCache(cKey, response)
+  return response
 })
 
 // Field-fill diagnostic — count how many prospects had each field
@@ -579,33 +762,56 @@ function parseProspects(raw: string, provider: 'openai' | 'gemini'): DvmProspect
 
 function mergeProspects(list: DvmProspect[]): DvmProspect[] {
   const map = new Map<string, DvmProspect>()
+  // Secondary index by LinkedIn URL so the same person discovered from two
+  // sources (e.g. ACVS directory without a LinkedIn URL + an OpenAI hit
+  // that supplies the LinkedIn URL) gets merged even when their employer
+  // string differs ("VCA Smith" vs "VCA Smith Animal Hospital").
+  const byLinkedIn = new Map<string, string>() // linkedin url -> primary key
+
+  function normLinkedIn(url?: string | null): string | null {
+    if (!url) return null
+    return url.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '')
+  }
+  function mergePair(existing: DvmProspect, p: DvmProspect): DvmProspect {
+    return {
+      ...existing,
+      credentials: existing.credentials ?? p.credentials,
+      specialty: existing.specialty ?? p.specialty,
+      current_employer: existing.current_employer ?? p.current_employer,
+      city: existing.city ?? p.city,
+      state: existing.state ?? p.state,
+      email: existing.email && !isMaskedEmail(existing.email) ? existing.email : (p.email && !isMaskedEmail(p.email) ? p.email : existing.email ?? p.email),
+      phone: existing.phone ?? p.phone,
+      linkedin_url: existing.linkedin_url ?? p.linkedin_url,
+      website_url: existing.website_url ?? p.website_url,
+      experience_years: existing.experience_years ?? p.experience_years,
+      vet_school: existing.vet_school ?? p.vet_school,
+      graduation_year: existing.graduation_year ?? p.graduation_year,
+      residency: existing.residency ?? p.residency,
+      actively_seeking: existing.actively_seeking || p.actively_seeking,
+      notes: existing.notes && p.notes ? `${existing.notes} | ${p.notes}` : existing.notes ?? p.notes,
+      match_score: Math.round(((existing.match_score ?? 50) + (p.match_score ?? 50)) / 2),
+      provider: 'merged',
+    }
+  }
+
   for (const p of list) {
-    const key = `${p.first_name.toLowerCase()}|${p.last_name.toLowerCase()}|${(p.current_employer ?? '').toLowerCase()}`
-    const existing = map.get(key)
+    const linkedinKey = normLinkedIn(p.linkedin_url)
+    const nameKey = `${p.first_name.toLowerCase()}|${p.last_name.toLowerCase()}|${(p.current_employer ?? '').toLowerCase()}`
+
+    // Prefer matching on LinkedIn URL when available — it's the most
+    // authoritative person-level identifier we can get without an SSN.
+    const linkedinPrimary = linkedinKey ? byLinkedIn.get(linkedinKey) : undefined
+    const primaryKey = linkedinPrimary ?? nameKey
+    const existing = map.get(primaryKey)
+
     if (!existing) {
-      map.set(key, p)
+      map.set(primaryKey, p)
+      if (linkedinKey) byLinkedIn.set(linkedinKey, primaryKey)
     } else {
-      // Merge: prefer non-null values, average match_score, mark provider as merged
-      map.set(key, {
-        ...existing,
-        credentials: existing.credentials ?? p.credentials,
-        specialty: existing.specialty ?? p.specialty,
-        current_employer: existing.current_employer ?? p.current_employer,
-        city: existing.city ?? p.city,
-        state: existing.state ?? p.state,
-        email: existing.email ?? p.email,
-        phone: existing.phone ?? p.phone,
-        linkedin_url: existing.linkedin_url ?? p.linkedin_url,
-        website_url: existing.website_url ?? p.website_url,
-        experience_years: existing.experience_years ?? p.experience_years,
-        vet_school: existing.vet_school ?? p.vet_school,
-        graduation_year: existing.graduation_year ?? p.graduation_year,
-        residency: existing.residency ?? p.residency,
-        actively_seeking: existing.actively_seeking || p.actively_seeking,
-        notes: existing.notes && p.notes ? `${existing.notes} | ${p.notes}` : existing.notes ?? p.notes,
-        match_score: Math.round(((existing.match_score ?? 50) + (p.match_score ?? 50)) / 2),
-        provider: 'merged',
-      })
+      const merged = mergePair(existing, p)
+      map.set(primaryKey, merged)
+      if (linkedinKey && !byLinkedIn.has(linkedinKey)) byLinkedIn.set(linkedinKey, primaryKey)
     }
   }
   return Array.from(map.values())
@@ -625,6 +831,7 @@ function summarizeProviderError(raw: string): string {
     google_cse: 'Google CSE',
     npi: 'NPI Registry',
     acvs: 'ACVS Directory',
+    hunter: 'Hunter.io',
   }
   const label = labels[provider] || provider
 
@@ -651,9 +858,16 @@ function summarizeProviderError(raw: string): string {
 }
 
 function buildWarnings(
-  flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean },
+  flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean; hasHunter: boolean },
   providerErrors: string[],
-  droppedOutsideRadius = 0,
+  radius: {
+    droppedOutsideRadius?: number
+    droppedNoAddress?: number
+    centerGeocodeFailed?: boolean
+    enforced?: boolean
+    location?: string
+    radiusMiles?: number
+  } = {},
 ): string[] {
   const warnings: string[] = []
   if (!flags.hasApollo) warnings.push('APOLLO_API_KEY not set — Apollo people search skipped.')
@@ -661,8 +875,21 @@ function buildWarnings(
   if (!flags.hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
   if (!flags.hasTavily) warnings.push('TAVILY_API_KEY not set — Tavily web search skipped.')
   if (!flags.hasGoogleCse) warnings.push('GOOGLE_CSE_API_KEY/GOOGLE_CSE_ID not set — Google Custom Search skipped.')
+  if (!flags.hasHunter) warnings.push('HUNTER_API_KEY not set — Hunter.io email finder skipped.')
   for (const e of providerErrors) warnings.push(summarizeProviderError(e))
-  if (droppedOutsideRadius > 0) warnings.push(`${droppedOutsideRadius} prospect(s) dropped after OSM-based radius enforcement.`)
+  if (radius.centerGeocodeFailed) {
+    warnings.push(`Could not geocode search center "${radius.location}" via OpenStreetMap — radius filter skipped. Try a more specific address (e.g. "Los Angeles, CA").`)
+  }
+  if (radius.droppedOutsideRadius && radius.droppedOutsideRadius > 0) {
+    warnings.push(`${radius.droppedOutsideRadius} prospect(s) dropped — outside ${radius.radiusMiles}-mile radius of "${radius.location}".`)
+  }
+  if (radius.droppedNoAddress && radius.droppedNoAddress > 0) {
+    warnings.push(`${radius.droppedNoAddress} prospect(s) dropped — no city/state available to verify distance. Disable "Enforce radius" to keep them.`)
+  }
+  if (radius.enforced && !radius.centerGeocodeFailed && (radius.droppedOutsideRadius ?? 0) === 0 && (radius.droppedNoAddress ?? 0) === 0) {
+    // Useful confirmation when enforcement is on but nothing was filtered.
+    warnings.push(`Radius enforced (${radius.radiusMiles} mi of "${radius.location}") — all returned prospects are within range.`)
+  }
   return warnings
 }
 
@@ -1243,6 +1470,31 @@ function extractStateFromLocation(loc: string): string | undefined {
   return undefined
 }
 
+/**
+ * Parse a free-form "City, State" / "City, State ZIP" / "City" location
+ * string into structured pieces so individual providers (NPI city filter,
+ * Apollo locations, Nominatim center, etc.) can use them precisely.
+ */
+function parseLocation(loc: string): { city?: string; state?: string; postalCode?: string } {
+  if (!loc?.trim()) return {}
+  const trimmed = loc.trim()
+  const out: { city?: string; state?: string; postalCode?: string } = {}
+  const state = extractStateFromLocation(trimmed)
+  if (state) out.state = state
+  // "City, ST 12345" or "City, ST" or "City, State Name"
+  const cityMatch = trimmed.match(/^([A-Za-z .'\-]+?)\s*,\s*([A-Za-z]{2,}|[A-Za-z .'\-]+)/)
+  if (cityMatch) {
+    const cityCandidate = cityMatch[1]!.trim()
+    // Reject if the "city" piece is actually a US state name (e.g. user typed just "California")
+    if (!Object.keys(US_STATE_ABBR).includes(cityCandidate.toLowerCase())) {
+      out.city = cityCandidate
+    }
+  }
+  const zip = trimmed.match(/\b(\d{5})(?:-\d{4})?\b/)
+  if (zip) out.postalCode = zip[1]
+  return out
+}
+
 function npiResultToProspect(r: NpiResult): DvmProspect | null {
   const basic: any = (r as any).basic || {}
   const first = basic.first_name?.trim()
@@ -1280,14 +1532,28 @@ function npiResultToProspect(r: NpiResult): DvmProspect | null {
 }
 
 async function searchNpiDvms(input: Required<SearchInput>): Promise<DvmProspect[]> {
-  const state = extractStateFromLocation(input.location)
+  const { city, state, postalCode } = parseLocation(input.location)
   if (!state) return []
-  const results = await searchNpiProviders({
+  const baseOpts = {
     state,
     taxonomyDescription: 'Veterinarian',
-    enumerationType: 'NPI-1',
+    enumerationType: 'NPI-1' as const,
     limit: Math.min(Math.max(input.maxResults, 10), 50),
-  })
+  }
+  // Preferred: city-tight search (NPI city filter is exact-match). If we
+  // have a postal code, prefer that for the tightest geographic match.
+  let results: NpiResult[] = []
+  if (postalCode) {
+    results = await searchNpiProviders({ ...baseOpts, postalCode })
+  }
+  if (results.length === 0 && city) {
+    results = await searchNpiProviders({ ...baseOpts, city })
+  }
+  // Fallback: statewide so we still return *something* the radius pass can
+  // filter against, but bump the limit so we have enough headroom.
+  if (results.length === 0) {
+    results = await searchNpiProviders({ ...baseOpts, limit: 50 })
+  }
   return results.map(npiResultToProspect).filter((p): p is DvmProspect => p !== null)
 }
 
@@ -1454,6 +1720,265 @@ async function enrichContactsViaApollo(list: DvmProspect[]): Promise<void> {
   })
 
   // Run in batches of 5 to stay polite with Apollo's rate limits.
+  const BATCH = 5
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hunter.io enrichment — for prospects with a known current_employer but
+// still missing email, derive a likely work-email by:
+//   1. Resolving the employer to a domain (website_url, then Hunter's
+//      domain search by company name).
+//   2. Calling Hunter's email-finder for that domain + first/last name.
+// Hunter is purpose-built for this and frequently surfaces emails that
+// Apollo masks behind credits.
+// ─────────────────────────────────────────────────────────────────────────────
+function domainFromUrl(url?: string | null): string | null {
+  if (!url) return null
+  try {
+    return new URL(url.startsWith('http') ? url : `https://${url}`).hostname.replace(/^www\./, '').toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+const NON_EMPLOYER_DOMAINS = new Set([
+  'linkedin.com', 'facebook.com', 'twitter.com', 'x.com', 'instagram.com',
+  'youtube.com', 'wikipedia.org', 'avma.org', 'acvs.org', 'acvim.org',
+  'acvecc.org', 'acvo.org', 'acvd.org', 'avdc.org', 'acvr.org', 'aaha.org',
+  'indeed.com', 'glassdoor.com', 'ziprecruiter.com', 'healthgrades.com',
+  'yelp.com', 'google.com', 'bing.com', 'yahoo.com', 'npiregistry.cms.hhs.gov',
+  'apollo.io', 'app.apollo.io',
+])
+
+async function resolveEmployerDomain(p: DvmProspect): Promise<string | null> {
+  // 1. If the prospect already has a website_url pointing at the employer, use it.
+  const websiteDomain = domainFromUrl(p.website_url)
+  if (websiteDomain && !NON_EMPLOYER_DOMAINS.has(websiteDomain)) return websiteDomain
+
+  // 2. Hunter domain-search by company name (uses Hunter's company → domain DB).
+  if (!p.current_employer) return null
+  try {
+    const res = await hunterDomainSearch({ company: p.current_employer, limit: 1 })
+    const domain = (res as any)?.data?.domain
+    if (typeof domain === 'string' && domain && !NON_EMPLOYER_DOMAINS.has(domain)) {
+      return domain.toLowerCase()
+    }
+  } catch (err) {
+    logger.warn(
+      `Hunter domain-search failed for "${p.current_employer}": ${(err as Error).message}`,
+      'find-dvm-candidates',
+    )
+  }
+  return null
+}
+
+async function enrichContactsViaHunter(list: DvmProspect[]): Promise<void> {
+  const targets = list.filter(p =>
+    p.first_name && p.last_name && p.current_employer && isMaskedEmail(p.email),
+  )
+  if (!targets.length) return
+
+  // Cap how many Hunter calls we make in one search (free tier ~25/mo).
+  const MAX = 20
+  const slice = targets.slice(0, MAX)
+
+  const tasks = slice.map((p) => async () => {
+    try {
+      const domain = await resolveEmployerDomain(p)
+      if (!domain) return
+      const res = await hunterEmailFinder({
+        domain,
+        first_name: p.first_name,
+        last_name: p.last_name,
+      })
+      const data: any = (res as any)?.data || {}
+      const email: string | undefined = data.email
+      const score: number = typeof data.score === 'number' ? data.score : 0
+      // Hunter scores 0-100. We accept >=50 as "deliverable enough" — its
+      // own UI uses that threshold for "found" vs "unverified".
+      if (email && !isMaskedEmail(email) && score >= 50) {
+        p.email = email
+        const verifyStatus = data.verification?.status
+        const note = `Hunter (${score}%${verifyStatus ? `, ${verifyStatus}` : ''})`
+        p.notes = p.notes ? `${p.notes} | email via ${note}` : `email via ${note}`
+      }
+      // Even when no email comes back, Hunter often returns a likely phone or
+      // department — capture phone if we didn't have one.
+      const phone: string | undefined = data.phone_number
+      if (!p.phone && phone) p.phone = phone
+      // Stash the resolved domain on website_url so the UI can link out.
+      if (!p.website_url) p.website_url = `https://${domain}`
+    } catch (err) {
+      logger.warn(
+        `Hunter enrich failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 3
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Hunter email-verifier pass — for every prospect with a real (non-masked)
+// email address, check deliverability so the user knows which addresses
+// are safe to outreach. Caps Hunter API usage at 15 calls per search.
+// ─────────────────────────────────────────────────────────────────────────────
+async function verifyEmailsViaHunter(list: DvmProspect[]): Promise<void> {
+  const targets = list.filter(p => p.email && !isMaskedEmail(p.email) && !p.email_verification)
+  if (!targets.length) return
+
+  const MAX = 15
+  const slice = targets.slice(0, MAX)
+
+  const tasks = slice.map((p) => async () => {
+    try {
+      const res = await hunterEmailVerify(p.email!)
+      const d: any = (res as any)?.data || {}
+      p.email_verification = {
+        status: d.status ?? null,
+        result: d.result ?? null,
+        score: typeof d.score === 'number' ? d.score : null,
+        disposable: !!d.disposable,
+        webmail: !!d.webmail,
+        smtp_check: d.smtp_check ?? null,
+        accept_all: !!d.accept_all,
+        block: !!d.block,
+      }
+    } catch (err) {
+      logger.warn(
+        `Hunter verify failed for ${p.email}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 3
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apollo job-change detection — re-enriches each prospect via Apollo's
+// people-enrich endpoint and inspects the most recent employment start
+// date. If the candidate started their current role within the last 90
+// days they get flagged with `recent_job_change` so recruiters can
+// prioritize outreach to actively transitioning talent.
+// ─────────────────────────────────────────────────────────────────────────────
+async function detectRecentJobChangesViaApollo(list: DvmProspect[]): Promise<void> {
+  // Apollo enrich is expensive — only check the top scored prospects.
+  const targets = list
+    .filter(p => p.first_name && p.last_name && p.linkedin_url)
+    .slice(0, 15)
+  if (!targets.length) return
+
+  const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000
+
+  const tasks = targets.map((p) => async () => {
+    try {
+      const res = await apolloPeopleEnrich({
+        first_name: p.first_name,
+        last_name: p.last_name,
+        linkedin_url: p.linkedin_url ?? undefined,
+      })
+      const person = (res.person || {}) as Record<string, any>
+
+      // Apollo returns either `employment_history` (array, latest first)
+      // or `organization.start_date` for the current role.
+      let startDateStr: string | null = null
+      let prevEmployer: string | null = null
+      if (Array.isArray(person.employment_history) && person.employment_history.length) {
+        const current = person.employment_history.find((e: any) => e?.current) || person.employment_history[0]
+        startDateStr = current?.start_date || current?.start_date_str || null
+        const previous = person.employment_history.find((e: any) => !e?.current && e !== current)
+        prevEmployer = previous?.organization_name || previous?.organization?.name || null
+      }
+      if (!startDateStr && person.organization?.start_date) {
+        startDateStr = person.organization.start_date
+      }
+
+      if (!startDateStr) return
+      const startMs = Date.parse(startDateStr)
+      if (!Number.isFinite(startMs)) return
+      const recent = startMs >= ninetyDaysAgo
+      if (recent) {
+        const days = Math.max(1, Math.round((Date.now() - startMs) / (24 * 60 * 60 * 1000)))
+        p.recent_job_change = {
+          started_at: new Date(startMs).toISOString().slice(0, 10),
+          days_in_role: days,
+          previous_employer: prevEmployer,
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `Apollo job-change check failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
+  const BATCH = 5
+  for (let i = 0; i < tasks.length; i += BATCH) {
+    await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIN public-profile cross-reference — Veterinary Information Network
+// (vin.com) is the dominant practitioner community. Public VIN bios and
+// message-board signatures often list a clinician's grad year + school +
+// employer. We surface any VIN hit so the recruiter has another channel
+// to validate the candidate, and back-fill missing school/grad year.
+// ─────────────────────────────────────────────────────────────────────────────
+async function enrichFromVin(list: DvmProspect[]): Promise<void> {
+  const targets = list.filter(p => p.first_name && p.last_name).slice(0, 25)
+  if (!targets.length) return
+
+  const tasks = targets.map((p) => async () => {
+    try {
+      const query = `site:vin.com "${p.first_name} ${p.last_name}" DVM`
+      const res = await tavilySearch(query, { max_results: 2, search_depth: 'basic' })
+      const hit = (res.results || []).find(r => /vin\.com/i.test(r.url || ''))
+      if (!hit) return
+
+      p.vin_profile = {
+        url: hit.url,
+        title: hit.title || null,
+        snippet: hit.content?.slice(0, 280) || null,
+      }
+
+      // Try to back-fill graduation year + school from the snippet.
+      const text = `${hit.title || ''} ${hit.content || ''}`
+      if (!p.graduation_year) {
+        const m = text.match(/\b(19|20)\d{2}\b/)
+        if (m) {
+          const yr = parseInt(m[0], 10)
+          if (yr >= 1960 && yr <= new Date().getFullYear()) p.graduation_year = yr
+        }
+      }
+      if (!p.vet_school) {
+        const norm = normalizeVetSchool(text)
+        if (norm) {
+          p.vet_school = norm.canonical
+          p.vet_school_canonical = norm.canonical
+          p.vet_school_short = norm.short
+        }
+      }
+    } catch (err) {
+      logger.warn(
+        `VIN cross-ref failed for ${p.first_name} ${p.last_name}: ${(err as Error).message}`,
+        'find-dvm-candidates',
+      )
+    }
+  })
+
   const BATCH = 5
   for (let i = 0; i < tasks.length; i += BATCH) {
     await Promise.all(tasks.slice(i, i + BATCH).map(t => t()))

@@ -390,7 +390,6 @@
                             <div>
                               <div class="d-flex align-center gap-2">
                                 <span class="font-weight-medium">🧠 Smart Assign (Skill Gap)</span>
-                                <v-chip size="x-small" color="success" variant="flat">AI</v-chip>
                               </div>
                               <div class="text-caption text-grey">
                                 {{ course.skill_id 

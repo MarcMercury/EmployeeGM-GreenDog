@@ -97,3 +97,33 @@ export async function hunterDiscover(
   if (options.offset != null) body.offset = options.offset
   return hunterPost<HunterDiscoverResponse>('/discover', body)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email verifier — confirms an email address is deliverable.
+// https://hunter.io/api-documentation/v2#email-verifier
+// ─────────────────────────────────────────────────────────────────────────────
+export interface HunterEmailVerifyData {
+  status?: 'valid' | 'invalid' | 'accept_all' | 'webmail' | 'disposable' | 'unknown'
+  result?: 'deliverable' | 'undeliverable' | 'risky' | 'unknown'
+  score?: number
+  email?: string
+  regexp?: boolean
+  gibberish?: boolean
+  disposable?: boolean
+  webmail?: boolean
+  mx_records?: boolean
+  smtp_server?: boolean
+  smtp_check?: boolean
+  accept_all?: boolean
+  block?: boolean
+}
+
+export interface HunterEmailVerifyResponse {
+  data?: HunterEmailVerifyData
+  meta?: Record<string, any>
+}
+
+export async function hunterEmailVerify(email: string): Promise<HunterEmailVerifyResponse> {
+  if (!email) throw new Error('hunterEmailVerify: email is required')
+  return hunterGet<HunterEmailVerifyResponse>('/email-verifier', { email })
+}

@@ -99,7 +99,7 @@ async function applyAISuggestions() {
 
     if (error) throw error
 
-    emit('notify', { message: `Applied ${selectedShifts.length} AI-suggested shifts!`, color: 'success' })
+    emit('notify', { message: `Applied ${selectedShifts.length} suggested shifts!`, color: 'success' })
     aiSuggestDialog.value = false
     aiSuggestions.value = null
     emit('applied')
@@ -131,7 +131,7 @@ defineExpose({ open })
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon color="purple" class="mr-2">mdi-robot</v-icon>
-        AI Schedule Suggestions
+        Schedule Suggestions
         <v-spacer />
         <v-chip v-if="aiSuggestions" color="purple" size="small" variant="tonal">
           {{ selectedSuggestionsCount }}/{{ aiSuggestions.shifts.length }} selected

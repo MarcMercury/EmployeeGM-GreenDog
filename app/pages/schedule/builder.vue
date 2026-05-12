@@ -839,7 +839,7 @@ onMounted(async () => {
           Print
         </v-btn>
         
-        <!-- AI Suggest Button -->
+        <!-- Suggest Button -->
         <v-btn 
           size="small" 
           variant="tonal" 
@@ -848,7 +848,7 @@ onMounted(async () => {
           @click="aiSuggestRef?.open()"
         >
           <v-icon start>mdi-robot</v-icon>
-          AI Suggest
+          Suggest
         </v-btn>
         
         <!-- Template buttons -->

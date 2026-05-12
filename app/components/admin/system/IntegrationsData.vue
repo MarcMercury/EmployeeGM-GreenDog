@@ -43,7 +43,7 @@ const loadingIntegrations = ref(false)
 
 const CATEGORY_META: Record<string, { label: string; icon: string }> = {
   core: { label: 'Core', icon: 'mdi-server' },
-  ai: { label: 'AI / ML', icon: 'mdi-brain' },
+  ai: { label: 'ML', icon: 'mdi-brain' },
   communications: { label: 'Communications', icon: 'mdi-message-text' },
   scheduling: { label: 'Scheduling & Workspace', icon: 'mdi-calendar' },
   observability: { label: 'Observability', icon: 'mdi-monitor-eye' },

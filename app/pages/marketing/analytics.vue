@@ -262,14 +262,14 @@
         <v-card-text class="d-flex align-center ga-3 py-3">
           <v-progress-circular indeterminate color="deep-purple" size="22" width="2" />
           <span class="text-body-2 text-deep-purple-darken-2">
-            AI is reviewing the current data window…
+            Reviewing the current data window…
           </span>
         </v-card-text>
       </v-card>
       <v-card v-if="aiReview" class="mb-5" elevation="3" border>
         <v-card-title class="d-flex align-center flex-wrap">
           <v-icon start color="deep-purple">mdi-robot-outline</v-icon>
-          AI Data &amp; Methodology Review
+          Data &amp; Methodology Review
           <v-chip
             class="ml-3"
             size="small"
@@ -1947,18 +1947,18 @@ async function runAiReview(opts: { silent?: boolean } = {}) {
     if (result?.success) {
       aiReview.value = result
       if (!silent) {
-        notify(`AI review complete — confidence ${result.confidenceScore}%, ${result.findings.length} finding(s).`)
+        notify(`Review complete — confidence ${result.confidenceScore}%, ${result.findings.length} finding(s).`)
         // Scroll to the review card on user-initiated runs only; silent
         // auto-runs should not yank the page on every date change.
         await nextTick()
         document.querySelector('.unified-analytics-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     } else if (!silent) {
-      notify('AI review returned no result', 'warning')
+      notify('Review returned no result', 'warning')
     }
   } catch (err: any) {
     if (!silent) {
-      const msg = err.data?.message || err.message || 'AI review failed'
+      const msg = err.data?.message || err.message || 'Review failed'
       notify(msg, 'warning')
     }
   } finally {

@@ -226,7 +226,7 @@
               <!-- Target Role -->
               <template #item.position="{ item }">
                 <v-chip size="small" variant="outlined">
-                  {{ item.job_positions?.title || 'Not specified' }}
+                  {{ getCandidatePositionTitle(item) || 'Not specified' }}
                 </v-chip>
               </template>
 
@@ -302,6 +302,7 @@ const revisitListRef = ref<{ refresh: () => void } | null>(null)
 
 // State
 const candidates = ref<Candidate[]>([])
+const availablePositions = ref<{ id: string; title: string; code?: string | null }[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const activeStatusFilter = ref<string | null>(null)
@@ -311,14 +312,61 @@ const selectedDepartment = ref<string | null>(null)
 const quickFilter = ref('all')
 const showAddDialog = ref(false)
 
-// Filter Options
+// Filter Options — derived from the company's job_positions catalog so
+// the dropdown lists every available position, even when no candidate is
+// currently assigned to it.
 const positionOptions = computed(() => {
-  const positions = candidates.value
+  const items = availablePositions.value.map(p => ({ title: p.title, value: p.title }))
+  // Include any titles seen on candidates that aren't in the catalog (defensive)
+  const extra = candidates.value
     .map(c => c.job_positions?.title)
-    .filter((title): title is string => !!title)
-  const unique = [...new Set(positions)]
-  return [{ title: 'All Positions', value: null }, ...unique.map(p => ({ title: p, value: p }))]
+    .filter((t): t is string => !!t && !items.some(i => i.value === t))
+  const extraOpts = [...new Set(extra)].map(t => ({ title: t, value: t }))
+  return [{ title: 'All Positions', value: null }, ...items, ...extraOpts]
 })
+
+// Match a candidate to a position by scanning the text fields on the
+// application/resume (notes, source, license_type, candidate_type, resume_url
+// filename) against position titles and codes.
+const inferPositionTitle = (candidate: Candidate): string | null => {
+  if (candidate.job_positions?.title) return candidate.job_positions.title
+  if (!availablePositions.value.length) return null
+
+  const haystack = [
+    (candidate as any).notes,
+    (candidate as any).source,
+    (candidate as any).referral_source,
+    (candidate as any).license_type,
+    (candidate as any).candidate_type,
+    (candidate as any).resume_url,
+    (candidate as any).position_applied_for,
+    (candidate as any).desired_position,
+    (candidate as any).target_position_type
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  if (!haystack) return null
+
+  // Prefer the longest title match so 'Lead Vet Tech' beats 'Vet Tech'
+  const sorted = [...availablePositions.value].sort(
+    (a, b) => b.title.length - a.title.length
+  )
+  for (const p of sorted) {
+    const title = p.title.toLowerCase()
+    const code = (p.code || '').toLowerCase()
+    if (title && haystack.includes(title)) return p.title
+    if (code && new RegExp(`\\b${code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(haystack)) {
+      return p.title
+    }
+  }
+  return null
+}
+
+const getCandidatePositionTitle = (candidate: Candidate): string | null => {
+  return candidate.job_positions?.title || inferPositionTitle(candidate)
+}
 
 const locationOptions = [
   { title: 'All Locations', value: null },
@@ -394,9 +442,9 @@ const filteredCandidates = computed(() => {
     )
   }
 
-  // Apply position filter
+  // Apply position filter — match against explicit or inferred position
   if (selectedPosition.value) {
-    result = result.filter(c => c.job_positions?.title === selectedPosition.value)
+    result = result.filter(c => getCandidatePositionTitle(c) === selectedPosition.value)
   }
 
   // Apply location filter
@@ -492,7 +540,7 @@ const exportCandidates = () => {
       `${c.first_name} ${c.last_name}`,
       c.email || '',
       c.phone || '',
-      c.job_positions?.title || '',
+      getCandidatePositionTitle(c) || '',
       c.status || '',
       c.source || '',
       c.applied_at ? new Date(c.applied_at).toLocaleDateString() : ''
@@ -530,7 +578,21 @@ const fetchCandidates = async () => {
   }
 }
 
+const fetchAvailablePositions = async () => {
+  try {
+    const { data, error } = await client
+      .from('job_positions')
+      .select('id, title, code')
+      .order('title')
+    if (error) throw error
+    availablePositions.value = data || []
+  } catch (error) {
+    console.error('Error fetching job positions:', error)
+  }
+}
+
 onMounted(() => {
+  fetchAvailablePositions()
   fetchCandidates()
 })
 </script>

@@ -554,7 +554,7 @@ async function aiAutoFill() {
     
     if (data?.success) {
       await loadDraftSlots()
-      toast.success(`AI filled ${data.slots_filled} slots (${data.slots_skipped} skipped)`)
+      toast.success(`Filled ${data.slots_filled} slots (${data.slots_skipped} skipped)`)
     } else {
       toast.warning(data?.error || 'No suitable employees found')
     }
@@ -1458,7 +1458,7 @@ onUnmounted(() => {
               </template>
             </v-tooltip>
             
-            <v-tooltip text="Let AI automatically assign employees based on availability, hours balance, and skills" location="bottom">
+            <v-tooltip text="Automatically assign employees based on availability, hours balance, and skills" location="bottom">
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
@@ -1469,7 +1469,7 @@ onUnmounted(() => {
                   @click="aiAutoFill"
                 >
                   <v-icon start>mdi-auto-fix</v-icon>
-                  AI Auto-Fill
+                  Auto-Fill
                 </v-btn>
               </template>
             </v-tooltip>
@@ -1519,7 +1519,7 @@ onUnmounted(() => {
           icon="mdi-lightbulb-outline"
         >
           <strong>Tip:</strong> Click any slot card below to assign an employee. Red slots are required roles. 
-          Use <strong>AI Auto-Fill</strong> or <strong>Copy Previous Week</strong> above to populate quickly.
+          Use <strong>Auto-Fill</strong> or <strong>Copy Previous Week</strong> above to populate quickly.
         </v-alert>
 
         <!-- Staffing Matrix Grid -->

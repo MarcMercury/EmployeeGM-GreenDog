@@ -11,9 +11,6 @@
             to="/recruiting"
           />
           <h1 class="text-h4 font-weight-bold mb-0">Find DVM Candidates</h1>
-          <v-chip color="primary" size="small" variant="tonal" prepend-icon="mdi-robot-outline">
-            AI-Driven
-          </v-chip>
         </div>
         <p class="text-body-2 text-grey-darken-1 mt-1">
           OpenAI + Gemini scour public hospital sites, state DVM boards, AVMA / specialty college
@@ -142,7 +139,7 @@
             prepend-icon="mdi-magnify-scan"
             @click="runSearch"
           >
-            Run AI Discovery
+            Run Discovery
           </v-btn>
         </div>
       </v-card-text>
@@ -199,6 +196,13 @@
         {{ activelySeekingCount }} actively seeking
       </v-chip>
       <v-spacer />
+      <UiExportMenu
+        v-if="prospects.length > 0"
+        :data="exportRows"
+        :columns="exportColumns"
+        :filename="exportFilename"
+        title="DVM Candidate Search"
+      />
       <v-btn-toggle v-model="viewMode" mandatory density="compact" color="primary">
         <v-btn value="grid" size="small">
           <v-icon size="18">mdi-table</v-icon>
@@ -230,7 +234,7 @@
       <v-icon size="56" color="primary">mdi-robot-happy-outline</v-icon>
       <h3 class="text-h6 mt-3">Ready to discover candidates</h3>
       <p class="text-grey">
-        Configure criteria above and click <strong>Run AI Discovery</strong> to begin.
+        Configure criteria above and click <strong>Run Discovery</strong> to begin.
       </p>
     </v-card>
 
@@ -267,7 +271,9 @@
           <span>{{ item.specialty || '—' }}</span>
         </template>
         <template #item.vet_school="{ item }">
-          <div>{{ item.vet_school || '—' }}</div>
+          <div :title="item.vet_school_canonical || item.vet_school || ''">
+            {{ item.vet_school_short || item.vet_school || '—' }}
+          </div>
           <div v-if="item.graduation_year" class="text-caption text-grey">Class of {{ item.graduation_year }}</div>
           <div v-if="item.residency" class="text-caption text-grey">Residency: {{ item.residency }}</div>
         </template>
@@ -279,6 +285,62 @@
             {{ item.distance_miles }} mi
           </span>
           <span v-else class="text-caption text-grey">—</span>
+        </template>
+        <template #item.license_status="{ item }">
+          <div v-if="item.license_status">
+            <a
+              :href="item.license_status.source_url"
+              target="_blank"
+              rel="noopener"
+              :title="`${item.license_status.raw_status || item.license_status.status}${item.license_status.license_number ? ` — #${item.license_status.license_number}` : ''}${item.license_status.expiration_date ? ` (exp ${item.license_status.expiration_date})` : ''}`"
+              style="text-decoration: none;"
+            >
+              <v-chip
+                size="x-small"
+                :color="licenseColor(item.license_status.status)"
+                variant="tonal"
+              >
+                {{ item.license_status.status }}
+              </v-chip>
+            </a>
+            <div v-if="item.license_status.expiration_date" class="text-caption text-grey">
+              exp {{ item.license_status.expiration_date }}
+            </div>
+          </div>
+          <span v-else class="text-caption text-grey">—</span>
+        </template>
+        <template #item.signals="{ item }">
+          <div class="d-flex flex-column gap-1">
+            <v-chip
+              v-if="item.recent_job_change"
+              size="x-small"
+              color="info"
+              variant="tonal"
+              :title="`Started ${item.recent_job_change.started_at} (${item.recent_job_change.days_in_role} days ago)${item.recent_job_change.previous_employer ? ` — previously at ${item.recent_job_change.previous_employer}` : ''}`"
+            >
+              <v-icon start size="12">mdi-briefcase-clock</v-icon>
+              New role
+            </v-chip>
+            <v-tooltip v-if="item.vin_profile" :text="item.vin_profile.title || 'VIN profile'">
+              <template #activator="{ props: tp }">
+                <a v-bind="tp" :href="item.vin_profile.url" target="_blank" rel="noopener" class="text-caption">
+                  <v-icon size="12" color="primary">mdi-paw</v-icon> VIN
+                </a>
+              </template>
+            </v-tooltip>
+            <v-tooltip
+              v-if="item.email_verification"
+              :text="`Hunter: ${item.email_verification.status || '—'}${item.email_verification.score != null ? ` (${item.email_verification.score}/100)` : ''}`"
+            >
+              <template #activator="{ props: tp }">
+                <v-icon
+                  v-bind="tp"
+                  size="14"
+                  :color="emailVerifyColor(item.email_verification)"
+                >mdi-email-check-outline</v-icon>
+              </template>
+            </v-tooltip>
+          </div>
         </template>
         <template #item.verification="{ item }">
           <div v-if="item.verification" class="d-flex flex-column gap-1">
@@ -600,6 +662,40 @@ interface ProspectRow {
   provider: string
   distance_miles?: number | null
   verification?: ProspectVerification | null
+  // Live state-board license lookup (CA + TX).
+  license_status?: {
+    status: string
+    license_number?: string | null
+    expiration_date?: string | null
+    source_url: string
+    raw_status?: string | null
+  } | null
+  // Hunter.io email-verifier output (deliverability check).
+  email_verification?: {
+    status?: string | null
+    result?: string | null
+    score?: number | null
+    disposable?: boolean
+    webmail?: boolean
+    smtp_check?: string | null
+    accept_all?: boolean
+    block?: boolean
+  } | null
+  // Apollo-detected recent job change (<90 days in current role).
+  recent_job_change?: {
+    started_at: string
+    days_in_role: number
+    previous_employer?: string | null
+  } | null
+  // VIN public profile cross-reference.
+  vin_profile?: {
+    url: string
+    title?: string | null
+    snippet?: string | null
+  } | null
+  // Normalized vet-school names.
+  vet_school_canonical?: string | null
+  vet_school_short?: string | null
   // Local UI state
   status?: 'idle' | 'imported'
   importing?: boolean
@@ -635,8 +731,8 @@ const form = ref({
   includeNewGraduates: true,
   maxResults: 25,
   activeOnly: false,
-  enforceRadius: false,
-  verify: false,
+  enforceRadius: true,
+  verify: true,
 })
 
 const loading = ref(false)
@@ -656,6 +752,8 @@ const gridHeaders = [
   { title: 'Current Employer', key: 'current_employer', width: 180 },
   { title: 'Location', key: 'location', sortable: false, width: 140 },
   { title: 'Distance', key: 'distance_miles', width: 90 },
+  { title: 'License', key: 'license_status', sortable: false, width: 110 },
+  { title: 'Signals', key: 'signals', sortable: false, width: 130 },
   { title: 'Verified', key: 'verification', sortable: false, width: 130 },
   { title: 'Contact', key: 'contact', sortable: false, width: 200 },
   { title: 'Specialty Fit', key: 'specialty_match', width: 110 },
@@ -668,6 +766,72 @@ const activelySeekingCount = computed(
   () => prospects.value.filter(p => p.actively_seeking).length,
 )
 
+// ---------- Export to Excel / CSV / PDF ----------
+const exportColumns = [
+  { key: 'first_name', title: 'First Name' },
+  { key: 'last_name', title: 'Last Name' },
+  { key: 'credentials', title: 'Credentials' },
+  { key: 'specialty', title: 'Specialty' },
+  { key: 'current_employer', title: 'Current Employer' },
+  { key: 'city', title: 'City' },
+  { key: 'state', title: 'State' },
+  { key: 'distance_miles', title: 'Distance (mi)' },
+  { key: 'experience_years', title: 'Experience (yrs)' },
+  { key: 'vet_school', title: 'Vet School' },
+  { key: 'vet_school_short', title: 'Vet School (Short)' },
+  { key: 'graduation_year', title: 'Graduation Year' },
+  { key: 'residency', title: 'Residency' },
+  { key: 'email', title: 'Email' },
+  { key: 'email_verification_status', title: 'Email Status' },
+  { key: 'email_verification_score', title: 'Email Score' },
+  { key: 'phone', title: 'Phone' },
+  { key: 'linkedin_url', title: 'LinkedIn' },
+  { key: 'website_url', title: 'Website' },
+  { key: 'actively_seeking', title: 'Actively Seeking', format: (v: any) => (v ? 'Yes' : 'No') },
+  { key: 'recent_job_change_flag', title: 'Recently Changed Jobs', format: (v: any) => (v ? 'Yes' : 'No') },
+  { key: 'recent_job_change_started', title: 'New Role Start Date' },
+  { key: 'recent_job_change_previous', title: 'Previous Employer' },
+  { key: 'specialty_match', title: 'Specialty Fit %' },
+  { key: 'match_score', title: 'Match %' },
+  { key: 'verification_confidence', title: 'Verification %' },
+  { key: 'verification_reasons', title: 'Verification Notes' },
+  { key: 'license_status', title: 'License Status' },
+  { key: 'license_number', title: 'License #' },
+  { key: 'license_expiration', title: 'License Expiration' },
+  { key: 'npi_number', title: 'NPI #' },
+  { key: 'vin_profile_url', title: 'VIN Profile URL' },
+  { key: 'provider', title: 'Source Provider' },
+  { key: 'source_name', title: 'Source Name' },
+  { key: 'source_url', title: 'Source URL' },
+  { key: 'notes', title: 'Notes' },
+]
+
+const exportRows = computed(() =>
+  prospects.value.map(p => ({
+    ...p,
+    verification_confidence: p.verification?.confidence ?? '',
+    verification_reasons: p.verification?.reasons?.join(' | ') ?? '',
+    npi_number: p.verification?.npi_number ?? '',
+    vet_school_short: p.vet_school_short ?? '',
+    email_verification_status: p.email_verification?.status ?? '',
+    email_verification_score: p.email_verification?.score ?? '',
+    license_status: p.license_status?.status ?? '',
+    license_number: p.license_status?.license_number ?? '',
+    license_expiration: p.license_status?.expiration_date ?? '',
+    recent_job_change_flag: !!p.recent_job_change,
+    recent_job_change_started: p.recent_job_change?.started_at ?? '',
+    recent_job_change_previous: p.recent_job_change?.previous_employer ?? '',
+    vin_profile_url: p.vin_profile?.url ?? '',
+  })),
+)
+
+const exportFilename = computed(() => {
+  const parts = ['dvm-candidates']
+  if (form.value.specialty) parts.push(form.value.specialty.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+  if (form.value.location) parts.push(form.value.location.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+  return parts.filter(Boolean).join('_').replace(/-+/g, '-')
+})
+
 function resetForm() {
   form.value = {
     specialty: 'General Practice',
@@ -679,8 +843,8 @@ function resetForm() {
     includeNewGraduates: true,
     maxResults: 25,
     activeOnly: false,
-    enforceRadius: false,
-    verify: false,
+    enforceRadius: true,
+    verify: true,
   }
 }
 
@@ -699,6 +863,27 @@ function verifyColor(score: number) {
   if (score >= 60) return 'success'
   if (score >= 30) return 'primary'
   if (score > 0) return 'warning'
+  return 'grey'
+}
+
+function licenseColor(status: string | null | undefined) {
+  switch (status) {
+    case 'active': return 'success'
+    case 'inactive': return 'warning'
+    case 'expired':
+    case 'lapsed': return 'orange-darken-2'
+    case 'suspended':
+    case 'revoked': return 'error'
+    default: return 'grey'
+  }
+}
+
+function emailVerifyColor(v: any) {
+  if (!v) return 'grey'
+  if (v.status === 'valid' || v.result === 'deliverable') return 'success'
+  if (v.status === 'accept_all' || v.accept_all) return 'warning'
+  if (v.status === 'invalid' || v.result === 'undeliverable' || v.disposable || v.block) return 'error'
+  if (v.status === 'unknown' || v.result === 'risky') return 'orange-darken-2'
   return 'grey'
 }
 
@@ -721,6 +906,7 @@ function providerLabel(key: string): string {
     openai: 'OpenAI',
     gemini: 'Gemini',
     acvs: 'ACVS Directory',
+    hunter: 'Hunter.io',
   }
   return labels[key] || key
 }
@@ -737,6 +923,7 @@ async function runSearch() {
       prospects: ProspectRow[]
       providers: Record<string, boolean>
       warnings: string[]
+      cached?: boolean
     }>('/api/recruiting/find-dvm-candidates', {
       method: 'POST',
       body: { ...form.value },
@@ -749,14 +936,14 @@ async function runSearch() {
       show: true,
       color: prospects.value.length ? 'success' : 'info',
       message: prospects.value.length
-        ? `Found ${prospects.value.length} prospect${prospects.value.length === 1 ? '' : 's'}.`
+        ? `Found ${prospects.value.length} prospect${prospects.value.length === 1 ? '' : 's'}.${res.cached ? ' (cached)' : ''}`
         : 'No prospects matched. Try widening criteria.',
     }
   } catch (err: any) {
     snackbar.value = {
       show: true,
       color: 'error',
-      message: err?.data?.message || err?.message || 'AI discovery failed',
+      message: err?.data?.message || err?.message || 'Discovery failed',
     }
   } finally {
     loading.value = false

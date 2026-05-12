@@ -50,7 +50,7 @@
               >
                 <v-icon size="48" color="success" class="mb-3">mdi-file-document</v-icon>
                 <h3 class="text-h6 mb-2">Upload Resume</h3>
-                <p class="text-body-2 text-grey">AI extracts candidate info from PDF</p>
+                <p class="text-body-2 text-grey">Extracts candidate info from PDF</p>
               </v-card>
             </v-col>
             
@@ -194,7 +194,7 @@
               <template #prepend>
                 <v-progress-circular indeterminate size="20" class="mr-2" />
               </template>
-              Parsing resume with AI... This may take a few seconds.
+              Parsing resume... This may take a few seconds.
             </v-alert>
             
             <v-alert v-if="parseError" type="error" variant="tonal" class="mt-4" closable>
@@ -250,7 +250,7 @@
                   variant="outlined"
                   density="compact"
                   clearable
-                  :hint="suggestedPosition ? `AI suggested: ${suggestedPosition}` : ''"
+                  :hint="suggestedPosition ? `Suggested: ${suggestedPosition}` : ''"
                   persistent-hint
                 />
               </v-col>
