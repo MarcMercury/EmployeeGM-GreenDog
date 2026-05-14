@@ -164,16 +164,31 @@ function parseRevenueCSV(csvText: string): ParsedRevenueEntry[] {
 /**
  * Parse "Referrer Revenue" XLS content (EzyVet native export format)
  * XLS uses paired rows: summary row (no date) followed by detail row(s) with date/division/amount.
- * Header row at index 9: Date/Time, Referring Vet Clinic, Referring Vet, Client, Animal, Division, Amount
+ * The header row is detected by content (cell A starts with "Date/Time") rather than
+ * a fixed index, so EzyVet adding a banner row doesn't silently break the import.
  */
 function parseRevenueXLS(buffer: Buffer): ParsedRevenueEntry[] {
   const wb = XLSX.read(buffer, { type: 'buffer' })
   const sheet = wb.Sheets[wb.SheetNames[0]]
   const data: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 })
   const entries: ParsedRevenueEntry[] = []
-  
-  // Data rows start after the header row (index 9 = column headers)
-  for (let i = 10; i < data.length; i++) {
+
+  // Find the header row by content.
+  let headerIdx = -1
+  for (let i = 0; i < Math.min(data.length, 50); i++) {
+    const cell = (data[i]?.[0] || '').toString().toLowerCase()
+    const cell1 = (data[i]?.[1] || '').toString().toLowerCase()
+    if (cell.includes('date/time') && cell1.includes('referring vet clinic')) {
+      headerIdx = i
+      break
+    }
+  }
+  if (headerIdx === -1) {
+    // Fall back to the historical fixed index so legacy exports still work.
+    headerIdx = 9
+  }
+
+  for (let i = headerIdx + 1; i < data.length; i++) {
     const row = data[i]
     if (!row || row.length < 2) continue
     
@@ -662,14 +677,39 @@ export default defineEventHandler(async (event) => {
       // ── Build line-item rows with sequence-aware dedup hashes ──
       // The hash includes a per-(date,client,animal,amount) sequence index so
       // legitimate same-day repeat visits aren't collapsed by the unique index.
+      //
+      // Sort entries first to make the seq index order-independent — two re-uploads
+      // of the same export with rows in a different order will produce the same hash.
+      const sortedEntries = [...entries].sort((a, b) => {
+        const aDate = parseEzyVetDate(a.date) || a.date
+        const bDate = parseEzyVetDate(b.date) || b.date
+        return (
+          aDate.localeCompare(bDate)
+          || a.clinicName.localeCompare(b.clinicName)
+          || a.clientName.localeCompare(b.clientName)
+          || a.animalName.localeCompare(b.animalName)
+          || (a.amount - b.amount)
+          || a.referringVet.localeCompare(b.referringVet)
+        )
+      })
+
       const seqCounters = new Map<string, number>()
       const lineItemRows: any[] = []
-      for (const entry of entries) {
+      const invalidDateRows: ParsedRevenueEntry[] = []
+      for (const entry of sortedEntries) {
+        const parsedDate = parseEzyVetDate(entry.date)
+        // Reject rows whose date can't be normalized — the ledger column now
+        // requires YYYY-MM-DD (CHECK constraint), and silently inserting raw
+        // strings would break date-range reporting.
+        if (!parsedDate || !/^\d{4}-\d{2}-\d{2}$/.test(parsedDate)) {
+          invalidDateRows.push(entry)
+          continue
+        }
+
         const partner = clinicToPartner.get(entry.clinicName)
         const partnerId = partner?.id || null
-        const parsedDate = parseEzyVetDate(entry.date)
         const seqKey = [
-          parsedDate || entry.date,
+          parsedDate,
           entry.clinicName,
           entry.clientName,
           entry.animalName,
@@ -683,7 +723,7 @@ export default defineEventHandler(async (event) => {
 
         lineItemRows.push({
           partner_id: partnerId,
-          transaction_date: parsedDate || entry.date,
+          transaction_date: parsedDate,
           csv_clinic_name: entry.clinicName,
           referring_vet: entry.referringVet || null,
           client_name: entry.clientName || null,
@@ -694,6 +734,14 @@ export default defineEventHandler(async (event) => {
           row_index: seq,
           upload_id: uploadId,
         })
+      }
+
+      if (invalidDateRows.length > 0) {
+        logger.warn('Skipped rows with unparseable dates', 'parse-referrals', {
+          count: invalidDateRows.length,
+          sample: invalidDateRows.slice(0, 3).map(e => ({ clinic: e.clinicName, raw: e.date })),
+        })
+        ;(result as any).invalidDateRows = invalidDateRows.length
       }
 
 
@@ -860,6 +908,8 @@ export default defineEventHandler(async (event) => {
     const overlapWarning = reportType === 'revenue' && totalRowsOut && newRowsOut !== null && newRowsOut < totalRowsOut
       ? `${(totalRowsOut - newRowsOut).toLocaleString()} of ${totalRowsOut.toLocaleString()} rows were already on file and were skipped.`
       : null
+    const isDuplicateUpload = reportType === 'revenue' && totalRowsOut && newRowsOut === 0
+    const invalidDateRows = (result as any).invalidDateRows ?? 0
 
     return {
       success: true,
@@ -875,8 +925,10 @@ export default defineEventHandler(async (event) => {
       visitorsAdded: result.visitorsAdded,
       newRows: newRowsOut,
       totalRows: totalRowsOut,
+      invalidDateRows,
       dateRange: (result as any).dateRange ?? null,
       overlapWarning,
+      isDuplicateUpload,
       details: result.details
     }
     

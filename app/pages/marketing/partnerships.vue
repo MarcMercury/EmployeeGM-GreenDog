@@ -957,6 +957,20 @@
                   <v-icon start>mdi-delete-sweep</v-icon>
                   Clear All Stats
                 </v-btn>
+                <v-divider class="my-3" />
+                <div class="text-caption mb-2">
+                  <strong>Safer alternative:</strong> Undo just the most recent revenue upload (or the one shown in your last result). This removes only that upload's line items and recomputes totals.
+                </div>
+                <v-btn
+                  color="primary"
+                  variant="outlined"
+                  size="small"
+                  :loading="undoingUpload"
+                  @click="undoLastUpload"
+                >
+                  <v-icon start>mdi-undo-variant</v-icon>
+                  Undo Last Upload
+                </v-btn>
               </v-expansion-panel-text>
             </v-expansion-panel>
           </v-expansion-panels>
@@ -1003,6 +1017,18 @@
               <v-alert v-if="uploadResult.overlapWarning" type="warning" variant="tonal" density="compact" class="mb-3">
                 <v-icon start size="small">mdi-alert</v-icon>
                 {{ uploadResult.overlapWarning }}
+              </v-alert>
+
+              <!-- Duplicate-file banner: every row was already on file -->
+              <v-alert v-if="uploadResult.isDuplicateUpload" type="warning" variant="tonal" density="compact" class="mb-3">
+                <v-icon start size="small">mdi-content-duplicate</v-icon>
+                This file appears to have already been uploaded — no new rows were added.
+              </v-alert>
+
+              <!-- Invalid-date rows skipped -->
+              <v-alert v-if="uploadResult.invalidDateRows > 0" type="warning" variant="tonal" density="compact" class="mb-3">
+                <v-icon start size="small">mdi-calendar-remove</v-icon>
+                Skipped {{ uploadResult.invalidDateRows }} row(s) with an unparseable date.
               </v-alert>
 
               <div class="d-flex flex-wrap gap-4 my-2">
@@ -1056,6 +1082,20 @@
                   </v-expansion-panel-text>
                 </v-expansion-panel>
               </v-expansion-panels>
+
+              <!-- Undo just this upload -->
+              <div v-if="uploadResult.uploadId && uploadResult.reportType === 'revenue'" class="mt-3">
+                <v-btn
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  :loading="undoingUpload"
+                  @click="undoUpload(uploadResult.uploadId)"
+                >
+                  <v-icon start>mdi-undo-variant</v-icon>
+                  Undo This Upload
+                </v-btn>
+              </div>
             </div>
             <div v-else>
               <v-icon v-if="uploadResult.isDuplicate" start color="warning" size="small">mdi-content-duplicate</v-icon>
@@ -1160,6 +1200,7 @@ const confirmClearStats = ref(false)
 const uploadFile = ref<File | File[] | null>(null)
 const uploadProcessing = ref(false)
 const uploadResult = ref<any>(null)
+const undoingUpload = ref(false)
 
 // Maximum file size accepted by the /api/parse-referrals endpoint (25 MB).
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -1917,6 +1958,47 @@ async function clearReferralStats() {
   } finally {
     clearingStats.value = false
   }
+}
+
+// Undo a specific upload (selective rollback). Safer than the nuclear
+// clearReferralStats path — only removes ledger rows tagged with the given
+// upload_id and recomputes partner totals.
+async function undoUpload(uploadId?: string | null) {
+  if (undoingUpload.value) return
+  undoingUpload.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) throw new Error('No active session - please log in again')
+
+    const response = await $fetch<any>('/api/marketing/undo-referral-upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}` },
+      body: uploadId ? { upload_id: uploadId } : {},
+    })
+
+    if (response.success) {
+      await loadPartners()
+      snackbar.message = response.message
+      snackbar.color = response.rowsDeleted > 0 ? 'success' : 'warning'
+      snackbar.show = true
+      // Clear the upload result so the user can't double-undo the same upload
+      if (uploadResult.value?.uploadId === response.uploadId) {
+        uploadResult.value = null
+      }
+    }
+  } catch (error: any) {
+    console.error('Undo upload error:', error)
+    snackbar.message = error.data?.message || error.message || 'Failed to undo upload'
+    snackbar.color = 'error'
+    snackbar.show = true
+  } finally {
+    undoingUpload.value = false
+  }
+}
+
+// Convenience: undo the most recent revenue upload (no upload_id supplied).
+async function undoLastUpload() {
+  await undoUpload(null)
 }
 
 function closeUploadDialog() {

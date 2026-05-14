@@ -13,6 +13,8 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { serverSupabaseServiceRole, serverSupabaseClient } from '#supabase/server'
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
 export default defineEventHandler(async (event) => {
   try {
     // Auth check — must be logged in
@@ -21,12 +23,21 @@ export default defineEventHandler(async (event) => {
     if (!user) throw createError({ statusCode: 401, message: 'Not authenticated' })
 
     const { from, to } = getQuery(event) as { from?: string; to?: string }
-    if (!from || !to) throw createError({ statusCode: 400, message: 'from and to query params required' })
+    if (!from || !to) {
+      throw createError({ statusCode: 400, message: 'from and to query params required' })
+    }
+    if (!ISO_DATE_RE.test(from) || !ISO_DATE_RE.test(to)) {
+      throw createError({ statusCode: 400, message: 'from and to must be YYYY-MM-DD' })
+    }
+    if (from > to) {
+      throw createError({ statusCode: 400, message: '"from" must be on or before "to"' })
+    }
 
     const db = await serverSupabaseServiceRole(event)
 
-    // Fetch line items filtered by date range server-side
-    // transaction_date is stored as ISO TEXT (YYYY-MM-DD), so text comparison works correctly
+    // Fetch line items (matched AND unmatched) filtered by date range server-side.
+    // Unmatched rows are kept so the report can surface them under "Unmatched"
+    // instead of silently dropping their revenue from the totals.
     let allLineItems: any[] = []
     let lineError: any = null
     const PAGE_SIZE = 1000
@@ -39,7 +50,6 @@ export default defineEventHandler(async (event) => {
         .select('partner_id, transaction_date, amount, csv_clinic_name, division')
         .gte('transaction_date', from)
         .lte('transaction_date', to)
-        .not('partner_id', 'is', null)
         .range(offset, offset + PAGE_SIZE - 1)
 
       if (error) {
@@ -77,10 +87,12 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, message: visitError.message })
     }
 
-    // Fetch partner metadata for joining (name, zone, tier)
+    // Fetch partner metadata for joining (name, zone, tier, plus stats-only fields).
+    // referrals_last_12_months lets the report surface Statistics-CSV uploads
+    // (which never write to the ledger) as a separate data series.
     const { data: partnerStats, error: psError } = await db
       .from('referral_partners')
-      .select('id, hospital_name, name, zone, tier, status, total_referrals_all_time, total_revenue_all_time, last_referral_date, created_at')
+      .select('id, hospital_name, name, zone, tier, status, total_referrals_all_time, total_revenue_all_time, referrals_last_12_months, last_referral_date, created_at')
 
     if (psError) {
       console.error('[referral-report-data] partnerStats query error:', psError)
@@ -91,6 +103,7 @@ export default defineEventHandler(async (event) => {
       visits: visits || [],
       partnerStats: partnerStats || [],
       lineItemCount: allLineItems.length,
+      dateRange: { from, to },
     }
   } catch (err: any) {
     if (err.statusCode) throw err

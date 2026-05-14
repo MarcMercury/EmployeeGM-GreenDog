@@ -111,6 +111,79 @@
         </v-col>
       </v-row>
 
+      <!-- Unmatched + Statistics-only series -->
+      <v-row v-if="reportData.unmatchedReferrals > 0 || reportData.statsLast12Months > 0" class="mb-4">
+        <v-col v-if="reportData.unmatchedReferrals > 0" cols="12" md="6">
+          <v-card variant="outlined" color="warning">
+            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
+              <v-icon start color="warning" size="20">mdi-alert-circle</v-icon>
+              Unmatched Clinic Revenue
+              <v-tooltip activator="parent" location="top">
+                Revenue from CSV clinic names that couldn't be paired to a partner record.
+                Linking these on the Upload Log keeps the totals reconciled.
+              </v-tooltip>
+            </v-card-title>
+            <v-divider />
+            <v-card-text class="py-3">
+              <div class="d-flex flex-wrap gap-4 mb-3">
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ reportData.unmatchedReferrals.toLocaleString() }}</div>
+                  <div class="text-caption">Unmatched Referrals</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">${{ formatCurrency(reportData.unmatchedRevenue) }}</div>
+                  <div class="text-caption">Unmatched Revenue</div>
+                </div>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ reportData.unmatchedClinics.length }}</div>
+                  <div class="text-caption">Unmatched Clinics</div>
+                </div>
+              </div>
+              <v-expansion-panels v-if="reportData.unmatchedClinics.length" variant="accordion" density="compact">
+                <v-expansion-panel>
+                  <v-expansion-panel-title class="text-caption">View clinics</v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>Clinic Name (from CSV)</th>
+                          <th class="text-center">Referrals</th>
+                          <th class="text-end">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="c in reportData.unmatchedClinics" :key="c.name">
+                          <td class="text-body-2">{{ c.name }}</td>
+                          <td class="text-center">{{ c.referrals.toLocaleString() }}</td>
+                          <td class="text-end">${{ Number(c.revenue).toLocaleString() }}</td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col v-if="reportData.statsLast12Months > 0" cols="12" md="6">
+          <v-card variant="outlined">
+            <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
+              <v-icon start color="info" size="20">mdi-chart-line</v-icon>
+              Statistics Report — Last 12 Months
+              <v-tooltip activator="parent" location="top">
+                Rolling 12-month referral counts from the most recent EzyVet Statistics CSV.
+                Not affected by the date range above — shown for context only.
+              </v-tooltip>
+            </v-card-title>
+            <v-divider />
+            <v-card-text class="py-3">
+              <div class="text-h5 font-weight-bold text-info">{{ reportData.statsLast12Months.toLocaleString() }}</div>
+              <div class="text-caption text-grey-darken-1">Total referrals across all partners (12mo snapshot)</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
       <!-- Zone Breakdown -->
       <v-row class="mt-2">
         <v-col cols="12">
@@ -118,6 +191,9 @@
             <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
               <v-icon start color="teal" size="20">mdi-map-marker-multiple</v-icon>
               Referrals by Zone
+              <v-tooltip activator="parent" location="top">
+                Grouped by each clinic's current zone. Historical periods reflect today's zone, not the zone at the time of the referral.
+              </v-tooltip>
             </v-card-title>
             <v-divider />
             <v-table density="compact">
@@ -163,6 +239,9 @@
             <v-card-title class="text-subtitle-1 font-weight-bold d-flex align-center">
               <v-icon start color="amber" size="20">mdi-trophy</v-icon>
               Top Referring Clinics
+              <v-tooltip activator="parent" location="top">
+                Top 10 by referral count in the selected period. Tier reflects each clinic's current tier.
+              </v-tooltip>
             </v-card-title>
             <v-divider />
             <v-list density="compact" class="pa-0">
@@ -179,6 +258,9 @@
                 <v-list-item-title class="text-body-2">{{ clinic.name }}</v-list-item-title>
                 <v-list-item-subtitle class="text-caption">
                   {{ clinic.referrals.toLocaleString() }} referrals &bull; ${{ Number(clinic.revenue).toLocaleString() }}
+                  <span class="text-grey">
+                    &bull; {{ reportData.totalRevenue > 0 ? ((clinic.revenue / reportData.totalRevenue) * 100).toFixed(1) : '0.0' }}% of total
+                  </span>
                 </v-list-item-subtitle>
                 <template #append>
                   <v-chip size="x-small" :color="getTierColor(clinic.tier)" variant="flat">
@@ -188,6 +270,26 @@
               </v-list-item>
               <v-list-item v-if="!reportData.topClinics.length">
                 <v-list-item-title class="text-body-2 text-grey text-center">No referral data in this period</v-list-item-title>
+              </v-list-item>
+              <!-- Top-clinics roll-up so the list visibly reconciles to Total Revenue -->
+              <v-divider v-if="reportData.topClinics.length" />
+              <v-list-item v-if="reportData.topClinics.length" class="px-4" style="background: rgba(0,0,0,0.02);">
+                <v-list-item-title class="text-body-2 font-weight-bold">
+                  Top {{ reportData.topClinics.length }} subtotal
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption">
+                  {{ reportData.topClinics.reduce((s, c) => s + c.referrals, 0).toLocaleString() }} referrals
+                  &bull; ${{ reportData.topClinics.reduce((s, c) => s + c.revenue, 0).toLocaleString() }}
+                </v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item v-if="reportData.topClinics.length && reportData.activePartners > reportData.topClinics.length" class="px-4">
+                <v-list-item-title class="text-body-2 text-grey-darken-1">
+                  Other ({{ reportData.activePartners - reportData.topClinics.length }} clinics)
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-caption text-grey-darken-1">
+                  {{ (reportData.totalReferrals - reportData.unmatchedReferrals - reportData.topClinics.reduce((s, c) => s + c.referrals, 0)).toLocaleString() }} referrals
+                  &bull; ${{ (reportData.totalRevenue - reportData.unmatchedRevenue - reportData.topClinics.reduce((s, c) => s + c.revenue, 0)).toLocaleString() }}
+                </v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-card>
@@ -237,6 +339,10 @@ interface ReportData {
   activePartners: number
   avgRevenuePerReferral: number
   avgReferralsPerPartner: number
+  unmatchedReferrals: number
+  unmatchedRevenue: number
+  unmatchedClinics: { name: string; referrals: number; revenue: number }[]
+  statsLast12Months: number
   topClinics: { id: string; name: string; referrals: number; revenue: number; tier: string }[]
   partnersByTier: { tier: string; count: number; referrals: number; revenue: number }[]
   zoneBreakdown: { zone: string; count: number; referrals: number; revenue: number; visits: number }[]
@@ -250,6 +356,10 @@ const reportData = reactive<ReportData>({
   activePartners: 0,
   avgRevenuePerReferral: 0,
   avgReferralsPerPartner: 0,
+  unmatchedReferrals: 0,
+  unmatchedRevenue: 0,
+  unmatchedClinics: [],
+  statsLast12Months: 0,
   topClinics: [],
   partnersByTier: [],
   zoneBreakdown: [],
@@ -302,9 +412,10 @@ async function generateReport() {
     const to = dateTo.value
 
     // ── 1. Fetch line items + visits + partner metadata via server API ──
-    // Line items are already filtered by date range server-side
+    // Line items are already filtered by date range server-side. Both matched
+    // and unmatched rows are returned so we can surface unmatched revenue.
     const { lineItems, visits: visitData, partnerStats } = await $fetch<{
-      lineItems: { partner_id: string; transaction_date: string; amount: number }[]
+      lineItems: { partner_id: string | null; transaction_date: string; amount: number; csv_clinic_name: string }[]
       visits: any[]
       partnerStats: any[]
       lineItemCount: number
@@ -317,24 +428,41 @@ async function generateReport() {
       if (!partnerMap.has(ps.id)) partnerMap.set(ps.id, ps)
     }
 
-    // ── 2. Aggregate line items per partner ──
+    // ── 2. Aggregate line items per partner; unmatched into their own buckets ──
     const partnerAgg = new Map<string, { referrals: number; revenue: number }>()
+    const unmatchedAgg = new Map<string, { referrals: number; revenue: number }>()
 
     for (const li of (lineItems || [])) {
-      if (!li.partner_id) continue
-      const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
-      agg.referrals++
-      agg.revenue += Number(li.amount) || 0
-      partnerAgg.set(li.partner_id, agg)
+      const amount = Number(li.amount) || 0
+      if (li.partner_id) {
+        const agg = partnerAgg.get(li.partner_id) || { referrals: 0, revenue: 0 }
+        agg.referrals++
+        agg.revenue += amount
+        partnerAgg.set(li.partner_id, agg)
+      } else {
+        const key = li.csv_clinic_name || 'Unknown Clinic'
+        const agg = unmatchedAgg.get(key) || { referrals: 0, revenue: 0 }
+        agg.referrals++
+        agg.revenue += amount
+        unmatchedAgg.set(key, agg)
+      }
     }
 
     // ── 3. Compute summary metrics ──
-    let totalReferrals = 0
-    let totalRevenue = 0
+    let matchedReferrals = 0
+    let matchedRevenue = 0
     for (const agg of partnerAgg.values()) {
-      totalReferrals += agg.referrals
-      totalRevenue += agg.revenue
+      matchedReferrals += agg.referrals
+      matchedRevenue += agg.revenue
     }
+    let unmatchedReferrals = 0
+    let unmatchedRevenue = 0
+    for (const agg of unmatchedAgg.values()) {
+      unmatchedReferrals += agg.referrals
+      unmatchedRevenue += agg.revenue
+    }
+    const totalReferrals = matchedReferrals + unmatchedReferrals
+    const totalRevenue = matchedRevenue + unmatchedRevenue
     const activePartnerIds = new Set(Array.from(partnerAgg.keys()))
 
     reportData.totalReferrals = totalReferrals
@@ -342,7 +470,18 @@ async function generateReport() {
     reportData.totalVisits = visitsList.length
     reportData.activePartners = activePartnerIds.size
     reportData.avgRevenuePerReferral = totalReferrals > 0 ? totalRevenue / totalReferrals : 0
-    reportData.avgReferralsPerPartner = activePartnerIds.size > 0 ? totalReferrals / activePartnerIds.size : 0
+    reportData.avgReferralsPerPartner = activePartnerIds.size > 0 ? matchedReferrals / activePartnerIds.size : 0
+    reportData.unmatchedReferrals = unmatchedReferrals
+    reportData.unmatchedRevenue = Math.round(unmatchedRevenue * 100) / 100
+    reportData.unmatchedClinics = Array.from(unmatchedAgg.entries())
+      .map(([name, agg]) => ({ name, referrals: agg.referrals, revenue: Math.round(agg.revenue * 100) / 100 }))
+      .sort((a, b) => b.revenue - a.revenue)
+
+    // Statistics-only data series: rolling 12-month referral counts from
+    // Statistics CSVs (which never write to the ledger). Surfaced as a
+    // separate metric so it doesn't double-count revenue-derived totals.
+    reportData.statsLast12Months = (partnerStats || [])
+      .reduce((sum: number, p: any) => sum + (Number(p.referrals_last_12_months) || 0), 0)
 
     // ── 4. Top clinics by referrals in period ──
     reportData.topClinics = Array.from(partnerAgg.entries())
@@ -392,6 +531,16 @@ async function generateReport() {
       const existing = zoneMap.get(zone) || { count: 0, referrals: 0, revenue: 0, visits: 0 }
       existing.visits++
       zoneMap.set(zone, existing)
+    }
+    // Include unmatched as its own pseudo-zone so report totals always reconcile
+    // to the ledger — no silent under-reporting from unmatched clinics.
+    if (unmatchedReferrals > 0 || unmatchedRevenue > 0) {
+      zoneMap.set('Unmatched (no partner)', {
+        count: unmatchedAgg.size,
+        referrals: unmatchedReferrals,
+        revenue: unmatchedRevenue,
+        visits: 0,
+      })
     }
     reportData.zoneBreakdown = Array.from(zoneMap.entries())
       .map(([zone, data]) => ({ zone, ...data }))
