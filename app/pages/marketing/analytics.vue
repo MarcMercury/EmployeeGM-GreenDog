@@ -1526,6 +1526,9 @@
                     >
                       {{ invoiceCancelRequested ? 'Canceling...' : 'Cancel' }}
                     </v-btn>
+                    <v-btn variant="text" :disabled="wizardBusy" @click="wizardStep = 3">
+                      Skip (already have invoices)
+                    </v-btn>
                     <v-btn
                       v-if="!invoiceBatchComplete"
                       color="primary" prepend-icon="mdi-cloud-upload"
