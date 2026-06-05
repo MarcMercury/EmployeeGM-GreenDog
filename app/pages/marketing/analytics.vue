@@ -225,181 +225,10 @@
         </v-col>
       </v-row>
 
-      <!-- Insights + Suggested Actions (from CRM analytics) -->
-      <v-row v-if="crmAnalytics?.insights?.length || crmAnalytics?.suggestedActions?.length" class="mb-5">
-        <v-col cols="12" md="6">
-          <v-card elevation="2" class="fill-height">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="info">mdi-lightbulb-on</v-icon>
-              Key Insights
-              <v-spacer />
-              <v-chip size="x-small" color="info" variant="tonal">{{ crmAnalytics.insights?.length || 0 }}</v-chip>
-            </v-card-title>
-            <v-card-text class="insights-scroll">
-              <v-alert
-                v-for="(insight, idx) in crmAnalytics.insights"
-                :key="idx" :type="insight.type" variant="tonal" density="compact"
-                class="mb-2" border="start"
-              >
-                <template #prepend><v-icon>{{ insight.icon }}</v-icon></template>
-                <div class="font-weight-bold text-body-2">{{ insight.title }}</div>
-                <div class="text-caption">{{ insight.detail }}</div>
-              </v-alert>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="6">
-          <v-card elevation="2" class="fill-height">
-            <v-card-title class="d-flex align-center">
-              <v-icon class="mr-2" color="warning">mdi-clipboard-check-outline</v-icon>
-              Suggested Actions
-              <v-spacer />
-              <v-chip size="x-small" color="warning" variant="tonal">{{ crmAnalytics.suggestedActions?.length || 0 }}</v-chip>
-            </v-card-title>
-            <v-card-text class="insights-scroll">
-              <div
-                v-for="(action, idx) in crmAnalytics.suggestedActions" :key="idx"
-                class="action-item mb-3 pa-3 rounded-lg" :class="`action-${action.priority}`"
-              >
-                <div class="d-flex align-center mb-1">
-                  <v-icon size="20" class="mr-2">{{ action.icon }}</v-icon>
-                  <span class="font-weight-bold text-body-2">{{ action.title }}</span>
-                  <v-spacer />
-                  <v-chip :color="action.priority === 'high' ? 'error' : action.priority === 'medium' ? 'warning' : 'info'" size="x-small" label>
-                    {{ action.priority }}
-                  </v-chip>
-                </div>
-                <div class="text-caption text-medium-emphasis">{{ action.detail }}</div>
-                <div v-if="action.metric" class="text-caption font-weight-bold mt-1" style="color: #1976D2;">
-                  {{ action.metric }}
-                </div>
-              </div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- ═══ AI DATA REVIEW ═══ -->
-      <v-card
-        v-if="aiReviewLoading && !aiReview"
-        class="mb-5"
-        elevation="2"
-        border
-        color="deep-purple-lighten-5"
-      >
-        <v-card-text class="d-flex align-center ga-3 py-3">
-          <v-progress-circular indeterminate color="deep-purple" size="22" width="2" />
-          <span class="text-body-2 text-deep-purple-darken-2">
-            Reviewing the current data window…
-          </span>
-        </v-card-text>
-      </v-card>
-      <v-card v-if="aiReview" class="mb-5" elevation="3" border>
-        <v-card-title class="d-flex align-center flex-wrap">
-          <v-icon start color="deep-purple">mdi-robot-outline</v-icon>
-          Data &amp; Methodology Review
-          <v-chip
-            class="ml-3"
-            size="small"
-            :color="aiReview.confidenceScore >= 75 ? 'success' : aiReview.confidenceScore >= 50 ? 'warning' : 'error'"
-            label
-          >
-            Confidence: {{ aiReview.confidenceScore }}%
-          </v-chip>
-          <v-spacer />
-          <span class="text-caption text-grey">
-            {{ aiReview.model }} · {{ aiReview.tokensUsed.toLocaleString() }} tokens · ${{ aiReview.costUsd.toFixed(4) }}
-          </span>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ml-2" @click="aiReview = null" />
-        </v-card-title>
-
-        <v-card-text>
-          <p class="text-body-1 mb-4 font-italic">{{ aiReview.summary }}</p>
-
-          <v-row dense>
-            <!-- Findings -->
-            <v-col cols="12" md="7">
-              <div class="text-subtitle-2 mb-2">
-                <v-icon size="18" class="mr-1">mdi-magnify-scan</v-icon>
-                Findings ({{ aiReview.findings.length }})
-              </div>
-              <div v-if="!aiReview.findings.length" class="text-caption text-grey">No findings.</div>
-              <v-alert
-                v-for="(f, idx) in aiReview.findings"
-                :key="idx"
-                :type="aiSeverityType(f.severity)"
-                variant="tonal"
-                density="compact"
-                class="mb-2"
-                border="start"
-              >
-                <div class="d-flex align-center mb-1">
-                  <v-chip size="x-small" label class="mr-2 text-uppercase" :color="aiCategoryColor(f.category)">
-                    {{ f.category.replace('_', ' ') }}
-                  </v-chip>
-                  <span class="font-weight-bold text-body-2">{{ f.title }}</span>
-                </div>
-                <div class="text-caption">{{ f.detail }}</div>
-                <div v-if="f.metric" class="text-caption font-weight-bold mt-1">
-                  Metric: {{ f.metric }}
-                  <span v-if="f.affectedRecords"> · {{ f.affectedRecords.toLocaleString() }} records</span>
-                </div>
-                <div v-if="f.suggestedAction" class="text-caption mt-1">
-                  <v-icon size="14">mdi-arrow-right-bold</v-icon> {{ f.suggestedAction }}
-                </div>
-              </v-alert>
-            </v-col>
-
-            <!-- Verified metrics + actions -->
-            <v-col cols="12" md="5">
-              <div class="text-subtitle-2 mb-2">
-                <v-icon size="18" class="mr-1">mdi-check-decagram-outline</v-icon>
-                Metric Audit
-              </div>
-              <v-table density="compact" class="mb-4">
-                <tbody>
-                  <tr v-for="(m, idx) in aiReview.verifiedMetrics" :key="idx">
-                    <td class="text-caption">{{ m.name }}</td>
-                    <td class="text-caption text-right font-weight-bold">{{ m.value }}</td>
-                    <td class="text-right" style="width:100px">
-                      <v-chip
-                        size="x-small" label
-                        :color="m.assessment === 'verified' ? 'success' : m.assessment === 'questionable' ? 'warning' : 'error'"
-                      >
-                        {{ m.assessment }}
-                      </v-chip>
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
-
-              <div class="text-subtitle-2 mb-2">
-                <v-icon size="18" class="mr-1">mdi-clipboard-check-outline</v-icon>
-                Top Recommended Actions
-              </div>
-              <div
-                v-for="(a, idx) in aiReview.topActions"
-                :key="idx"
-                class="action-item mb-2 pa-2 rounded-lg"
-                :class="`action-${a.priority}`"
-              >
-                <div class="d-flex align-center mb-1">
-                  <span class="font-weight-bold text-body-2">{{ a.title }}</span>
-                  <v-spacer />
-                  <v-chip size="x-small" label :color="a.priority === 'high' ? 'error' : a.priority === 'medium' ? 'warning' : 'info'">
-                    {{ a.priority }}
-                  </v-chip>
-                </div>
-                <div class="text-caption text-medium-emphasis">{{ a.rationale }}</div>
-              </div>
-            </v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-
       <!-- ═══ TABS ═══ -->
       <v-tabs v-model="activeTab" color="deep-purple" class="mb-4">
         <v-tab value="overview"><v-icon start size="18">mdi-view-dashboard</v-icon>Overview</v-tab>
+        <v-tab value="insights"><v-icon start size="18">mdi-lightbulb-on</v-icon>Insights &amp; Review</v-tab>
         <v-tab value="locations"><v-icon start size="18">mdi-map-marker</v-icon>Locations</v-tab>
         <v-tab value="clients"><v-icon start size="18">mdi-account-group</v-icon>Client Behavior</v-tab>
         <v-tab value="services"><v-icon start size="18">mdi-tag-multiple</v-icon>Services</v-tab>
@@ -410,6 +239,190 @@
       </v-tabs>
 
       <v-window v-model="activeTab">
+        <!-- ─────────── INSIGHTS & AI REVIEW ─────────── -->
+        <v-window-item value="insights">
+          <!-- Insights + Suggested Actions (from CRM analytics) -->
+          <v-row v-if="crmAnalytics?.insights?.length || crmAnalytics?.suggestedActions?.length" class="mb-5">
+            <v-col cols="12" md="6">
+              <v-card elevation="2" class="fill-height">
+                <v-card-title class="d-flex align-center">
+                  <v-icon class="mr-2" color="info">mdi-lightbulb-on</v-icon>
+                  Key Insights
+                  <v-spacer />
+                  <v-chip size="x-small" color="info" variant="tonal">{{ crmAnalytics.insights?.length || 0 }}</v-chip>
+                </v-card-title>
+                <v-card-text class="insights-scroll">
+                  <v-alert
+                    v-for="(insight, idx) in crmAnalytics.insights"
+                    :key="idx" :type="insight.type" variant="tonal" density="compact"
+                    class="mb-2" border="start"
+                  >
+                    <template #prepend><v-icon>{{ insight.icon }}</v-icon></template>
+                    <div class="font-weight-bold text-body-2">{{ insight.title }}</div>
+                    <div class="text-caption">{{ insight.detail }}</div>
+                  </v-alert>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2" class="fill-height">
+                <v-card-title class="d-flex align-center">
+                  <v-icon class="mr-2" color="warning">mdi-clipboard-check-outline</v-icon>
+                  Suggested Actions
+                  <v-spacer />
+                  <v-chip size="x-small" color="warning" variant="tonal">{{ crmAnalytics.suggestedActions?.length || 0 }}</v-chip>
+                </v-card-title>
+                <v-card-text class="insights-scroll">
+                  <div
+                    v-for="(action, idx) in crmAnalytics.suggestedActions" :key="idx"
+                    class="action-item mb-3 pa-3 rounded-lg" :class="`action-${action.priority}`"
+                  >
+                    <div class="d-flex align-center mb-1">
+                      <v-icon size="20" class="mr-2">{{ action.icon }}</v-icon>
+                      <span class="font-weight-bold text-body-2">{{ action.title }}</span>
+                      <v-spacer />
+                      <v-chip :color="action.priority === 'high' ? 'error' : action.priority === 'medium' ? 'warning' : 'info'" size="x-small" label>
+                        {{ action.priority }}
+                      </v-chip>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">{{ action.detail }}</div>
+                    <div v-if="action.metric" class="text-caption font-weight-bold mt-1" style="color: #1976D2;">
+                      {{ action.metric }}
+                    </div>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- ═══ AI DATA REVIEW ═══ -->
+          <v-card
+            v-if="aiReviewLoading && !aiReview"
+            class="mb-5"
+            elevation="2"
+            border
+            color="deep-purple-lighten-5"
+          >
+            <v-card-text class="d-flex align-center ga-3 py-3">
+              <v-progress-circular indeterminate color="deep-purple" size="22" width="2" />
+              <span class="text-body-2 text-deep-purple-darken-2">
+                Reviewing the current data window…
+              </span>
+            </v-card-text>
+          </v-card>
+          <v-card v-if="aiReview" class="mb-5" elevation="3" border>
+            <v-card-title class="d-flex align-center flex-wrap">
+              <v-icon start color="deep-purple">mdi-robot-outline</v-icon>
+              Data &amp; Methodology Review
+              <v-chip
+                class="ml-3"
+                size="small"
+                :color="aiReview.confidenceScore >= 75 ? 'success' : aiReview.confidenceScore >= 50 ? 'warning' : 'error'"
+                label
+              >
+                Confidence: {{ aiReview.confidenceScore }}%
+              </v-chip>
+              <v-spacer />
+              <span class="text-caption text-grey">
+                {{ aiReview.model }} · {{ aiReview.tokensUsed.toLocaleString() }} tokens · ${{ aiReview.costUsd.toFixed(4) }}
+              </span>
+              <v-btn icon="mdi-close" variant="text" size="small" class="ml-2" @click="aiReview = null" />
+            </v-card-title>
+
+            <v-card-text>
+              <p class="text-body-1 mb-4 font-italic">{{ aiReview.summary }}</p>
+
+              <v-row dense>
+                <!-- Findings -->
+                <v-col cols="12" md="7">
+                  <div class="text-subtitle-2 mb-2">
+                    <v-icon size="18" class="mr-1">mdi-magnify-scan</v-icon>
+                    Findings ({{ aiReview.findings.length }})
+                  </div>
+                  <div v-if="!aiReview.findings.length" class="text-caption text-grey">No findings.</div>
+                  <v-alert
+                    v-for="(f, idx) in aiReview.findings"
+                    :key="idx"
+                    :type="aiSeverityType(f.severity)"
+                    variant="tonal"
+                    density="compact"
+                    class="mb-2"
+                    border="start"
+                  >
+                    <div class="d-flex align-center mb-1">
+                      <v-chip size="x-small" label class="mr-2 text-uppercase" :color="aiCategoryColor(f.category)">
+                        {{ f.category.replace('_', ' ') }}
+                      </v-chip>
+                      <span class="font-weight-bold text-body-2">{{ f.title }}</span>
+                    </div>
+                    <div class="text-caption">{{ f.detail }}</div>
+                    <div v-if="f.metric" class="text-caption font-weight-bold mt-1">
+                      Metric: {{ f.metric }}
+                      <span v-if="f.affectedRecords"> · {{ f.affectedRecords.toLocaleString() }} records</span>
+                    </div>
+                    <div v-if="f.suggestedAction" class="text-caption mt-1">
+                      <v-icon size="14">mdi-arrow-right-bold</v-icon> {{ f.suggestedAction }}
+                    </div>
+                  </v-alert>
+                </v-col>
+
+                <!-- Verified metrics + actions -->
+                <v-col cols="12" md="5">
+                  <div class="text-subtitle-2 mb-2">
+                    <v-icon size="18" class="mr-1">mdi-check-decagram-outline</v-icon>
+                    Metric Audit
+                  </div>
+                  <v-table density="compact" class="mb-4">
+                    <tbody>
+                      <tr v-for="(m, idx) in aiReview.verifiedMetrics" :key="idx">
+                        <td class="text-caption">{{ m.name }}</td>
+                        <td class="text-caption text-right font-weight-bold">{{ m.value }}</td>
+                        <td class="text-right" style="width:100px">
+                          <v-chip
+                            size="x-small" label
+                            :color="m.assessment === 'verified' ? 'success' : m.assessment === 'questionable' ? 'warning' : 'error'"
+                          >
+                            {{ m.assessment }}
+                          </v-chip>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+
+                  <div class="text-subtitle-2 mb-2">
+                    <v-icon size="18" class="mr-1">mdi-clipboard-check-outline</v-icon>
+                    Top Recommended Actions
+                  </div>
+                  <div
+                    v-for="(a, idx) in aiReview.topActions"
+                    :key="idx"
+                    class="action-item mb-2 pa-2 rounded-lg"
+                    :class="`action-${a.priority}`"
+                  >
+                    <div class="d-flex align-center mb-1">
+                      <span class="font-weight-bold text-body-2">{{ a.title }}</span>
+                      <v-spacer />
+                      <v-chip size="x-small" label :color="a.priority === 'high' ? 'error' : a.priority === 'medium' ? 'warning' : 'info'">
+                        {{ a.priority }}
+                      </v-chip>
+                    </div>
+                    <div class="text-caption text-medium-emphasis">{{ a.rationale }}</div>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
+          <!-- Empty state -->
+          <div
+            v-if="!aiReview && !aiReviewLoading && !crmAnalytics?.insights?.length && !crmAnalytics?.suggestedActions?.length"
+            class="text-center text-grey pa-8"
+          >
+            <v-icon size="48" color="grey-lighten-1">mdi-lightbulb-off-outline</v-icon>
+            <div class="mt-2">No insights yet. Upload data to generate insights and an AI review.</div>
+          </div>
+        </v-window-item>
+
         <!-- ─────────── OVERVIEW ─────────── -->
         <v-window-item value="overview">
           <v-row class="mb-4">
