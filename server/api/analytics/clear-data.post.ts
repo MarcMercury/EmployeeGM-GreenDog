@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody<{ scope?: 'invoices' | 'contacts' | 'all' }>(event)
   const scope = body?.scope || 'all'
 
-  const result = { invoicesDeleted: 0, contactsDeleted: 0 }
+  const result = { invoicesDeleted: 0, contactsDeleted: 0, appointmentsDeleted: 0 }
 
   try {
     if (scope === 'invoices' || scope === 'all') {
@@ -56,11 +56,43 @@ export default defineEventHandler(async (event) => {
       result.contactsDeleted = before || 0
     }
 
+    // The analytics dashboard (performance + practice-overview reports) also
+    // reads appointment data, so a full clear must wipe those tables too —
+    // otherwise stale numbers keep showing up after "clear everything".
+    if (scope === 'all') {
+      const { count: apptBefore } = await supabase
+        .from('appointment_data')
+        .select('*', { count: 'exact', head: true })
+      const { error: apptErr } = await supabase
+        .from('appointment_data')
+        .delete()
+        .not('id', 'is', null) // matches every row (PK is non-null)
+      if (apptErr) throw apptErr
+      result.appointmentsDeleted += apptBefore || 0
+
+      const { count: ezyApptBefore } = await supabase
+        .from('ezyvet_appointments')
+        .select('*', { count: 'exact', head: true })
+      const { error: ezyApptErr } = await supabase
+        .from('ezyvet_appointments')
+        .delete()
+        .not('id', 'is', null)
+      if (ezyApptErr) throw ezyApptErr
+      result.appointmentsDeleted += ezyApptBefore || 0
+
+      // Appointment Type summary report also feeds the appointment-value report.
+      const { error: typeErr } = await supabase
+        .from('appointment_type_summary')
+        .delete()
+        .not('id', 'is', null)
+      if (typeErr) throw typeErr
+    }
+
     return {
       success: true,
       scope,
       ...result,
-      message: `Cleared ${result.invoicesDeleted} invoice lines and ${result.contactsDeleted} contacts.`,
+      message: `Cleared ${result.invoicesDeleted} invoice lines, ${result.contactsDeleted} contacts, and ${result.appointmentsDeleted} appointments.`,
     }
   } catch (err: any) {
     console.error('Analytics clear-data error:', err)

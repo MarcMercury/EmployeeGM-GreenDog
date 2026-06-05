@@ -81,14 +81,6 @@
           <v-col cols="6" md="3">
             <v-text-field v-model="dateRange.end" type="date" label="To" density="compact" variant="outlined" hide-details />
           </v-col>
-          <v-col cols="12" md="3">
-            <v-select
-              v-model="divisionFilter"
-              :items="['All Divisions', ...(crmAnalytics?.divisions || [])]"
-              label="Division (CRM)"
-              density="compact" variant="outlined" hide-details clearable
-            />
-          </v-col>
         </v-row>
       </v-card-text>
     </v-card>
@@ -412,6 +404,7 @@
         <v-tab value="clients"><v-icon start size="18">mdi-account-group</v-icon>Client Behavior</v-tab>
         <v-tab value="services"><v-icon start size="18">mdi-tag-multiple</v-icon>Services</v-tab>
         <v-tab value="staff"><v-icon start size="18">mdi-account-tie</v-icon>Staff Performance</v-tab>
+        <v-tab value="appointments"><v-icon start size="18">mdi-calendar-clock</v-icon>Appointment Value</v-tab>
         <v-tab value="trends"><v-icon start size="18">mdi-chart-line</v-icon>Trends</v-tab>
         <v-tab value="data"><v-icon start size="18">mdi-database-check</v-icon>Data Sources</v-tab>
       </v-tabs>
@@ -1017,6 +1010,150 @@
           </v-card>
         </v-window-item>
 
+        <!-- ─────────── APPOINTMENT VALUE ─────────── -->
+        <v-window-item value="appointments">
+          <v-alert
+            v-if="!apptValue || apptValue.kpis.totalAppointments === 0"
+            type="info" variant="tonal" class="mb-4" prepend-icon="mdi-calendar-import"
+          >
+            <div class="font-weight-bold">No appointment data yet.</div>
+            <div class="text-caption">
+              Upload the <strong>Appointment Details</strong> report (per-visit list) and the
+              <strong>Appointment Types</strong> report from the Data Sources tab. Appointment values are
+              matched to same-day invoices for each client + pet.
+            </div>
+          </v-alert>
+
+          <template v-else>
+            <!-- KPIs -->
+            <v-row class="mb-2">
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="indigo">
+                  <v-card-text>
+                    <div class="text-caption">Avg Appointment Value</div>
+                    <div class="text-h5 font-weight-bold">${{ fmt(apptValue.kpis.avgAppointmentValue) }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="success">
+                  <v-card-text>
+                    <div class="text-caption">Matched Revenue</div>
+                    <div class="text-h5 font-weight-bold">${{ fmt(apptValue.kpis.matchedRevenue) }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="info">
+                  <v-card-text>
+                    <div class="text-caption">Appointments</div>
+                    <div class="text-h5 font-weight-bold">{{ fmt(apptValue.kpis.totalAppointments) }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" :color="apptValue.kpis.matchRate >= 60 ? 'teal' : 'warning'">
+                  <v-card-text>
+                    <div class="text-caption">Invoice Match Rate</div>
+                    <div class="text-h5 font-weight-bold">{{ apptValue.kpis.matchRate }}%</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-alert
+              v-if="apptValue.kpis.matchRate < 60"
+              type="warning" variant="tonal" density="compact" class="mb-4"
+            >
+              Only {{ apptValue.kpis.matchRate }}% of appointments matched an invoice. Matching uses
+              client last/first name + pet name + same-day invoice date — re-upload the latest Invoice
+              Lines (which now include the client last name) to improve accuracy.
+            </v-alert>
+
+            <!-- Avg value by month -->
+            <v-card class="mb-4" elevation="2">
+              <v-card-title class="text-subtitle-1"><v-icon start>mdi-chart-bar</v-icon>Average Appointment Value by Month</v-card-title>
+              <v-card-text>
+                <ClientOnly>
+                  <apexchart v-if="apptValueMonthSeries[0]?.data?.length" type="bar" height="320" :options="apptValueMonthOptions" :series="apptValueMonthSeries" :key="'apptval'+chartKey" />
+                </ClientOnly>
+                <div v-if="!apptValueMonthSeries[0]?.data?.length" class="text-center text-grey pa-8">No matched appointment values yet</div>
+              </v-card-text>
+            </v-card>
+
+            <!-- Per-type estimated value -->
+            <v-card class="mb-4" elevation="2">
+              <v-card-title class="d-flex align-center">
+                <v-icon start>mdi-format-list-bulleted-type</v-icon>Appointment Type Value
+                <v-spacer />
+                <v-select
+                  v-model="apptTypeMonth"
+                  :items="apptMonthOptions"
+                  density="compact" variant="outlined" hide-details
+                  style="max-width: 180px"
+                />
+              </v-card-title>
+              <v-card-text>
+                <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                  Per-type value is an <strong>estimate</strong> — the month's matched appointment revenue
+                  is allocated across types in proportion to each type's share of total appointment time.
+                </v-alert>
+                <v-table v-if="apptTypeRows.length" density="compact">
+                  <thead>
+                    <tr>
+                      <th>Appointment Type</th>
+                      <th class="text-right">Count</th>
+                      <th class="text-right">Total Time (hrs)</th>
+                      <th class="text-right">Est. Avg Value</th>
+                      <th class="text-right">Est. Total Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="t in apptTypeRows" :key="t.type">
+                      <td>{{ t.type }}</td>
+                      <td class="text-right">{{ fmt(t.count) }}</td>
+                      <td class="text-right">{{ fmt(Math.round(t.totalTimeMins / 60)) }}</td>
+                      <td class="text-right">${{ fmt(t.estAvgValue) }}</td>
+                      <td class="text-right">${{ fmt(t.estTotalValue) }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
+                <div v-else class="text-center text-grey pa-8">
+                  No Appointment Type report for this month. Upload it from the Data Sources tab.
+                </div>
+              </v-card-text>
+            </v-card>
+
+            <!-- By location -->
+            <v-card elevation="2">
+              <v-card-title class="text-subtitle-1"><v-icon start>mdi-map-marker</v-icon>Appointment Value by Location</v-card-title>
+              <v-card-text>
+                <v-table v-if="apptValue.locations.length" density="compact">
+                  <thead>
+                    <tr>
+                      <th>Location</th>
+                      <th class="text-right">Appointments</th>
+                      <th class="text-right">Matched</th>
+                      <th class="text-right">Matched Revenue</th>
+                      <th class="text-right">Avg Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="l in apptValue.locations" :key="l.location">
+                      <td>{{ l.location }}</td>
+                      <td class="text-right">{{ fmt(l.totalAppointments) }}</td>
+                      <td class="text-right">{{ fmt(l.matchedAppointments) }}</td>
+                      <td class="text-right">${{ fmt(l.apptRevenue) }}</td>
+                      <td class="text-right">${{ fmt(l.avgAppointmentValue) }}</td>
+                    </tr>
+                  </tbody>
+                </v-table>
+                <div v-else class="text-center text-grey pa-8">No location data</div>
+              </v-card-text>
+            </v-card>
+          </template>
+        </v-window-item>
+
         <!-- ─────────── DATA SOURCES ─────────── -->
         <v-window-item value="data">
           <v-row class="mb-4">
@@ -1051,6 +1188,32 @@
                   </div>
                   <v-btn color="primary" size="small" variant="outlined" prepend-icon="mdi-upload" @click="openWizard('invoices')">
                     Upload Invoice Reports
+                  </v-btn>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2" class="fill-height">
+                <v-card-title><v-icon start>mdi-calendar-text</v-icon>Appointment Details</v-card-title>
+                <v-card-text>
+                  <div class="text-caption text-grey mb-3">
+                    Per-visit list (Owner, Pet, Date) — matched to invoices for appointment value.
+                  </div>
+                  <v-btn color="primary" size="small" variant="outlined" prepend-icon="mdi-upload" @click="openApptUpload('details')">
+                    Upload Appointment Details
+                  </v-btn>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-card elevation="2" class="fill-height">
+                <v-card-title><v-icon start>mdi-format-list-bulleted-type</v-icon>Appointment Types</v-card-title>
+                <v-card-text>
+                  <div class="text-caption text-grey mb-3">
+                    Monthly type summary (Type, Count, Avg Time) — drives per-type value. Select the month + location.
+                  </div>
+                  <v-btn color="primary" size="small" variant="outlined" prepend-icon="mdi-upload" @click="openApptUpload('types')">
+                    Upload Appointment Types
                   </v-btn>
                 </v-card-text>
               </v-card>
@@ -1109,9 +1272,67 @@
     <!-- Error -->
     <v-alert v-if="error" type="error" class="mt-4" closable @click:close="error = null">{{ error }}</v-alert>
 
-    <!-- ═══════════════════════════ CLEAR DATA DIALOG ═══════════════════════════ -->
-    <v-dialog v-model="clearDialogOpen" max-width="520" :persistent="clearing">
+    <!-- ═══════════════════════════ APPOINTMENT UPLOAD DIALOG ═══════════════════════════ -->
+    <v-dialog v-model="apptUploadOpen" max-width="520" :persistent="apptUploading">
       <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="primary">{{ apptUploadType === 'types' ? 'mdi-format-list-bulleted-type' : 'mdi-calendar-text' }}</v-icon>
+          {{ apptUploadType === 'types' ? 'Upload Appointment Types' : 'Upload Appointment Details' }}
+        </v-card-title>
+        <v-card-text>
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+            <template v-if="apptUploadType === 'types'">
+              The Type report has no month or location — pick them below so the data lands in the right period.
+            </template>
+            <template v-else>
+              Per-visit Appointment Status export (Division, Animal, Owner, Date/Time). Matched to invoices by client + pet + date.
+            </template>
+          </v-alert>
+
+          <v-row v-if="apptUploadType === 'types'" dense class="mb-1">
+            <v-col cols="6">
+              <v-text-field
+                v-model="apptUploadMonth" type="month" label="Reporting month"
+                density="compact" variant="outlined" hide-details
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-select
+                v-model="apptUploadLocation"
+                :items="clinicLocations"
+                label="Location" density="compact" variant="outlined" hide-details clearable
+              />
+            </v-col>
+          </v-row>
+
+          <v-file-input
+            v-model="apptUploadFile"
+            label="CSV / XLS / XLSX file"
+            accept=".csv,.xls,.xlsx"
+            density="compact" variant="outlined" prepend-icon="mdi-paperclip"
+            :disabled="apptUploading" hide-details class="mt-2"
+          />
+
+          <v-alert v-if="apptUploadResult" type="success" variant="tonal" density="compact" class="mt-3">
+            {{ apptUploadResult }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn :disabled="apptUploading" @click="apptUploadOpen = false">Close</v-btn>
+          <v-btn
+            color="primary" :loading="apptUploading" prepend-icon="mdi-upload"
+            :disabled="!apptUploadFile || (apptUploadType === 'types' && !apptUploadMonth)"
+            @click="submitApptUpload"
+          >
+            Upload
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- ═══════════════════════════ CLEAR DATA DIALOG ═══════════════════════════ -->
+    <v-dialog v-model="clearDialogOpen" max-width="520" :persistent="clearing">      <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start color="error">mdi-delete-sweep</v-icon>
           Clear Analytics Data
@@ -1125,7 +1346,7 @@
               <template #label>
                 <div>
                   <div class="font-weight-medium">Everything</div>
-                  <div class="text-caption text-grey">Invoice lines ({{ invoiceLineCount.toLocaleString() }}) + CRM contacts ({{ crmContactCount.toLocaleString() }})</div>
+                  <div class="text-caption text-grey">Invoice lines ({{ invoiceLineCount.toLocaleString() }}) + CRM contacts ({{ crmContactCount.toLocaleString() }}) + appointments</div>
                 </div>
               </template>
             </v-radio>
@@ -1387,11 +1608,23 @@ const staffPerf = ref<StaffPerformanceResponse | null>(null)    // /api/analytic
 const staffSearch = ref('')
 const staffPrimaryLocFilter = ref('All Locations')
 
+// ── Appointment value (correlates appointment_data ↔ invoices ↔ type summary) ──
+interface ApptTypeRow { type: string; count: number; totalTimeMins: number; estAvgValue: number; estTotalValue: number }
+interface ApptMonth { month: string; apptRevenue: number; matchedAppointments: number; totalAppointments: number; matchRate: number; avgAppointmentValue: number; types: ApptTypeRow[] }
+interface ApptValueResponse {
+  success: boolean
+  kpis: { totalAppointments: number; matchedAppointments: number; matchRate: number; matchedRevenue: number; avgAppointmentValue: number; typeReportMonths: number }
+  monthly: ApptMonth[]
+  locations: { location: string; apptRevenue: number; matchedAppointments: number; totalAppointments: number; avgAppointmentValue: number }[]
+  valueEstimated: boolean
+}
+const apptValue = ref<ApptValueResponse | null>(null)           // /api/analytics/appointment-value
+const apptTypeMonth = ref<string | null>(null)
+
 const activeTab = ref((route.query.tab as string) || 'overview')
 const chartKey = ref(0)
 
 const locationFilter = ref<string | null>(null)
-const divisionFilter = ref<string | null>(null)
 const dateRange = reactive({
   start: '2025-01-01',
   end: new Date().toISOString().split('T')[0],
@@ -1419,7 +1652,40 @@ function formatDate(d: string | null) { return formatReportDate(d) }
 function formatDateTime(d: string | null) { return formatReportDateTime(d) }
 function printReport() { window.print() }
 
-// ═══════════════════════════ DATA PRESENCE ═══════════════════════════
+// ── Appointment value computed views ──
+const apptMonthOptions = computed<string[]>(() => (apptValue.value?.monthly || []).map(m => m.month))
+
+watch(apptMonthOptions, (opts) => {
+  if (opts.length && (!apptTypeMonth.value || !opts.includes(apptTypeMonth.value))) {
+    apptTypeMonth.value = opts[opts.length - 1] // default to the latest month
+  }
+}, { immediate: true })
+
+const apptTypeRows = computed<ApptTypeRow[]>(() => {
+  const m = (apptValue.value?.monthly || []).find(x => x.month === apptTypeMonth.value)
+  return m?.types || []
+})
+
+const apptValueMonthSeries = computed(() => [{
+  name: 'Avg Appointment Value',
+  data: (apptValue.value?.monthly || []).map(m => m.avgAppointmentValue),
+}])
+
+const apptValueMonthOptions = computed(() => ({
+  chart: { toolbar: { show: false } },
+  plotOptions: { bar: { borderRadius: 4, columnWidth: '55%', dataLabels: { position: 'top' } } },
+  colors: ['#5C6BC0'],
+  dataLabels: {
+    enabled: true,
+    formatter: (v: number) => '$' + formatNumber(v),
+    offsetY: -18, style: { colors: ['#555'], fontSize: '11px' },
+  },
+  xaxis: { categories: (apptValue.value?.monthly || []).map(m => m.month) },
+  yaxis: { labels: { formatter: (v: number) => '$' + formatNumber(v) } },
+  tooltip: { y: { formatter: (v: number) => '$' + formatNumber(v) } },
+}))
+
+
 const crmContactCount = computed(() => crmAnalytics.value?.kpis?.totalContacts || 0)
 const invoiceLineCount = computed(() =>
   perfData.value?.dataSummary?.invoiceLinesLoaded ?? overviewData.value?.kpis?.revenue?.lineCount ?? 0
@@ -1860,6 +2126,7 @@ async function loadAll() {
   overviewData.value = null
   crmAnalytics.value = null
   staffPerf.value = null
+  apptValue.value = null
 
   try {
     const params = new URLSearchParams()
@@ -1868,7 +2135,6 @@ async function loadAll() {
     params.set('_t', Date.now().toString())
 
     const crmParams = new URLSearchParams()
-    if (divisionFilter.value && divisionFilter.value !== 'All Divisions') crmParams.append('division', divisionFilter.value)
     // Location filter — maps to a raw division ilike match (e.g. "Venice" → "%Venice%")
     if (locationFilter.value && locationFilter.value !== 'All Locations' && locationFilter.value !== 'Compare Locations') {
       crmParams.append('location', locationFilter.value)
@@ -1876,11 +2142,12 @@ async function loadAll() {
     if (dateRange.start) crmParams.append('startDate', dateRange.start)
     if (dateRange.end) crmParams.append('endDate', dateRange.end)
 
-    const [perfResult, overviewResult, crmResult, staffResult] = await Promise.allSettled([
+    const [perfResult, overviewResult, crmResult, staffResult, apptResult] = await Promise.allSettled([
       $fetch(`/api/analytics/performance?${params.toString()}`),
       $fetch(`/api/analytics/practice-overview?${params.toString()}`),
       $fetch(`/api/marketing/ezyvet-analytics?${crmParams.toString()}`),
       $fetch(`/api/analytics/staff-performance?${crmParams.toString()}`),
+      $fetch(`/api/analytics/appointment-value?${crmParams.toString()}`),
     ])
 
     if (perfResult.status === 'fulfilled') perfData.value = perfResult.value
@@ -1895,6 +2162,10 @@ async function loadAll() {
     if (staffResult.status === 'fulfilled') {
       const sp = staffResult.value as any
       if (sp?.success) staffPerf.value = sp
+    }
+    if (apptResult.status === 'fulfilled') {
+      const av = apptResult.value as any
+      if (av?.success) apptValue.value = av
     }
 
     chartKey.value++
@@ -1912,7 +2183,7 @@ async function loadAll() {
   }
 }
 
-watch(() => [dateRange.start, dateRange.end, divisionFilter.value, locationFilter.value], () => {
+watch(() => [dateRange.start, dateRange.end, locationFilter.value], () => {
   // Clear stale AI review the moment filters change — otherwise the card
   // shows findings from a different time window and looks like the report
   // isn't responding to date changes. The fresh review is auto-triggered
@@ -1991,9 +2262,6 @@ async function runAiReview(opts: { silent?: boolean } = {}) {
     if (locationFilter.value && locationFilter.value !== 'All Locations' && locationFilter.value !== 'Compare Locations') {
       body.location = locationFilter.value
     }
-    if (divisionFilter.value && divisionFilter.value !== 'All Divisions') {
-      body.division = divisionFilter.value
-    }
     const result = await $fetch<AiReview & { success: boolean }>('/api/marketing/analytics-ai-review', {
       method: 'POST',
       body,
@@ -2030,7 +2298,8 @@ async function clearData() {
       body: { scope: clearScope.value },
     }) as any
     if (result?.success) {
-      notify(`Cleared ${result.invoicesDeleted.toLocaleString()} invoice lines, ${result.contactsDeleted.toLocaleString()} contacts`)
+      const apptCleared = result.appointmentsDeleted ? `, ${result.appointmentsDeleted.toLocaleString()} appointments` : ''
+      notify(`Cleared ${result.invoicesDeleted.toLocaleString()} invoice lines, ${result.contactsDeleted.toLocaleString()} contacts${apptCleared}`)
       clearDialogOpen.value = false
       await loadAll()
     } else {
@@ -2040,6 +2309,78 @@ async function clearData() {
     notify('Clear failed: ' + (err.data?.message || err.message || 'Unknown error'), 'warning')
   } finally {
     clearing.value = false
+  }
+}
+
+// ═══════════════════════════ APPOINTMENT REPORT UPLOAD ═══════════════════════════
+const apptUploadOpen = ref(false)
+const apptUploadType = ref<'details' | 'types'>('details')
+const apptUploadFile = ref<File | null>(null)
+const apptUploadMonth = ref('')          // 'YYYY-MM' (Type report only)
+const apptUploadLocation = ref<string | null>(null)
+const apptUploading = ref(false)
+const apptUploadResult = ref('')
+
+function openApptUpload(type: 'details' | 'types') {
+  apptUploadType.value = type
+  apptUploadFile.value = null
+  apptUploadResult.value = ''
+  if (type === 'types' && !apptUploadMonth.value) {
+    apptUploadMonth.value = (dateRange.end || new Date().toISOString().slice(0, 10)).slice(0, 7)
+  }
+  apptUploadOpen.value = true
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // strip the "data:...;base64," prefix
+      resolve(result.slice(result.indexOf(',') + 1))
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function submitApptUpload() {
+  if (!apptUploadFile.value) return
+  apptUploading.value = true
+  apptUploadResult.value = ''
+  try {
+    const fileData = await fileToBase64(apptUploadFile.value)
+    if (apptUploadType.value === 'types') {
+      const result = await $fetch('/api/appointments/upload-types', {
+        method: 'POST',
+        body: {
+          fileData,
+          fileName: apptUploadFile.value.name,
+          periodMonth: apptUploadMonth.value,
+          location: apptUploadLocation.value || '',
+        },
+      }) as any
+      if (result?.success) {
+        apptUploadResult.value = `Imported ${result.typesImported} types (${result.totalAppointments.toLocaleString()} appointments) for ${result.periodMonth.slice(0, 7)}.`
+        notify('Appointment types imported')
+        await loadAll()
+      }
+    } else {
+      const result = await $fetch('/api/appointments/upload-status', {
+        method: 'POST',
+        body: { fileData, fileName: apptUploadFile.value.name, duplicateAction: 'replace' },
+      }) as any
+      if (result?.success) {
+        apptUploadResult.value = `Imported ${result.inserted.toLocaleString()} appointments (${result.dateRange?.start} → ${result.dateRange?.end}).`
+        notify('Appointment details imported')
+        await loadAll()
+      }
+    }
+    apptUploadFile.value = null
+  } catch (err: any) {
+    notify('Upload failed: ' + (err.data?.message || err.message || 'Unknown error'), 'warning')
+  } finally {
+    apptUploading.value = false
   }
 }
 

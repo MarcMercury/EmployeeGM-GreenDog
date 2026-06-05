@@ -105,6 +105,7 @@ function mapRow(row: Record<string, any>): Record<string, any> {
     invoice_time: parseTime(row['Invoice Line Time'] || row['Invoice Line Time: Created'] || row['invoice_time'] || row['Time']),
     client_code: row['Client Contact Code'] || row['client_code'] || row['Contact Code'] || null,
     client_first_name: row['First Name'] || row['first_name'] || row['Client Name'] || null,
+    client_last_name: row['Last Name'] || row['last_name'] || row['Client Last Name'] || null,
     client_email: row['Email'] || row['email'] || row['Client Email'] || null,
     pet_name: row['Pet Name'] || row['pet_name'] || row['Animal Name'] || null,
     breed: row['Breed'] || row['breed'] || null,

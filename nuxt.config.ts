@@ -236,6 +236,9 @@ export default defineNuxtConfig({
       '/api/appointments/upload-status': {
         maxBodySize: 25 * 1024 * 1024,
       },
+      '/api/appointments/upload-types': {
+        maxBodySize: 25 * 1024 * 1024,
+      },
       '/api/appointments/upload-tracking': {
         maxBodySize: 25 * 1024 * 1024,
       },
