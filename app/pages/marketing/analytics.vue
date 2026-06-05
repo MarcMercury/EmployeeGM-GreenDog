@@ -233,7 +233,7 @@
         <v-tab value="clients"><v-icon start size="18">mdi-account-group</v-icon>Client Behavior</v-tab>
         <v-tab value="services"><v-icon start size="18">mdi-tag-multiple</v-icon>Services</v-tab>
         <v-tab value="staff"><v-icon start size="18">mdi-account-tie</v-icon>Staff Performance</v-tab>
-        <v-tab value="appointments"><v-icon start size="18">mdi-calendar-clock</v-icon>Appointment Value</v-tab>
+        <v-tab value="appointments"><v-icon start size="18">mdi-calendar-clock</v-icon>Appointment Trends</v-tab>
         <v-tab value="trends"><v-icon start size="18">mdi-chart-line</v-icon>Trends</v-tab>
         <v-tab value="data"><v-icon start size="18">mdi-database-check</v-icon>Data Sources</v-tab>
       </v-tabs>
@@ -1023,17 +1023,27 @@
           </v-card>
         </v-window-item>
 
-        <!-- ─────────── APPOINTMENT VALUE ─────────── -->
+        <!-- ─────────── APPOINTMENT TRENDS ─────────── -->
         <v-window-item value="appointments">
+          <div class="d-flex align-center mb-3 flex-wrap ga-2">
+            <div>
+              <div class="text-subtitle-1 font-weight-bold">Appointment Volume Trends</div>
+              <div class="text-caption text-grey">Month-by-month and per-day appointment counts from the Appointment Status / Details report.</div>
+            </div>
+            <v-spacer />
+            <v-btn color="primary" size="small" variant="flat" prepend-icon="mdi-upload" @click="openApptUpload('details')">
+              Upload Appointment Status / Details
+            </v-btn>
+          </div>
+
           <v-alert
-            v-if="!apptValue || apptValue.kpis.totalAppointments === 0"
+            v-if="!apptTrends || apptTrends.kpis.totalAppointments === 0"
             type="info" variant="tonal" class="mb-4" prepend-icon="mdi-calendar-import"
           >
             <div class="font-weight-bold">No appointment data yet.</div>
             <div class="text-caption">
-              Upload the <strong>Appointment Details</strong> report (per-visit list) and the
-              <strong>Appointment Types</strong> report from the Data Sources tab. Appointment values are
-              matched to same-day invoices for each client + pet.
+              Upload the <strong>Appointment Status / Details</strong> report (one row per appointment).
+              Each appointment is counted by its date so you get a month-by-month trend and a per-day counter.
             </div>
           </v-alert>
 
@@ -1043,121 +1053,88 @@
               <v-col cols="6" md="3">
                 <v-card variant="tonal" color="indigo">
                   <v-card-text>
-                    <div class="text-caption">Avg Appointment Value</div>
-                    <div class="text-h5 font-weight-bold">${{ fmt(apptValue.kpis.avgAppointmentValue) }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-              <v-col cols="6" md="3">
-                <v-card variant="tonal" color="success">
-                  <v-card-text>
-                    <div class="text-caption">Matched Revenue</div>
-                    <div class="text-h5 font-weight-bold">${{ fmt(apptValue.kpis.matchedRevenue) }}</div>
+                    <div class="text-caption">Total Appointments</div>
+                    <div class="text-h5 font-weight-bold">{{ fmt(apptTrends.kpis.totalAppointments) }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
               <v-col cols="6" md="3">
                 <v-card variant="tonal" color="info">
                   <v-card-text>
-                    <div class="text-caption">Appointments</div>
-                    <div class="text-h5 font-weight-bold">{{ fmt(apptValue.kpis.totalAppointments) }}</div>
+                    <div class="text-caption">Avg / Month</div>
+                    <div class="text-h5 font-weight-bold">{{ fmt(apptTrends.kpis.avgPerMonth) }}</div>
+                    <div class="text-caption text-grey">{{ apptTrends.kpis.months }} months</div>
                   </v-card-text>
                 </v-card>
               </v-col>
               <v-col cols="6" md="3">
-                <v-card variant="tonal" :color="apptValue.kpis.matchRate >= 60 ? 'teal' : 'warning'">
+                <v-card variant="tonal" color="teal">
                   <v-card-text>
-                    <div class="text-caption">Invoice Match Rate</div>
-                    <div class="text-h5 font-weight-bold">{{ apptValue.kpis.matchRate }}%</div>
+                    <div class="text-caption">Avg / Active Day</div>
+                    <div class="text-h5 font-weight-bold">{{ apptTrends.kpis.avgPerDay }}</div>
+                    <div class="text-caption text-grey">{{ fmt(apptTrends.kpis.activeDays) }} days</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="tonal" color="deep-purple">
+                  <v-card-text>
+                    <div class="text-caption">Busiest Day</div>
+                    <div class="text-h5 font-weight-bold">{{ fmt(apptTrends.kpis.busiestDay.count) }}</div>
+                    <div class="text-caption text-grey">{{ formatDate(apptTrends.kpis.busiestDay.date) }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
             </v-row>
 
-            <v-alert
-              v-if="apptValue.kpis.matchRate < 60"
-              type="warning" variant="tonal" density="compact" class="mb-4"
-            >
-              Only {{ apptValue.kpis.matchRate }}% of appointments matched an invoice. Matching uses
-              client last/first name + pet name + same-day invoice date — re-upload the latest Invoice
-              Lines (which now include the client last name) to improve accuracy.
-            </v-alert>
-
-            <!-- Avg value by month -->
+            <!-- Monthly trend -->
             <v-card class="mb-4" elevation="2">
-              <v-card-title class="text-subtitle-1"><v-icon start>mdi-chart-bar</v-icon>Average Appointment Value by Month</v-card-title>
+              <v-card-title class="text-subtitle-1"><v-icon start>mdi-chart-bar</v-icon>Appointments by Month</v-card-title>
               <v-card-text>
                 <ClientOnly>
-                  <apexchart v-if="apptValueMonthSeries[0]?.data?.length" type="bar" height="320" :options="apptValueMonthOptions" :series="apptValueMonthSeries" :key="'apptval'+chartKey" />
+                  <apexchart v-if="apptMonthSeries[0]?.data?.length" type="bar" height="320" :options="apptMonthChartOptions" :series="apptMonthSeries" :key="'apptmonth'+chartKey" />
                 </ClientOnly>
-                <div v-if="!apptValueMonthSeries[0]?.data?.length" class="text-center text-grey pa-8">No matched appointment values yet</div>
+                <div v-if="!apptMonthSeries[0]?.data?.length" class="text-center text-grey pa-8">No monthly data yet</div>
               </v-card-text>
             </v-card>
 
-            <!-- Per-type estimated value -->
+            <!-- Per-day counter -->
             <v-card class="mb-4" elevation="2">
               <v-card-title class="d-flex align-center">
-                <v-icon start>mdi-format-list-bulleted-type</v-icon>Appointment Type Value
+                <v-icon start>mdi-calendar-today</v-icon>Appointments per Day
                 <v-spacer />
                 <v-select
-                  v-model="apptTypeMonth"
+                  v-model="apptDayMonth"
                   :items="apptMonthOptions"
                   density="compact" variant="outlined" hide-details
                   style="max-width: 180px"
                 />
               </v-card-title>
               <v-card-text>
-                <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-                  Per-type value is an <strong>estimate</strong> — the month's matched appointment revenue
-                  is allocated across types in proportion to each type's share of total appointment time.
-                </v-alert>
-                <v-table v-if="apptTypeRows.length" density="compact">
-                  <thead>
-                    <tr>
-                      <th>Appointment Type</th>
-                      <th class="text-right">Count</th>
-                      <th class="text-right">Total Time (hrs)</th>
-                      <th class="text-right">Est. Avg Value</th>
-                      <th class="text-right">Est. Total Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="t in apptTypeRows" :key="t.type">
-                      <td>{{ t.type }}</td>
-                      <td class="text-right">{{ fmt(t.count) }}</td>
-                      <td class="text-right">{{ fmt(Math.round(t.totalTimeMins / 60)) }}</td>
-                      <td class="text-right">${{ fmt(t.estAvgValue) }}</td>
-                      <td class="text-right">${{ fmt(t.estTotalValue) }}</td>
-                    </tr>
-                  </tbody>
-                </v-table>
-                <div v-else class="text-center text-grey pa-8">
-                  No Appointment Type report for this month. Upload it from the Data Sources tab.
-                </div>
+                <ClientOnly>
+                  <apexchart v-if="apptDaySeries[0]?.data?.length" type="bar" height="300" :options="apptDayChartOptions" :series="apptDaySeries" :key="'apptday'+chartKey+apptDayMonth" />
+                </ClientOnly>
+                <div v-if="!apptDaySeries[0]?.data?.length" class="text-center text-grey pa-8">No appointments for this month</div>
               </v-card-text>
             </v-card>
 
             <!-- By location -->
             <v-card elevation="2">
-              <v-card-title class="text-subtitle-1"><v-icon start>mdi-map-marker</v-icon>Appointment Value by Location</v-card-title>
+              <v-card-title class="text-subtitle-1"><v-icon start>mdi-map-marker</v-icon>Appointments by Location</v-card-title>
               <v-card-text>
-                <v-table v-if="apptValue.locations.length" density="compact">
+                <v-table v-if="apptTrends.locations.length" density="compact">
                   <thead>
                     <tr>
                       <th>Location</th>
                       <th class="text-right">Appointments</th>
-                      <th class="text-right">Matched</th>
-                      <th class="text-right">Matched Revenue</th>
-                      <th class="text-right">Avg Value</th>
+                      <th class="text-right">Share</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="l in apptValue.locations" :key="l.location">
+                    <tr v-for="l in apptTrends.locations" :key="l.location">
                       <td>{{ l.location }}</td>
-                      <td class="text-right">{{ fmt(l.totalAppointments) }}</td>
-                      <td class="text-right">{{ fmt(l.matchedAppointments) }}</td>
-                      <td class="text-right">${{ fmt(l.apptRevenue) }}</td>
-                      <td class="text-right">${{ fmt(l.avgAppointmentValue) }}</td>
+                      <td class="text-right">{{ fmt(l.count) }}</td>
+                      <td class="text-right">{{ apptTrends.kpis.totalAppointments > 0 ? Math.round((l.count / apptTrends.kpis.totalAppointments) * 1000) / 10 : 0 }}%</td>
                     </tr>
                   </tbody>
                 </v-table>
@@ -1210,7 +1187,7 @@
                 <v-card-title><v-icon start>mdi-calendar-text</v-icon>Appointment Details</v-card-title>
                 <v-card-text>
                   <div class="text-caption text-grey mb-3">
-                    Per-visit list (Owner, Pet, Date) — matched to invoices for appointment value.
+                    Per-visit list (Owner, Pet, Date) — counted per day &amp; month to drive Appointment Trends.
                   </div>
                   <v-btn color="primary" size="small" variant="outlined" prepend-icon="mdi-upload" @click="openApptUpload('details')">
                     Upload Appointment Details
@@ -1722,18 +1699,26 @@ const staffPerf = ref<StaffPerformanceResponse | null>(null)    // /api/analytic
 const staffSearch = ref('')
 const staffPrimaryLocFilter = ref('All Locations')
 
-// ── Appointment value (correlates appointment_data ↔ invoices ↔ type summary) ──
-interface ApptTypeRow { type: string; count: number; totalTimeMins: number; estAvgValue: number; estTotalValue: number }
-interface ApptMonth { month: string; apptRevenue: number; matchedAppointments: number; totalAppointments: number; matchRate: number; avgAppointmentValue: number; types: ApptTypeRow[] }
-interface ApptValueResponse {
+// ── Appointment trends (pure volume from appointment_data status report) ──
+interface ApptTrendMonth { month: string; count: number; byLocation: Record<string, number> }
+interface ApptTrendsResponse {
   success: boolean
-  kpis: { totalAppointments: number; matchedAppointments: number; matchRate: number; matchedRevenue: number; avgAppointmentValue: number; typeReportMonths: number }
-  monthly: ApptMonth[]
-  locations: { location: string; apptRevenue: number; matchedAppointments: number; totalAppointments: number; avgAppointmentValue: number }[]
-  valueEstimated: boolean
+  kpis: {
+    totalAppointments: number
+    months: number
+    activeDays: number
+    avgPerMonth: number
+    avgPerDay: number
+    busiestMonth: { month: string; count: number }
+    busiestDay: { date: string; count: number }
+  }
+  monthly: ApptTrendMonth[]
+  daily: { date: string; count: number }[]
+  locations: { location: string; count: number }[]
+  locationNames: string[]
 }
-const apptValue = ref<ApptValueResponse | null>(null)           // /api/analytics/appointment-value
-const apptTypeMonth = ref<string | null>(null)
+const apptTrends = ref<ApptTrendsResponse | null>(null)        // /api/analytics/appointment-trends
+const apptDayMonth = ref<string | null>(null)                   // selected month for the per-day view
 
 const activeTab = ref((route.query.tab as string) || 'overview')
 const chartKey = ref(0)
@@ -1766,37 +1751,53 @@ function formatDate(d: string | null) { return formatReportDate(d) }
 function formatDateTime(d: string | null) { return formatReportDateTime(d) }
 function printReport() { window.print() }
 
-// ── Appointment value computed views ──
-const apptMonthOptions = computed<string[]>(() => (apptValue.value?.monthly || []).map(m => m.month))
+// ── Appointment trends computed views ──
+const apptMonthOptions = computed<string[]>(() => (apptTrends.value?.monthly || []).map(m => m.month))
 
 watch(apptMonthOptions, (opts) => {
-  if (opts.length && (!apptTypeMonth.value || !opts.includes(apptTypeMonth.value))) {
-    apptTypeMonth.value = opts[opts.length - 1] // default to the latest month
+  if (opts.length && (!apptDayMonth.value || !opts.includes(apptDayMonth.value))) {
+    apptDayMonth.value = opts[opts.length - 1] // default to the latest month
   }
 }, { immediate: true })
 
-const apptTypeRows = computed<ApptTypeRow[]>(() => {
-  const m = (apptValue.value?.monthly || []).find(x => x.month === apptTypeMonth.value)
-  return m?.types || []
-})
-
-const apptValueMonthSeries = computed(() => [{
-  name: 'Avg Appointment Value',
-  data: (apptValue.value?.monthly || []).map(m => m.avgAppointmentValue),
+// Monthly appointment volume (total per month)
+const apptMonthSeries = computed(() => [{
+  name: 'Appointments',
+  data: (apptTrends.value?.monthly || []).map(m => m.count),
 }])
 
-const apptValueMonthOptions = computed(() => ({
+const apptMonthChartOptions = computed(() => ({
   chart: { toolbar: { show: false } },
   plotOptions: { bar: { borderRadius: 4, columnWidth: '55%', dataLabels: { position: 'top' } } },
   colors: ['#5C6BC0'],
   dataLabels: {
     enabled: true,
-    formatter: (v: number) => '$' + formatNumber(v),
+    formatter: (v: number) => formatNumber(v),
     offsetY: -18, style: { colors: ['#555'], fontSize: '11px' },
   },
-  xaxis: { categories: (apptValue.value?.monthly || []).map(m => m.month) },
-  yaxis: { labels: { formatter: (v: number) => '$' + formatNumber(v) } },
-  tooltip: { y: { formatter: (v: number) => '$' + formatNumber(v) } },
+  xaxis: { categories: (apptTrends.value?.monthly || []).map(m => m.month) },
+  yaxis: { labels: { formatter: (v: number) => formatNumber(v) } },
+  tooltip: { y: { formatter: (v: number) => formatNumber(v) + ' appointments' } },
+}))
+
+// Per-day appointment counter for the selected month
+const apptDailyForMonth = computed(() =>
+  (apptTrends.value?.daily || []).filter(d => d.date.slice(0, 7) === apptDayMonth.value)
+)
+
+const apptDaySeries = computed(() => [{
+  name: 'Appointments',
+  data: apptDailyForMonth.value.map(d => d.count),
+}])
+
+const apptDayChartOptions = computed(() => ({
+  chart: { toolbar: { show: false } },
+  plotOptions: { bar: { borderRadius: 3, columnWidth: '70%' } },
+  colors: ['#26A69A'],
+  dataLabels: { enabled: false },
+  xaxis: { categories: apptDailyForMonth.value.map(d => Number(d.date.slice(8, 10))), title: { text: 'Day of month' } },
+  yaxis: { labels: { formatter: (v: number) => formatNumber(v) } },
+  tooltip: { y: { formatter: (v: number) => formatNumber(v) + ' appointments' } },
 }))
 
 
@@ -2240,7 +2241,7 @@ async function loadAll() {
   overviewData.value = null
   crmAnalytics.value = null
   staffPerf.value = null
-  apptValue.value = null
+  apptTrends.value = null
 
   try {
     const params = new URLSearchParams()
@@ -2261,7 +2262,7 @@ async function loadAll() {
       $fetch(`/api/analytics/practice-overview?${params.toString()}`),
       $fetch(`/api/marketing/ezyvet-analytics?${crmParams.toString()}`),
       $fetch(`/api/analytics/staff-performance?${crmParams.toString()}`),
-      $fetch(`/api/analytics/appointment-value?${crmParams.toString()}`),
+      $fetch(`/api/analytics/appointment-trends?${crmParams.toString()}`),
     ])
 
     if (perfResult.status === 'fulfilled') perfData.value = perfResult.value
@@ -2279,7 +2280,7 @@ async function loadAll() {
     }
     if (apptResult.status === 'fulfilled') {
       const av = apptResult.value as any
-      if (av?.success) apptValue.value = av
+      if (av?.success) apptTrends.value = av
     }
 
     chartKey.value++
