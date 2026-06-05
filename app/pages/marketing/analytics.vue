@@ -1389,7 +1389,7 @@
         </v-card-title>
 
         <v-card-text>
-          <v-stepper v-model="wizardStep" flat :items="['CRM Clients', 'Invoice Reports', 'Done']" hide-actions>
+          <v-stepper v-model="wizardStep" flat :items="['CRM Clients', 'Invoice Reports', 'Appointment Types', 'Done']" hide-actions>
             <!-- STEP 1: CRM -->
             <template #item.1>
               <div class="pa-1">
@@ -1543,20 +1543,118 @@
               </div>
             </template>
 
-            <!-- STEP 3: DONE -->
+            <!-- STEP 3: APPOINTMENT TYPES -->
             <template #item.3>
+              <div class="pa-1">
+                <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+                  <div class="font-weight-bold text-body-2">Step 3 — Appointment Type Reports (monthly totals)</div>
+                  <div class="text-caption">
+                    Upload one or more ezyVet <strong>Appointment Type</strong> exports (<code>Type, Count, Average Time, Total Time</code>).
+                    These have no month or location built in, so set them per file below. Used to compare appointment-type
+                    volume and value trends month over month.
+                  </div>
+                </v-alert>
+
+                <v-file-input
+                  v-model="apptTypeFiles"
+                  accept=".csv,.xls,.xlsx,.tsv"
+                  label="Select Appointment Type file(s)"
+                  prepend-icon="mdi-file-multiple"
+                  variant="outlined" density="compact" multiple show-size
+                  :disabled="apptTypeBatchProcessing"
+                  @update:model-value="onApptTypeFilesSelected"
+                />
+
+                <div v-if="apptTypeBatch.length" class="mt-2">
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th class="text-caption">File</th>
+                        <th class="text-caption" style="width: 150px">Month</th>
+                        <th class="text-caption" style="width: 170px">Location</th>
+                        <th class="text-caption" style="width: 130px">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(f, i) in apptTypeBatch" :key="i">
+                        <td class="text-caption">{{ f.name }}</td>
+                        <td>
+                          <v-text-field
+                            v-model="f.month" type="month" density="compact" variant="outlined"
+                            hide-details :disabled="apptTypeBatchProcessing"
+                          />
+                        </td>
+                        <td>
+                          <v-select
+                            v-model="f.location" :items="clinicLocations" density="compact" variant="outlined"
+                            hide-details clearable placeholder="All" :disabled="apptTypeBatchProcessing"
+                          />
+                        </td>
+                        <td class="text-caption">
+                          <v-icon
+                            :color="f.status === 'done' ? 'success' : f.status === 'error' ? 'error' : f.status === 'uploading' ? 'primary' : 'grey'"
+                            size="18" class="mr-1"
+                          >
+                            {{ f.status === 'done' ? 'mdi-check-circle' : f.status === 'error' ? 'mdi-alert-circle' : f.status === 'uploading' ? 'mdi-loading mdi-spin' : 'mdi-circle-outline' }}
+                          </v-icon>
+                          <template v-if="f.status === 'done'">{{ f.imported }} types</template>
+                          <template v-else-if="f.status === 'error'">{{ f.error }}</template>
+                          <template v-else-if="f.status === 'uploading'">Uploading…</template>
+                          <template v-else>Pending</template>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                  <v-progress-linear v-if="apptTypeBatchProcessing" indeterminate color="primary" class="mt-2" />
+                </div>
+
+                <v-alert v-if="apptTypeBatchComplete" type="info" variant="tonal" density="compact" class="mt-3">
+                  Imported {{ apptTypeTotalImported }} type rows from
+                  {{ apptTypeBatch.filter(f => f.status === 'done').length }} file(s).
+                </v-alert>
+
+                <div class="d-flex justify-space-between mt-4">
+                  <v-btn variant="text" :disabled="apptTypeBatchProcessing" @click="wizardStep = 2">
+                    <v-icon start>mdi-arrow-left</v-icon>Back
+                  </v-btn>
+                  <div class="d-flex gap-2">
+                    <v-btn variant="text" :disabled="apptTypeBatchProcessing" @click="wizardStep = 4">
+                      Skip
+                    </v-btn>
+                    <v-btn
+                      v-if="!apptTypeBatchComplete || apptTypeBatch.some(f => f.status === 'pending')"
+                      color="primary" prepend-icon="mdi-cloud-upload"
+                      :disabled="!apptTypeBatch.length || apptTypeBatchProcessing || apptTypeBatch.some(f => !f.month)"
+                      :loading="apptTypeBatchProcessing"
+                      @click="runApptTypeBatch"
+                    >
+                      Upload {{ apptTypeBatch.length }} file(s)
+                    </v-btn>
+                    <v-btn v-else color="primary" append-icon="mdi-arrow-right" @click="wizardStep = 4">
+                      Finish
+                    </v-btn>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- STEP 4: DONE -->
+            <template #item.4>
               <div class="pa-2 text-center">
                 <v-icon size="80" color="success">mdi-check-circle</v-icon>
                 <div class="text-h5 mt-3">Data upload complete!</div>
                 <div class="text-caption text-grey mt-2 mb-4">
                   Your unified analytics report has been refreshed with the new data.
                 </div>
-                <div class="d-flex justify-center gap-2">
+                <div class="d-flex justify-center gap-2 flex-wrap">
                   <v-chip color="success" variant="tonal" prepend-icon="mdi-account-multiple">
                     CRM: {{ crmUploadState.inserted + crmUploadState.updated }} contacts
                   </v-chip>
                   <v-chip color="success" variant="tonal" prepend-icon="mdi-receipt-text">
                     Invoices: {{ invoiceTotalInserted }} lines
+                  </v-chip>
+                  <v-chip color="success" variant="tonal" prepend-icon="mdi-format-list-bulleted-type">
+                    Appt Types: {{ apptTypeTotalImported }} rows
                   </v-chip>
                 </div>
                 <v-btn class="mt-5" color="primary" prepend-icon="mdi-chart-box" @click="finishWizard">
@@ -2388,11 +2486,11 @@ async function submitApptUpload() {
 const wizardOpen = ref(false)
 const wizardStep = ref(1)
 
-const wizardBusy = computed(() => crmUploadState.processing || invoiceBatchProcessing.value)
+const wizardBusy = computed(() => crmUploadState.processing || invoiceBatchProcessing.value || apptTypeBatchProcessing.value)
 
-function openWizard(target?: 'crm' | 'invoices') {
+function openWizard(target?: 'crm' | 'invoices' | 'types') {
   resetWizard()
-  wizardStep.value = target === 'invoices' ? 2 : 1
+  wizardStep.value = target === 'invoices' ? 2 : target === 'types' ? 3 : 1
   wizardOpen.value = true
 }
 function closeWizard() {
@@ -2417,6 +2515,11 @@ function resetWizard() {
   invoiceCurrentIdx.value = -1
   invoiceTotalInserted.value = 0
   invoiceTotalErrors.value = 0
+  apptTypeFiles.value = []
+  apptTypeBatch.value = []
+  apptTypeBatchProcessing.value = false
+  apptTypeBatchComplete.value = false
+  apptTypeTotalImported.value = 0
 }
 function skipCrmStep() {
   wizardStep.value = 2
@@ -2715,6 +2818,84 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
     reader.onerror = reject
     reader.readAsArrayBuffer(file)
   })
+}
+
+// ── Appointment Type Upload (Wizard Step 3) ──
+interface ApptTypeBatchItem {
+  name: string; file: File; month: string; location: string | null
+  status: 'pending' | 'uploading' | 'done' | 'error'; imported: number; error: string
+}
+const apptTypeFiles = ref<File[]>([])
+const apptTypeBatch = ref<ApptTypeBatchItem[]>([])
+const apptTypeBatchProcessing = ref(false)
+const apptTypeBatchComplete = ref(false)
+const apptTypeTotalImported = ref(0)
+
+// Best-effort guess of the reporting month + location from the file name,
+// e.g. "Jan Venice Type.csv" → 2026-01 + Venice. The user can correct it.
+const MONTH_NAMES: Record<string, string> = {
+  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+}
+function guessMonthFromName(name: string): string {
+  const lower = name.toLowerCase()
+  const m = Object.keys(MONTH_NAMES).find(k => lower.includes(k))
+  if (!m) return ''
+  const yearMatch = lower.match(/20\d{2}/)
+  const year = yearMatch ? yearMatch[0] : String(new Date().getFullYear())
+  return `${year}-${MONTH_NAMES[m]}`
+}
+function guessLocationFromName(name: string): string | null {
+  const lower = name.toLowerCase()
+  const hit = clinicLocations.value.find(loc => lower.includes(loc.toLowerCase().split(' ')[0]))
+  return hit || null
+}
+
+function onApptTypeFilesSelected(files: File | File[] | null) {
+  const list = Array.isArray(files) ? files : files ? [files] : []
+  apptTypeBatch.value = list.map(f => ({
+    name: f.name, file: f,
+    month: guessMonthFromName(f.name),
+    location: guessLocationFromName(f.name),
+    status: 'pending', imported: 0, error: '',
+  }))
+  apptTypeBatchComplete.value = false
+  apptTypeTotalImported.value = 0
+}
+
+async function runApptTypeBatch() {
+  apptTypeBatchProcessing.value = true
+  apptTypeTotalImported.value = 0
+  try {
+    for (const item of apptTypeBatch.value) {
+      if (item.status === 'done') { apptTypeTotalImported.value += item.imported; continue }
+      if (!item.month) { item.status = 'error'; item.error = 'Month required'; continue }
+      item.status = 'uploading'
+      try {
+        const fileData = await fileToBase64(item.file)
+        const result = await $fetch('/api/appointments/upload-types', {
+          method: 'POST',
+          body: {
+            fileData, fileName: item.name,
+            periodMonth: item.month, location: item.location || '',
+          },
+        }) as any
+        if (result?.success) {
+          item.status = 'done'
+          item.imported = result.typesImported || 0
+          apptTypeTotalImported.value += item.imported
+        } else {
+          item.status = 'error'; item.error = 'Upload failed'
+        }
+      } catch (err: any) {
+        item.status = 'error'
+        item.error = err.data?.message || err.message || 'Upload failed'
+      }
+    }
+    apptTypeBatchComplete.value = true
+  } finally {
+    apptTypeBatchProcessing.value = false
+  }
 }
 
 async function parseInvoiceFileClientSide(
