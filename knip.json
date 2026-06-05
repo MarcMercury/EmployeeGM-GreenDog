@@ -6,7 +6,8 @@
     "server/**/*.ts",
     "app/pages/**/*.vue",
     "app/layouts/**/*.vue",
-    "app/components/**/*.vue"
+    "app/components/**/*.vue",
+    "app/composables/**/*.{ts,js}"
   ],
   "project": [
     "app/**/*.{vue,ts,js}",

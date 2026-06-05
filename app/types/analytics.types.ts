@@ -7,6 +7,7 @@
 export interface PerformanceKpis {
   totalAppointments: number
   totalRevenue: number
+  clinicRevenue: number
   uniqueClients: number
   avgRevenuePerAppt: number
 }
@@ -228,7 +229,73 @@ export interface EzyVetAnalyticsResponse {
   insights: AnalyticsInsight[]
   suggestedActions: SuggestedAction[]
   divisions: string[]
+  totalContactsInDb?: number
   lastSync: { completed_at: string; total_rows: number } | null
   generatedAt: string
   dataQualityNote?: string
 }
+
+// ── Staff-Performance API (server/api/analytics/staff-performance.get.ts) ──
+
+export interface StaffProductGroup {
+  group: string
+  revenue: number
+  pctOfStaffRevenue: number
+}
+
+export interface StaffLocationRevenue {
+  location: string
+  revenue: number
+}
+
+export interface StaffRecord {
+  staff: string
+  primaryLocation: string
+  revenue: number
+  priorRevenue: number
+  revenueChangePct: number
+  transactions: number
+  uniqueClients: number
+  avgTransactionValue: number
+  revenuePerClient: number
+  topProductGroups: StaffProductGroup[]
+  byLocation: StaffLocationRevenue[]
+}
+
+export interface StaffKpis {
+  totalStaff: number
+  totalRevenue: number
+  totalTransactions: number
+  totalClients: number
+  avgRevenuePerStaff: number
+}
+
+export interface PracticeProductGroup {
+  group: string
+  revenue: number
+  pctOfPractice: number
+}
+
+export interface StaffByLocation {
+  location: string
+  staffCount: number
+  revenue: number
+}
+
+export interface StaffPerformanceResponse {
+  success: boolean
+  period: { startDate: string; endDate: string }
+  priorPeriod: { startDate: string; endDate: string }
+  filters: { location: string | null; division: string | null }
+  kpis: StaffKpis
+  staff: StaffRecord[]
+  productGroupTotals: PracticeProductGroup[]
+  staffByLocation: StaffByLocation[]
+  leaderboards: {
+    topByRevenue: Array<{ staff: string; revenue: number; location: string }>
+    topGrowers: Array<{ staff: string; revenueChangePct: number; revenue: number; priorRevenue: number }>
+    mostClients: Array<{ staff: string; uniqueClients: number; revenue: number }>
+    highestAvgTicket: Array<{ staff: string; avgTransactionValue: number; transactions: number }>
+  }
+}
+

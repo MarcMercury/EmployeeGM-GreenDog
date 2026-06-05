@@ -127,6 +127,42 @@
     </div>
 
     <template v-else-if="hasAnyData">
+      <!-- ═══ DATA LINEAGE BAR ═══ -->
+      <v-sheet
+        color="grey-lighten-4"
+        rounded="lg"
+        class="d-flex flex-wrap align-center px-4 py-2 mb-4 text-caption"
+        style="row-gap: 4px; column-gap: 18px;"
+      >
+        <span v-if="reportRangeLabel" class="d-inline-flex align-center">
+          <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-calendar-range</v-icon>
+          <span class="text-grey-darken-2">Reporting window:</span>
+          <strong class="ml-1">{{ reportRangeLabel }}</strong>
+        </span>
+        <span v-if="hasInvoiceData" class="d-inline-flex align-center">
+          <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-file-document-outline</v-icon>
+          <strong>{{ fmt(invoiceLineCount) }}</strong>
+          <span class="text-grey-darken-2 ml-1">invoice lines</span>
+        </span>
+        <span v-if="hasCrmData" class="d-inline-flex align-center">
+          <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-account-multiple-outline</v-icon>
+          <strong>{{ fmt(crmContactCount) }}</strong>
+          <span class="text-grey-darken-2 ml-1">CRM clients</span>
+        </span>
+        <span v-if="dataQualityScore !== null" class="d-inline-flex align-center">
+          <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-shield-check-outline</v-icon>
+          <span class="text-grey-darken-2">Data quality:</span>
+          <v-chip :color="dataQualityColor" size="x-small" variant="flat" class="ml-1 font-weight-bold">
+            {{ formatPercent(dataQualityScore) }}
+          </v-chip>
+        </span>
+        <span v-if="lastCrmSync" class="d-inline-flex align-center">
+          <v-icon size="16" class="mr-1" color="grey-darken-1">mdi-sync</v-icon>
+          <span class="text-grey-darken-2">Updated:</span>
+          <strong class="ml-1">{{ formatDateTime(lastCrmSync) }}</strong>
+        </span>
+      </v-sheet>
+
       <!-- ═══ UNIFIED KPI STRIP ═══ -->
       <v-row class="mb-5">
         <v-col cols="6" md="2">
@@ -189,7 +225,7 @@
             <div class="d-flex align-center">
               <v-avatar :color="retentionColor" size="40" class="mr-2"><v-icon color="white">mdi-account-heart</v-icon></v-avatar>
               <div>
-                <div class="text-h6 font-weight-bold">{{ kpis.retentionRate }}%</div>
+                <div class="text-h6 font-weight-bold">{{ formatPercent(kpis.retentionRate) }}</div>
                 <div class="text-caption text-grey">Retention</div>
               </div>
             </div>
@@ -1029,7 +1065,7 @@
                 :color="crmAnalytics.dataQuality.overallScore >= 75 ? 'success' : crmAnalytics.dataQuality.overallScore >= 50 ? 'warning' : 'error'"
                 size="small" label
               >
-                {{ crmAnalytics.dataQuality.overallScore }}%
+                {{ formatPercent(crmAnalytics.dataQuality.overallScore) }}
               </v-chip>
             </v-card-title>
             <v-card-text>
@@ -1322,6 +1358,12 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { evaluateRetention } from '~/utils/vetBenchmarks'
+import type {
+  PerformanceResponse,
+  PracticeOverviewResponse,
+  EzyVetAnalyticsResponse,
+  StaffPerformanceResponse,
+} from '~/types/analytics.types'
 
 definePageMeta({ layout: 'default', middleware: ['auth', 'marketing-admin'] })
 
@@ -1338,10 +1380,10 @@ const clearDialogOpen = ref(false)
 const clearScope = ref<'all' | 'invoices' | 'contacts'>('all')
 const error = ref<string | null>(null)
 
-const perfData = ref<any>(null)          // /api/analytics/performance
-const overviewData = ref<any>(null)      // /api/analytics/practice-overview
-const crmAnalytics = ref<any>(null)      // /api/marketing/ezyvet-analytics
-const staffPerf = ref<any>(null)         // /api/analytics/staff-performance
+const perfData = ref<PerformanceResponse | null>(null)          // /api/analytics/performance
+const overviewData = ref<PracticeOverviewResponse | null>(null) // /api/analytics/practice-overview
+const crmAnalytics = ref<EzyVetAnalyticsResponse | null>(null)  // /api/marketing/ezyvet-analytics
+const staffPerf = ref<StaffPerformanceResponse | null>(null)    // /api/analytics/staff-performance
 const staffSearch = ref('')
 const staffPrimaryLocFilter = ref('All Locations')
 
@@ -1367,20 +1409,14 @@ const LOC_COLORS: Record<string, string> = {
 const CHART_THEME = { theme: 'dark' as const }
 
 // ═══════════════════════════ HELPERS ═══════════════════════════
-function fmt(n: number) { return (n || 0).toLocaleString() }
-function fmtCur(n: number | string | null) {
-  if (n == null) return '0'
-  const v = typeof n === 'string' ? parseFloat(n) : n
-  return isNaN(v) ? '0' : v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-}
-function formatDate(d: string | null) {
-  if (!d) return ''
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-function formatDateTime(d: string | null) {
-  if (!d) return 'Never'
-  return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
+// Thin wrappers over the canonical report formatters in
+// app/utils/marketingFormatters.ts (Nuxt auto-imported) so number, money
+// and date presentation is identical across every analytics tab.
+// fmtCur omits the `$` because the templates render the symbol themselves.
+function fmt(n: number) { return formatNumber(n) }
+function fmtCur(n: number | string | null) { return formatMoney(n, { symbol: false }) }
+function formatDate(d: string | null) { return formatReportDate(d) }
+function formatDateTime(d: string | null) { return formatReportDateTime(d) }
 function printReport() { window.print() }
 
 // ═══════════════════════════ DATA PRESENCE ═══════════════════════════
@@ -1393,6 +1429,26 @@ const hasInvoiceData = computed(() => invoiceLineCount.value > 0)
 const hasAnyData = computed(() => hasCrmData.value || hasInvoiceData.value)
 const lastCrmSync = computed(() => crmAnalytics.value?.lastSync?.completed_at || null)
 const syncStatus = computed(() => overviewData.value?.syncStatus || null)
+
+// ═══════════════════════════ DATA LINEAGE ═══════════════════════════
+// Provenance shown alongside the KPIs so users can trust every figure:
+// the active reporting window, how many records back it, the CRM data
+// quality score, and when the data was last refreshed.
+const reportRangeLabel = computed(() => {
+  const r = perfData.value?.dateRange
+  const start = r?.start || dateRange.start
+  const end = r?.end || dateRange.end
+  if (!start || !end) return null
+  return `${formatReportDate(start)} – ${formatReportDate(end)}`
+})
+const dataQualityScore = computed<number | null>(() =>
+  crmAnalytics.value?.dataQuality?.overallScore ?? null
+)
+const dataQualityColor = computed(() => {
+  const s = dataQualityScore.value
+  if (s == null) return 'grey'
+  return s >= 75 ? 'success' : s >= 50 ? 'warning' : 'error'
+})
 
 const clinicLocations = computed<string[]>(() => perfData.value?.locations || ['Sherman Oaks', 'Van Nuys', 'Venice'])
 const locationOptions = computed(() => ['All Locations', 'Compare Locations', ...clinicLocations.value])
