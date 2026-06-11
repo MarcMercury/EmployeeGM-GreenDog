@@ -154,6 +154,12 @@ export default defineNuxtConfig({
     googleCseApiKey: process.env.GOOGLE_CSE_API_KEY,
     googleCseId: process.env.GOOGLE_CSE_ID,
 
+    // ── Brave Search (independent web-search index) ──
+    braveApiKey: process.env.BRAVE_API_KEY,
+
+    // ── SerpApi (structured Google/Bing SERP results) ──
+    serpApiKey: process.env.SERPAPI_API_KEY,
+
     // ── Hunter.io (Email finder / domain search / enrichment) ──
     hunterApiKey: process.env.HUNTER_API_KEY,
 

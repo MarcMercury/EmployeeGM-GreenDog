@@ -705,6 +705,70 @@ export interface GoogleCseResponse {
 }
 
 // =====================================================
+// BRAVE SEARCH (independent web-search index)
+// Free tier: 1 query/sec, 2,000 queries/month.
+// =====================================================
+
+export interface BraveSearchOptions {
+  /** Number of results (1-20) */
+  count?: number
+  /** Zero-based result offset for pagination */
+  offset?: number
+  /** Country code, e.g. 'us' */
+  country?: string
+  /** UI/search language, e.g. 'en' */
+  search_lang?: string
+  /** Freshness filter, e.g. 'pd' (24h), 'pw' (week), 'pm' (month), 'py' (year) */
+  freshness?: string
+}
+
+export interface BraveWebResult {
+  title: string
+  url: string
+  description?: string
+  page_age?: string
+  age?: string
+}
+
+export interface BraveWebSearchResponse {
+  query?: { original: string }
+  web?: { results?: BraveWebResult[] }
+}
+
+// =====================================================
+// SERPAPI (structured Google/Bing/Google-Jobs SERPs)
+// Free tier: 100 searches/month.
+// =====================================================
+
+export interface SerpApiSearchOptions {
+  /** Search engine to use (defaults to 'google') */
+  engine?: 'google' | 'google_jobs' | 'bing'
+  /** Number of results to request */
+  num?: number
+  /** Canonical location string (e.g. 'Austin, Texas, United States') */
+  location?: string
+  /** Google domain, e.g. 'google.com' */
+  google_domain?: string
+  /** Country of the search, e.g. 'us' */
+  gl?: string
+  /** Language of the search, e.g. 'en' */
+  hl?: string
+}
+
+export interface SerpApiOrganicResult {
+  position?: number
+  title: string
+  link: string
+  snippet?: string
+  displayed_link?: string
+}
+
+export interface SerpApiSearchResponse {
+  organic_results?: SerpApiOrganicResult[]
+  error?: string
+}
+
+// =====================================================
 // HUNTER.IO (Email finder, domain search, enrichment)
 // =====================================================
 

@@ -1,0 +1,64 @@
+name: Slack Notification Queue Processor
+
+# ============================================================
+# Drains the Slack notification_queue every 5 minutes so that
+# in-app notifications are pushed to users' Slack DMs (and any
+# configured shared channel) promptly.
+#
+# This calls POST /api/slack/notifications/process which sends all
+# pending, due notifications and handles retries. It is plan-
+# independent (works regardless of the Vercel plan's cron limits).
+#
+# REQUIRED GITHUB SECRETS:
+# - APP_URL: Your Vercel deployment URL (e.g., https://employee-gm-green-dog.vercel.app)
+# - CRON_SECRET: Must match the CRON_SECRET env var in Vercel
+# ============================================================
+
+on:
+  schedule:
+    # Every 5 minutes (GitHub's minimum scheduling granularity)
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    # Allow manual trigger from the GitHub Actions UI
+
+jobs:
+  process-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Configuration
+        run: |
+          if [ -z "${{ secrets.APP_URL }}" ]; then
+            echo "❌ ERROR: APP_URL secret is not configured"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CRON_SECRET }}" ]; then
+            echo "❌ ERROR: CRON_SECRET secret is not configured"
+            exit 1
+          fi
+          echo "✅ Configuration validated"
+
+      - name: Process Slack notification queue
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"limit":50}' \
+            "${{ secrets.APP_URL }}/api/slack/notifications/process")
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Queue processing failed with status $http_code"
+            exit 1
+          fi
+
+          if echo "$body" | grep -q '"ok":true'; then
+            echo "✅ Notification queue processed"
+          else
+            echo "❌ Queue processing reported issues"
+            exit 1
+          fi

@@ -44,7 +44,8 @@ const settings = ref({
   time_off_requests_channel: '',
   ce_events_channel: '',
   schedule_changes_channel: '',
-  general_notifications_channel: ''
+  general_notifications_channel: '',
+  personal_notifications_mirror_channel: ''
 })
 
 // Conflict resolution dialog
@@ -444,6 +445,23 @@ function getConflictColor(type: string) {
                       :loading="channelsLoading"
                       clearable
                       prepend-inner-icon="mdi-bell"
+                    />
+                  </v-col>
+
+                  <v-col cols="12">
+                    <v-divider class="mb-4" />
+                    <v-select
+                      v-model="settings.personal_notifications_mirror_channel"
+                      :items="channels"
+                      item-title="displayName"
+                      item-value="id"
+                      label="Personal Notifications Mirror (optional)"
+                      hint="Every in-app notification is sent to the matching user's Slack DM automatically. Optionally also post a copy to this shared channel. Leave empty to keep notifications private (DM only)."
+                      persistent-hint
+                      variant="outlined"
+                      :loading="channelsLoading"
+                      clearable
+                      prepend-inner-icon="mdi-bullhorn"
                     />
                   </v-col>
                 </v-row>

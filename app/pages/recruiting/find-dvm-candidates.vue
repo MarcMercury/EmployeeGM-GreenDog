@@ -903,6 +903,8 @@ function providerLabel(key: string): string {
     npi: 'NPI Registry',
     tavily: 'Tavily',
     google_cse: 'Google CSE',
+    brave: 'Brave Search',
+    serpapi: 'SerpApi',
     openai: 'OpenAI',
     gemini: 'Gemini',
     acvs: 'ACVS Directory',

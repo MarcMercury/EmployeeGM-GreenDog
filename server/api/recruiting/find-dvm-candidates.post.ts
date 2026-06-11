@@ -29,6 +29,8 @@ import {
 import { apolloPeopleSearch, apolloPeopleEnrich, type ApolloPerson } from '../../utils/apollo'
 import { tavilySearch, tavilyExtract } from '../../utils/tavily'
 import { googleSearch } from '../../utils/googleSearch'
+import { braveSearch } from '../../utils/braveSearch'
+import { serpApiSearch } from '../../utils/serpApiSearch'
 import { hunterEmailFinder, hunterDomainSearch, hunterEmailVerify } from '../../utils/hunter'
 import { lookupLicenseStatus, licenseStatusBoost, type LicenseStatus } from '../../utils/license-status'
 import { normalizeVetSchool } from '../../utils/vet-schools'
@@ -99,7 +101,7 @@ export interface DvmProspect {
    *  requested specialty. Used as the primary sort key so DACVS results
    *  show up first when the user searches for "Surgeon", etc. */
   specialty_match?: number
-  provider: 'openai' | 'gemini' | 'apollo' | 'npi' | 'tavily' | 'google_cse' | 'acvs' | 'merged'
+  provider: 'openai' | 'gemini' | 'apollo' | 'npi' | 'tavily' | 'google_cse' | 'brave' | 'serpapi' | 'acvs' | 'merged'
   /** Distance from the search center in miles (populated when enforceRadius=true). */
   distance_miles?: number | null
   /** Free public-source verification (populated when verify=true). */
@@ -235,10 +237,12 @@ export default defineEventHandler(async (event) => {
   const hasApollo = !!config.apolloApiKey
   const hasTavily = !!config.tavilyApiKey
   const hasGoogleCse = !!config.googleCseApiKey && !!config.googleCseId
+  const hasBrave = !!config.braveApiKey
+  const hasSerpApi = !!config.serpApiKey
   const hasHunter = !!config.hunterApiKey
   const hasNpi = true // free, no key
 
-  if (!hasOpenAI && !hasGemini && !hasApollo && !hasTavily && !hasGoogleCse) {
+  if (!hasOpenAI && !hasGemini && !hasApollo && !hasTavily && !hasGoogleCse && !hasBrave && !hasSerpApi) {
     throw createError({
       statusCode: 503,
       message: 'No data providers configured.',
@@ -251,7 +255,7 @@ export default defineEventHandler(async (event) => {
   const providerErrors: string[] = []
 
   // ── Stage 1: run all DIRECT data providers in parallel ──
-  const [apolloRes, npiRes, tavilyRes, googleRes, directoryRes, acvsRes] = await Promise.all([
+  const [apolloRes, npiRes, tavilyRes, googleRes, braveRes, serpRes, directoryRes, acvsRes] = await Promise.all([
     hasApollo
       ? searchApolloDvms(input).catch(err => {
           providerErrors.push(`apollo: ${(err as Error).message}`)
@@ -280,6 +284,20 @@ export default defineEventHandler(async (event) => {
           return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
         })
       : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
+    hasBrave
+      ? searchBraveDvms(input).catch(err => {
+          providerErrors.push(`brave: ${(err as Error).message}`)
+          logger.error('Brave DVM search failed', err as Error, 'find-dvm-candidates')
+          return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
+        })
+      : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
+    hasSerpApi
+      ? searchSerpApiDvms(input).catch(err => {
+          providerErrors.push(`serpapi: ${(err as Error).message}`)
+          logger.error('SerpApi DVM search failed', err as Error, 'find-dvm-candidates')
+          return { prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }
+        })
+      : Promise.resolve({ prospects: [] as DvmProspect[], snippets: [] as WebSnippet[] }),
     searchSpecialtyDirectories(input).catch(err => {
       providerErrors.push(`specialty_directories: ${(err as Error).message}`)
       logger.error('Specialty directory scrape failed', err as Error, 'find-dvm-candidates')
@@ -293,12 +311,17 @@ export default defineEventHandler(async (event) => {
   ])
 
   logger.info(
-    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length} directories=${directoryRes.length} acvs=${acvsRes.length}`,
+    `Direct providers: apollo=${apolloRes.length} npi=${npiRes.length} tavily=${tavilyRes.prospects.length} google=${googleRes.prospects.length} brave=${braveRes.prospects.length} serpapi=${serpRes.prospects.length} directories=${directoryRes.length} acvs=${acvsRes.length}`,
     'find-dvm-candidates',
   )
 
   // Combine web snippets so LLMs have grounding context
-  const webSnippets = [...tavilyRes.snippets, ...googleRes.snippets].slice(0, 30)
+  const webSnippets = [
+    ...tavilyRes.snippets,
+    ...googleRes.snippets,
+    ...braveRes.snippets,
+    ...serpRes.snippets,
+  ].slice(0, 30)
   const groundingBlock = buildGroundingBlock(webSnippets)
   const virmpBlock = buildVirmpGroundingBlock(input.specialty, input.keywords)
   const combinedGrounding = [groundingBlock, virmpBlock].filter(Boolean).join('\n\n')
@@ -329,6 +352,8 @@ export default defineEventHandler(async (event) => {
     ...npiRes,
     ...tavilyRes.prospects,
     ...googleRes.prospects,
+    ...braveRes.prospects,
+    ...serpRes.prospects,
     ...directoryRes,
     ...acvsRes,
   ]
@@ -581,6 +606,8 @@ export default defineEventHandler(async (event) => {
   const okApollo = hasApollo && !erroredProviders.has('apollo')
   const okTavily = hasTavily && !erroredProviders.has('tavily')
   const okGoogleCse = hasGoogleCse && !erroredProviders.has('google_cse')
+  const okBrave = hasBrave && !erroredProviders.has('brave')
+  const okSerpApi = hasSerpApi && !erroredProviders.has('serpapi')
   const okHunter = hasHunter && !erroredProviders.has('hunter')
 
   const response = {
@@ -594,11 +621,13 @@ export default defineEventHandler(async (event) => {
       npi: hasNpi,
       tavily: okTavily,
       google_cse: okGoogleCse,
+      brave: okBrave,
+      serpapi: okSerpApi,
       acvs: !erroredProviders.has('acvs'),
       hunter: okHunter,
     },
     enrichment_stats: diffFillState(before, snapshotFillState(sorted), sorted.length),
-    warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse, hasHunter }, providerErrors, { droppedOutsideRadius, droppedNoAddress, centerGeocodeFailed, enforced: input.enforceRadius, location: input.location, radiusMiles: input.radiusMiles }),
+    warnings: buildWarnings({ hasOpenAI, hasGemini, hasApollo, hasTavily, hasGoogleCse, hasBrave, hasSerpApi, hasHunter }, providerErrors, { droppedOutsideRadius, droppedNoAddress, centerGeocodeFailed, enforced: input.enforceRadius, location: input.location, radiusMiles: input.radiusMiles }),
     criteria: input,
   }
 
@@ -829,6 +858,8 @@ function summarizeProviderError(raw: string): string {
     gemini: 'Gemini',
     tavily: 'Tavily',
     google_cse: 'Google CSE',
+    brave: 'Brave Search',
+    serpapi: 'SerpApi',
     npi: 'NPI Registry',
     acvs: 'ACVS Directory',
     hunter: 'Hunter.io',
@@ -858,7 +889,7 @@ function summarizeProviderError(raw: string): string {
 }
 
 function buildWarnings(
-  flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean; hasHunter: boolean },
+  flags: { hasOpenAI: boolean; hasGemini: boolean; hasApollo: boolean; hasTavily: boolean; hasGoogleCse: boolean; hasBrave: boolean; hasSerpApi: boolean; hasHunter: boolean },
   providerErrors: string[],
   radius: {
     droppedOutsideRadius?: number
@@ -875,6 +906,8 @@ function buildWarnings(
   if (!flags.hasGemini) warnings.push('GEMINI_API_KEY not set — Gemini provider skipped.')
   if (!flags.hasTavily) warnings.push('TAVILY_API_KEY not set — Tavily web search skipped.')
   if (!flags.hasGoogleCse) warnings.push('GOOGLE_CSE_API_KEY/GOOGLE_CSE_ID not set — Google Custom Search skipped.')
+  if (!flags.hasBrave) warnings.push('BRAVE_API_KEY not set — Brave web search skipped.')
+  if (!flags.hasSerpApi) warnings.push('SERPAPI_API_KEY not set — SerpApi web search skipped.')
   if (!flags.hasHunter) warnings.push('HUNTER_API_KEY not set — Hunter.io email finder skipped.')
   for (const e of providerErrors) warnings.push(summarizeProviderError(e))
   if (radius.centerGeocodeFailed) {
@@ -1023,7 +1056,7 @@ interface WebSnippet {
   title: string
   url: string
   snippet: string
-  source: 'tavily' | 'google_cse'
+  source: 'tavily' | 'google_cse' | 'brave' | 'serpapi'
 }
 
 function buildGroundingBlock(snippets: WebSnippet[]): string {
@@ -1315,7 +1348,7 @@ function extractStateFromText(text: string): { state: string | null; city: strin
   return { state: null, city: null }
 }
 
-function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): DvmProspect | null {
+function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse' | 'brave' | 'serpapi'): DvmProspect | null {
   const title = (s.title || '').replace(/\s+/g, ' ').trim()
   // Strip site-name suffixes / publisher tails.
   const cleaned = title
@@ -1356,9 +1389,21 @@ function snippetToProspect(s: WebSnippet, provider: 'tavily' | 'google_cse'): Dv
 
   // Stronger source labelling so users know which engine surfaced the hit.
   const host = (() => { try { return new URL(s.url).hostname.replace(/^www\./, '') } catch { return '' } })()
-  const sourceName = host
-    ? `${provider === 'tavily' ? 'Tavily' : 'Google CSE'} · ${host}`
-    : (provider === 'tavily' ? 'Tavily web search' : 'Google Custom Search')
+  const engineLabel = provider === 'tavily'
+    ? 'Tavily'
+    : provider === 'google_cse'
+      ? 'Google CSE'
+      : provider === 'brave'
+        ? 'Brave Search'
+        : 'SerpApi'
+  const engineFull = provider === 'tavily'
+    ? 'Tavily web search'
+    : provider === 'google_cse'
+      ? 'Google Custom Search'
+      : provider === 'brave'
+        ? 'Brave web search'
+        : 'SerpApi web search'
+  const sourceName = host ? `${engineLabel} · ${host}` : engineFull
 
   return {
     first_name: first,
@@ -1437,6 +1482,63 @@ async function searchGoogleCseDvms(
   }
   const prospects = snippets
     .map(s => snippetToProspect(s, 'google_cse'))
+    .filter((p): p is DvmProspect => p !== null)
+  return { prospects, snippets }
+}
+
+// Brave / SerpApi are quota-light supplementary engines (SerpApi free tier is
+// only 100 searches/month), so we cap them to the strongest few queries rather
+// than the full buildSearchQueries() fan-out used by Tavily/Google CSE.
+async function searchBraveDvms(
+  input: Required<SearchInput>,
+): Promise<{ prospects: DvmProspect[]; snippets: WebSnippet[] }> {
+  const queries = buildSearchQueries(input).slice(0, 5)
+  const results = await Promise.all(
+    queries.map(q => braveSearch(q, { count: 8, country: 'us' }).catch(() => null)),
+  )
+  const snippets: WebSnippet[] = []
+  const seen = new Set<string>()
+  for (const r of results) {
+    for (const item of r?.web?.results || []) {
+      if (!item.url || seen.has(item.url)) continue
+      seen.add(item.url)
+      snippets.push({
+        title: item.title || '',
+        url: item.url,
+        snippet: item.description || '',
+        source: 'brave',
+      })
+    }
+  }
+  const prospects = snippets
+    .map(s => snippetToProspect(s, 'brave'))
+    .filter((p): p is DvmProspect => p !== null)
+  return { prospects, snippets }
+}
+
+async function searchSerpApiDvms(
+  input: Required<SearchInput>,
+): Promise<{ prospects: DvmProspect[]; snippets: WebSnippet[] }> {
+  const queries = buildSearchQueries(input).slice(0, 3)
+  const results = await Promise.all(
+    queries.map(q => serpApiSearch(q, { engine: 'google', num: 10, gl: 'us', hl: 'en' }).catch(() => null)),
+  )
+  const snippets: WebSnippet[] = []
+  const seen = new Set<string>()
+  for (const r of results) {
+    for (const item of r?.organic_results || []) {
+      if (!item.link || seen.has(item.link)) continue
+      seen.add(item.link)
+      snippets.push({
+        title: item.title || '',
+        url: item.link,
+        snippet: item.snippet || '',
+        source: 'serpapi',
+      })
+    }
+  }
+  const prospects = snippets
+    .map(s => snippetToProspect(s, 'serpapi'))
     .filter((p): p is DvmProspect => p !== null)
   return { prospects, snippets }
 }
