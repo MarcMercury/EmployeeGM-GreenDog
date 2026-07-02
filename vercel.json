@@ -28,14 +28,6 @@
       "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/cron/agent-notifications",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/slack-sync",
-      "schedule": "0 */6 * * *"
-    },
-    {
       "path": "/api/cron/ezyvet-sync",
       "schedule": "0 */4 * * *"
     },
